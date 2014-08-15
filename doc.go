@@ -1,3 +1,2 @@
-// The package xz provides a pure Go Language implementation of the xz file
-// format.
+// Package xz implements xz compression as pure Go implementation.
 package xz
