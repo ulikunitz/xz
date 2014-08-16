@@ -13,14 +13,15 @@ const (
 	chkCRC32  = 0x01
 	chkCRC64  = 0x04
 	chkSHA256 = 0x0a
+	chkMask   = 0x0f
 )
 
 // streamFlags represents the flags for the stream.
-type streamFlags uint16
+type streamFlags byte
 
 // check returns the check value for the stream flags.
 func (sf streamFlags) check() byte {
-	return byte(sf & 0x0f)
+	return byte(sf) & chkMask
 }
 
 // String represents the stream flags as string.
@@ -41,6 +42,27 @@ func (sf streamFlags) String() string {
 	return s
 }
 
+func readStreamFlags(data []byte) (sf streamFlags, err error) {
+	if len(data) != 2 {
+		return 0, errors.New("readStreamFlags: data must have length 2")
+	}
+	if data[0] != 0 {
+		return 0, errors.New(
+			"stream flags: first reserved byte non-zero")
+	}
+	sf = streamFlags(data[1])
+	if sf&^chkMask != 0 {
+		return 0, errors.New(
+			"stream flags: reserved bits in second byte non-zero")
+	}
+	switch sf.check() {
+	case chkNone, chkCRC32, chkCRC64, chkSHA256:
+	default:
+		return 0, errors.New("stream flags: invalid check value")
+	}
+	return sf, nil
+}
+
 // readStreamHeader reads the xz stream header and returns a representation of
 // the stream flags. The function returns an error if the header cannot be read
 // or the stream flags are invalid.
@@ -52,8 +74,7 @@ func readStreamHeader(r io.Reader) (sf streamFlags, err error) {
 		headerLen = 12
 	)
 	buf := make([]byte, headerLen)
-	_, err = io.ReadFull(r, buf)
-	if err != nil {
+	if _, err = io.ReadFull(r, buf); err != nil {
 		return 0, fmt.Errorf("xz stream header: %s", err)
 	}
 	if !bytes.Equal(buf[:magicLen], magic) {
@@ -62,21 +83,43 @@ func readStreamHeader(r io.Reader) (sf streamFlags, err error) {
 	cs := checksumCRC32(buf[magicLen : magicLen+flagLen])
 	csWant := le32(buf[headerLen-4:])
 	if cs != csWant {
-		return 0, fmt.Errorf("xz stream header: CRC32 error")
+		return 0, errors.New("xz stream header: CRC32 error")
 	}
-	if buf[magicLen] != 0 {
-		return 0, errors.New(
-			"xz stream header: non-zero reserved flag bit")
-	}
-	sf = streamFlags(buf[magicLen+1])
-	if sf&^streamFlags(0x0f) != 0 {
-		return 0, errors.New(
-			"xz stream header: non-zero reserved flag bit")
-	}
-	switch sf.check() {
-	case chkNone, chkCRC32, chkCRC64, chkSHA256:
-	default:
-		return 0, errors.New("xz stream header: invalid check value")
+	sf, err = readStreamFlags(buf[magicLen : magicLen+2])
+	if err != nil {
+		return 0, fmt.Errorf("xz stream header: %s", err)
 	}
 	return sf, nil
+}
+
+func readStreamFooter(r io.Reader) (
+	backwardSize uint64, sf streamFlags, err error,
+) {
+	magic := []byte{'Y', 'Z'}
+	magicLen := len(magic)
+	const (
+		crc32Len = 4
+		bsLen    = 4
+		flagLen  = 2
+	)
+	footerLen := crc32Len + bsLen + flagLen + magicLen
+	buf := make([]byte, footerLen)
+	if _, err = io.ReadFull(r, buf); err != nil {
+		return 0, 0, fmt.Errorf("xz stream footer: %s", err)
+	}
+	if !bytes.Equal(buf[footerLen-magicLen:], magic) {
+		return 0, 0, errors.New("xz stream footer: magic mismatch")
+	}
+	cs := checksumCRC32(buf[crc32Len : footerLen-magicLen])
+	csWant := le32(buf[:crc32Len])
+	if cs != csWant {
+		return 0, 0, errors.New("xz stream footer: CRC32 error")
+	}
+	backwardSize = uint64(le32(buf[crc32Len : crc32Len+bsLen]))
+	backwardSize = 4 * (backwardSize + 1)
+	sf, err = readStreamFlags(buf[crc32Len+bsLen : crc32Len+bsLen+2])
+	if err != nil {
+		return 0, 0, fmt.Errorf("xz stream header: %s", err)
+	}
+	return backwardSize, sf, nil
 }
