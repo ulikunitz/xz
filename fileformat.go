@@ -93,7 +93,7 @@ func readStreamHeader(r io.Reader) (sf streamFlags, err error) {
 }
 
 func readStreamFooter(r io.Reader) (
-	backwardSize uint64, sf streamFlags, err error,
+	backwardSize int64, sf streamFlags, err error,
 ) {
 	magic := []byte{'Y', 'Z'}
 	magicLen := len(magic)
@@ -115,7 +115,7 @@ func readStreamFooter(r io.Reader) (
 	if cs != csWant {
 		return 0, 0, errors.New("xz stream footer: CRC32 error")
 	}
-	backwardSize = uint64(le32(buf[crc32Len : crc32Len+bsLen]))
+	backwardSize = int64(le32(buf[crc32Len : crc32Len+bsLen]))
 	backwardSize = 4 * (backwardSize + 1)
 	sf, err = readStreamFlags(buf[crc32Len+bsLen : crc32Len+bsLen+2])
 	if err != nil {
