@@ -42,6 +42,7 @@ func (sf streamFlags) String() string {
 	return s
 }
 
+// readStreamFlags reads the stream flags from a byte array and checks it.
 func readStreamFlags(data []byte) (sf streamFlags, err error) {
 	if len(data) != 2 {
 		return 0, errors.New("readStreamFlags: data must have length 2")
@@ -92,6 +93,9 @@ func readStreamHeader(r io.Reader) (sf streamFlags, err error) {
 	return sf, nil
 }
 
+// readStreamFooter reads the stream footer from the reader. It extracts the
+// information from the footer. Note that checking the consistency of the
+// footer stream flags with the header is a task of the upper layer.
 func readStreamFooter(r io.Reader) (
 	backwardSize int64, sf streamFlags, err error,
 ) {
