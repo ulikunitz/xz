@@ -7,16 +7,21 @@ import (
 	"math"
 )
 
+// lzma2Flags represents the filter properties contained in the block header.
+// Currently it contains only the dictionary size.
 type lzma2Flags byte
 
+// id returns the filter id for the LZMA2 filter.
 func (f lzma2Flags) id() filterID {
 	return idLZMA2
 }
 
+// reserved returns the reserved bits of lzma2Flags.
 func (f lzma2Flags) reserved() byte {
 	return byte(f) & 0xc0
 }
 
+// dictSize() returns the dictionary size for the filter.
 func (f lzma2Flags) dictSize() (n int64, err error) {
 	b := byte(f & 0x3F)
 	switch {
