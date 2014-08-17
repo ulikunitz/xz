@@ -37,7 +37,7 @@ func (f lzma2Flags) dictSize() (n int64, err error) {
 }
 
 // readLZMA2Flags reads the lzma2 filter flags. It starts after the filter id
-// has been read. The property size is assumed to be one.
+// has been read. The properties size must be one.
 func readLZMA2Flags(r io.Reader, propertiesSize int64) (
 	f lzma2Flags, err error,
 ) {
