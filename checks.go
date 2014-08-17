@@ -72,7 +72,7 @@ func reverseBytes(b []byte) {
 
 // Sum adds the actual hash (aka as checksum) to the slice b while reverting
 // it.
-func (h *leHash) Sum(b []byte) []byte {
+func (h leHash) Sum(b []byte) []byte {
 	c := h.Hash.Sum(b)
 	reverseBytes(c[len(b):])
 	return c
@@ -81,7 +81,7 @@ func (h *leHash) Sum(b []byte) []byte {
 // newCRC32Reader creates a new hash reader outputting the CRC32 checks. The
 // IEEE polynomial is used.
 func newCRC32Reader(r io.Reader) *hashReader {
-	return &hashReader{r, &leHash{crc32.NewIEEE()}}
+	return &hashReader{r, leHash{crc32.NewIEEE()}}
 }
 
 // ecmaTab stores the tab for the ECMA polynomical.
@@ -90,5 +90,5 @@ var ecmaTab = crc64.MakeTable(crc64.ECMA)
 // newCRC64Reader creates a hashReader compute CRC64 checksums. The function
 // uses the ECMA polynomial.
 func newCRC64Reader(r io.Reader) *hashReader {
-	return &hashReader{r, &leHash{crc64.New(ecmaTab)}}
+	return &hashReader{r, leHash{crc64.New(ecmaTab)}}
 }
