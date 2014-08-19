@@ -17,9 +17,26 @@ described as such:
 
 The symbols used are described by following table.
 
--- -------------------
+-- ------------------
  u unpacked size bit
  U unpacked size byte
  P packed size byte
- S properties
--- -------------------
+ S properties byte
+-- ------------------
+
+The properties byte provides the parameters pb, lc, lp using following
+formula:
+
+    S = (pb * 5 + lp) * 9 + lc
+
+For LZMA2 following limitation has been introduced:
+
+    lc + lp <= 4.
+
+The parameters are defined as follows:
+
+Name  Range  Description
+----- ------ -------------------------------
+lc    [0,8]  number of literal context bits
+lp    [0,4]  number of literal pos bits
+pb    [0,4]  the number of pos bits
