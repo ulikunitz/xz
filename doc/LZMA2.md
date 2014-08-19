@@ -17,12 +17,12 @@ described as such:
 
 The symbols used are described by following table.
 
--- ------------------
- u unpacked size bit
- U unpacked size byte
- P packed size byte
- S properties byte
--- ------------------
+| - | ------------------ |
+| u | unpacked size bit  |
+| U | unpacked size byte |
+| P | packed size byte   |
+| S | properties byte    |
+| - | ------------------ |
 
 The properties byte provides the parameters pb, lc, lp using following
 formula:
