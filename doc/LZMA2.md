@@ -5,8 +5,8 @@ LZMA2 is a container of chunks. Each chunk is lead by a control byte.
 Following the C implementation in the LZMA SDK the control byte can be
 described as such:
 
-                     |
--------------------- | ---------------------------------------------------
+Chunk header         | Description
+:------------------- | :--------------------------------------------------
 `00000000`           | End of LZMA2 stream
 `00000001 U U`       | Uncompressed chunk; reset dictionary
 `00000010 U U`       | Uncompressed chunk; no reset of dictionary
@@ -17,12 +17,12 @@ described as such:
 
 The symbols used are described by following table.
 
-   |
--- | ------------------
-u  | unpacked size bit
-U  | unpacked size byte
-P  | packed size byte
-S  | properties byte
+Symbol | Description
+:----- | :-----------------
+u      | unpacked size bit
+U      | unpacked size byte
+P      | packed size byte
+S      | properties byte
 
 The properties byte provides the parameters pb, lc, lp using following
 formula:
@@ -36,7 +36,7 @@ For LZMA2 following limitation has been introduced:
 The parameters are defined as follows:
 
 Name  | Range  | Description
------ | ------ | -------------------------------
+:---- | :----- | :------------------------------
 lc    | [0,8]  | number of literal context bits
 lp    | [0,4]  | number of literal pos bits
 pb    | [0,4]  | the number of pos bits
