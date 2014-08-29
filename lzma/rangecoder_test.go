@@ -17,70 +17,70 @@ type bitDecoder interface {
 }
 
 type directEncoder struct {
-	e *Encoder
+	e *rangeEncoder
 }
 
 func (e directEncoder) encode(b bit) error {
-	return e.e.EncodeDirect(b)
+	return e.e.encodeDirect(b)
 }
 
 func (e directEncoder) flush() error {
-	return e.e.Flush()
+	return e.e.flush()
 }
 
 func newDirectEncoder(w io.ByteWriter) bitEncoder {
-	return &directEncoder{e: NewEncoder(w)}
+	return &directEncoder{e: newRangeEncoder(w)}
 }
 
 type directDecoder struct {
-	d *Decoder
+	d *rangeDecoder
 }
 
 func (d directDecoder) init() error {
-	return d.d.Init()
+	return d.d.init()
 }
 
 func (d directDecoder) decode() (bit, error) {
-	return d.d.DecodeDirect()
+	return d.d.decodeDirect()
 }
 
 func newDirectDecoder(r io.ByteReader) bitDecoder {
-	return &directDecoder{d: NewDecoder(r)}
+	return &directDecoder{d: newRangeDecoder(r)}
 }
 
 type probEncoder struct {
-	e *Encoder
+	e *rangeEncoder
 	p prob
 }
 
 func newProbEncoder(w io.ByteWriter) bitEncoder {
-	return &probEncoder{e: NewEncoder(w), p: probInit}
+	return &probEncoder{e: newRangeEncoder(w), p: probInit}
 }
 
 func (e *probEncoder) encode(b bit) error {
-	return e.e.Encode(b, &e.p)
+	return e.e.encode(b, &e.p)
 }
 
 func (e *probEncoder) flush() error {
-	return e.e.Flush()
+	return e.e.flush()
 }
 
 type probDecoder struct {
-	d *Decoder
+	d *rangeDecoder
 	p prob
 }
 
 func newProbDecoder(r io.ByteReader) bitDecoder {
-	return &probDecoder{d: NewDecoder(r), p: probInit}
+	return &probDecoder{d: newRangeDecoder(r), p: probInit}
 }
 
 func (d *probDecoder) init() error {
 	d.p = probInit
-	return d.d.Init()
+	return d.d.init()
 }
 
 func (d *probDecoder) decode() (bit, error) {
-	return d.d.Decode(&d.p)
+	return d.d.decode(&d.p)
 }
 
 func encodeByte(e bitEncoder, b byte) error {
