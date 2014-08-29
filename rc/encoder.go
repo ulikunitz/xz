@@ -8,20 +8,18 @@ func (b Bit) Test() bool {
 	return b&1 != 0
 }
 
-// Parameters for the handling of probabilities. The probInit value equals 0.5.
-const (
-	probBits      = 11
-	moveBits      = 5
-	probInit Prob = 1 << (probBits - 1)
-)
+// moveBits defines the number of bits used for the updates of probability
+// values.
+const moveBits = 5
+
+// ProbBits defines the number of bits of a probability value.
+const ProbBits = 11
+
+// Initial value for a probability value. It is 0.5.
+const ProbInit Prob = 1 << (ProbBits - 1)
 
 // Type Prob represents probabilities.
 type Prob uint16
-
-// Init sets the probability to 0.5.
-func (p *Prob) Init() {
-	*p = probInit
-}
 
 // Dec decreases the probability. The decrease is proportional to the
 // probability value.
@@ -32,12 +30,12 @@ func (p *Prob) Dec() {
 // Inc increases the probability. The Increase is proportional to the
 // difference of 1 and the probability value.
 func (p *Prob) Inc() {
-	*p += ((1 << probBits) - *p) >> moveBits
+	*p += ((1 << ProbBits) - *p) >> moveBits
 }
 
 // Computes the new bound for a given range using the probability value.
 func (p Prob) Bound(r uint32) uint32 {
-	return (r >> probBits) * uint32(p)
+	return (r >> ProbBits) * uint32(p)
 }
 
 type Encoder struct {

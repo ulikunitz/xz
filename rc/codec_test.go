@@ -54,7 +54,7 @@ type probEncoder struct {
 }
 
 func newProbEncoder(w io.ByteWriter) bitEncoder {
-	return &probEncoder{e: NewEncoder(w), p: probInit}
+	return &probEncoder{e: NewEncoder(w), p: ProbInit}
 }
 
 func (e *probEncoder) encode(b Bit) error {
@@ -71,11 +71,11 @@ type probDecoder struct {
 }
 
 func newProbDecoder(r io.ByteReader) bitDecoder {
-	return &probDecoder{d: NewDecoder(r), p: probInit}
+	return &probDecoder{d: NewDecoder(r), p: ProbInit}
 }
 
 func (d *probDecoder) init() error {
-	d.p = probInit
+	d.p = ProbInit
 	return d.d.Init()
 }
 
