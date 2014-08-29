@@ -1,4 +1,4 @@
-package rc
+package lzma
 
 import (
 	"bytes"
@@ -7,20 +7,20 @@ import (
 )
 
 type bitEncoder interface {
-	encode(b Bit) error
+	encode(b bit) error
 	flush() error
 }
 
 type bitDecoder interface {
 	init() error
-	decode() (Bit, error)
+	decode() (bit, error)
 }
 
 type directEncoder struct {
 	e *Encoder
 }
 
-func (e directEncoder) encode(b Bit) error {
+func (e directEncoder) encode(b bit) error {
 	return e.e.EncodeDirect(b)
 }
 
@@ -40,7 +40,7 @@ func (d directDecoder) init() error {
 	return d.d.Init()
 }
 
-func (d directDecoder) decode() (Bit, error) {
+func (d directDecoder) decode() (bit, error) {
 	return d.d.DecodeDirect()
 }
 
@@ -50,14 +50,14 @@ func newDirectDecoder(r io.ByteReader) bitDecoder {
 
 type probEncoder struct {
 	e *Encoder
-	p Prob
+	p prob
 }
 
 func newProbEncoder(w io.ByteWriter) bitEncoder {
-	return &probEncoder{e: NewEncoder(w), p: ProbInit}
+	return &probEncoder{e: NewEncoder(w), p: probInit}
 }
 
-func (e *probEncoder) encode(b Bit) error {
+func (e *probEncoder) encode(b bit) error {
 	return e.e.Encode(b, &e.p)
 }
 
@@ -67,26 +67,26 @@ func (e *probEncoder) flush() error {
 
 type probDecoder struct {
 	d *Decoder
-	p Prob
+	p prob
 }
 
 func newProbDecoder(r io.ByteReader) bitDecoder {
-	return &probDecoder{d: NewDecoder(r), p: ProbInit}
+	return &probDecoder{d: NewDecoder(r), p: probInit}
 }
 
 func (d *probDecoder) init() error {
-	d.p = ProbInit
+	d.p = probInit
 	return d.d.Init()
 }
 
-func (d *probDecoder) decode() (Bit, error) {
+func (d *probDecoder) decode() (bit, error) {
 	return d.d.Decode(&d.p)
 }
 
 func encodeByte(e bitEncoder, b byte) error {
 	for i := 7; i >= 0; i-- {
-		bit := Bit((b >> uint(i)) & 1)
-		if err := e.encode(bit); err != nil {
+		x := bit((b >> uint(i)) & 1)
+		if err := e.encode(x); err != nil {
 			return err
 		}
 	}
