@@ -78,7 +78,7 @@ func (e *rangeEncoder) directEncode(bits uint32, n int) error {
 // updated by the function depending on the bit encoded.
 func (e *rangeEncoder) encodeBit(b uint32, p *prob) error {
 	bound := p.bound(e.range_)
-	if b&1 != 0 {
+	if b&1 == 0 {
 		e.range_ = bound
 		p.inc()
 	} else {
@@ -251,7 +251,7 @@ func (d *rangeDecoder) decodeBit(p *prob) (b uint32, err error) {
 // p.bits and the bits are decoded with highest-significant bits first.
 func (d *rangeDecoder) treeDecode(p *probTree) (b uint32, err error) {
 	m := uint32(1)
-	for i := 0; i < p.bits; i++ {
+	for j := 0; j < p.bits; j++ {
 		x, err := d.decodeBit(&p.probs[m])
 		if err != nil {
 			return 0, err
