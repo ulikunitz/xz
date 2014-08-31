@@ -5,36 +5,6 @@ import (
 	"io"
 )
 
-// movebits defines the number of bits used for the updates of probability
-// values.
-const movebits = 5
-
-// probbits defines the number of bits of a probability value.
-const probbits = 11
-
-// probInit defines 0.5 as initial value for prob values.
-const probInit prob = 1 << (probbits - 1)
-
-// Type prob represents probabilities.
-type prob uint16
-
-// Dec decreases the probability. The decrease is proportional to the
-// probability value.
-func (p *prob) dec() {
-	*p -= *p >> movebits
-}
-
-// Inc increases the probability. The Increase is proportional to the
-// difference of 1 and the probability value.
-func (p *prob) inc() {
-	*p += ((1 << probbits) - *p) >> movebits
-}
-
-// Computes the new bound for a given range using the probability value.
-func (p prob) bound(r uint32) uint32 {
-	return (r >> probbits) * uint32(p)
-}
-
 // rangeEncoder implements the range encoding. The low value can overflow
 // therefore we need uint64. The cache value is used to handle overflows.
 type rangeEncoder struct {
@@ -117,6 +87,34 @@ func (e *rangeEncoder) encodeBit(b uint32, p *prob) error {
 		p.dec()
 	}
 	return e.normalize()
+}
+
+// treeEncode encodes the p.bits least-significant bits of b starting with the
+// most-significant bit.
+func (e *rangeEncoder) treeEncode(b uint32, p *probTree) error {
+	m := uint32(1)
+	for i := p.bits - 1; i >= 0; i-- {
+		x := (b >> uint(i)) & 1
+		if err := e.encodeBit(x, &p.probs[m]); err != nil {
+			return err
+		}
+		m = (m << 1) | x
+	}
+	return nil
+}
+
+// treeReverseEncode encodes the p.bits least-significant bits of b start with
+// the least-signficant bit.
+func (e *rangeEncoder) treeReverseEncode(b uint32, p *probTree) error {
+	m := uint32(1)
+	for i := 0; i < p.bits; i++ {
+		x := (b >> uint(i)) & 1
+		if err := e.encodeBit(x, &p.probs[m]); err != nil {
+			return err
+		}
+		m = (m << 1) | x
+	}
+	return nil
 }
 
 // flush writes the complete low value out.
@@ -245,6 +243,35 @@ func (d *rangeDecoder) decodeBit(p *prob) (b uint32, err error) {
 
 	if err = d.normalize(); err != nil {
 		return 0, err
+	}
+	return b, nil
+}
+
+// treeDecode decodes bits using the probTree. The number of bits is given b
+// p.bits and the bits are decoded with highest-significant bits first.
+func (d *rangeDecoder) treeDecode(p *probTree) (b uint32, err error) {
+	m := uint32(1)
+	for i := 0; i < p.bits; i++ {
+		x, err := d.decodeBit(&p.probs[m])
+		if err != nil {
+			return 0, err
+		}
+		m = (m << 1) | x
+	}
+	return m - (1 << uint(p.bits)), nil
+}
+
+// treeReverseDecode decodes bits using the probTree. The number of bits is
+// given b p.bits and the bits are decoded with least-significant bits first.
+func (d *rangeDecoder) treeReverseDecode(p *probTree) (b uint32, err error) {
+	m := uint32(1)
+	for i := 0; i < p.bits; i++ {
+		x, err := d.decodeBit(&p.probs[m])
+		if err != nil {
+			return 0, err
+		}
+		m = (m << 1) | x
+		b |= (x << uint(i))
 	}
 	return b, nil
 }
