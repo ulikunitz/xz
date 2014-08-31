@@ -5,14 +5,6 @@ import (
 	"io"
 )
 
-// A bit represents a single bit. The bit is set if the values not zero.
-type bit byte
-
-// test tests whether the bit is set.
-func (b bit) test() bool {
-	return b&1 != 0
-}
-
 // movebits defines the number of bits used for the updates of probability
 // values.
 const movebits = 5
@@ -94,18 +86,29 @@ func (e *rangeEncoder) normalize() error {
 	return e.shiftLow()
 }
 
-// encodeDirect encodes the bit directly.
-func (e *rangeEncoder) encodeDirect(b bit) error {
+// directEncodeBit encodes the least-significant bit of b
+func (e *rangeEncoder) directEncodeBit(b uint32) error {
 	e.range_ >>= 1
 	e.low += uint64(e.range_) & (0 - (uint64(b) & 1))
 	return e.normalize()
 }
 
-// encodes the bit using the given probability which is updated according to
-// the bit value.
-func (e *rangeEncoder) encode(b bit, p *prob) error {
+// directEncode encodes the least-significant n bits. The most-significant bit
+// will be encoded first.
+func (e *rangeEncoder) directEncode(bits uint32, n int) error {
+	for n--; n >= 0; n-- {
+		if err := e.directEncodeBit(bits >> uint(n)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// encodeBit encodes the least significant bit of b. The p value will be
+// updated by the function depending on the bit encoded.
+func (e *rangeEncoder) encodeBit(b uint32, p *prob) error {
 	bound := p.bound(e.range_)
-	if !b.test() {
+	if b&1 != 0 {
 		e.range_ = bound
 		p.inc()
 	} else {
@@ -194,8 +197,9 @@ func (d *rangeDecoder) normalize() error {
 	return nil
 }
 
-// decodeDirect decodes a bit directly.
-func (d *rangeDecoder) decodeDirect() (b bit, err error) {
+// directDecodeBits decodes a bit directly. The return value b will contain the
+// bit at the least-significant position. All other bits will be zero.
+func (d *rangeDecoder) directDecodeBit() (b uint32, err error) {
 	d.range_ >>= 1
 	d.code -= d.range_
 	t := 0 - (d.code >> 31)
@@ -206,11 +210,25 @@ func (d *rangeDecoder) decodeDirect() (b bit, err error) {
 	if err = d.normalize(); err != nil {
 		return 0, err
 	}
-	return bit((t + 1) & 1), nil
+	return (t + 1) & 1, nil
 }
 
-// decode decodes a single bit. The probability value will be updated.
-func (d *rangeDecoder) decode(p *prob) (b bit, err error) {
+// directDecode decodes n bits. The b value will contain those bits in the n
+// least-significant positions. The most-significant bit will be decoded first.
+func (d *rangeDecoder) directDecode(n int) (b uint32, err error) {
+	for n--; n >= 0; n-- {
+		a, err := d.directDecodeBit()
+		if err != nil {
+			return 0, err
+		}
+		b = (b << 1) | a
+	}
+	return b, nil
+}
+
+// decodeBit decodes a single bit. The bit will be returned at the
+// least-significant position. The probability value will be updated.
+func (d *rangeDecoder) decodeBit(p *prob) (b uint32, err error) {
 	bound := p.bound(d.range_)
 	if d.code < bound {
 		d.range_ = bound

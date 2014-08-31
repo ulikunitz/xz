@@ -7,21 +7,21 @@ import (
 )
 
 type bitEncoder interface {
-	encode(b bit) error
+	encodeBit(b uint32) error
 	flush() error
 }
 
 type bitDecoder interface {
 	init() error
-	decode() (bit, error)
+	decodeBit() (uint32, error)
 }
 
 type directEncoder struct {
 	e *rangeEncoder
 }
 
-func (e directEncoder) encode(b bit) error {
-	return e.e.encodeDirect(b)
+func (e directEncoder) encodeBit(b uint32) error {
+	return e.e.directEncodeBit(b)
 }
 
 func (e directEncoder) flush() error {
@@ -40,8 +40,8 @@ func (d directDecoder) init() error {
 	return d.d.init()
 }
 
-func (d directDecoder) decode() (bit, error) {
-	return d.d.decodeDirect()
+func (d directDecoder) decodeBit() (uint32, error) {
+	return d.d.directDecodeBit()
 }
 
 func newDirectDecoder(r io.ByteReader) bitDecoder {
@@ -57,8 +57,8 @@ func newProbEncoder(w io.ByteWriter) bitEncoder {
 	return &probEncoder{e: newRangeEncoder(w), p: probInit}
 }
 
-func (e *probEncoder) encode(b bit) error {
-	return e.e.encode(b, &e.p)
+func (e *probEncoder) encodeBit(b uint32) error {
+	return e.e.encodeBit(b, &e.p)
 }
 
 func (e *probEncoder) flush() error {
@@ -79,14 +79,14 @@ func (d *probDecoder) init() error {
 	return d.d.init()
 }
 
-func (d *probDecoder) decode() (bit, error) {
-	return d.d.decode(&d.p)
+func (d *probDecoder) decodeBit() (uint32, error) {
+	return d.d.decodeBit(&d.p)
 }
 
 func encodeByte(e bitEncoder, b byte) error {
 	for i := 7; i >= 0; i-- {
-		x := bit((b >> uint(i)) & 1)
-		if err := e.encode(x); err != nil {
+		x := uint32((b >> uint(i)) & 1)
+		if err := e.encodeBit(x); err != nil {
 			return err
 		}
 	}
@@ -104,11 +104,11 @@ func encodeBytes(e bitEncoder, p []byte) error {
 
 func decodeByte(d bitDecoder) (b byte, err error) {
 	for i := 7; i >= 0; i-- {
-		bit, err := d.decode()
+		uint32, err := d.decodeBit()
 		if err != nil {
 			return 0, err
 		}
-		b |= (byte(bit) & 1) << uint(i)
+		b |= (byte(uint32) & 1) << uint(i)
 	}
 	return b, nil
 }
