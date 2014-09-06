@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"bufio"
+	"encoding/binary"
 	"errors"
 	"io"
 	"math"
@@ -20,6 +21,32 @@ type Properties struct {
 	PB int
 	// dictSize [0,2^32-1]
 	DictSize uint32
+}
+
+// UnmarshalBinary decodes properties in the old header format.
+func (p *Properties) UnmarshalBinary(data []byte) error {
+	x := int(data[0])
+	p.LC = x % 9
+	x /= 9
+	p.LP = x % 5
+	p.PB = x / 5
+	if p.PB > 4 {
+		return errors.New("pb property out of range")
+	}
+	p.DictSize = binary.LittleEndian.Uint32(data[1:5])
+	return nil
+}
+
+// MarshalBinary encodes the properites as required by the old header format.
+func (p *Properties) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, 5)
+	b := (p.PB*5+p.LP)*9 + p.LC
+	if !(0 <= b && b <= 0xff) {
+		return nil, errors.New("invalid properties")
+	}
+	data[0] = byte(b)
+	binary.LittleEndian.PutUint32(data[1:5], p.DictSize)
+	return data, nil
 }
 
 func (d *Decoder) DictionarySize() int64 {
@@ -60,49 +87,18 @@ func makeByteReader(r io.Reader) io.ByteReader {
 	return bufio.NewReader(r)
 }
 
-func decodeUint32LE(b []byte) uint32 {
-	u := uint32(b[0])
-	u |= uint32(b[1]) << 8
-	u |= uint32(b[2]) << 16
-	u |= uint32(b[3]) << 24
-	return u
-}
-
-func decodeUint64LE(b []byte) uint64 {
-	u := uint64(b[0])
-	u |= uint64(b[1]) << 8
-	u |= uint64(b[2]) << 16
-	u |= uint64(b[3]) << 24
-	u |= uint64(b[4]) << 32
-	u |= uint64(b[5]) << 40
-	u |= uint64(b[6]) << 48
-	u |= uint64(b[7]) << 56
-	return u
-}
-
-func decodeProperties(b []byte) (p *Properties, err error) {
-	p = new(Properties)
-	x := int(b[0])
-	p.LC = x % 9
-	x /= 9
-	p.LP = x % 5
-	p.PB = x / 5
-	if p.PB > 4 {
-		return nil, errors.New("pb property out of range")
-	}
-	p.DictSize = decodeUint32LE(b[1:5])
-	return p, nil
-}
-
+// readOldHeader reads the complete old header from the reader. The return
+// value size contains the uncompressed size.
 func readOldHeader(r io.Reader) (props *Properties, size int64, err error) {
 	buf := make([]byte, 13)
 	if _, err = io.ReadFull(r, buf); err != nil {
 		return nil, 0, err
 	}
-	if props, err = decodeProperties(buf); err != nil {
+	props = new(Properties)
+	if err = props.UnmarshalBinary(buf); err != nil {
 		return nil, 0, err
 	}
-	s := decodeUint64LE(buf[5:])
+	s := binary.LittleEndian.Uint64(buf[5:])
 	if s > math.MaxInt64 {
 		return nil, 0, errors.New("size out of range")
 	}
