@@ -11,7 +11,9 @@ import (
 type Decoder struct {
 }
 
-// Properties stores the properties of a range decoder
+// Properties stores the properties of a range decoder. Note that we only
+// support dictionary size up to MaxInt. On x86 this is smaller than the
+// maximum 2^32-1 supported by the LZMA specification.
 type Properties struct {
 	// "literal context" bits [0,8]
 	LC int
@@ -20,7 +22,7 @@ type Properties struct {
 	// "pos" bits [0,4]
 	PB int
 	// dictSize [0,2^32-1]
-	DictSize uint32
+	DictSize int
 }
 
 // unmarshal decodes properties in the old header format.
@@ -33,7 +35,10 @@ func (p *Properties) unmarshal(data []byte) error {
 	if p.PB > 4 {
 		return errors.New("pb property out of range")
 	}
-	p.DictSize = binary.LittleEndian.Uint32(data[1:5])
+	p.DictSize = int(binary.LittleEndian.Uint32(data[1:5]))
+	if p.DictSize < 0 {
+		return errors.New("dictionary size out of range")
+	}
 	return nil
 }
 
@@ -44,7 +49,11 @@ func (p *Properties) marshal(data []byte) (err error) {
 		return errors.New("invalid properties")
 	}
 	data[0] = byte(b)
-	binary.LittleEndian.PutUint32(data[1:5], p.DictSize)
+	if !(0 <= p.DictSize && p.DictSize <= math.MaxUint32) {
+		return errors.New("dict size out of range")
+	}
+	u := uint32(p.DictSize)
+	binary.LittleEndian.PutUint32(data[1:5], u)
 	return nil
 }
 
