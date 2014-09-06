@@ -10,21 +10,21 @@ func TestOldHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.Open(\"examples/a.lzma\"): %v", err)
 	}
-	p, size, err := readOldHeader(f)
-	if err != nil {
-		t.Fatalf("readOldHeader: %v", err)
+	var o oldHeader
+	if err = o.read(f); err != nil {
+		t.Fatalf("oldHeader read: %v", err)
 	}
-	t.Logf("p: %#v", p)
-	if p.PB != 2 {
-		t.Errorf("pb %d; want 2", p.PB)
+	t.Logf("o: %#v", o)
+	if o.PB != 2 {
+		t.Errorf("pb %d; want 2", o.PB)
 	}
-	if p.LP != 0 {
-		t.Errorf("lp %d; want 0", p.LP)
+	if o.LP != 0 {
+		t.Errorf("lp %d; want 0", o.LP)
 	}
-	if p.LC != 3 {
-		t.Errorf("lc %d; want 3", p.LC)
+	if o.LC != 3 {
+		t.Errorf("lc %d; want 3", o.LC)
 	}
-	if size != 327 {
-		t.Errorf("size %d; want 327", size)
+	if o.size != 327 {
+		t.Errorf("size %d; want 327", o.size)
 	}
 }

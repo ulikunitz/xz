@@ -23,8 +23,8 @@ type Properties struct {
 	DictSize uint32
 }
 
-// UnmarshalBinary decodes properties in the old header format.
-func (p *Properties) UnmarshalBinary(data []byte) error {
+// unmarshal decodes properties in the old header format.
+func (p *Properties) unmarshal(data []byte) error {
 	x := int(data[0])
 	p.LC = x % 9
 	x /= 9
@@ -37,16 +37,15 @@ func (p *Properties) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// MarshalBinary encodes the properites as required by the old header format.
-func (p *Properties) MarshalBinary() (data []byte, err error) {
-	data = make([]byte, 5)
+// marshal encodes the properites as required by the old header format.
+func (p *Properties) marshal(data []byte) (err error) {
 	b := (p.PB*5+p.LP)*9 + p.LC
 	if !(0 <= b && b <= 0xff) {
-		return nil, errors.New("invalid properties")
+		return errors.New("invalid properties")
 	}
 	data[0] = byte(b)
 	binary.LittleEndian.PutUint32(data[1:5], p.DictSize)
-	return data, nil
+	return nil
 }
 
 func (d *Decoder) DictionarySize() int64 {
@@ -87,20 +86,29 @@ func makeByteReader(r io.Reader) io.ByteReader {
 	return bufio.NewReader(r)
 }
 
-// readOldHeader reads the complete old header from the reader. The return
-// value size contains the uncompressed size.
-func readOldHeader(r io.Reader) (props *Properties, size int64, err error) {
-	buf := make([]byte, 13)
-	if _, err = io.ReadFull(r, buf); err != nil {
-		return nil, 0, err
+const oldHeaderLen = 13
+
+type oldHeader struct {
+	Properties
+	size int64
+}
+
+func (o *oldHeader) unmarshal(data []byte) (err error) {
+	if err = o.Properties.unmarshal(data); err != nil {
+		return err
 	}
-	props = new(Properties)
-	if err = props.UnmarshalBinary(buf); err != nil {
-		return nil, 0, err
-	}
-	s := binary.LittleEndian.Uint64(buf[5:])
+	s := binary.LittleEndian.Uint64(data[5:])
 	if s > math.MaxInt64 {
-		return nil, 0, errors.New("size out of range")
+		return errors.New("size out of range")
 	}
-	return props, int64(s), err
+	o.size = int64(s)
+	return nil
+}
+
+func (o *oldHeader) read(r io.Reader) (err error) {
+	data := make([]byte, oldHeaderLen)
+	if _, err = io.ReadFull(r, data); err != nil {
+		return err
+	}
+	return o.unmarshal(data)
 }
