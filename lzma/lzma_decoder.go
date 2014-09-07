@@ -25,7 +25,12 @@ type Properties struct {
 	DictSize int
 }
 
-// unmarshal decodes properties in the old header format.
+// The minimum dictionary size used.
+const MinDictSize = 1 << 12
+
+// unmarshal decodes properties in the old header format. If the dictionary
+// size is less then 2^12, MinDictSize, it is set to it as defined in the draft
+// LZMA specification.
 func (p *Properties) unmarshal(data []byte) error {
 	x := int(data[0])
 	p.LC = x % 9
@@ -38,6 +43,9 @@ func (p *Properties) unmarshal(data []byte) error {
 	p.DictSize = int(binary.LittleEndian.Uint32(data[1:5]))
 	if p.DictSize < 0 {
 		return errors.New("dictionary size out of range")
+	}
+	if p.DictSize < MinDictSize {
+		p.DictSize = MinDictSize
 	}
 	return nil
 }
