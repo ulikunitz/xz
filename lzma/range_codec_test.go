@@ -16,26 +16,31 @@ func TestDirectEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
 		e := newRangeEncoder(&buf)
+		de := newDirectEncoder(8)
 		b := []byte(s)
 		for _, x := range b {
-			if err := e.directEncode(uint32(x), 8); err != nil {
-				t.Fatalf("e.directEncode: %s", err)
+			if err := de.Encode(uint32(x), e); err != nil {
+				t.Fatalf("de.Encode: %s", err)
 			}
 		}
-		if err := e.flush(); err != nil {
-			t.Fatalf("e.flush: %s", err)
+		if err := e.Flush(); err != nil {
+			t.Fatalf("e.Flush: %s", err)
 		}
 		var out []byte
-		d := newRangeDecoder(&buf)
-		if err := d.init(); err != nil {
-			t.Fatalf("d.init: %s", err)
+		d, err := newRangeDecoder(&buf)
+		if err != nil {
+			t.Fatalf("newRangeDecoder: %s", err)
 		}
+		dd := newDirectDecoder(8)
 		for i := 0; i < len(b); i++ {
-			x, err := d.directDecode(8)
+			x, err := dd.Decode(d)
 			if err != nil {
-				t.Fatalf("d.directDecode: %s", err)
+				t.Fatalf("dd.Decode: %s", err)
 			}
 			out = append(out, byte(x))
+		}
+		if !d.FinishingOk() {
+			t.Fatal("finishing not ok")
 		}
 		if !bytes.Equal(out, b) {
 			t.Errorf("error %q; want %q", out, b)
@@ -43,6 +48,7 @@ func TestDirectEncoding(t *testing.T) {
 	}
 }
 
+/*
 func TestTreeEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
@@ -109,3 +115,4 @@ func TestTreeReverseEncoding(t *testing.T) {
 		}
 	}
 }
+*/
