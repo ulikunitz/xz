@@ -29,25 +29,3 @@ func (p *prob) inc() {
 func (p prob) bound(r uint32) uint32 {
 	return (r >> probbits) * uint32(p)
 }
-
-// probTree stores enough probability values to be used by the treeEncode and
-// treeDecode methods of the range coder types.
-type probTree struct {
-	bits  int
-	probs []prob
-}
-
-// makeProbTree initializes a probTree structure.
-func makeProbTree(bits int) probTree {
-	if bits < 1 {
-		panic("bits must be positive")
-	}
-	t := probTree{
-		bits:  bits,
-		probs: make([]prob, 1<<uint(bits)),
-	}
-	for i := range t.probs {
-		t.probs[i] = probInit
-	}
-	return t
-}

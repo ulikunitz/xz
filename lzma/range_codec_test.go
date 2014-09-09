@@ -48,31 +48,30 @@ func TestDirectEncoding(t *testing.T) {
 	}
 }
 
-/*
 func TestTreeEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
 		e := newRangeEncoder(&buf)
-		tree := makeProbTree(8)
+		te := newTreeEncoder(8)
 		b := []byte(s)
 		for _, x := range b {
-			if err := e.treeEncode(uint32(x), &tree); err != nil {
-				t.Fatalf("e.treeEncode: %s", err)
+			if err := te.Encode(uint32(x), e); err != nil {
+				t.Fatalf("te.Encode: %s", err)
 			}
 		}
-		if err := e.flush(); err != nil {
+		if err := e.Flush(); err != nil {
 			t.Fatalf("e.flush: %s", err)
 		}
 		var out []byte
-		d := newRangeDecoder(&buf)
-		if err := d.init(); err != nil {
-			t.Fatalf("d.init: %s", err)
+		d, err := newRangeDecoder(&buf)
+		if err != nil {
+			t.Fatalf("newRangeDecoder: %s", err)
 		}
-		tree = makeProbTree(8)
+		td := newTreeDecoder(8)
 		for i := 0; i < len(b); i++ {
-			x, err := d.treeDecode(&tree)
+			x, err := td.Decode(d)
 			if err != nil {
-				t.Fatalf("d.treeDecode: %s", err)
+				t.Fatalf("td.Decode: %s", err)
 			}
 			out = append(out, byte(x))
 		}
@@ -82,6 +81,7 @@ func TestTreeEncoding(t *testing.T) {
 	}
 }
 
+/*
 func TestTreeReverseEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
