@@ -7,9 +7,9 @@ import "fmt"
 // 1/2 for zero and one bits. The supported range of byte values is [1,32].
 type directEncoder byte
 
-// newDirectEncoder returns a directEncoder. The function panics if the bits
+// makeDirectEncoder returns a directEncoder. The function panics if the bits
 // argument is outside of the range [1,32].
-func newDirectEncoder(bits byte) directEncoder {
+func makeDirectEncoder(bits int) directEncoder {
 	if !(1 <= bits && bits <= 32) {
 		panic(fmt.Errorf("bits=%d out of range", bits))
 	}
@@ -36,9 +36,9 @@ func (de directEncoder) Encode(v uint32, e *rangeEncoder) error {
 // bits.
 type directDecoder byte
 
-// newDirectDecoder returns a directDecoder. The function panics if the bits
+// makeDirectDecoder returns a directDecoder. The function panics if the bits
 // argument is outside the range [1,32.].
-func newDirectDecoder(bits byte) directDecoder {
+func makeDirectDecoder(bits int) directDecoder {
 	if !(1 <= bits && bits <= 32) {
 		panic(fmt.Errorf("bits=%d out of range", bits))
 	}

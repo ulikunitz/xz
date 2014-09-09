@@ -16,7 +16,7 @@ func TestDirectEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
 		e := newRangeEncoder(&buf)
-		de := newDirectEncoder(8)
+		de := makeDirectEncoder(8)
 		b := []byte(s)
 		for _, x := range b {
 			if err := de.Encode(uint32(x), e); err != nil {
@@ -31,7 +31,7 @@ func TestDirectEncoding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("newRangeDecoder: %s", err)
 		}
-		dd := newDirectDecoder(8)
+		dd := makeDirectDecoder(8)
 		for i := 0; i < len(b); i++ {
 			x, err := dd.Decode(d)
 			if err != nil {
