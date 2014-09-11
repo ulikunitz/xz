@@ -52,7 +52,7 @@ func TestTreeEncoding(t *testing.T) {
 	for _, s := range testStrings {
 		var buf bytes.Buffer
 		e := newRangeEncoder(&buf)
-		te := newTreeEncoder(8)
+		te := makeTreeEncoder(8)
 		b := []byte(s)
 		for _, x := range b {
 			if err := te.Encode(uint32(x), e); err != nil {
@@ -67,7 +67,7 @@ func TestTreeEncoding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("newRangeDecoder: %s", err)
 		}
-		td := newTreeDecoder(8)
+		td := makeTreeDecoder(8)
 		for i := 0; i < len(b); i++ {
 			x, err := td.Decode(d)
 			if err != nil {

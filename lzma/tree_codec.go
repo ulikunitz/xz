@@ -4,8 +4,8 @@ type treeEncoder struct {
 	probTree
 }
 
-func newTreeEncoder(bits int) *treeEncoder {
-	return &treeEncoder{makeProbTree(bits)}
+func makeTreeEncoder(bits int) treeEncoder {
+	return treeEncoder{makeProbTree(bits)}
 }
 
 func (te *treeEncoder) Encode(v uint32, e *rangeEncoder) (err error) {
@@ -24,8 +24,8 @@ type treeDecoder struct {
 	probTree
 }
 
-func newTreeDecoder(bits int) *treeDecoder {
-	return &treeDecoder{makeProbTree(bits)}
+func makeTreeDecoder(bits int) treeDecoder {
+	return treeDecoder{makeProbTree(bits)}
 }
 
 func (td *treeDecoder) Decode(d *rangeDecoder) (v uint32, err error) {
