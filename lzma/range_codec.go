@@ -231,36 +231,3 @@ func (d *rangeDecoder) normalize() error {
 	}
 	return nil
 }
-
-/*
-// treeDecode decodes bits using the probTree. The number of bits is given b
-// p.bits and the bits are decoded with highest-significant bits first.
-func (d *rangeDecoder) treeDecode(p *probTree) (b uint32, err error) {
-	m := uint32(1)
-	for j := 0; j < p.bits; j++ {
-		x, err := d.decodeBit(&p.probs[m])
-		if err != nil {
-			return 0, err
-		}
-		m = (m << 1) | x
-	}
-	return m - (1 << uint(p.bits)), nil
-}
-*/
-
-/*
-// treeReverseDecode decodes bits using the probTree. The number of bits is
-// given b p.bits and the bits are decoded with least-significant bits first.
-func (d *rangeDecoder) treeReverseDecode(p *probTree) (b uint32, err error) {
-	m := uint32(1)
-	for i := 0; i < p.bits; i++ {
-		x, err := d.decodeBit(&p.probs[m])
-		if err != nil {
-			return 0, err
-		}
-		m = (m << 1) | x
-		b |= (x << uint(i))
-	}
-	return b, nil
-}
-*/
