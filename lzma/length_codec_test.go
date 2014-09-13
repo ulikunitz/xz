@@ -18,6 +18,7 @@ func TestLengthCodec(t *testing.T) {
 	if err = e.Flush(); err != nil {
 		t.Fatalf("e.Close(): %s", err)
 	}
+	t.Logf("buffer length: %d", buf.Len())
 	d, err := newRangeDecoder(&buf)
 	if err != nil {
 		t.Fatalf("newRangeDecoder: %s", err)
