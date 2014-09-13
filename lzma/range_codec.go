@@ -143,38 +143,6 @@ func (e *rangeEncoder) normalize() error {
 	return e.shiftLow()
 }
 
-/*
-// treeEncode encodes the p.bits least-significant bits of b starting with the
-// most-significant bit.
-func (e *rangeEncoder) treeEncode(b uint32, p *probTree) error {
-	m := uint32(1)
-	for i := p.bits - 1; i >= 0; i-- {
-		x := (b >> uint(i)) & 1
-		if err := e.encodeBit(x, &p.probs[m]); err != nil {
-			return err
-		}
-		m = (m << 1) | x
-	}
-	return nil
-}
-*/
-
-/*
-// treeReverseEncode encodes the p.bits least-significant bits of b start with
-// the least-signficant bit.
-func (e *rangeEncoder) treeReverseEncode(b uint32, p *probTree) error {
-	m := uint32(1)
-	for i := 0; i < p.bits; i++ {
-		x := (b >> uint(i)) & 1
-		if err := e.encodeBit(x, &p.probs[m]); err != nil {
-			return err
-		}
-		m = (m << 1) | x
-	}
-	return nil
-}
-*/
-
 // rangeDecoder decodes single bits of the range encoding stream.
 type rangeDecoder struct {
 	r      io.ByteReader

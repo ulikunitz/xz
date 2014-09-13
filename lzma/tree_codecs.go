@@ -1,24 +1,23 @@
 package lzma
 
-// treeEncoder provides an fixed-bit-size encoder. The encoder uses a
-// probability tree for the bits. The tree starts with the most-significant
-// bit.
-type treeEncoder struct {
+// treeCodec encodes or decodes values with a fixed bit size. It is using a
+// tree of probability value. The root of the tree is the most-significant bit.
+type treeCodec struct {
 	probTree
 }
 
-// makeTreeEncoder makes a tree encoder. It might panic if the bits argument is
-// not inside the range [1,32].
-func makeTreeEncoder(bits int) treeEncoder {
-	return treeEncoder{makeProbTree(bits)}
+// makeTreeCodec makes a tree codec. The bits value must be inside the range
+// [1,32].
+func makeTreeCodec(bits int) treeCodec {
+	return treeCodec{makeProbTree(bits)}
 }
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
-func (te *treeEncoder) Encode(v uint32, e *rangeEncoder) (err error) {
+func (tc *treeCodec) Encode(v uint32, e *rangeEncoder) (err error) {
 	m := uint32(1)
-	for i := int(te.bits) - 1; i >= 0; i-- {
+	for i := int(tc.bits) - 1; i >= 0; i-- {
 		b := (v >> uint(i)) & 1
-		if err := e.EncodeBit(b, &te.probs[m]); err != nil {
+		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
 		m = (m << 1) | b
@@ -26,52 +25,39 @@ func (te *treeEncoder) Encode(v uint32, e *rangeEncoder) (err error) {
 	return nil
 }
 
-// treeDecoder provides a fixed-bit-size decoder. The decoder uses a
-// probability tree for the bits. The tree starts with the most-significant
-// bit.
-type treeDecoder struct {
-	probTree
-}
-
-// makeTreeDecoder makes a tree decoder.
-func makeTreeDecoder(bits int) treeDecoder {
-	return treeDecoder{makeProbTree(bits)}
-}
-
 // Decodes uses the range decoder to decode a fixed-bit-size value. Errors may
 // be caused by the range decoder.
-func (td *treeDecoder) Decode(d *rangeDecoder) (v uint32, err error) {
+func (tc *treeCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
-	for j := 0; j < int(td.bits); j++ {
-		b, err := d.DecodeBit(&td.probs[m])
+	for j := 0; j < int(tc.bits); j++ {
+		b, err := d.DecodeBit(&tc.probs[m])
 		if err != nil {
 			return 0, err
 		}
 		m = (m << 1) | b
 	}
-	return m - (1 << uint(td.bits)), nil
+	return m - (1 << uint(tc.bits)), nil
 }
 
-// treeReverseEncoder provides a fixed-bit-size encoder. The encoder uses a
-// probability tree for the bits. The tree starts with the least-significant
-// bit.
-type treeReverseEncoder struct {
+// treeReverseCodec is another tree codec, where the least-significant bit is
+// the start of the probability tree.
+type treeReverseCodec struct {
 	probTree
 }
 
-// makeTreeReverseEncoder creates an encoder. The function will panic if bits
-// is outside [1,32].
-func makeTreeReverseEncoder(bits int) treeReverseEncoder {
-	return treeReverseEncoder{makeProbTree(bits)}
+// makeTreeReverseCodec creates treeReverseCodec value. The bits argument must
+// be in the range [1,32].
+func makeTreeReverseCodec(bits int) treeReverseCodec {
+	return treeReverseCodec{makeProbTree(bits)}
 }
 
 // Encoder uses range encoder to encode a fixed-bit-size value. The range
 // encoder may cause errors.
-func (te *treeReverseEncoder) Encode(v uint32, e *rangeEncoder) (err error) {
+func (tc *treeReverseCodec) Encode(v uint32, e *rangeEncoder) (err error) {
 	m := uint32(1)
-	for i := uint(0); i < uint(te.bits); i++ {
+	for i := uint(0); i < uint(tc.bits); i++ {
 		b := (v >> uint(i)) & 1
-		if err := e.EncodeBit(b, &te.probs[m]); err != nil {
+		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
 		m = (m << 1) | b
@@ -79,24 +65,12 @@ func (te *treeReverseEncoder) Encode(v uint32, e *rangeEncoder) (err error) {
 	return nil
 }
 
-// treeReverseDecoder decodes fixed-bit-size values. The decoder uses a
-// probability tree that starts with the least-significant bit.
-type treeReverseDecoder struct {
-	probTree
-}
-
-// makeTreeReverseEncoder creates a treeReverseDecoder. The function might
-// panic if bits is outside [1,32].
-func makeTreeReverseDecoder(bits int) treeReverseDecoder {
-	return treeReverseDecoder{makeProbTree(bits)}
-}
-
 // Decodes uses the range decoder to decode a fixed-bit-size value. Errors
 // returned by the range decoder will be returned.
-func (td *treeReverseDecoder) Decode(d *rangeDecoder) (v uint32, err error) {
+func (tc *treeReverseCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
-	for j := uint(0); j < uint(td.bits); j++ {
-		b, err := d.DecodeBit(&td.probs[m])
+	for j := uint(0); j < uint(tc.bits); j++ {
+		b, err := d.DecodeBit(&tc.probs[m])
 		if err != nil {
 			return 0, err
 		}

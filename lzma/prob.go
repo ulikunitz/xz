@@ -10,7 +10,8 @@ const probbits = 11
 // probInit defines 0.5 as initial value for prob values.
 const probInit prob = 1 << (probbits - 1)
 
-// Type prob represents probabilities.
+// Type prob represents probabilities. The type can also be used to encode and
+// decode single bits.
 type prob uint16
 
 // Dec decreases the probability. The decrease is proportional to the
@@ -28,4 +29,21 @@ func (p *prob) inc() {
 // Computes the new bound for a given range using the probability value.
 func (p prob) bound(r uint32) uint32 {
 	return (r >> probbits) * uint32(p)
+}
+
+// Bits returns 1. One is the number of bits that can be encoded or decoded
+// with a single prob value.
+func (p prob) Bits() int {
+	return 1
+}
+
+// Encode encodes the least-significant bit of v. Note that the p value will be
+// changed.
+func (p *prob) Encode(v uint32, e *rangeEncoder) error {
+	return e.EncodeBit(v, p)
+}
+
+// Decode decodes a single bit. Note that the p value will change.
+func (p *prob) Decode(d *rangeDecoder) (v uint32, err error) {
+	return d.DecodeBit(p)
 }
