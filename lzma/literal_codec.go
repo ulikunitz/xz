@@ -110,3 +110,8 @@ const (
 	minLP = 0
 	maxLP = 4
 )
+
+const (
+	minState = 0
+	maxState = 11
+)
