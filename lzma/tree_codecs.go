@@ -51,12 +51,12 @@ func makeTreeReverseCodec(bits int) treeReverseCodec {
 	return treeReverseCodec{makeProbTree(bits)}
 }
 
-// Encoder uses range encoder to encode a fixed-bit-size value. The range
+// Encode uses range encoder to encode a fixed-bit-size value. The range
 // encoder may cause errors.
 func (tc *treeReverseCodec) Encode(v uint32, e *rangeEncoder) (err error) {
 	m := uint32(1)
 	for i := uint(0); i < uint(tc.bits); i++ {
-		b := (v >> uint(i)) & 1
+		b := (v >> i) & 1
 		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
