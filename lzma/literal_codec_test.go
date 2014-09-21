@@ -45,10 +45,10 @@ func TestLiteralCodec(t *testing.T) {
 		s, state, match, litState := random(lc, lp)
 		r, err := ld.Decode(d, state, match, litState)
 		if err != nil {
-			t.Fatalf("le.Decode: %s", err)
+			t.Fatalf("ld.Decode: %s", err)
 		}
 		if r != s {
-			t.Fatalf("le.Decode: %#2x; want %#2x", r, s)
+			t.Fatalf("ld.Decode: %#2x; want %#2x", r, s)
 		}
 	}
 }
