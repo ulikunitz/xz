@@ -22,13 +22,14 @@ type decoderDict struct {
 // then buffer length then decompression should stop.
 func (d *decoderDict) Readable() int {
 	delta := d.c - d.r
-	if delta < 0 {
-		return len(d.data) + delta
+	if delta >= 0 {
+		return delta
 	}
-	return delta
+	return len(d.data) + delta
 }
 
-// Writable returns the number of bytes that are currently writable.
+// Writable returns the number of bytes that can be currently written to the
+// dictionary. The dictionary needs to be read to increase the number.
 func (d *decoderDict) Writable() int {
 	delta := d.r - 1 - d.c
 	if delta >= 0 {
@@ -69,54 +70,29 @@ func (d *decoderDict) Read(p []byte) (n int, err error) {
 // addressed by reading more data from the dictionary.
 var errOverflow = errors.New("overflow")
 
-// Writes the complete slice or no bytes at all. If no bytes are written an
-// overflow will be indicated. The slice b is now allowed to overlap with
-// the d.data slice to write to.
+// Write puts the complete slice in the dictionary or no bytes at all. If no
+// bytes are written an overflow will be indicated. The slice b is now allowed
+// to overlap with the d.data slice to write to.
 func (d *decoderDict) Write(b []byte) (n int, err error) {
-	delta := d.r - 1 - d.c
+	m := d.Writable()
 	n = len(b)
-	if delta >= 0 {
-		if n > delta {
-			return 0, errOverflow
-		}
-		k := copy(d.data[d.c:], b)
-		// Optimize: test should be removed
-		if k != n {
-			panic("unexpected copy result")
-		}
-		d.c += n
-		return n, nil
-	}
-	z := cap(d.data)
-	if n > z+delta {
+	if n > m {
 		return 0, errOverflow
 	}
-	l := len(d.data)
 	c := d.c + n
-	if c <= z {
-		if c > l {
-			d.data = d.data[:c]
-		}
-		k := copy(d.data[d.c:], b)
-		// Optimize: test should be removed
-		if k != n {
-			panic("unexpected copy result")
-		}
-		d.c = c % z
-		return n, nil
+	z := cap(d.data)
+	k := c
+	if c > z {
+		k = z
 	}
-	if z > l {
-		d.data = d.data[:z]
+	if len(d.data) < k {
+		d.data = d.data[:k]
 	}
-	m := copy(d.data[d.c:], b)
-	// Optimize: test should be removed
-	if m != z-d.c {
-		panic("unexpected copy result")
-	}
-	d.c = copy(d.data[0:], b[m:])
-	// Optimize: test should be removed
-	if d.c != c-z {
-		panic("unexpected copy result")
+	a := copy(d.data[d.c:], b)
+	if a < n {
+		d.c = copy(d.data, b[a:])
+	} else {
+		d.c = c
 	}
 	return n, nil
 }
