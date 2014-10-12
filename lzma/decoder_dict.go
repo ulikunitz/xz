@@ -28,14 +28,21 @@ func newDecoderDict(bufferLen int, historyLen int) (d *decoderDict, err error) {
 		return nil, errors.New("historyLen must be positive")
 	}
 
+	// k maximum match length
+	k := maxLength
+	if historyLen < k {
+		k = historyLen
+	}
 	z := historyLen
 	// We want to be able to copy the whole history, which is limited by
 	// the reader index.
 	if z <= maxLength {
 		z += 1
 	}
-	if bufferLen > z {
-		z = bufferLen
+	// We want to ensure that there is enough place for a match to have
+	// more than bufferLen bytes readable.
+	if bufferLen+k > z {
+		z = bufferLen + k
 	}
 
 	d = &decoderDict{
