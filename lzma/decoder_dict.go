@@ -18,6 +18,34 @@ type decoderDict struct {
 	r int
 }
 
+// newDecoderDict initializes a new decoderDict instance. If the arguments are
+// negative or zero an error is returned.
+func newDecoderDict(bufferLen int, historyLen int) (d *decoderDict, err error) {
+	if !(0 < bufferLen) {
+		return nil, errors.New("bufferLen must be positive")
+	}
+	if !(0 < historyLen) {
+		return nil, errors.New("historyLen must be positive")
+	}
+
+	z := historyLen
+	// We want to be able to copy the whole history, which is limited by
+	// the reader index.
+	if z <= maxLength {
+		z += 1
+	}
+	if bufferLen > z {
+		z = bufferLen
+	}
+
+	d = &decoderDict{
+		data: make([]byte, 0, z),
+		h:    historyLen,
+		b:    bufferLen,
+	}
+	return d, nil
+}
+
 // Readable returns the number of bytes available for reading. If it is bigger
 // then buffer length then decompression should stop.
 func (d *decoderDict) Readable() int {
