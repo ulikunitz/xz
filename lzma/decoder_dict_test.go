@@ -67,10 +67,7 @@ func TestDecoderDict(t *testing.T) {
 	}
 }
 
-var tst *testing.T
-
 func TestCopyMatch(t *testing.T) {
-	tst = t
 	r := rand.New(rand.NewSource(15))
 	buf := make([]byte, 30)
 	p, err := newDecoderDict(10, 10)
