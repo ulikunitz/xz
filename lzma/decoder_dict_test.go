@@ -66,3 +66,55 @@ func TestDecoderDict(t *testing.T) {
 		t.Fatalf("d.Read(buf) #2 = %d; want %d", n, 19)
 	}
 }
+
+var tst *testing.T
+
+func TestCopyMatch(t *testing.T) {
+	tst = t
+	r := rand.New(rand.NewSource(15))
+	buf := make([]byte, 30)
+	p, err := newDecoderDict(10, 10)
+	if err != nil {
+		t.Fatalf("newDecoderDict: %s", err)
+	}
+	t.Logf("cap(p.data): %d", cap(p.data))
+	buf = buf[:5]
+	fillRandom(buf, r)
+	n, err := p.Write(buf)
+	if err != nil {
+		t.Fatalf("p.Write: %s\n", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("p.Write returned %d; want %d", n, len(buf))
+	}
+	t.Logf("p %#v", p)
+	t.Log("CopyMatch(2, 3)")
+	if err = p.CopyMatch(2, 3); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("p %#v", p)
+	t.Log("CopyMatch(8, 8)")
+	if err = p.CopyMatch(8, 8); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("p %#v", p)
+	buf = buf[:30]
+	if n, err = p.Read(buf); err != nil {
+		t.Fatalf("Read: %s", err)
+	}
+	t.Logf("Read: %d", n)
+	t.Log("CopyMatch(2, 5)")
+	if err = p.CopyMatch(2, 5); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("p %#v", p)
+	if n, err = p.Read(buf); err != nil {
+		t.Fatalf("Read: %s", err)
+	}
+	t.Logf("Read: %d", n)
+	t.Log("CopyMatch(2, 2)")
+	if err = p.CopyMatch(2, 2); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("p %#v", p)
+}
