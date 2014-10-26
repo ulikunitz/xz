@@ -55,7 +55,7 @@ func (d *rangeDecoder) PossiblyAtEnd() bool {
 	return d.code == 0
 }
 
-// DirectDecodeBits decodes a bit with probability 1/2. The return value b will
+// DirectDecodeBit decodes a bit with probability 1/2. The return value b will
 // contain the bit at the least-significant position. All other bits will be
 // zero.
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
