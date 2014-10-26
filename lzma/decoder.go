@@ -13,6 +13,7 @@ var bufferLen = 64 * (1 << 10)
 type Decoder struct {
 	properties Properties
 	packedLen  uint64
+	r          io.Reader
 	dict       *decoderDict
 }
 
@@ -60,6 +61,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 			"LZMA property DictLen exceeds maximum int value")
 	}
 	d = &Decoder{
+		r:          f,
 		properties: *properties,
 	}
 	if d.packedLen, err = readUint64LE(f); err != nil {
