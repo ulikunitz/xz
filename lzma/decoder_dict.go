@@ -46,6 +46,12 @@ func newDecoderDict(bufferLen int, historyLen int) (p *decoderDict, err error) {
 		z = bufferLen + k
 	}
 
+	// check for overflows
+	if z < bufferLen || z < historyLen {
+		return nil, errors.New(
+			"LZMA dictionary size overflows integer range")
+	}
+
 	p = &decoderDict{
 		data: make([]byte, 0, z),
 		h:    historyLen,
