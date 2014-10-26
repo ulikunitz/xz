@@ -184,3 +184,18 @@ func (p *decoderDict) CopyMatch(d, n int) error {
 	}
 	return nil
 }
+
+// prevByte returns the previous byte in the dictionary
+func (p *decoderDict) prevByte() byte {
+	if p.h == 0 {
+		return 0
+	}
+	if len(p.data) == 0 {
+		return 0
+	}
+	i := p.c - 1
+	if i < 0 {
+		i += cap(p.data)
+	}
+	return p.data[i]
+}
