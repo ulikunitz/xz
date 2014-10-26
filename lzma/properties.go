@@ -51,3 +51,8 @@ func readProperties(r io.Reader) (p *Properties, err error) {
 	p.DictLen = getUint32LE(b[1:])
 	return p, nil
 }
+
+// posBitMask computes the position bit mask
+func (p *Properties) posBitMask() uint32 {
+	return (uint32(1) << uint(p.PB)) - 1
+}
