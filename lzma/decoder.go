@@ -6,6 +6,9 @@ import (
 	"io"
 )
 
+// states defines the overall state count
+const states = 12
+
 // bufferLen is the value for internal buffering of the decoder.
 var bufferLen = 64 * (1 << 10)
 
@@ -13,8 +16,17 @@ var bufferLen = 64 * (1 << 10)
 type Decoder struct {
 	properties Properties
 	packedLen  uint64
-	r          io.Reader
+	total      uint64
 	dict       *decoderDict
+	state      uint32
+	posBitMask uint32
+	rd         *rangeDecoder
+	match      [states << maxPosBits]prob
+	rep        [states]prob
+	repG0      [states]prob
+	repG1      [states]prob
+	repG2      [states]prob
+	repG0Long  [states << maxPosBits]prob
 }
 
 // Properties returns a set of properties.
@@ -46,6 +58,12 @@ func readUint64LE(r io.Reader) (x uint64, err error) {
 	return x, nil
 }
 
+func initProbSlice(p []prob) {
+	for i := range p {
+		p[i] = probInit
+	}
+}
+
 // NewDecoder creates an LZMA decoder. It reads the classic, original LZMA
 // format. Note that LZMA2 uses a different header format. It satisfies the
 // io.Reader interface.
@@ -61,7 +79,6 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 			"LZMA property DictLen exceeds maximum int value")
 	}
 	d = &Decoder{
-		r:          f,
 		properties: *properties,
 	}
 	if d.packedLen, err = readUint64LE(f); err != nil {
@@ -70,6 +87,16 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	if d.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
 		return nil, err
 	}
+	d.posBitMask = (uint32(1) << uint(d.properties.PB)) - 1
+	if d.rd, err = newRangeDecoder(f); err != nil {
+		return nil, err
+	}
+	initProbSlice(d.match[:])
+	initProbSlice(d.rep[:])
+	initProbSlice(d.repG0[:])
+	initProbSlice(d.repG1[:])
+	initProbSlice(d.repG2[:])
+	initProbSlice(d.repG0Long[:])
 	return d, nil
 }
 
@@ -99,5 +126,80 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 }
 
 func (d *Decoder) fill(n int) error {
+	panic("TODO")
+}
+
+func (d *Decoder) updateStateLiteral() {
+	switch {
+	case d.state < 4:
+		d.state = 0
+		return
+	case d.state < 10:
+		d.state -= 3
+		return
+	}
+	d.state -= 6
+	return
+}
+
+func (d *Decoder) updateStateMatch() {
+	if d.state < 7 {
+		d.state = 7
+		return
+	}
+	d.state = 10
+	return
+}
+
+func (d *Decoder) updateStateRep() {
+	if d.state < 7 {
+		d.state = 8
+	}
+	d.state = 11
+}
+
+func (d *Decoder) updateStateShortRep() {
+	if d.state < 7 {
+		d.state = 9
+	}
+	d.state = 11
+}
+
+func (d *Decoder) decodeOp() (op operation, err error) {
+	posState := uint32(d.total) & d.posBitMask
+	state2 := (d.state << maxPosBits) | posState
+
+	b, err := d.match[state2].Decode(d.rd)
+	if err != nil {
+		return nil, err
+	}
+	if b == 0 {
+		// literal
+		panic("TODO")
+	}
+	b, err = d.rep[d.state].Decode(d.rd)
+	if err != nil {
+		return nil, err
+	}
+	if b == 0 {
+		// simple match
+		panic("TODO")
+	}
+	b, err = d.repG0[d.state].Decode(d.rd)
+	if b == 0 {
+		// rep0
+		panic("TODO")
+	}
+	b, err = d.repG1[d.state].Decode(d.rd)
+	if b == 0 {
+		// rep match 1
+		panic("TODO")
+	}
+	b, err = d.repG2[d.state].Decode(d.rd)
+	if b == 0 {
+		// rep match 2
+		panic("TODO")
+	}
+	// rep match 3
 	panic("TODO")
 }
