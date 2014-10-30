@@ -185,15 +185,15 @@ func (p *decoderDict) CopyMatch(d, n int) error {
 	return nil
 }
 
-// prevByte returns the previous byte in the dictionary
-func (p *decoderDict) prevByte() byte {
-	if p.h == 0 {
+// getByte returns the byte at distance d
+func (p *decoderDict) getByte(d int) byte {
+	if d < 0 {
+		panic("negative d unexpected")
+	}
+	if d >= p.Len() {
 		return 0
 	}
-	if len(p.data) == 0 {
-		return 0
-	}
-	i := p.c - 1
+	i := p.c - d
 	if i < 0 {
 		i += cap(p.data)
 	}
