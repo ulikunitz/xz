@@ -35,8 +35,8 @@ type lit struct {
 	b byte
 }
 
-// applyDecoder appends the literal to the decoder dictionary.
-func (l lit) applyDecoder(d *decoderDict) error {
+// applyDecoderDict appends the literal to the decoder dictionary.
+func (l lit) applyDecoderDict(d *decoderDict) error {
 	return d.AddByte(l.b)
 }
 
