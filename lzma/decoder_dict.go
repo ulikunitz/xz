@@ -185,7 +185,8 @@ func (p *decoderDict) CopyMatch(d, n int) error {
 	return nil
 }
 
-// getByte returns the byte at distance d
+// getByte returns the byte at distance d. If the distance is too large, the
+// function returns zero.
 func (p *decoderDict) getByte(d int) byte {
 	if d < 0 {
 		panic("negative d unexpected")
