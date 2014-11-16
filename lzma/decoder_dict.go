@@ -17,6 +17,8 @@ type decoderDict struct {
 	c int
 	// reader index
 	r int
+	// provides total length
+	total int64
 }
 
 // newDecoderDict initializes a new decoderDict instance. If the arguments are
@@ -136,6 +138,7 @@ func (p *decoderDict) Write(b []byte) (n int, err error) {
 	} else {
 		p.c = c
 	}
+	p.total += int64(n)
 	return n, nil
 }
 

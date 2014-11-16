@@ -114,4 +114,7 @@ func TestCopyMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("p %#v", p)
+	if p.total != 23 {
+		t.Fatalf("p.total %d; want %d", p.total, 23)
+	}
 }
