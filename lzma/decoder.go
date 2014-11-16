@@ -9,7 +9,7 @@ import (
 // states defines the overall state count
 const states = 12
 
-// bufferLen is the value for internal buffering of the decoder.
+// bufferLen is the value used for the bufferLen used by the decoder.
 var bufferLen = 64 * (1 << 10)
 
 // Decoder is able to read a LZMA byte stream and to read the plain text.
