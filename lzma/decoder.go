@@ -18,7 +18,6 @@ type Decoder struct {
 	packedLen          uint64
 	unpackedLen        uint64
 	unpackedLenDefined bool
-	total              uint64
 	dict               *decoderDict
 	state              uint32
 	posBitMask         uint32
@@ -181,7 +180,7 @@ func (d *Decoder) updateStateShortRep() {
 func (d *Decoder) decodeLiteral() (op operation, err error) {
 	prevByte := d.dict.getByte(1)
 	lp, lc := uint(d.properties.LP), uint(d.properties.LC)
-	litState := ((uint32(d.total) & ((1 << lp) - 1)) << lc) |
+	litState := ((uint32(d.dict.total) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	match := d.dict.getByte(int(d.rep[0]) + 1)
 	s, err := d.litDecoder.Decode(d.rd, d.state, match, litState)
@@ -191,19 +190,9 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 	return lit{s}, nil
 }
 
-// applyOp applies an operation.
-func (d *Decoder) applyOp(op operation) error {
-	total := d.total + uint64(op.Len())
-	if d.unpackedLenDefined && d.total > d.unpackedLen {
-		return errors.New("lzma: overflow of specified unpacked len")
-	}
-	d.total = total
-	return op.applyDecoderDict(d.dict)
-}
-
 // decodeOp decodes an operation.
 func (d *Decoder) decodeOp() (op operation, err error) {
-	posState := uint32(d.total) & d.posBitMask
+	posState := uint32(d.dict.total) & d.posBitMask
 	state2 := (d.state << maxPosBits) | posState
 
 	b, err := d.isMatch[state2].Decode(d.rd)
