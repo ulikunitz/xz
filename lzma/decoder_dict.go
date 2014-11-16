@@ -60,9 +60,9 @@ func newDecoderDict(bufferLen int, historyLen int) (p *decoderDict, err error) {
 	return p, nil
 }
 
-// Readable returns the number of bytes available for reading. If it is bigger
+// readable returns the number of bytes available for reading. If it is bigger
 // then buffer length then decompression should stop.
-func (p *decoderDict) Readable() int {
+func (p *decoderDict) readable() int {
 	delta := p.c - p.r
 	if delta >= 0 {
 		return delta
@@ -70,9 +70,9 @@ func (p *decoderDict) Readable() int {
 	return len(p.data) + delta
 }
 
-// Writable returns the number of bytes that can be currently written to the
+// writable returns the number of bytes that can be currently written to the
 // dictionary. The dictionary needs to be read to increase the number.
-func (p *decoderDict) Writable() int {
+func (p *decoderDict) writable() int {
 	delta := p.r - 1 - p.c
 	if delta >= 0 {
 		return delta
@@ -116,7 +116,7 @@ var errOverflow = errors.New("overflow")
 // bytes are written an overflow will be indicated. The slice b is now allowed
 // to overlap with the p.data slice to write to.
 func (p *decoderDict) Write(b []byte) (n int, err error) {
-	m := p.Writable()
+	m := p.writable()
 	n = len(b)
 	if n > m {
 		return 0, errOverflow
@@ -141,20 +141,20 @@ func (p *decoderDict) Write(b []byte) (n int, err error) {
 
 // AddByte adds a single byte to the decoder dictionary. Even here it is
 // possible that the write will overflow.
-func (p *decoderDict) AddByte(b byte) error {
+func (p *decoderDict) addByte(b byte) error {
 	_, err := p.Write([]byte{b})
 	return err
 }
 
 // CopyMatch copies a match with the given length n and distance d.
-func (p *decoderDict) CopyMatch(d, n int) error {
+func (p *decoderDict) copyMatch(d, n int) error {
 	if n <= 0 {
 		return errors.New("argument n must be positive")
 	}
 	if d <= 0 {
 		return errors.New("argument d must be positive")
 	}
-	if n > p.Writable() {
+	if n > p.writable() {
 		return errOverflow
 	}
 	if d > p.Len() {

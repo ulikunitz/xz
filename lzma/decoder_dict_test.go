@@ -85,13 +85,13 @@ func TestCopyMatch(t *testing.T) {
 		t.Fatalf("p.Write returned %d; want %d", n, len(buf))
 	}
 	t.Logf("p %#v", p)
-	t.Log("CopyMatch(2, 3)")
-	if err = p.CopyMatch(2, 3); err != nil {
+	t.Log("copyMatch(2, 3)")
+	if err = p.copyMatch(2, 3); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("p %#v", p)
-	t.Log("CopyMatch(8, 8)")
-	if err = p.CopyMatch(8, 8); err != nil {
+	t.Log("copyMatch(8, 8)")
+	if err = p.copyMatch(8, 8); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("p %#v", p)
@@ -100,8 +100,8 @@ func TestCopyMatch(t *testing.T) {
 		t.Fatalf("Read: %s", err)
 	}
 	t.Logf("Read: %d", n)
-	t.Log("CopyMatch(2, 5)")
-	if err = p.CopyMatch(2, 5); err != nil {
+	t.Log("copyMatch(2, 5)")
+	if err = p.copyMatch(2, 5); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("p %#v", p)
@@ -109,8 +109,8 @@ func TestCopyMatch(t *testing.T) {
 		t.Fatalf("Read: %s", err)
 	}
 	t.Logf("Read: %d", n)
-	t.Log("CopyMatch(2, 2)")
-	if err = p.CopyMatch(2, 2); err != nil {
+	t.Log("copyMatch(2, 2)")
+	if err = p.copyMatch(2, 2); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("p %#v", p)

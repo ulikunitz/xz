@@ -17,7 +17,7 @@ type rep struct {
 
 // applyDecoderDict applies the repetition on the decoder dictionary.
 func (r rep) applyDecoderDict(d *decoderDict) error {
-	return d.CopyMatch(r.distance, r.length)
+	return d.copyMatch(r.distance, r.length)
 }
 
 // Len return the length of the repetition.
@@ -37,7 +37,7 @@ type lit struct {
 
 // applyDecoderDict appends the literal to the decoder dictionary.
 func (l lit) applyDecoderDict(d *decoderDict) error {
-	return d.AddByte(l.b)
+	return d.addByte(l.b)
 }
 
 // Len returns 1 for the single byte literal.
