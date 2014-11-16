@@ -50,8 +50,8 @@ func newRangeDecoder(r io.ByteReader) (d *rangeDecoder, err error) {
 	return
 }
 
-// PossiblyAtEnd checks whether the decoder may be at the end of the stream.
-func (d *rangeDecoder) PossiblyAtEnd() bool {
+// possiblyAtEnd checks whether the decoder may be at the end of the stream.
+func (d *rangeDecoder) possiblyAtEnd() bool {
 	return d.code == 0
 }
 

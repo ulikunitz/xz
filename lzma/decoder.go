@@ -31,6 +31,7 @@ type Decoder struct {
 	rep                [4]uint32
 	litDecoder         *literalCodec
 	lengthDecoder      *lengthCodec
+	distDecoder        *distCodec
 }
 
 // NewDecoder creates an LZMA decoder. It reads the classic, original LZMA
@@ -67,6 +68,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	initProbSlice(d.isRepG0Long[:])
 	d.litDecoder = newLiteralCodec(d.properties.LC, d.properties.LP)
 	d.lengthDecoder = newLengthCodec()
+	d.distDecoder = newDistCodec()
 	return d, nil
 }
 
@@ -190,7 +192,13 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 	return lit{s}, nil
 }
 
-// decodeOp decodes an operation.
+// errWrongTermination indicates that a termination symbol has been received,
+// but the range decoder could still produces more data
+var errWrongTermination = errors.New(
+	"range decoder doesn't support termination")
+
+// decodeOp decodes an operation. The function returns io.EOF if the stream is
+// terminated.
 func (d *Decoder) decodeOp() (op operation, err error) {
 	posState := uint32(d.dict.total) & d.posBitMask
 	state2 := (d.state << maxPosBits) | posState
@@ -216,11 +224,24 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 		// simple match
 		d.rep[3], d.rep[2], d.rep[1] = d.rep[2], d.rep[1], d.rep[0]
 		d.updateStateMatch()
-		// n, err := d.lengthDecoder.Decode(d.rd, posState)
+		// TODO: check base for output of length decoder
+		n, err := d.lengthDecoder.Decode(d.rd, posState)
 		if err != nil {
 			return nil, err
 		}
-		panic("TODO")
+		// TODO: check that distDecoder is using the same base as the
+		// output of the lengthDecoder
+		// TODO: check base of the repetition
+		d.rep[0], err = d.distDecoder.Decode(n, d.rd)
+		if d.rep[0] == 0xffffffff {
+			if !d.rd.possiblyAtEnd() {
+				return nil, errWrongTermination
+			}
+			return nil, io.EOF
+		}
+		// TODO: Create translator in rep operation
+		op := rep{length: int(n), distance: int(d.rep[0])}
+		return op, nil
 	}
 	b, err = d.isRepG0[d.state].Decode(d.rd)
 	if b == 0 {

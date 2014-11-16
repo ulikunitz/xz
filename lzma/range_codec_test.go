@@ -39,7 +39,7 @@ func TestDirectEncoding(t *testing.T) {
 			}
 			out = append(out, byte(x))
 		}
-		if !d.PossiblyAtEnd() {
+		if !d.possiblyAtEnd() {
 			t.Fatal("finishing not ok")
 		}
 		if !bytes.Equal(out, b) {
