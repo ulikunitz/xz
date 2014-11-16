@@ -163,16 +163,16 @@ func (p *decoderDict) addByte(b byte) error {
 // CopyMatch copies a match with the given length n and distance d.
 func (p *decoderDict) copyMatch(d, n int) error {
 	if n <= 0 {
-		return errors.New("argument n must be positive")
+		return errors.New("length n must be positive")
 	}
 	if d <= 0 {
-		return errors.New("argument d must be positive")
+		return errors.New("distance d must be positive")
 	}
 	if n > p.writable() {
 		return errOverflow
 	}
 	if d > p.Len() {
-		return errors.New("argument d is to large")
+		return errors.New("argument d is too large")
 	}
 	z := cap(p.data)
 	i := p.c - d
