@@ -224,23 +224,25 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 		// simple match
 		d.rep[3], d.rep[2], d.rep[1] = d.rep[2], d.rep[1], d.rep[0]
 		d.updateStateMatch()
-		// TODO: check base for output of length decoder
-		n, err := d.lengthDecoder.Decode(d.rd, posState)
+		// The length decoder returns the length offset.
+		l, err := d.lengthDecoder.Decode(d.rd, posState)
 		if err != nil {
 			return nil, err
 		}
 		// TODO: check that distDecoder is using the same base as the
 		// output of the lengthDecoder
 		// TODO: check base of the repetition
-		d.rep[0], err = d.distDecoder.Decode(n, d.rd)
+		d.rep[0], err = d.distDecoder.Decode(l, d.rd)
+		if err != nil {
+			return nil, err
+		}
 		if d.rep[0] == 0xffffffff {
 			if !d.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
 			return nil, io.EOF
 		}
-		// TODO: Create translator in rep operation
-		op := rep{length: int(n), distance: int(d.rep[0])}
+		op := rep{length: int(l + minLength), distance: int(d.rep[0])}
 		return op, nil
 	}
 	b, err = d.isRepG0[d.state].Decode(d.rd)
