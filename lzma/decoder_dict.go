@@ -91,7 +91,7 @@ func (p *decoderDict) Len() int {
 	return p.h
 }
 
-// Read reads data from the dictionary into p. The function may return zero
+// Read reads data from the dictionary into a. The function may return zero
 // bytes.
 func (p *decoderDict) Read(a []byte) (n int, err error) {
 	if p.c < p.r {
