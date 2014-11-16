@@ -118,3 +118,32 @@ func TestCopyMatch(t *testing.T) {
 		t.Fatalf("p.total %d; want %d", p.total, 23)
 	}
 }
+
+func TestReset(t *testing.T) {
+	p, err := newDecoderDict(10, 10)
+	if err != nil {
+		t.Fatalf("newDecoderDict: %s", err)
+	}
+	t.Logf("cap(p.data): %d", cap(p.data))
+	r := rand.New(rand.NewSource(15))
+	buf := make([]byte, 5)
+	fillRandom(buf, r)
+	n, err := p.Write(buf)
+	if err != nil {
+		t.Fatalf("p.Write: %s\n", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("p.Write returned %d; want %d", n, len(buf))
+	}
+	if p.total != 5 {
+		t.Fatalf("p.total %d; want %d", p.total, 5)
+	}
+	p.reset()
+	if p.total != 0 {
+		t.Fatalf("p.total after reset %d; want %d", p.total, 0)
+	}
+	n = p.readable()
+	if n != 0 {
+		t.Fatalf("p.readable() after reset %d; want %d", n, 0)
+	}
+}

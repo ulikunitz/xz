@@ -62,6 +62,17 @@ func newDecoderDict(bufferLen int, historyLen int) (p *decoderDict, err error) {
 	return p, nil
 }
 
+// reset clears the decoder dictionary. This function must be called by the
+// LZMA2 code if the decoder dictionary needs to be reset without a change in
+// parameters. A change in parameters requires the dictionary to be newly
+// initialized.
+func (p *decoderDict) reset() {
+	p.data = p.data[:0]
+	p.c = 0
+	p.r = 0
+	p.total = 0
+}
+
 // readable returns the number of bytes available for reading. If it is bigger
 // then buffer length then decompression should stop.
 func (p *decoderDict) readable() int {
