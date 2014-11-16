@@ -229,9 +229,8 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 		if err != nil {
 			return nil, err
 		}
-		// TODO: check that distDecoder is using the same base as the
-		// output of the lengthDecoder
-		// TODO: check base of the repetition
+		// The dist decoder returns the distance offset. The actual
+		// distance is 1 higher.
 		d.rep[0], err = d.distDecoder.Decode(l, d.rd)
 		if err != nil {
 			return nil, err
@@ -242,7 +241,8 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 			}
 			return nil, io.EOF
 		}
-		op := rep{length: int(l + minLength), distance: int(d.rep[0])}
+		op := rep{length: int(l + minLength),
+			distance: int(d.rep[0] + minDistance)}
 		return op, nil
 	}
 	b, err = d.isRepG0[d.state].Decode(d.rd)
