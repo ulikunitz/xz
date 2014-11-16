@@ -10,7 +10,7 @@ func TestLengthCodec(t *testing.T) {
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
 	le := newLengthCodec()
-	for l := uint32(minLength); l < maxLength; l++ {
+	for l := uint32(0); l < maxLength-minLength; l++ {
 		if err = le.Encode(l, e, 0); err != nil {
 			t.Fatalf("le.Encode: %s", err)
 		}
@@ -24,7 +24,7 @@ func TestLengthCodec(t *testing.T) {
 		t.Fatalf("newRangeDecoder: %s", err)
 	}
 	ld := newLengthCodec()
-	for l := uint32(minLength); l < maxLength; l++ {
+	for l := uint32(0); l < maxLength-minLength; l++ {
 		x, err := ld.Decode(d, 0)
 		if err != nil {
 			t.Fatalf("ld.Decode: %s", err)
@@ -33,4 +33,16 @@ func TestLengthCodec(t *testing.T) {
 			t.Fatalf("ld.Decode: got %d; want %d", x, l)
 		}
 	}
+}
+
+func TestLengthCodecRange(t *testing.T) {
+	var buf bytes.Buffer
+	e := newRangeEncoder(&buf)
+	le := newLengthCodec()
+	l := uint32(maxLength - minLength + 1)
+	err := le.Encode(l, e, 0)
+	if err == nil {
+		t.Fatalf("le.Encode: no error for length %d", l)
+	}
+	t.Logf("error %s", err)
 }

@@ -1,12 +1,15 @@
 package lzma
 
+import "errors"
+
 // maxPosBits defines the number of bits of the position value that are used to
 // to compute the posState value. The value is used to selet the tree codec
 // for length encoding and decoding.
 const maxPosBits = 4
 
 // minLength and maxLength give the minimum and maximum values for encoding and
-// decoding length values.
+// decoding length values. minLength gives also the base for the encoded length
+// values.
 const (
 	minLength = 2
 	maxLength = minLength + 16 + 256 - 1
@@ -36,10 +39,16 @@ func newLengthCodec() *lengthCodec {
 	return lc
 }
 
-// Encode encodes a length value.
+// Encode encodes the length offset. The length offset l can be compute by
+// subtracting minLength (2) from the actual length.
+//
+//   l = length - minLength
+//
 func (lc *lengthCodec) Encode(l uint32, e *rangeEncoder, posState uint32,
 ) (err error) {
-	l -= 2
+	if l > maxLength-minLength {
+		return errors.New("length out of range")
+	}
 	if l < 8 {
 		if err = lc.choice[0].Encode(0, e); err != nil {
 			return
@@ -61,7 +70,8 @@ func (lc *lengthCodec) Encode(l uint32, e *rangeEncoder, posState uint32,
 	return lc.high.Encode(l-16, e)
 }
 
-// Decode decodes a length value.
+// Decode reads the length offset. Add minLength to compute the actual length
+// to the length offset l.
 func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 ) (l uint32, err error) {
 	var b uint32
@@ -70,7 +80,6 @@ func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 	}
 	if b == 0 {
 		l, err = lc.low[posState].Decode(d)
-		l += 2
 		return
 	}
 	if b, err = lc.choice[1].Decode(d); err != nil {
@@ -78,10 +87,10 @@ func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 	}
 	if b == 0 {
 		l, err = lc.mid[posState].Decode(d)
-		l += 2 + 8
+		l += 8
 		return
 	}
 	l, err = lc.high.Decode(d)
-	l += 2 + 16
+	l += 16
 	return
 }
