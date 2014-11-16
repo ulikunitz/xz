@@ -42,11 +42,10 @@ func newDistCodec() *distCodec {
 
 // Converts the value l to a supported lenState value.
 func lenState(l uint32) uint32 {
-	s := l
-	if s >= lenStates {
-		s = lenStates - 1
+	if l >= lenStates {
+		l = lenStates - 1
 	}
-	return s
+	return l
 }
 
 // Encode encodes the distance using the parameter l. Dist can have values from
