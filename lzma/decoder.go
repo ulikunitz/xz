@@ -241,8 +241,8 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 			}
 			return nil, io.EOF
 		}
-		op := rep{length: int(l + minLength),
-			distance: int(d.rep[0] + minDistance)}
+		op := rep{length: int(l) + minLength,
+			distance: int(d.rep[0]) + minDistance}
 		return op, nil
 	}
 	b, err = d.isRepG0[d.state].Decode(d.rd)
