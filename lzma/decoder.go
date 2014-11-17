@@ -31,6 +31,7 @@ type Decoder struct {
 	rep                [4]uint32
 	litDecoder         *literalCodec
 	lengthDecoder      *lengthCodec
+	repLengthDecoder   *lengthCodec
 	distDecoder        *distCodec
 }
 
@@ -68,6 +69,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	initProbSlice(d.isRepG0Long[:])
 	d.litDecoder = newLiteralCodec(d.properties.LC, d.properties.LP)
 	d.lengthDecoder = newLengthCodec()
+	d.repLengthDecoder = newLengthCodec()
 	d.distDecoder = newDistCodec()
 	return d, nil
 }
@@ -241,25 +243,55 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 			}
 			return nil, io.EOF
 		}
-		op := rep{length: int(l) + minLength,
+		op = rep{length: int(l) + minLength,
 			distance: int(d.rep[0]) + minDistance}
 		return op, nil
 	}
 	b, err = d.isRepG0[d.state].Decode(d.rd)
-	if b == 0 {
-		// rep0
-		panic("TODO")
+	if err != nil {
+		return nil, err
 	}
-	b, err = d.isRepG1[d.state].Decode(d.rd)
+	dist := d.rep[0]
 	if b == 0 {
-		// rep match 1
-		panic("TODO")
+		// rep match 0
+		b, err = d.isRepG0Long[state2].Decode(d.rd)
+		if err != nil {
+			return nil, err
+		}
+		if b == 0 {
+			d.updateStateShortRep()
+			op = rep{length: 1,
+				distance: int(d.rep[0]) + minDistance}
+			return op, nil
+		}
+	} else {
+		b, err = d.isRepG1[d.state].Decode(d.rd)
+		if err != nil {
+			return nil, err
+		}
+		if b == 0 {
+			dist = d.rep[1]
+		} else {
+			b, err = d.isRepG2[d.state].Decode(d.rd)
+			if err != nil {
+				return nil, err
+			}
+			if b == 0 {
+				dist = d.rep[2]
+			} else {
+				dist = d.rep[3]
+				d.rep[3] = d.rep[2]
+			}
+			d.rep[2] = d.rep[1]
+		}
+		d.rep[1] = d.rep[0]
+		d.rep[0] = dist
 	}
-	b, err = d.isRepG2[d.state].Decode(d.rd)
-	if b == 0 {
-		// rep match 2
-		panic("TODO")
+	l, err := d.repLengthDecoder.Decode(d.rd, posState)
+	if err != nil {
+		return nil, err
 	}
-	// rep match 3
-	panic("TODO")
+	d.updateStateRep()
+	op = rep{length: int(l) + minLength, distance: int(dist) + minDistance}
+	return op, nil
 }
