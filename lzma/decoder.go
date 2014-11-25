@@ -14,25 +14,24 @@ var bufferLen = 64 * (1 << 10)
 
 // Decoder is able to read a LZMA byte stream and to read the plain text.
 type Decoder struct {
-	properties         Properties
-	packedLen          uint64
-	unpackedLen        uint64
-	unpackedLenDefined bool
-	dict               *decoderDict
-	state              uint32
-	posBitMask         uint32
-	rd                 *rangeDecoder
-	isMatch            [states << maxPosBits]prob
-	isRep              [states]prob
-	isRepG0            [states]prob
-	isRepG1            [states]prob
-	isRepG2            [states]prob
-	isRepG0Long        [states << maxPosBits]prob
-	rep                [4]uint32
-	litDecoder         *literalCodec
-	lengthDecoder      *lengthCodec
-	repLengthDecoder   *lengthCodec
-	distDecoder        *distCodec
+	properties       Properties
+	unpackedLen      uint64
+	decodedLen       uint64
+	dict             *decoderDict
+	state            uint32
+	posBitMask       uint32
+	rd               *rangeDecoder
+	isMatch          [states << maxPosBits]prob
+	isRep            [states]prob
+	isRepG0          [states]prob
+	isRepG1          [states]prob
+	isRepG2          [states]prob
+	isRepG0Long      [states << maxPosBits]prob
+	rep              [4]uint32
+	litDecoder       *literalCodec
+	lengthDecoder    *lengthCodec
+	repLengthDecoder *lengthCodec
+	distDecoder      *distCodec
 }
 
 // NewDecoder creates an LZMA decoder. It reads the classic, original LZMA
@@ -51,7 +50,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	d = &Decoder{
 		properties: *properties,
 	}
-	if d.packedLen, err = readUint64LE(f); err != nil {
+	if d.unpackedLen, err = readUint64LE(f); err != nil {
 		return nil, err
 	}
 	if d.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
@@ -112,8 +111,7 @@ func initProbSlice(p []prob) {
 
 // Reads reads data from the decoder stream.
 //
-// The function fill put as much data in the buffer as it is available. The
-// function might block and is not reentrant.
+// The method might block and is not reentrant.
 //
 // The end of the LZMA stream is indicated by EOF. There might be other errors
 // returned. The decoder will not be able to recover from an error returned.
@@ -133,15 +131,46 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 		case n == len(p):
 			return n, nil
 		}
-		if err = d.fill(len(p) - n); err != nil {
+		if err = d.fill(); err != nil {
 			return n, err
 		}
 	}
 }
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
-func (d *Decoder) fill(n int) error {
-	panic("TODO")
+func (d *Decoder) fill() error {
+	for !d.dict.eof && d.dict.readable() < d.dict.b {
+		op, err := d.decodeOp()
+		if err != nil {
+			switch {
+			case err == eofDecoded:
+				d.dict.eof = true
+				return nil
+			case err == io.EOF:
+				return errors.New(
+					"unexpected end of compressed stream")
+			default:
+				return err
+			}
+		}
+		n := d.decodedLen + uint64(op.Len())
+		if n < d.decodedLen {
+			panic("negative op length or overflow of decodedLen")
+		}
+		d.decodedLen = n
+		if d.decodedLen >= d.unpackedLen {
+			if d.decodedLen == d.unpackedLen {
+				d.dict.eof = true
+				return nil
+			}
+			return errors.New(
+				"decoded stream longer than provided length")
+		}
+		if err = op.applyDecoderDict(d.dict); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // updateStateLiteral updates the state for a literal.
@@ -203,8 +232,11 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 var errWrongTermination = errors.New(
 	"range decoder doesn't support termination")
 
-// decodeOp decodes an operation. The function returns io.EOF if the stream is
-// terminated.
+// decodeOp indicates an EOF of the decoded file
+var eofDecoded = errors.New("EOF of decoded stream")
+
+// decodeOp decodes an operation. The function returns eofDecoded if there is
+// an explicit termination marker.
 func (d *Decoder) decodeOp() (op operation, err error) {
 	posState := uint32(d.dict.total) & d.posBitMask
 	state2 := (d.state << maxPosBits) | posState
@@ -245,7 +277,7 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 			if !d.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
-			return nil, io.EOF
+			return nil, eofDecoded
 		}
 		op = rep{length: int(l) + minLength,
 			distance: int(d.rep[0]) + minDistance}
