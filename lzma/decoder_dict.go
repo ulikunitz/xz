@@ -3,6 +3,7 @@ package lzma
 import (
 	"errors"
 	"fmt"
+	"io"
 )
 
 // decoderDict represents the dictionary while decoding LZMA files. It allows
@@ -19,6 +20,8 @@ type decoderDict struct {
 	r int
 	// provides total length
 	total int64
+	// marks eof
+	eof bool
 }
 
 // newDecoderDict initializes a new decoderDict instance. If the arguments are
@@ -71,6 +74,7 @@ func (p *decoderDict) reset() {
 	p.c = 0
 	p.r = 0
 	p.total = 0
+	p.eof = false
 }
 
 // readable returns the number of bytes available for reading. If it is bigger
@@ -84,8 +88,12 @@ func (p *decoderDict) readable() int {
 }
 
 // writable returns the number of bytes that can be currently written to the
-// dictionary. The dictionary needs to be read to increase the number.
+// dictionary. The dictionary needs to be read to increase the number. If the
+// eof flag is set no bytes can be written.
 func (p *decoderDict) writable() int {
+	if p.eof {
+		return 0
+	}
 	delta := p.r - 1 - p.c
 	if delta >= 0 {
 		return delta
@@ -105,19 +113,25 @@ func (p *decoderDict) Len() int {
 }
 
 // Read reads data from the dictionary into a. The function may return zero
-// bytes.
+// bytes. If the LZMA stream is finished it will return EOF  with no bytes
+// read.
 func (p *decoderDict) Read(a []byte) (n int, err error) {
+	var k int
 	if p.c < p.r {
 		n = copy(a, p.data[p.r:])
 		p.r += n
-		if p.r < len(p.data) {
-			return n, nil
+		if p.r > len(p.data) {
+			goto out
 		}
 		p.r = 0
 	}
-	k := copy(a[n:], p.data[p.r:p.c])
+	k = copy(a[n:], p.data[p.r:p.c])
 	p.r += k
 	n += k
+out:
+	if n == 0 && p.eof {
+		return 0, io.EOF
+	}
 	return n, nil
 }
 
@@ -127,7 +141,8 @@ var errOverflow = errors.New("overflow")
 
 // Write puts the complete slice in the dictionary or no bytes at all. If no
 // bytes are written an overflow will be indicated. The slice b is now allowed
-// to overlap with the p.data slice to write to.
+// to overlap with the p.data slice to write to. Note that an overflow error
+// can also be caused by setting the EOF marker.
 func (p *decoderDict) Write(b []byte) (n int, err error) {
 	m := p.writable()
 	n = len(b)
@@ -197,6 +212,11 @@ func (p *decoderDict) copyMatch(d, n int) error {
 		i += k
 	}
 	return nil
+}
+
+// setEOF sets the eof flag.
+func (p *decoderDict) setEOF(eof bool) {
+	p.eof = eof
 }
 
 // getByte returns the byte at distance d. If the distance is too large, the

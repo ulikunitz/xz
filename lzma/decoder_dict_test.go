@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"io"
 	"math/rand"
 	"testing"
 )
@@ -145,5 +146,37 @@ func TestReset(t *testing.T) {
 	n = p.readable()
 	if n != 0 {
 		t.Fatalf("p.readable() after reset %d; want %d", n, 0)
+	}
+}
+
+func TestDecoderDictEOF(t *testing.T) {
+	p, err := newDecoderDict(10, 10)
+	if err != nil {
+		t.Fatalf("newDecoderDict: %s", err)
+	}
+	r := rand.New(rand.NewSource(15))
+	buf := make([]byte, 5)
+	fillRandom(buf, r)
+	n, err := p.Write(buf)
+	if err != nil {
+		t.Fatalf("p.Write: %s\n", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("p.Write: returned %d; want %d", n, len(buf))
+	}
+	p.setEOF(true)
+	n, err = p.Read(buf)
+	if err != nil {
+		t.Fatalf("p.Read: error %s not expected", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("p.Read: got %d bytes; want %d", n, len(buf))
+	}
+	n, err = p.Read(buf)
+	if err != io.EOF {
+		t.Fatalf("p.Read: got err %s; want %s", err, io.EOF)
+	}
+	if n != 0 {
+		t.Fatalf("p.Read: returned %d bytes; want %d", n, 0)
 	}
 }
