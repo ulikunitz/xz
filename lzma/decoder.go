@@ -118,21 +118,20 @@ func initProbSlice(p []prob) {
 // The end of the LZMA stream is indicated by EOF. There might be other errors
 // returned. The decoder will not be able to recover from an error returned.
 func (d *Decoder) Read(p []byte) (n int, err error) {
-	for n < len(p) {
+	for {
 		var k int
-		k, err = d.dict.Read(p)
+		k, err = d.dict.Read(p[n:])
 		if err != nil {
-			return
+			return n, err
 		}
 		n += k
 		if n == len(p) {
-			return
+			return n, nil
 		}
 		if err = d.fill(len(p) - n); err != nil {
-			return
+			return n, err
 		}
 	}
-	return
 }
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
