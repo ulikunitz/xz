@@ -12,10 +12,17 @@ const states = 12
 // bufferLen is the value used for the bufferLen used by the decoder.
 var bufferLen = 64 * (1 << 10)
 
+// noUnpackLen requires an explicit end of stream marker
+const noUnpackLen uint64 = 1<<64 - 1
+
 // Decoder is able to read a LZMA byte stream and to read the plain text.
+//
+// Note that an unpackLen of 0xffffffffffffffff requires an explicit end of
+// stream marker.
 type Decoder struct {
-	properties       Properties
-	unpackedLen      uint64
+	properties Properties
+	// length to unpack
+	unpackLen        uint64
 	decodedLen       uint64
 	dict             *decoderDict
 	state            uint32
@@ -50,7 +57,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	d = &Decoder{
 		properties: *properties,
 	}
-	if d.unpackedLen, err = readUint64LE(f); err != nil {
+	if d.unpackLen, err = readUint64LE(f); err != nil {
 		return nil, err
 	}
 	if d.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
@@ -137,6 +144,10 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 	}
 }
 
+// errUnexpectedEOS indicates that the function decoded an unexpected end of
+// stream marker
+var errUnexpectedEOS = errors.New("unexpected end of stream marker")
+
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (d *Decoder) fill() error {
 	for !d.dict.eof && d.dict.readable() < d.dict.b {
@@ -144,6 +155,10 @@ func (d *Decoder) fill() error {
 		if err != nil {
 			switch {
 			case err == eofDecoded:
+				if d.unpackLen != noUnpackLen &&
+					d.decodedLen != d.unpackLen {
+					return errUnexpectedEOS
+				}
 				d.dict.eof = true
 				return nil
 			case err == io.EOF:
@@ -158,8 +173,8 @@ func (d *Decoder) fill() error {
 			panic("negative op length or overflow of decodedLen")
 		}
 		d.decodedLen = n
-		if d.decodedLen >= d.unpackedLen {
-			if d.decodedLen == d.unpackedLen {
+		if d.decodedLen >= d.unpackLen {
+			if d.decodedLen == d.unpackLen {
 				d.dict.eof = true
 				return nil
 			}
