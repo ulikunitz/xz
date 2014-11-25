@@ -187,7 +187,7 @@ func (p *decoderDict) copyMatch(d, n int) error {
 		return errOverflow
 	}
 	if d > p.Len() {
-		return errors.New("argument d is too large")
+		return errors.New("copyMatch argument d is too large")
 	}
 	z := cap(p.data)
 	i := p.c - d
@@ -222,10 +222,10 @@ func (p *decoderDict) setEOF(eof bool) {
 // getByte returns the byte at distance d. If the distance is too large, the
 // function returns zero.
 func (p *decoderDict) getByte(d int) byte {
-	if d < 0 {
-		panic("negative d unexpected")
+	if d <= 0 {
+		panic("d must be positive")
 	}
-	if d >= p.Len() {
+	if d > p.Len() {
 		return 0
 	}
 	i := p.c - d

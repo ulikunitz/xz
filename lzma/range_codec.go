@@ -2,7 +2,9 @@ package lzma
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"os"
 )
 
 // newRangeEncoder creates a new range encoder.
@@ -55,10 +57,15 @@ func (d *rangeDecoder) possiblyAtEnd() bool {
 	return d.code == 0
 }
 
+var bitCounter int
+
 // DirectDecodeBit decodes a bit with probability 1/2. The return value b will
 // contain the bit at the least-significant position. All other bits will be
 // zero.
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
+	bitCounter++
+	fmt.Fprintf(os.Stderr, "D %3d 0x%08x:0x%08x\n", bitCounter, d.range_,
+		d.code)
 	d.range_ >>= 1
 	d.code -= d.range_
 	t := 0 - (d.code >> 31)
@@ -69,13 +76,20 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	if err = d.normalize(); err != nil {
 		return 0, err
 	}
-	return (t + 1) & 1, nil
+
+	b = (t + 1) & 1
+
+	fmt.Fprintf(os.Stderr, "O %3d %d\n", bitCounter, b)
+	return b, nil
 }
 
 // decodeBit decodes a single bit. The bit will be returned at the
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
+	bitCounter++
+	fmt.Fprintf(os.Stderr, "B %3d 0x%08x:0x%08x 0x%03x\n", bitCounter,
+		d.range_, d.code, *p)
 	bound := p.bound(d.range_)
 	if d.code < bound {
 		d.range_ = bound
@@ -93,6 +107,9 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	if err = d.normalize(); err != nil {
 		return 0, err
 	}
+
+	fmt.Fprintf(os.Stderr, "O %3d %d\n", bitCounter, b)
+
 	return b, nil
 }
 

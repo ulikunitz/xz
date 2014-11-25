@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -29,6 +30,7 @@ func TestNewDecoder(t *testing.T) {
 }
 
 func TestDecoderSimple(t *testing.T) {
+	tst = t
 	f, err := os.Open("examples/a.lzma")
 	if err != nil {
 		t.Fatalf("open examples/a.lzma: %s", err)
@@ -43,5 +45,16 @@ func TestDecoderSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadAll: %s", err)
 	}
-	t.Log(decompressed)
+	t.Logf("%s", decompressed)
+	orig, err := ioutil.ReadFile("examples/a.txt")
+	if err != nil {
+		t.Fatalf("ReadFile: %s", err)
+	}
+	if len(orig) != len(decompressed) {
+		t.Fatalf("length decompressed is %d; want %d",
+			len(decompressed), len(orig))
+	}
+	if !bytes.Equal(orig, decompressed) {
+		t.Fatalf("decompressed file differs from original")
+	}
 }

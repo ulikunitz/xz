@@ -3,7 +3,9 @@ package lzma
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 )
 
 // states defines the overall state count
@@ -134,12 +136,12 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 			}
 			return n, nil
 		case err != nil:
-			return n, err
+			return n, fmt.Errorf("LZMA - %s", err)
 		case n == len(p):
 			return n, nil
 		}
 		if err = d.fill(); err != nil {
-			return n, err
+			return n, fmt.Errorf("LZMA - %s", err)
 		}
 	}
 }
@@ -148,11 +150,17 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 // stream marker
 var errUnexpectedEOS = errors.New("unexpected end of stream marker")
 
+var tst logger = zeroLogger{}
+
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (d *Decoder) fill() error {
-	for !d.dict.eof && d.dict.readable() < d.dict.b {
+	if d.dict.eof {
+		return nil
+	}
+	for d.dict.readable() < d.dict.b {
 		op, err := d.decodeOp()
 		if err != nil {
+			tst.Logf("decodeOp error: %s", err)
 			switch {
 			case err == eofDecoded:
 				if d.unpackLen != noUnpackLen &&
@@ -168,21 +176,24 @@ func (d *Decoder) fill() error {
 				return err
 			}
 		}
+		tst.Logf("op %s", op)
+
 		n := d.decodedLen + uint64(op.Len())
 		if n < d.decodedLen {
 			panic("negative op length or overflow of decodedLen")
 		}
-		d.decodedLen = n
-		if d.decodedLen >= d.unpackLen {
-			if d.decodedLen == d.unpackLen {
-				d.dict.eof = true
-				return nil
-			}
-			return errors.New(
-				"decoded stream longer than provided length")
+		if n > d.unpackLen {
+			d.dict.eof = true
+			return errors.New("decoded stream too long")
 		}
+		d.decodedLen = n
+
 		if err = op.applyDecoderDict(d.dict); err != nil {
 			return err
+		}
+		if n == d.unpackLen {
+			d.dict.eof = true
+			return nil
 		}
 	}
 	return nil
@@ -199,34 +210,36 @@ func (d *Decoder) updateStateLiteral() {
 		return
 	}
 	d.state -= 6
-	return
 }
 
 // updateStateMatch updates the state for a match.
 func (d *Decoder) updateStateMatch() {
 	if d.state < 7 {
 		d.state = 7
-		return
+	} else {
+		d.state = 10
 	}
-	d.state = 10
-	return
 }
 
 // updateStateRep updates the state for a repetition.
 func (d *Decoder) updateStateRep() {
 	if d.state < 7 {
 		d.state = 8
+	} else {
+		d.state = 11
 	}
-	d.state = 11
 }
 
 // updateStateShortRep updates the state for a short repetition.
 func (d *Decoder) updateStateShortRep() {
 	if d.state < 7 {
 		d.state = 9
+	} else {
+		d.state = 11
 	}
-	d.state = 11
 }
+
+var litCounter int
 
 // decodeLiteral decodes a literal.
 func (d *Decoder) decodeLiteral() (op operation, err error) {
@@ -234,6 +247,11 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 	lp, lc := uint(d.properties.LP), uint(d.properties.LC)
 	litState := ((uint32(d.dict.total) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
+
+	litCounter++
+	fmt.Fprintf(os.Stderr, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
+		prevByte, d.dict.total)
+
 	match := d.dict.getByte(int(d.rep[0]) + 1)
 	s, err := d.litDecoder.Decode(d.rd, d.state, match, litState)
 	if err != nil {
@@ -247,13 +265,19 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 var errWrongTermination = errors.New(
 	"range decoder doesn't support termination")
 
-// decodeOp indicates an EOF of the decoded file
+// eofDecoded indicates an EOF of the decoded file
 var eofDecoded = errors.New("EOF of decoded stream")
+
+var opCounter int
 
 // decodeOp decodes an operation. The function returns eofDecoded if there is
 // an explicit termination marker.
 func (d *Decoder) decodeOp() (op operation, err error) {
 	posState := uint32(d.dict.total) & d.posBitMask
+
+	opCounter++
+	fmt.Fprintf(os.Stderr, "S %3d %2d %2d\n", opCounter, d.state, posState)
+
 	state2 := (d.state << maxPosBits) | posState
 
 	b, err := d.isMatch[state2].Decode(d.rd)

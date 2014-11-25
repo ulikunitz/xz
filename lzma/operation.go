@@ -47,5 +47,5 @@ func (l lit) Len() int {
 
 // String returns a string representation for the literal.
 func (l lit) String() string {
-	return fmt.Sprintf("lit(%02x)", l.b)
+	return fmt.Sprintf("lit(%02x %c)", l.b, l.b)
 }
