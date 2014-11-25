@@ -121,11 +121,16 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 	for {
 		var k int
 		k, err = d.dict.Read(p[n:])
-		if err != nil {
-			return n, err
-		}
 		n += k
-		if n == len(p) {
+		switch {
+		case err == io.EOF:
+			if n <= 0 {
+				return 0, io.EOF
+			}
+			return n, nil
+		case err != nil:
+			return n, err
+		case n == len(p):
 			return n, nil
 		}
 		if err = d.fill(len(p) - n); err != nil {
