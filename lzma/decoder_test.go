@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -25,4 +26,22 @@ func TestNewDecoder(t *testing.T) {
 	if d.properties.PB != 2 {
 		t.Errorf("PB %d; want %d", d.properties.PB, 2)
 	}
+}
+
+func TestDecoderSimple(t *testing.T) {
+	f, err := os.Open("examples/a.lzma")
+	if err != nil {
+		t.Fatalf("open examples/a.lzma: %s", err)
+	}
+	defer f.Close()
+	d, err := NewDecoder(f)
+	if err != nil {
+		t.Fatalf("NewDecoder: %s", err)
+	}
+	t.Logf("unpackLen %d", d.unpackLen)
+	decompressed, err := ioutil.ReadAll(d)
+	if err != nil {
+		t.Fatalf("ReadAll: %s", err)
+	}
+	t.Log(decompressed)
 }
