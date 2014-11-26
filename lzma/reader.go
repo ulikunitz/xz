@@ -10,6 +10,9 @@ import (
 // states defines the overall state count
 const states = 12
 
+// Value of the end of stream (EOS) marker.
+const eos = 1<<32 - 1
+
 // bufferLen is the value used for the bufferLen used by the decoder.
 var bufferLen = 64 * (1 << 10)
 
@@ -17,12 +20,9 @@ var bufferLen = 64 * (1 << 10)
 const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
-//
-// Note that an unpackLen of 0xffffffffffffffff requires an explicit end of
-// stream marker.
 type Reader struct {
 	properties Properties
-	// length to unpack
+	// length to unpack; NoUnpackLen requires an EOS marker
 	unpackLen        uint64
 	decodedLen       uint64
 	dict             *decoderDict
@@ -316,7 +316,7 @@ func (l *Reader) decodeOp() (op operation, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if l.rep[0] == 0xffffffff {
+		if l.rep[0] == eos {
 			if !l.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
