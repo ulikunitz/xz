@@ -153,3 +153,48 @@ func TestDecoderWrap(t *testing.T) {
 		tst.testFile(t, "a.lzma", orig)
 	}
 }
+
+func TestDecoderBadFiles(t *testing.T) {
+	dirname := "examples"
+	dir, err := os.Open(dirname)
+	if err != nil {
+		t.Fatalf("Open: %s", err)
+	}
+	defer dir.Close()
+	all, err := dir.Readdirnames(0)
+	if err != nil {
+		t.Fatalf("Readdirnames: %s", err)
+	}
+	// filter now all file with the pattern "bad*.lzma"
+	files := make([]string, 0, len(all))
+	for _, fn := range all {
+		match, err := filepath.Match("bad*.lzma", fn)
+		if err != nil {
+			t.Fatalf("Match: %s", err)
+		}
+		if match {
+			files = append(files, fn)
+		}
+	}
+	t.Log("files:", files)
+	for _, filename := range files {
+		pathname := filepath.Join(dirname, filename)
+		f, err := os.Open(pathname)
+		if err != nil {
+			t.Fatalf("Open(\"%s\"): %s", pathname, err)
+		}
+		defer f.Close()
+		t.Logf("file %s opened", filename)
+		d, err := NewDecoder(f)
+		if err != nil {
+			t.Fatalf("NewDecoder: %s", err)
+		}
+		decoded, err := ioutil.ReadAll(d)
+		if err == nil {
+			t.Errorf("ReadAll for %s: no error", filename)
+			t.Logf("%s", decoded)
+			continue
+		}
+		t.Logf("%s: error %s", filename, err)
+	}
+}

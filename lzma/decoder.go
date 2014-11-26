@@ -189,6 +189,12 @@ func (d *Decoder) fill() error {
 		}
 		if n == d.unpackLen {
 			d.dict.eof = true
+			if !d.rd.possiblyAtEnd() {
+				if _, err = d.decodeOp(); err != eofDecoded {
+					return newError(
+						"wrong length in header")
+				}
+			}
 			return nil
 		}
 	}
@@ -259,7 +265,7 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 // errWrongTermination indicates that a termination symbol has been received,
 // but the range decoder could still produces more data
 var errWrongTermination = newError(
-	"range decoder doesn't support termination")
+	"end of stream marker at wrong place")
 
 // eofDecoded indicates an EOF of the decoded file
 var eofDecoded = newError("EOF of decoded stream")
