@@ -30,36 +30,51 @@ func TestNewDecoder(t *testing.T) {
 	}
 }
 
-func TestDecoderSimple(t *testing.T) {
-	// DebugOn(os.Stderr)
-	// defer DebugOff()
+const (
+	dirname  = "examples"
+	origname = "a.txt"
+)
 
-	f, err := os.Open("examples/a.lzma")
+func readOrigFile(t *testing.T) []byte {
+	orig, err := ioutil.ReadFile(filepath.Join(dirname, origname))
 	if err != nil {
-		t.Fatalf("open examples/a.lzma: %s", err)
+		t.Fatalf("ReadFile: %s", err)
+	}
+	return orig
+}
+
+func testDecodeFile(t *testing.T, filename string, orig []byte) {
+	pathname := filepath.Join(dirname, filename)
+	f, err := os.Open(pathname)
+	if err != nil {
+		t.Fatalf("Open(\"%s\"): %s", pathname, err)
 	}
 	defer f.Close()
+	t.Logf("file %s opened", filename)
 	d, err := NewDecoder(f)
 	if err != nil {
 		t.Fatalf("NewDecoder: %s", err)
 	}
 	t.Logf("unpackLen %d", d.unpackLen)
-	decompressed, err := ioutil.ReadAll(d)
+	decoded, err := ioutil.ReadAll(d)
 	if err != nil {
 		t.Fatalf("ReadAll: %s", err)
 	}
-	t.Logf("%s", decompressed)
-	orig, err := ioutil.ReadFile("examples/a.txt")
-	if err != nil {
-		t.Fatalf("ReadFile: %s", err)
+	t.Logf("%s", decoded)
+	if len(orig) != len(decoded) {
+		t.Fatalf("length decoded is %d; want %d",
+			len(decoded), len(orig))
 	}
-	if len(orig) != len(decompressed) {
-		t.Fatalf("length decompressed is %d; want %d",
-			len(decompressed), len(orig))
+	if !bytes.Equal(orig, decoded) {
+		t.Fatalf("decoded file differs from original")
 	}
-	if !bytes.Equal(orig, decompressed) {
-		t.Fatalf("decompressed file differs from original")
-	}
+}
+
+func TestDecoderSimple(t *testing.T) {
+	// DebugOn(os.Stderr)
+	// defer DebugOff()
+
+	testDecodeFile(t, "a.lzma", readOrigFile(t))
 }
 
 func TestDecoderAll(t *testing.T) {
@@ -73,6 +88,7 @@ func TestDecoderAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Readdirnames: %s", err)
 	}
+	// filter now all file with the pattern "a*.lzma"
 	files := make([]string, 0, len(all))
 	for _, fn := range all {
 		match, err := filepath.Match("a*.lzma", fn)
@@ -84,34 +100,9 @@ func TestDecoderAll(t *testing.T) {
 		}
 	}
 	t.Log("files:", files)
-	origFn := filepath.Join(dirname, "a.txt")
-	orig, err := ioutil.ReadFile(origFn)
-	if err != nil {
-		t.Fatalf("ReadFile(\"%s\"): %s", origFn, err)
-	}
+	orig := readOrigFile(t)
+	// actually test the files
 	for _, fn := range files {
-		pn := filepath.Join(dirname, fn)
-		f, err := os.Open(pn)
-		if err != nil {
-			t.Fatalf("Open(\"%s\"): %s", pn, err)
-		}
-		defer f.Close()
-		t.Logf("file %s opened", fn)
-		d, err := NewDecoder(f)
-		if err != nil {
-			t.Fatalf("NewDecoder: %s", err)
-		}
-		decompressed, err := ioutil.ReadAll(d)
-		if err != nil {
-			t.Fatalf("ReadAll: %s", err)
-		}
-		t.Logf("uncompressed:\n%s", decompressed)
-		if len(orig) != len(decompressed) {
-			t.Fatalf("length decompressed is %d; want %d",
-				len(decompressed), len(orig))
-		}
-		if !bytes.Equal(orig, decompressed) {
-			t.Fatalf("decompressed file differs from original")
-		}
+		testDecodeFile(t, fn, orig)
 	}
 }
