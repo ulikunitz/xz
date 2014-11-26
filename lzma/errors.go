@@ -1,6 +1,7 @@
 package lzma
 
-// Error marks an internal lzma error.
+// Error represents an LZMA-specific error. At this point in time it ensures
+// that the method Error prefixes the message Msg with the string "lzma - ".
 type Error struct {
 	Msg string
 }
