@@ -44,6 +44,8 @@ type Reader struct {
 
 // NewReader creates an LZMA reader. It reads the classic, original LZMA
 // format. Note that LZMA2 uses a different header format.
+//
+// Note that the caller will have to close the reader.
 func NewReader(r io.Reader) (*Reader, error) {
 	f := bufio.NewReader(r)
 	properties, err := readProperties(f)
