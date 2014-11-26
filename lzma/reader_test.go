@@ -10,25 +10,25 @@ import (
 	"testing/iotest"
 )
 
-func TestNewDecoder(t *testing.T) {
+func TestNewReader(t *testing.T) {
 	f, err := os.Open("examples/a.lzma")
 	if err != nil {
 		t.Fatalf("open examples/a.lzma: %s", err)
 	}
 	defer f.Close()
-	d, err := NewDecoder(f)
+	l, err := NewReader(f)
 	if err != nil {
-		t.Fatalf("NewDecoder: %s", err)
+		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("decoder %#v", d)
-	if d.properties.LC != 3 {
-		t.Errorf("LC %d; want %d", d.properties.LC, 3)
+	t.Logf("decoder %#v", l)
+	if l.properties.LC != 3 {
+		t.Errorf("LC %d; want %d", l.properties.LC, 3)
 	}
-	if d.properties.LP != 0 {
-		t.Errorf("LP %d; want %d", d.properties.LP, 0)
+	if l.properties.LP != 0 {
+		t.Errorf("LP %d; want %d", l.properties.LP, 0)
 	}
-	if d.properties.PB != 2 {
-		t.Errorf("PB %d; want %d", d.properties.PB, 2)
+	if l.properties.PB != 2 {
+		t.Errorf("PB %d; want %d", l.properties.PB, 2)
 	}
 }
 
@@ -53,12 +53,12 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 	}
 	defer f.Close()
 	t.Logf("file %s opened", filename)
-	d, err := NewDecoder(f)
+	l, err := NewReader(f)
 	if err != nil {
-		t.Fatalf("NewDecoder: %s", err)
+		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("unpackLen %d", d.unpackLen)
-	decoded, err := ioutil.ReadAll(d)
+	t.Logf("unpackLen %d", l.unpackLen)
+	decoded, err := ioutil.ReadAll(l)
 	if err != nil {
 		t.Fatalf("ReadAll: %s", err)
 	}
@@ -72,14 +72,14 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 	}
 }
 
-func TestDecoderSimple(t *testing.T) {
+func TestReaderSimple(t *testing.T) {
 	// DebugOn(os.Stderr)
 	// defer DebugOff()
 
 	testDecodeFile(t, "a.lzma", readOrigFile(t))
 }
 
-func TestDecoderAll(t *testing.T) {
+func TestReaderAll(t *testing.T) {
 	dirname := "examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
@@ -122,12 +122,12 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 	}
 	defer f.Close()
 	t.Logf("%s file %s opened", w.name, filename)
-	d, err := NewDecoder(w.wrap(f))
+	l, err := NewReader(w.wrap(f))
 	if err != nil {
-		t.Fatalf("NewDecoder: %s", err)
+		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("unpackLen %d", d.unpackLen)
-	decoded, err := ioutil.ReadAll(d)
+	t.Logf("unpackLen %d", l.unpackLen)
+	decoded, err := ioutil.ReadAll(l)
 	if err != nil {
 		t.Fatalf("%s ReadAll: %s", w.name, err)
 	}
@@ -141,7 +141,7 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 	}
 }
 
-func TestDecoderWrap(t *testing.T) {
+func TestReaderWrap(t *testing.T) {
 	tests := [...]wrapTest{
 		{"DataErrReader", iotest.DataErrReader},
 		{"HalfReader", iotest.HalfReader},
@@ -154,7 +154,7 @@ func TestDecoderWrap(t *testing.T) {
 	}
 }
 
-func TestDecoderBadFiles(t *testing.T) {
+func TestReaderBadFiles(t *testing.T) {
 	dirname := "examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
@@ -185,11 +185,11 @@ func TestDecoderBadFiles(t *testing.T) {
 		}
 		defer f.Close()
 		t.Logf("file %s opened", filename)
-		d, err := NewDecoder(f)
+		l, err := NewReader(f)
 		if err != nil {
-			t.Fatalf("NewDecoder: %s", err)
+			t.Fatalf("NewReader: %s", err)
 		}
-		decoded, err := ioutil.ReadAll(d)
+		decoded, err := ioutil.ReadAll(l)
 		if err == nil {
 			t.Errorf("ReadAll for %s: no error", filename)
 			t.Logf("%s", decoded)

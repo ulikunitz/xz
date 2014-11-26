@@ -16,11 +16,11 @@ var bufferLen = 64 * (1 << 10)
 // noUnpackLen requires an explicit end of stream marker
 const noUnpackLen uint64 = 1<<64 - 1
 
-// Decoder is able to read a LZMA byte stream and to read the plain text.
+// Reader is able to read a LZMA byte stream and to read the plain text.
 //
 // Note that an unpackLen of 0xffffffffffffffff requires an explicit end of
 // stream marker.
-type Decoder struct {
+type Reader struct {
 	properties Properties
 	// length to unpack
 	unpackLen        uint64
@@ -42,9 +42,9 @@ type Decoder struct {
 	distDecoder      *distCodec
 }
 
-// NewDecoder creates an LZMA decoder. It reads the classic, original LZMA
+// NewReader creates an LZMA reader. It reads the classic, original LZMA
 // format. Note that LZMA2 uses a different header format.
-func NewDecoder(r io.Reader) (d *Decoder, err error) {
+func NewReader(r io.Reader) (*Reader, error) {
 	f := bufio.NewReader(r)
 	properties, err := readProperties(f)
 	if err != nil {
@@ -55,35 +55,35 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 		return nil, newError(
 			"LZMA property DictLen exceeds maximum int value")
 	}
-	d = &Decoder{
+	l := &Reader{
 		properties: *properties,
 	}
-	if d.unpackLen, err = readUint64LE(f); err != nil {
+	if l.unpackLen, err = readUint64LE(f); err != nil {
 		return nil, err
 	}
-	if d.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
+	if l.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
 		return nil, err
 	}
-	d.posBitMask = (uint32(1) << uint(d.properties.PB)) - 1
-	if d.rd, err = newRangeDecoder(f); err != nil {
+	l.posBitMask = (uint32(1) << uint(l.properties.PB)) - 1
+	if l.rd, err = newRangeDecoder(f); err != nil {
 		return nil, err
 	}
-	initProbSlice(d.isMatch[:])
-	initProbSlice(d.isRep[:])
-	initProbSlice(d.isRepG0[:])
-	initProbSlice(d.isRepG1[:])
-	initProbSlice(d.isRepG2[:])
-	initProbSlice(d.isRepG0Long[:])
-	d.litDecoder = newLiteralCodec(d.properties.LC, d.properties.LP)
-	d.lengthDecoder = newLengthCodec()
-	d.repLengthDecoder = newLengthCodec()
-	d.distDecoder = newDistCodec()
-	return d, nil
+	initProbSlice(l.isMatch[:])
+	initProbSlice(l.isRep[:])
+	initProbSlice(l.isRepG0[:])
+	initProbSlice(l.isRepG1[:])
+	initProbSlice(l.isRepG2[:])
+	initProbSlice(l.isRepG0Long[:])
+	l.litDecoder = newLiteralCodec(l.properties.LC, l.properties.LP)
+	l.lengthDecoder = newLengthCodec()
+	l.repLengthDecoder = newLengthCodec()
+	l.distDecoder = newDistCodec()
+	return l, nil
 }
 
 // Properties returns a set of properties.
-func (d *Decoder) Properties() Properties {
-	return d.properties
+func (l *Reader) Properties() Properties {
+	return l.properties
 }
 
 // getUint64LE converts the uint64 value stored as little endian to an uint64
@@ -123,10 +123,10 @@ func initProbSlice(p []prob) {
 //
 // The end of the LZMA stream is indicated by EOF. There might be other errors
 // returned. The decoder will not be able to recover from an error returned.
-func (d *Decoder) Read(p []byte) (n int, err error) {
+func (l *Reader) Read(p []byte) (n int, err error) {
 	for {
 		var k int
-		k, err = d.dict.Read(p[n:])
+		k, err = l.dict.Read(p[n:])
 		n += k
 		switch {
 		case err == io.EOF:
@@ -139,7 +139,7 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 		case n == len(p):
 			return n, nil
 		}
-		if err = d.fill(); err != nil {
+		if err = l.fill(); err != nil {
 			return n, err
 		}
 	}
@@ -150,20 +150,20 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 var errUnexpectedEOS = newError("unexpected end of stream marker")
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
-func (d *Decoder) fill() error {
-	if d.dict.eof {
+func (l *Reader) fill() error {
+	if l.dict.eof {
 		return nil
 	}
-	for d.dict.readable() < d.dict.b {
-		op, err := d.decodeOp()
+	for l.dict.readable() < l.dict.b {
+		op, err := l.decodeOp()
 		if err != nil {
 			switch {
 			case err == eofDecoded:
-				if d.unpackLen != noUnpackLen &&
-					d.decodedLen != d.unpackLen {
+				if l.unpackLen != noUnpackLen &&
+					l.decodedLen != l.unpackLen {
 					return errUnexpectedEOS
 				}
-				d.dict.eof = true
+				l.dict.eof = true
 				return nil
 			case err == io.EOF:
 				return newError(
@@ -173,24 +173,24 @@ func (d *Decoder) fill() error {
 			}
 		}
 
-		n := d.decodedLen + uint64(op.Len())
-		if n < d.decodedLen {
+		n := l.decodedLen + uint64(op.Len())
+		if n < l.decodedLen {
 			return newError(
 				"negative op length or overflow of decodedLen")
 		}
-		if n > d.unpackLen {
-			d.dict.eof = true
+		if n > l.unpackLen {
+			l.dict.eof = true
 			return newError("decoded stream too long")
 		}
-		d.decodedLen = n
+		l.decodedLen = n
 
-		if err = op.applyDecoderDict(d.dict); err != nil {
+		if err = op.applyDecoderDict(l.dict); err != nil {
 			return err
 		}
-		if n == d.unpackLen {
-			d.dict.eof = true
-			if !d.rd.possiblyAtEnd() {
-				if _, err = d.decodeOp(); err != eofDecoded {
+		if n == l.unpackLen {
+			l.dict.eof = true
+			if !l.rd.possiblyAtEnd() {
+				if _, err = l.decodeOp(); err != eofDecoded {
 					return newError(
 						"wrong length in header")
 				}
@@ -202,60 +202,60 @@ func (d *Decoder) fill() error {
 }
 
 // updateStateLiteral updates the state for a literal.
-func (d *Decoder) updateStateLiteral() {
+func (l *Reader) updateStateLiteral() {
 	switch {
-	case d.state < 4:
-		d.state = 0
+	case l.state < 4:
+		l.state = 0
 		return
-	case d.state < 10:
-		d.state -= 3
+	case l.state < 10:
+		l.state -= 3
 		return
 	}
-	d.state -= 6
+	l.state -= 6
 }
 
 // updateStateMatch updates the state for a match.
-func (d *Decoder) updateStateMatch() {
-	if d.state < 7 {
-		d.state = 7
+func (l *Reader) updateStateMatch() {
+	if l.state < 7 {
+		l.state = 7
 	} else {
-		d.state = 10
+		l.state = 10
 	}
 }
 
 // updateStateRep updates the state for a repetition.
-func (d *Decoder) updateStateRep() {
-	if d.state < 7 {
-		d.state = 8
+func (l *Reader) updateStateRep() {
+	if l.state < 7 {
+		l.state = 8
 	} else {
-		d.state = 11
+		l.state = 11
 	}
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (d *Decoder) updateStateShortRep() {
-	if d.state < 7 {
-		d.state = 9
+func (l *Reader) updateStateShortRep() {
+	if l.state < 7 {
+		l.state = 9
 	} else {
-		d.state = 11
+		l.state = 11
 	}
 }
 
 var litCounter int
 
 // decodeLiteral decodes a literal.
-func (d *Decoder) decodeLiteral() (op operation, err error) {
-	prevByte := d.dict.getByte(1)
-	lp, lc := uint(d.properties.LP), uint(d.properties.LC)
-	litState := ((uint32(d.dict.total) & ((1 << lp) - 1)) << lc) |
+func (l *Reader) decodeLiteral() (op operation, err error) {
+	prevByte := l.dict.getByte(1)
+	lp, lc := uint(l.properties.LP), uint(l.properties.LC)
+	litState := ((uint32(l.dict.total) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 
 	litCounter++
 	xlog.Printf(Debug, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
-		prevByte, d.dict.total)
+		prevByte, l.dict.total)
 
-	match := d.dict.getByte(int(d.rep[0]) + 1)
-	s, err := d.litDecoder.Decode(d.rd, d.state, match, litState)
+	match := l.dict.getByte(int(l.rep[0]) + 1)
+	s, err := l.litDecoder.Decode(l.rd, l.state, match, litState)
 	if err != nil {
 		return nil, err
 	}
@@ -274,101 +274,101 @@ var opCounter int
 
 // decodeOp decodes an operation. The function returns eofDecoded if there is
 // an explicit termination marker.
-func (d *Decoder) decodeOp() (op operation, err error) {
-	posState := uint32(d.dict.total) & d.posBitMask
+func (l *Reader) decodeOp() (op operation, err error) {
+	posState := uint32(l.dict.total) & l.posBitMask
 
 	opCounter++
-	xlog.Printf(Debug, "S %3d %2d %2d\n", opCounter, d.state, posState)
+	xlog.Printf(Debug, "S %3d %2d %2d\n", opCounter, l.state, posState)
 
-	state2 := (d.state << maxPosBits) | posState
+	state2 := (l.state << maxPosBits) | posState
 
-	b, err := d.isMatch[state2].Decode(d.rd)
+	b, err := l.isMatch[state2].Decode(l.rd)
 	if err != nil {
 		return nil, err
 	}
 	if b == 0 {
 		// literal
-		op, err := d.decodeLiteral()
+		op, err := l.decodeLiteral()
 		if err != nil {
 			return nil, err
 		}
-		d.updateStateLiteral()
+		l.updateStateLiteral()
 		return op, nil
 	}
-	b, err = d.isRep[d.state].Decode(d.rd)
+	b, err = l.isRep[l.state].Decode(l.rd)
 	if err != nil {
 		return nil, err
 	}
 	if b == 0 {
 		// simple match
-		d.rep[3], d.rep[2], d.rep[1] = d.rep[2], d.rep[1], d.rep[0]
-		d.updateStateMatch()
+		l.rep[3], l.rep[2], l.rep[1] = l.rep[2], l.rep[1], l.rep[0]
+		l.updateStateMatch()
 		// The length decoder returns the length offset.
-		l, err := d.lengthDecoder.Decode(d.rd, posState)
+		n, err := l.lengthDecoder.Decode(l.rd, posState)
 		if err != nil {
 			return nil, err
 		}
 		// The dist decoder returns the distance offset. The actual
 		// distance is 1 higher.
-		d.rep[0], err = d.distDecoder.Decode(l, d.rd)
+		l.rep[0], err = l.distDecoder.Decode(n, l.rd)
 		if err != nil {
 			return nil, err
 		}
-		if d.rep[0] == 0xffffffff {
-			if !d.rd.possiblyAtEnd() {
+		if l.rep[0] == 0xffffffff {
+			if !l.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
 			return nil, eofDecoded
 		}
-		op = rep{length: int(l) + minLength,
-			distance: int(d.rep[0]) + minDistance}
+		op = rep{length: int(n) + minLength,
+			distance: int(l.rep[0]) + minDistance}
 		return op, nil
 	}
-	b, err = d.isRepG0[d.state].Decode(d.rd)
+	b, err = l.isRepG0[l.state].Decode(l.rd)
 	if err != nil {
 		return nil, err
 	}
-	dist := d.rep[0]
+	dist := l.rep[0]
 	if b == 0 {
 		// rep match 0
-		b, err = d.isRepG0Long[state2].Decode(d.rd)
+		b, err = l.isRepG0Long[state2].Decode(l.rd)
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
-			d.updateStateShortRep()
+			l.updateStateShortRep()
 			op = rep{length: 1,
-				distance: int(d.rep[0]) + minDistance}
+				distance: int(l.rep[0]) + minDistance}
 			return op, nil
 		}
 	} else {
-		b, err = d.isRepG1[d.state].Decode(d.rd)
+		b, err = l.isRepG1[l.state].Decode(l.rd)
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
-			dist = d.rep[1]
+			dist = l.rep[1]
 		} else {
-			b, err = d.isRepG2[d.state].Decode(d.rd)
+			b, err = l.isRepG2[l.state].Decode(l.rd)
 			if err != nil {
 				return nil, err
 			}
 			if b == 0 {
-				dist = d.rep[2]
+				dist = l.rep[2]
 			} else {
-				dist = d.rep[3]
-				d.rep[3] = d.rep[2]
+				dist = l.rep[3]
+				l.rep[3] = l.rep[2]
 			}
-			d.rep[2] = d.rep[1]
+			l.rep[2] = l.rep[1]
 		}
-		d.rep[1] = d.rep[0]
-		d.rep[0] = dist
+		l.rep[1] = l.rep[0]
+		l.rep[0] = dist
 	}
-	l, err := d.repLengthDecoder.Decode(d.rd, posState)
+	n, err := l.repLengthDecoder.Decode(l.rd, posState)
 	if err != nil {
 		return nil, err
 	}
-	d.updateStateRep()
-	op = rep{length: int(l) + minLength, distance: int(dist) + minDistance}
+	l.updateStateRep()
+	op = rep{length: int(n) + minLength, distance: int(dist) + minDistance}
 	return op, nil
 }
