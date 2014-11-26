@@ -4,15 +4,16 @@ import (
 	"io"
 )
 
+// Maximum and minimum values for the individual properties.
 const (
-	MinLC = 0
-	MaxLC = 8
-	MinLP = 0
-	MaxLP = 4
-	MinPB = 0
-	MaxPB = 4
+	MinLC      = 0
+	MaxLC      = 8
+	MinLP      = 0
+	MaxLP      = 4
+	MinPB      = 0
+	MaxPB      = 4
 	MinDictLen = 1 << 12
-	MaxDictLen = 1<<32-1
+	MaxDictLen = 1<<32 - 1
 )
 
 // Properties provide the LZMA properties.
