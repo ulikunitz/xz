@@ -2,10 +2,12 @@ package lzma
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/iotest"
 )
 
 func TestNewDecoder(t *testing.T) {
@@ -104,5 +106,50 @@ func TestDecoderAll(t *testing.T) {
 	// actually test the files
 	for _, fn := range files {
 		testDecodeFile(t, fn, orig)
+	}
+}
+
+type wrapTest struct {
+	name string
+	wrap func(io.Reader) io.Reader
+}
+
+func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
+	pathname := filepath.Join(dirname, filename)
+	f, err := os.Open(pathname)
+	if err != nil {
+		t.Fatalf("Open(\"%s\"): %s", pathname, err)
+	}
+	defer f.Close()
+	t.Logf("%s file %s opened", w.name, filename)
+	d, err := NewDecoder(w.wrap(f))
+	if err != nil {
+		t.Fatalf("NewDecoder: %s", err)
+	}
+	t.Logf("unpackLen %d", d.unpackLen)
+	decoded, err := ioutil.ReadAll(d)
+	if err != nil {
+		t.Fatalf("%s ReadAll: %s", w.name, err)
+	}
+	t.Logf("%s", decoded)
+	if len(orig) != len(decoded) {
+		t.Fatalf("%s length decoded is %d; want %d",
+			w.name, len(decoded), len(orig))
+	}
+	if !bytes.Equal(orig, decoded) {
+		t.Fatalf("%s decoded file differs from original", w.name)
+	}
+}
+
+func TestDecoderWrap(t *testing.T) {
+	tests := [...]wrapTest{
+		{"DataErrReader", iotest.DataErrReader},
+		{"HalfReader", iotest.HalfReader},
+		{"OneByteReader", iotest.OneByteReader},
+		{"TimeoutReader", iotest.TimeoutReader},
+	}
+	orig := readOrigFile(t)
+	for _, tst := range tests {
+		tst.testFile(t, "a.lzma", orig)
 	}
 }
