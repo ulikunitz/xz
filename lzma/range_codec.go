@@ -2,9 +2,9 @@ package lzma
 
 import (
 	"errors"
-	"fmt"
 	"io"
-	"os"
+
+	"github.com/uli-go/xz/xlog"
 )
 
 // newRangeEncoder creates a new range encoder.
@@ -64,7 +64,7 @@ var bitCounter int
 // zero.
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	bitCounter++
-	fmt.Fprintf(os.Stderr, "D %3d 0x%08x:0x%08x\n", bitCounter, d.range_,
+	xlog.Printf(Debug, "D %3d 0x%08x:0x%08x\n", bitCounter, d.range_,
 		d.code)
 	d.range_ >>= 1
 	d.code -= d.range_
@@ -79,7 +79,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 
 	b = (t + 1) & 1
 
-	fmt.Fprintf(os.Stderr, "O %3d %d\n", bitCounter, b)
+	xlog.Printf(Debug, "O %3d %d\n", bitCounter, b)
 	return b, nil
 }
 
@@ -88,7 +88,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	bitCounter++
-	fmt.Fprintf(os.Stderr, "B %3d 0x%08x:0x%08x 0x%03x\n", bitCounter,
+	xlog.Printf(Debug, "B %3d 0x%08x:0x%08x 0x%03x\n", bitCounter,
 		d.range_, d.code, *p)
 	bound := p.bound(d.range_)
 	if d.code < bound {
@@ -108,7 +108,7 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		return 0, err
 	}
 
-	fmt.Fprintf(os.Stderr, "O %3d %d\n", bitCounter, b)
+	xlog.Printf(Debug, "O %3d %d\n", bitCounter, b)
 
 	return b, nil
 }

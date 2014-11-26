@@ -30,7 +30,9 @@ func TestNewDecoder(t *testing.T) {
 }
 
 func TestDecoderSimple(t *testing.T) {
-	tst = t
+	// DebugOn(os.Stderr)
+	// defer DebugOff()
+
 	f, err := os.Open("examples/a.lzma")
 	if err != nil {
 		t.Fatalf("open examples/a.lzma: %s", err)

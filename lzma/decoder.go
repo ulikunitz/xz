@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
+
+	"github.com/uli-go/xz/xlog"
 )
 
 // states defines the overall state count
@@ -150,8 +151,6 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 // stream marker
 var errUnexpectedEOS = errors.New("unexpected end of stream marker")
 
-var tst logger = zeroLogger{}
-
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (d *Decoder) fill() error {
 	if d.dict.eof {
@@ -160,7 +159,6 @@ func (d *Decoder) fill() error {
 	for d.dict.readable() < d.dict.b {
 		op, err := d.decodeOp()
 		if err != nil {
-			tst.Logf("decodeOp error: %s", err)
 			switch {
 			case err == eofDecoded:
 				if d.unpackLen != noUnpackLen &&
@@ -176,7 +174,6 @@ func (d *Decoder) fill() error {
 				return err
 			}
 		}
-		tst.Logf("op %s", op)
 
 		n := d.decodedLen + uint64(op.Len())
 		if n < d.decodedLen {
@@ -249,7 +246,7 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 		(uint32(prevByte) >> (8 - lc))
 
 	litCounter++
-	fmt.Fprintf(os.Stderr, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
+	xlog.Printf(Debug, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
 		prevByte, d.dict.total)
 
 	match := d.dict.getByte(int(d.rep[0]) + 1)
@@ -276,7 +273,7 @@ func (d *Decoder) decodeOp() (op operation, err error) {
 	posState := uint32(d.dict.total) & d.posBitMask
 
 	opCounter++
-	fmt.Fprintf(os.Stderr, "S %3d %2d %2d\n", opCounter, d.state, posState)
+	xlog.Printf(Debug, "S %3d %2d %2d\n", opCounter, d.state, posState)
 
 	state2 := (d.state << maxPosBits) | posState
 
