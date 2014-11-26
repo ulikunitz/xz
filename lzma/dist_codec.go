@@ -51,8 +51,8 @@ func lenState(l uint32) uint32 {
 }
 
 // Encode encodes the distance using the parameter l. Dist can have values from
-// the full range of uint32 values. To get the distance offset the actual
-// match distance has to be decreased by 1. A distance offset of 0xffffffff
+// the full range of uint32 values. To get the distance offset the actual match
+// distance has to be decreased by 1. A distance offset of 0xffffffff (eos)
 // indicates the end of the stream.
 func (dc *distCodec) Encode(dist uint32, l uint32, e *rangeEncoder,
 ) (err error) {
@@ -86,8 +86,8 @@ func (dc *distCodec) Encode(dist uint32, l uint32, e *rangeEncoder,
 }
 
 // Decode decodes the distance offset using the parameter l. The dist value
-// 0xffffffff indicates the end of the stream. Add one to the distance offset
-// to get the actual match distance.
+// 0xffffffff (eos) indicates the end of the stream. Add one to the distance
+// offset to get the actual match distance.
 func (dc *distCodec) Decode(l uint32, d *rangeDecoder,
 ) (dist uint32, err error) {
 	posSlot, err := dc.posSlotCodecs[lenState(l)].Decode(d)
