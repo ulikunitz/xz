@@ -9,4 +9,4 @@ The classic LZMA decoder works now for the first example file.
 
 ## TODO
 
-1. Improve errors for errors in the input file.
+Continue testing the LZMA examples.
