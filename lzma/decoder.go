@@ -2,8 +2,6 @@ package lzma
 
 import (
 	"bufio"
-	"errors"
-	"fmt"
 	"io"
 
 	"github.com/uli-go/xz/xlog"
@@ -54,7 +52,7 @@ func NewDecoder(r io.Reader) (d *Decoder, err error) {
 	}
 	historyLen := int(properties.DictLen)
 	if historyLen < 0 {
-		return nil, errors.New(
+		return nil, newError(
 			"LZMA property DictLen exceeds maximum int value")
 	}
 	d = &Decoder{
@@ -137,19 +135,19 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 			}
 			return n, nil
 		case err != nil:
-			return n, fmt.Errorf("LZMA - %s", err)
+			return n, err
 		case n == len(p):
 			return n, nil
 		}
 		if err = d.fill(); err != nil {
-			return n, fmt.Errorf("LZMA - %s", err)
+			return n, err
 		}
 	}
 }
 
 // errUnexpectedEOS indicates that the function decoded an unexpected end of
 // stream marker
-var errUnexpectedEOS = errors.New("unexpected end of stream marker")
+var errUnexpectedEOS = newError("unexpected end of stream marker")
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (d *Decoder) fill() error {
@@ -168,7 +166,7 @@ func (d *Decoder) fill() error {
 				d.dict.eof = true
 				return nil
 			case err == io.EOF:
-				return errors.New(
+				return newError(
 					"unexpected end of compressed stream")
 			default:
 				return err
@@ -177,11 +175,12 @@ func (d *Decoder) fill() error {
 
 		n := d.decodedLen + uint64(op.Len())
 		if n < d.decodedLen {
-			panic("negative op length or overflow of decodedLen")
+			return newError(
+				"negative op length or overflow of decodedLen")
 		}
 		if n > d.unpackLen {
 			d.dict.eof = true
-			return errors.New("decoded stream too long")
+			return newError("decoded stream too long")
 		}
 		d.decodedLen = n
 
@@ -259,11 +258,11 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 
 // errWrongTermination indicates that a termination symbol has been received,
 // but the range decoder could still produces more data
-var errWrongTermination = errors.New(
+var errWrongTermination = newError(
 	"range decoder doesn't support termination")
 
 // eofDecoded indicates an EOF of the decoded file
-var eofDecoded = errors.New("EOF of decoded stream")
+var eofDecoded = newError("EOF of decoded stream")
 
 var opCounter int
 

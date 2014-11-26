@@ -1,7 +1,5 @@
 package lzma
 
-import "errors"
-
 // maxPosBits defines the number of bits of the position value that are used to
 // to compute the posState value. The value is used to selet the tree codec
 // for length encoding and decoding.
@@ -47,7 +45,7 @@ func newLengthCodec() *lengthCodec {
 func (lc *lengthCodec) Encode(l uint32, e *rangeEncoder, posState uint32,
 ) (err error) {
 	if l > maxLength-minLength {
-		return errors.New("length out of range")
+		return newError("length out of range")
 	}
 	if l < 8 {
 		if err = lc.choice[0].Encode(0, e); err != nil {

@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"fmt"
 	"io"
 )
@@ -28,10 +27,10 @@ type decoderDict struct {
 // negative or zero an error is returned.
 func newDecoderDict(bufferLen int, historyLen int) (p *decoderDict, err error) {
 	if !(0 < bufferLen) {
-		return nil, errors.New("bufferLen must be positive")
+		return nil, newError("bufferLen must be positive")
 	}
 	if !(0 < historyLen) {
-		return nil, errors.New("historyLen must be positive")
+		return nil, newError("historyLen must be positive")
 	}
 
 	// k maximum match length
@@ -53,7 +52,7 @@ func newDecoderDict(bufferLen int, historyLen int) (p *decoderDict, err error) {
 
 	// check for overflows
 	if z < bufferLen || z < historyLen {
-		return nil, errors.New(
+		return nil, newError(
 			"LZMA dictionary size overflows integer range")
 	}
 
@@ -137,7 +136,7 @@ out:
 
 // errOverflow indicates an overflow situation of the dictionary. It can be
 // addressed by reading more data from the dictionary.
-var errOverflow = errors.New("overflow")
+var errOverflow = newError("overflow")
 
 // Write puts the complete slice in the dictionary or no bytes at all. If no
 // bytes are written an overflow will be indicated. The slice b is now allowed
@@ -178,16 +177,16 @@ func (p *decoderDict) addByte(b byte) error {
 // CopyMatch copies a match with the given length n and distance d.
 func (p *decoderDict) copyMatch(d, n int) error {
 	if n <= 0 {
-		return errors.New("length n must be positive")
+		return newError("length n must be positive")
 	}
 	if d <= 0 {
-		return errors.New("distance d must be positive")
+		return newError("distance d must be positive")
 	}
 	if n > p.writable() {
 		return errOverflow
 	}
 	if d > p.Len() {
-		return errors.New("copyMatch argument d is too large")
+		return newError("copyMatch argument d is too large")
 	}
 	z := cap(p.data)
 	i := p.c - d
@@ -204,9 +203,9 @@ func (p *decoderDict) copyMatch(d, n int) error {
 		}
 		k, err := p.Write(p.data[a:b])
 		if err != nil {
-			// Must panic here, because we don't want an incomplete
-			// transaction
-			panic(fmt.Sprintf("p.Write unexpected error %s", err))
+			// incomplete transaction
+			return newError(fmt.Sprintf(
+				"p.Write unexpected error %s", err))
 		}
 		n -= k
 		i += k

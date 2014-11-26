@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"io"
 
 	"github.com/uli-go/xz/xlog"
@@ -138,7 +137,7 @@ func (e *rangeEncoder) shiftLow() error {
 			e.cacheSize--
 			if e.cacheSize <= 0 {
 				if e.cacheSize < 0 {
-					panic("negative e.cacheSize")
+					return newError("negative e.cacheSize")
 				}
 				break
 			}
@@ -177,7 +176,7 @@ func (d *rangeDecoder) init() error {
 		return err
 	}
 	if b != 0 {
-		return errors.New("first byte not zero")
+		return newError("first byte not zero")
 	}
 
 	for i := 0; i < 4; i++ {
@@ -187,7 +186,7 @@ func (d *rangeDecoder) init() error {
 	}
 
 	if d.code >= d.range_ {
-		return errors.New("newRangeDecoder: d.code >= d.range_")
+		return newError("newRangeDecoder: d.code >= d.range_")
 	}
 
 	return nil

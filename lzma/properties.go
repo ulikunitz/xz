@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"io"
 )
 
@@ -37,7 +36,7 @@ func readProperties(r io.Reader) (p *Properties, err error) {
 		return nil, err
 	}
 	if n != 5 {
-		return nil, errors.New("properties not read correctly")
+		return nil, newError("properties not read correctly")
 	}
 	p = new(Properties)
 	x := int(b[0])
@@ -46,7 +45,7 @@ func readProperties(r io.Reader) (p *Properties, err error) {
 	p.LP = x % 5
 	p.PB = x / 5
 	if !(0 <= p.PB && p.PB <= 4) {
-		return nil, errors.New("PB out of range")
+		return nil, newError("PB out of range")
 	}
 	p.DictLen = getUint32LE(b[1:])
 	return p, nil
