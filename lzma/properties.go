@@ -4,6 +4,17 @@ import (
 	"io"
 )
 
+const (
+	MinLC = 0
+	MaxLC = 8
+	MinLP = 0
+	MaxLP = 4
+	MinPB = 0
+	MaxPB = 4
+	MinDictLen = 1 << 12
+	MaxDictLen = 1<<32-1
+)
+
 // Properties provide the LZMA properties.
 //
 // Note that on 32-bit platforms not all possible dictionary length can be
@@ -44,9 +55,13 @@ func readProperties(r io.Reader) (p *Properties, err error) {
 	x /= 9
 	p.LP = x % 5
 	p.PB = x / 5
-	if !(0 <= p.PB && p.PB <= 4) {
+	if !(MinPB <= p.PB && p.PB <= MaxPB) {
 		return nil, newError("PB out of range")
 	}
 	p.DictLen = getUint32LE(b[1:])
+	if p.DictLen < MinDictLen {
+		// The LZMA specification makes the following recommendation.
+		p.DictLen = MinDictLen
+	}
 	return p, nil
 }

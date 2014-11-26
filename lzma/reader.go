@@ -13,8 +13,8 @@ const states = 12
 // bufferLen is the value used for the bufferLen used by the decoder.
 var bufferLen = 64 * (1 << 10)
 
-// noUnpackLen requires an explicit end of stream marker
-const noUnpackLen uint64 = 1<<64 - 1
+// NoUnpackLen provides the header value for an EOS marker in the stream.
+const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 //
@@ -55,7 +55,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	historyLen := int(properties.DictLen)
 	if historyLen < 0 {
 		return nil, newError(
-			"LZMA property DictLen exceeds maximum int value")
+			"property DictLen exceeds maximum int value")
 	}
 	l := &Reader{
 		properties: *properties,
@@ -161,7 +161,7 @@ func (l *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eofDecoded:
-				if l.unpackLen != noUnpackLen &&
+				if l.unpackLen != NoUnpackLen &&
 					l.decodedLen != l.unpackLen {
 					return errUnexpectedEOS
 				}
