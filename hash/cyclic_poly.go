@@ -1,13 +1,19 @@
 package hash
 
+// CyclicPoly provides a cyclic polynomial rolling hash.
 type CyclicPoly struct {
 	N int
 }
 
+// ror rotates the unsigned 64-bit integer to right. The argument s must be
+// less than 64.
 func ror(x uint64, s uint) uint64 {
 	return (x >> s) | (x << (64 - s))
 }
 
+// NewCyclicPoly creates a new instance of the CyclicPoly structure. The
+// argument n gives the number of bytes for which a hash will be exectuted.
+// This number must be positive; the method panics if this isn't the case.
 func NewCyclicPoly(n int) *CyclicPoly {
 	if n < 1 {
 		panic("argument n must be positive")
@@ -15,21 +21,27 @@ func NewCyclicPoly(n int) *CyclicPoly {
 	return &CyclicPoly{N: n}
 }
 
-func (r *CyclicPoly) AddYoung(h uint64, b byte) uint64 {
-	h = ror(h, 1)
-	h ^= hash[b]
+// Hashes computes all hashes for the given byte slice.
+func (r *CyclicPoly) Hashes(p []byte) []uint64 {
+	m, n := len(p), r.N
+	if m < n {
+		return nil
+	}
+	h := make([]uint64, m-n+1)
+	h[0] = hash[p[0]]
+	for i := 1; i < n; i++ {
+		h[0] = ror(h[0], 1)
+		h[0] ^= hash[p[i]]
+	}
+	for i := 1; i < len(h); i++ {
+		h[i] = h[i-1] ^ ror(hash[p[i-1]], uint(n-1))
+		h[i] = ror(h[i], 1)
+		h[i] ^= hash[p[i+n-1]]
+	}
 	return h
 }
 
-func (r *CyclicPoly) RemoveOldest(h uint64, b byte) uint64 {
-	h ^= ror(hash[b], uint(r.N-1))
-	return h
-}
-
-func (r *CyclicPoly) Len() int {
-	return r.N
-}
-
+// Stores the hash for the individual bytes.
 var hash = [256]uint64{
 	0x2e4fc3f904065142, 0xc790984cfbc99527,
 	0x879f95eb8c62f187, 0x3b61be86b5021ef2,

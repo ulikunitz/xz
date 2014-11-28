@@ -38,22 +38,22 @@ func NewRabinKarpConst(n int, a uint64) *RabinKarp {
 	return &RabinKarp{A: a, aOldest: aOldest, N: n}
 }
 
-// AddYoung adds a "young" byte to the hash provided. The existing hash is
-// shifted or multiplied accordingly.
-func (r *RabinKarp) AddYoung(h uint64, b byte) uint64 {
-	h *= r.A
-	h += uint64(b)
+// Hashes computes all hashes for the byte slice given.
+func (r *RabinKarp) Hashes(p []byte) []uint64 {
+	m, n := len(p), r.N
+	if m < n {
+		return nil
+	}
+	h := make([]uint64, m-n+1)
+	h[0] = uint64(p[0])
+	for i := 1; i < n; i++ {
+		h[0] *= r.A
+		h[0] += uint64(p[i])
+	}
+	for i := 1; i < len(h); i++ {
+		h[i] = h[i-1] - uint64(p[i-1])*r.aOldest
+		h[i] *= r.A
+		h[i] += uint64(p[i+n-1])
+	}
 	return h
-}
-
-// RemoveOldest removes the "oldest" byte from the hash. The hash value is not
-// shifted or multiplied.
-func (r *RabinKarp) RemoveOldest(h uint64, b byte) uint64 {
-	h -= uint64(b) * r.aOldest
-	return h
-}
-
-// Returns the length of the byte sequence this hash supports.
-func (r *RabinKarp) Len() int {
-	return r.N
 }
