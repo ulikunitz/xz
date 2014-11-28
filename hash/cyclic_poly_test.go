@@ -1,13 +1,10 @@
 package hash
 
-import (
-	"math/rand"
-	"testing"
-)
+import "testing"
 
-func TestRabinKarpSimple(t *testing.T) {
+func TestCyclicPolySimple(t *testing.T) {
 	p := []byte("abcde")
-	r := NewRabinKarp(4)
+	r := NewCyclicPoly(4)
 	h2 := ComputeHashes(r, p)
 	for i, h := range h2 {
 		w := ComputeHashes(r, p[i:i+4])[0]
@@ -19,18 +16,9 @@ func TestRabinKarpSimple(t *testing.T) {
 	}
 }
 
-func makeBenchmarkBytes(n int) []byte {
-	rnd := rand.New(rand.NewSource(42))
-	p := make([]byte, n)
-	for i := range p {
-		p[i] = byte(rnd.Uint32())
-	}
-	return p
-}
-
-func BenchmarkRabinKarp(b *testing.B) {
+func BenchmarkCyclicPoly(b *testing.B) {
 	p := makeBenchmarkBytes(4096)
-	r := NewRabinKarp(4)
+	r := NewCyclicPoly(4)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ComputeHashes(r, p)
