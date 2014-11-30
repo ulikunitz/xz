@@ -8,7 +8,7 @@ const A = 0x97b548add41d5da1
 type RabinKarp struct {
 	A uint64
 	N int
-	// a^{n-1}
+	// a^n
 	aOldest uint64
 }
 
@@ -29,7 +29,7 @@ func NewRabinKarpConst(n int, a uint64) *RabinKarp {
 	aOldest := uint64(1)
 	// There are faster methods. For the small n required by the LZMA
 	// compressor O(n) is sufficient.
-	for i := 0; i < n-1; i++ {
+	for i := 0; i < n; i++ {
 		aOldest *= a
 	}
 	return &RabinKarp{A: a, aOldest: aOldest, N: n}
@@ -42,15 +42,15 @@ func (r *RabinKarp) Hashes(p []byte) []uint64 {
 		return nil
 	}
 	h := make([]uint64, m-n+1)
-	h[0] = uint64(p[0])
+	h[0] = uint64(p[0]) * r.A
 	for i := 1; i < n; i++ {
-		h[0] *= r.A
 		h[0] += uint64(p[i])
+		h[0] *= r.A
 	}
 	for i := 1; i < len(h); i++ {
 		h[i] = h[i-1] - uint64(p[i-1])*r.aOldest
-		h[i] *= r.A
 		h[i] += uint64(p[i+n-1])
+		h[i] *= r.A
 	}
 	return h
 }
