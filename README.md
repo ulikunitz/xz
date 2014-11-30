@@ -9,4 +9,4 @@ The classic LZMA decoder works now for the example files.
 
 ## TODO
 
-1. Start to implement the LZMA encoder.
+1. Work on the hash-table for finding old locations.
