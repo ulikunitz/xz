@@ -35,7 +35,9 @@ func NewRabinKarpConst(n int, a uint64) *RabinKarp {
 	return &RabinKarp{A: a, aOldest: aOldest, N: n}
 }
 
-// Hashes computes all hashes for the byte slice given.
+// Hashes computes all hashes for the byte slice given. Note that the final
+// operation for the hash computation is a multiplication by r.A. This way we
+// ensure that the bits of the last byte added will spread over all bits.
 func (r *RabinKarp) Hashes(p []byte) []uint64 {
 	m, n := len(p), r.N
 	if m < n {
