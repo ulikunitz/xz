@@ -2,10 +2,7 @@ package hash
 
 // A is the default constant for Robin-Karp rolling hash. This is a random
 // prime.
-//
-// TODO: What we would like to have is a prime in the range (2^63,2^64) with
-// a Hamming weight around 31.
-const A = 252097800623
+const A = 0x97b548add41d5da1
 
 // RabinKarp supports the computation of a rolling hash.
 type RabinKarp struct {
