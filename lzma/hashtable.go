@@ -110,9 +110,9 @@ func newHashTable(exponent int, h hash.Roller) *hashTable {
 		h:        h}
 }
 
-// lookup of a byte sequence. b must have at least the length as required by
-// the hash function and should have the correct length.
-func (t *hashTable) lookup(b []byte) []uint32 {
+// get retrieves possible values for the byte slice b. b must have at least the
+// length as required by the hash function and should have the correct length.
+func (t *hashTable) get(b []byte) []uint32 {
 	h := t.h.Hashes(b)[0]
 	return t.getEntries(h)
 }
