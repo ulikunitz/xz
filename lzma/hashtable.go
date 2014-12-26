@@ -36,14 +36,17 @@ type slot struct {
 	j_ uint8
 }
 
+// start retuns the start index of the slot
 func (s *slot) start() int {
 	return int(s.i_ & 0x7f)
 }
 
+// end returns the end index of the slot
 func (s *slot) end() int {
 	return int(s.j_)
 }
 
+// empty returns true if nothing is stored in the slot
 func (s *slot) empty() bool {
 	return s.i_&0x80 == 0
 }
