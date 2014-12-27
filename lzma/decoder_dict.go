@@ -139,7 +139,7 @@ out:
 var errOverflow = newError("overflow")
 
 // Write puts the complete slice in the dictionary or no bytes at all. If no
-// bytes are written an overflow will be indicated. The slice b is now allowed
+// bytes are written an overflow will be indicated. The slice b is allowed
 // to overlap with the p.data slice to write to. Note that an overflow error
 // can also be caused by setting the EOF marker.
 func (p *decoderDict) Write(b []byte) (n int, err error) {
