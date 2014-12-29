@@ -23,7 +23,7 @@ const slotEntries = 24
 // bits in the hash value.
 const (
 	minTableExponent = 9
-	maxTableExponent = 64
+	maxTableExponent = 20
 )
 
 // slot defines the data structure for a slot in the hash table. The number of
