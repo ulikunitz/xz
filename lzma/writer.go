@@ -55,11 +55,9 @@ func hashTableExponent(dictLen uint32) int {
 	return e
 }
 
-// NewWriterLenEOS creates a new LZMA writer. A predefinied length can be
-// provided and the writing of an end-of-stream marker can be controlled. If
-// the argument NoUnpackLen will be provided for the lenght a end-of-stream
-// marker will be written regardless of the eos parameter.T
-func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writer, error) {
+// newWriter creates a new writer without writing the header.
+func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
+	error) {
 	if length == NoUnpackLen {
 		eos = true
 	}
@@ -82,6 +80,46 @@ func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writ
 		dict:       dict,
 		t4:         newHashTable(exp, hash.NewCyclicPoly(4)),
 		t2:         newHashTable(exp, hash.NewCyclicPoly(2)),
+	}
+	return lw, nil
+}
+
+// putUint64LE puts the uint64 value into the byte slice as little endian
+// value. The byte slice b must have at least place for 8 bytes.
+func putUint64LE(b []byte, x uint64) {
+	b[0] = byte(x)
+	b[1] = byte(x >> 8)
+	b[2] = byte(x >> 16)
+	b[3] = byte(x >> 24)
+	b[4] = byte(x >> 32)
+	b[5] = byte(x >> 40)
+	b[6] = byte(x >> 48)
+	b[7] = byte(x >> 56)
+}
+
+// writeHeader writes the classic header into the output writer.
+func writeHeader(w *Writer) error {
+	err := writeProperties(w.w, &w.properties)
+	if err != nil {
+		return err
+	}
+	b := make([]byte, 8)
+	putUint64LE(b, w.unpackLen)
+	_, err = w.w.Write(b)
+	return err
+}
+
+// NewWriterLenEOS creates a new LZMA writer. A predefinied length can be
+// provided and the writing of an end-of-stream marker can be controlled. If
+// the argument NoUnpackLen will be provided for the lenght a end-of-stream
+// marker will be written regardless of the eos parameter.T
+func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writer, error) {
+	lw, err := newWriter(w, p, length, eos)
+	if err != nil {
+		return nil, err
+	}
+	if err = writeHeader(lw); err != nil {
+		return nil, err
 	}
 	return lw, nil
 }
