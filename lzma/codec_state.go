@@ -1,8 +1,5 @@
 package lzma
 
-// states defines the overall state count
-const states = 12
-
 type codecState struct {
 	properties Properties
 	// length to unpack; NoUnpackLen requires an EOS marker
@@ -21,13 +18,6 @@ type codecState struct {
 	lenCodec    *lengthCodec
 	repLenCodec *lengthCodec
 	distCodec   *distCodec
-}
-
-// initProbSlice initializes a slice of probabilities.
-func initProbSlice(p []prob) {
-	for i := range p {
-		p[i] = probInit
-	}
 }
 
 func newCodecState(p *Properties, unpackLen uint64) (s *codecState, err error) {

@@ -108,9 +108,8 @@ func (l *Reader) Read(p []byte) (n int, err error) {
 	}
 }
 
-// errUnexpectedEOS indicates that the function decoded an unexpected end of
-// stream marker
-var errUnexpectedEOS = newError("unexpected end of stream marker")
+// Indicates that the end of stream marker has been unexpected.
+var errUnexpectedEOS = newError("unexpected end-of-stream marker")
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (l *Reader) fill() error {
@@ -229,9 +228,6 @@ func (l *Reader) decodeLiteral() (op operation, err error) {
 // but the range decoder could still produces more data
 var errWrongTermination = newError(
 	"end of stream marker at wrong place")
-
-// eofDecoded indicates an EOF of the decoded file
-var eofDecoded = newError("EOF of decoded stream")
 
 var opCounter int
 
