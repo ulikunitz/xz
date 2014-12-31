@@ -7,9 +7,6 @@ import (
 	"github.com/uli-go/xz/xlog"
 )
 
-// states defines the overall state count
-const states = 12
-
 // Value of the end of stream (EOS) marker.
 const eos = 1<<32 - 1
 
@@ -21,25 +18,9 @@ const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
-	properties Properties
-	// length to unpack; NoUnpackLen requires an EOS marker
-	unpackLen        uint64
-	decodedLen       uint64
-	dict             *decoderDict
-	state            uint32
-	posBitMask       uint32
-	rd               *rangeDecoder
-	isMatch          [states << maxPosBits]prob
-	isRep            [states]prob
-	isRepG0          [states]prob
-	isRepG1          [states]prob
-	isRepG2          [states]prob
-	isRepG0Long      [states << maxPosBits]prob
-	rep              [4]uint32
-	litDecoder       *literalCodec
-	lengthDecoder    *lengthCodec
-	repLengthDecoder *lengthCodec
-	distDecoder      *distCodec
+	dict *decoderDict
+	rd   *rangeDecoder
+	*codecState
 }
 
 // NewReader creates an LZMA reader. It reads the classic, original LZMA
@@ -57,35 +38,22 @@ func NewReader(r io.Reader) (*Reader, error) {
 		return nil, newError(
 			"property DictLen exceeds maximum int value")
 	}
-	l := &Reader{
-		properties: *properties,
-	}
-	if l.unpackLen, err = readUint64LE(f); err != nil {
+	unpackLen, err := readUint64LE(f)
+	if err != nil {
 		return nil, err
 	}
+	state, err := newCodecState(properties, unpackLen)
+	if err != nil {
+		return nil, err
+	}
+	l := &Reader{codecState: state}
 	if l.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
 		return nil, err
 	}
-	l.posBitMask = (uint32(1) << uint(l.properties.PB)) - 1
 	if l.rd, err = newRangeDecoder(f); err != nil {
 		return nil, err
 	}
-	initProbSlice(l.isMatch[:])
-	initProbSlice(l.isRep[:])
-	initProbSlice(l.isRepG0[:])
-	initProbSlice(l.isRepG1[:])
-	initProbSlice(l.isRepG2[:])
-	initProbSlice(l.isRepG0Long[:])
-	l.litDecoder = newLiteralCodec(l.properties.LC, l.properties.LP)
-	l.lengthDecoder = newLengthCodec()
-	l.repLengthDecoder = newLengthCodec()
-	l.distDecoder = newDistCodec()
 	return l, nil
-}
-
-// Properties returns a set of properties.
-func (l *Reader) Properties() Properties {
-	return l.properties
 }
 
 // getUint64LE converts the uint64 value stored as little endian to an uint64
@@ -110,13 +78,6 @@ func readUint64LE(r io.Reader) (x uint64, err error) {
 	}
 	x = getUint64LE(b)
 	return x, nil
-}
-
-// initProbSlice initializes a slice of probabilities.
-func initProbSlice(p []prob) {
-	for i := range p {
-		p[i] = probInit
-	}
 }
 
 // Reads reads data from the decoder stream.
@@ -162,7 +123,7 @@ func (l *Reader) fill() error {
 			switch {
 			case err == eofDecoded:
 				if l.unpackLen != NoUnpackLen &&
-					l.decodedLen != l.unpackLen {
+					l.currentLen != l.unpackLen {
 					return errUnexpectedEOS
 				}
 				l.dict.eof = true
@@ -175,8 +136,8 @@ func (l *Reader) fill() error {
 			}
 		}
 
-		n := l.decodedLen + uint64(op.Len())
-		if n < l.decodedLen {
+		n := l.currentLen + uint64(op.Len())
+		if n < l.currentLen {
 			return newError(
 				"negative op length or overflow of decodedLen")
 		}
@@ -184,7 +145,7 @@ func (l *Reader) fill() error {
 			l.dict.eof = true
 			return newError("decoded stream too long")
 		}
-		l.decodedLen = n
+		l.currentLen = n
 
 		if err = op.applyDecoderDict(l.dict); err != nil {
 			return err
@@ -257,7 +218,7 @@ func (l *Reader) decodeLiteral() (op operation, err error) {
 		prevByte, l.dict.total)
 
 	match := l.dict.getByte(int(l.rep[0]) + 1)
-	s, err := l.litDecoder.Decode(l.rd, l.state, match, litState)
+	s, err := l.litCodec.Decode(l.rd, l.state, match, litState)
 	if err != nil {
 		return nil, err
 	}
@@ -306,13 +267,13 @@ func (l *Reader) decodeOp() (op operation, err error) {
 		l.rep[3], l.rep[2], l.rep[1] = l.rep[2], l.rep[1], l.rep[0]
 		l.updateStateMatch()
 		// The length decoder returns the length offset.
-		n, err := l.lengthDecoder.Decode(l.rd, posState)
+		n, err := l.lenCodec.Decode(l.rd, posState)
 		if err != nil {
 			return nil, err
 		}
 		// The dist decoder returns the distance offset. The actual
 		// distance is 1 higher.
-		l.rep[0], err = l.distDecoder.Decode(n, l.rd)
+		l.rep[0], err = l.distCodec.Decode(n, l.rd)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +327,7 @@ func (l *Reader) decodeOp() (op operation, err error) {
 		l.rep[1] = l.rep[0]
 		l.rep[0] = dist
 	}
-	n, err := l.repLengthDecoder.Decode(l.rd, posState)
+	n, err := l.repLenCodec.Decode(l.rd, posState)
 	if err != nil {
 		return nil, err
 	}
