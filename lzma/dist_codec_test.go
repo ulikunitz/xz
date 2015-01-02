@@ -48,7 +48,7 @@ func TestDistCodec(t *testing.T) {
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		want, l := randomDistL(i)
-		dist, err := dd.Decode(l, d)
+		dist, err := dd.Decode(d, l)
 		if err != nil {
 			t.Fatalf("dd.Decode: %s", err)
 		}

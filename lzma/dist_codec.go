@@ -88,8 +88,7 @@ func (dc *distCodec) Encode(dist uint32, l uint32, e *rangeEncoder,
 // Decode decodes the distance offset using the parameter l. The dist value
 // 0xffffffff (eos) indicates the end of the stream. Add one to the distance
 // offset to get the actual match distance.
-func (dc *distCodec) Decode(l uint32, d *rangeDecoder,
-) (dist uint32, err error) {
+func (dc *distCodec) Decode(d *rangeDecoder, l uint32) (dist uint32, err error) {
 	posSlot, err := dc.posSlotCodecs[lenState(l)].Decode(d)
 	if err != nil {
 		return

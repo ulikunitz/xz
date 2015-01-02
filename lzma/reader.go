@@ -269,7 +269,7 @@ func (l *Reader) decodeOp() (op operation, err error) {
 		}
 		// The dist decoder returns the distance offset. The actual
 		// distance is 1 higher.
-		l.rep[0], err = l.distCodec.Decode(n, l.rd)
+		l.rep[0], err = l.distCodec.Decode(l.rd, n)
 		if err != nil {
 			return nil, err
 		}
