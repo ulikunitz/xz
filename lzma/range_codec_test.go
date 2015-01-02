@@ -55,7 +55,7 @@ func TestTreeEncoding(t *testing.T) {
 		te := makeTreeCodec(8)
 		b := []byte(s)
 		for _, x := range b {
-			if err := te.Encode(uint32(x), e); err != nil {
+			if err := te.Encode(e, uint32(x)); err != nil {
 				t.Fatalf("te.Encode: %s", err)
 			}
 		}

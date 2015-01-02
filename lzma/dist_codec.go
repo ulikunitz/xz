@@ -66,7 +66,7 @@ func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) 
 		posSlot += (dist >> uint(bits)) & 1
 	}
 
-	if err = dc.posSlotCodecs[lenState(l)].Encode(posSlot, e); err != nil {
+	if err = dc.posSlotCodecs[lenState(l)].Encode(e, posSlot); err != nil {
 		return
 	}
 

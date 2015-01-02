@@ -13,7 +13,7 @@ func makeTreeCodec(bits int) treeCodec {
 }
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
-func (tc *treeCodec) Encode(v uint32, e *rangeEncoder) (err error) {
+func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
 	m := uint32(1)
 	for i := int(tc.bits) - 1; i >= 0; i-- {
 		b := (v >> uint(i)) & 1

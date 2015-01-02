@@ -8,6 +8,9 @@ import (
 // states defines the overall state count
 const states = 12
 
+// Value of the end of stream (EOS) marker.
+const eos = 1<<32 - 1
+
 // dictHelper is an interface that provides the required interface to encode or
 // decode operations successfully.
 type dictHelper interface {
@@ -68,7 +71,7 @@ func (c *opCodec) Properties() Properties {
 	return c.properties
 }
 
-// OpReader provides an operation reader from an encoded source.
+// opReader provides an operation reader from an encoded source.
 type opReader struct {
 	opCodec
 	rd *rangeDecoder
@@ -126,12 +129,25 @@ func (c *opCodec) updateStateShortRep() {
 	}
 }
 
+// Computes the states of the operation codec.
+func (c *opCodec) states() (state, state2, posState uint32) {
+	state = c.state
+	posState = uint32(c.dict.Total()) & c.posBitMask
+	state2 = (c.state << maxPosBits) | posState
+	return
+}
+
+func (c *opCodec) litState() uint32 {
+	prevByte := c.dict.GetByte(1)
+	lp, lc := uint(c.properties.LP), uint(c.properties.LC)
+	litState := ((uint32(c.dict.Total())) & ((1 << lp) - 1) << lc) |
+		(uint32(prevByte) >> (8 - lc))
+	return litState
+}
+
 // decodeLiteral decodes a literal.
 func (or *opReader) decodeLiteral() (op operation, err error) {
-	prevByte := or.dict.GetByte(1)
-	lp, lc := uint(or.properties.LP), uint(or.properties.LC)
-	litState := ((uint32(or.dict.Total()) & ((1 << lp) - 1)) << lc) |
-		(uint32(prevByte) >> (8 - lc))
+	litState := or.litState()
 
 	match := or.dict.GetByte(int(or.rep[0]) + 1)
 	s, err := or.litCodec.Decode(or.rd, or.state, match, litState)
@@ -145,9 +161,7 @@ func (or *opReader) decodeLiteral() (op operation, err error) {
 var eofDecoded = newError("EOF of decoded stream")
 
 func (or *opReader) ReadOp() (op operation, err error) {
-	posState := uint32(or.dict.Total()) & or.posBitMask
-
-	state2 := (or.state << maxPosBits) | posState
+	state, state2, posState := or.states()
 
 	b, err := or.isMatch[state2].Decode(or.rd)
 	if err != nil {
@@ -162,7 +176,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		or.updateStateLiteral()
 		return op, nil
 	}
-	b, err = or.isRep[or.state].Decode(or.rd)
+	b, err = or.isRep[state].Decode(or.rd)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +205,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 			distance: int(or.rep[0]) + minDistance}
 		return op, nil
 	}
-	b, err = or.isRepG0[or.state].Decode(or.rd)
+	b, err = or.isRepG0[state].Decode(or.rd)
 	if err != nil {
 		return nil, err
 	}
@@ -209,14 +223,14 @@ func (or *opReader) ReadOp() (op operation, err error) {
 			return op, nil
 		}
 	} else {
-		b, err = or.isRepG1[or.state].Decode(or.rd)
+		b, err = or.isRepG1[state].Decode(or.rd)
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
 			dist = or.rep[1]
 		} else {
-			b, err = or.isRepG2[or.state].Decode(or.rd)
+			b, err = or.isRepG2[state].Decode(or.rd)
 			if err != nil {
 				return nil, err
 			}
@@ -238,4 +252,151 @@ func (or *opReader) ReadOp() (op operation, err error) {
 	or.updateStateRep()
 	op = rep{length: int(n) + minLength, distance: int(dist) + minDistance}
 	return op, nil
+}
+
+// opWriter supports the writing of operations.
+type opWriter struct {
+	opCodec
+	re *rangeEncoder
+}
+
+func newOpWriter(w io.Writer, p *Properties, dict dictHelper) (ow *opWriter, err error) {
+	ow = new(opWriter)
+	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
+		return nil, err
+	}
+	if err = initOpCodec(&ow.opCodec, p, dict); err != nil {
+		return nil, err
+	}
+	return ow, nil
+}
+
+func (ow *opWriter) writeLiteral(l lit) error {
+	var err error
+	state, state2, _ := ow.states()
+	if err = ow.isMatch[state2].Encode(ow.re, 0); err != nil {
+		return err
+	}
+	litState := ow.litState()
+	match := ow.dict.GetByte(int(ow.rep[0]) + 1)
+	err = ow.litCodec.Encode(ow.re, l.b, state, match, litState)
+	if err != nil {
+		return err
+	}
+	ow.updateStateLiteral()
+	return nil
+}
+
+func (ow *opWriter) writeRep(r rep) error {
+	var err error
+	if !(minDistance <= r.distance && r.distance <= maxDistance) {
+		return newError("distance out of range")
+	}
+	dist := uint32(r.distance - minDistance)
+	if !(minLength <= r.length && r.length <= maxLength) &&
+		!(dist == ow.rep[0] && r.length == 1) {
+		return newError("length out of range")
+	}
+	state, state2, posState := ow.states()
+	if err = ow.isMatch[state2].Encode(ow.re, 1); err != nil {
+		return err
+	}
+	var g int
+	for g = 0; g < 4; g++ {
+		if ow.rep[g] == dist {
+			break
+		}
+	}
+	n := uint32(r.length - minLength)
+	if g > 4 {
+		// simple match
+		if err = ow.isRep[state].Encode(ow.re, 0); err != nil {
+			return err
+		}
+		ow.rep[3], ow.rep[2], ow.rep[1], ow.rep[0] = ow.rep[2],
+			ow.rep[1], ow.rep[0], dist
+		ow.updateStateMatch()
+		if err = ow.lenCodec.Encode(ow.re, n, posState); err != nil {
+			return err
+		}
+		return ow.distCodec.Encode(ow.re, dist, n)
+	}
+	if err = ow.isRep[state].Encode(ow.re, 1); err != nil {
+		return err
+	}
+	if g == 0 {
+		if err = ow.isRepG0[state].Encode(ow.re, 0); err != nil {
+			return err
+		}
+		if r.length == 1 {
+			ow.updateStateShortRep()
+			return ow.isRepG0Long[state2].Encode(ow.re, 0)
+		}
+	} else {
+		if err = ow.isRepG0[state].Encode(ow.re, 1); err != nil {
+			return err
+		}
+		if g == 1 {
+			err = ow.isRepG1[state].Encode(ow.re, 0)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = ow.isRepG1[state].Encode(ow.re, 1)
+			if err != nil {
+				return err
+			}
+			if g == 2 {
+				err = ow.isRepG2[state].Encode(ow.re, 0)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = ow.isRepG2[state].Encode(ow.re, 1)
+				if err != nil {
+					return err
+				}
+				ow.rep[3] = ow.rep[2]
+			}
+			ow.rep[2] = ow.rep[1]
+		}
+		ow.rep[1] = ow.rep[0]
+		ow.rep[0] = dist
+	}
+	ow.updateStateRep()
+	return ow.repLenCodec.Encode(ow.re, n, posState)
+}
+
+func (ow *opWriter) writeEOS() error {
+	var err error
+	state, state2, posState := ow.states()
+	if err = ow.isMatch[state2].Encode(ow.re, 1); err != nil {
+		return err
+	}
+	if err = ow.isRep[state].Encode(ow.re, 0); err != nil {
+		return err
+	}
+	ow.rep[3], ow.rep[2], ow.rep[1], ow.rep[0] = ow.rep[2], ow.rep[1],
+		ow.rep[0], eos
+	ow.updateStateMatch()
+	if err = ow.lenCodec.Encode(ow.re, 0, posState); err != nil {
+		return err
+	}
+	return ow.distCodec.Encode(ow.re, eos, 0)
+}
+
+func (ow *opWriter) WriteOp(op operation) error {
+	switch x := op.(type) {
+	case rep:
+		return ow.writeRep(x)
+	case lit:
+		return ow.writeLiteral(x)
+	}
+	panic("unknown operation type")
+}
+
+// Close stops the operation writer. The range encoder is flushed out. The
+// underlying writer is not closed.
+func (ow *opWriter) Close() error {
+	return ow.re.Flush()
 }

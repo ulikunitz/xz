@@ -39,7 +39,7 @@ func (p prob) Bits() int {
 
 // Encode encodes the least-significant bit of v. Note that the p value will be
 // changed.
-func (p *prob) Encode(v uint32, e *rangeEncoder) error {
+func (p *prob) Encode(e *rangeEncoder, v uint32) error {
 	return e.EncodeBit(v, p)
 }
 

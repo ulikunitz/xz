@@ -48,24 +48,24 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 		return newError("length out of range")
 	}
 	if l < 8 {
-		if err = lc.choice[0].Encode(0, e); err != nil {
+		if err = lc.choice[0].Encode(e, 0); err != nil {
 			return
 		}
-		return lc.low[posState].Encode(l, e)
+		return lc.low[posState].Encode(e, l)
 	}
-	if err = lc.choice[0].Encode(1, e); err != nil {
+	if err = lc.choice[0].Encode(e, 1); err != nil {
 		return
 	}
 	if l < 16 {
-		if err = lc.choice[1].Encode(0, e); err != nil {
+		if err = lc.choice[1].Encode(e, 0); err != nil {
 			return
 		}
-		return lc.mid[posState].Encode(l-8, e)
+		return lc.mid[posState].Encode(e, l-8)
 	}
-	if err = lc.choice[1].Encode(1, e); err != nil {
+	if err = lc.choice[1].Encode(e, 1); err != nil {
 		return
 	}
-	return lc.high.Encode(l-16, e)
+	return lc.high.Encode(e, l-16)
 }
 
 // Decode reads the length offset. Add minLength to compute the actual length

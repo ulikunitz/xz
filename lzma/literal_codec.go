@@ -39,7 +39,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 			bit := (r >> 7) & 1
 			r <<= 1
 			i := ((1 + matchBit) << 8) | symbol
-			if err = probs[i].Encode(bit, e); err != nil {
+			if err = probs[i].Encode(e, bit); err != nil {
 				return
 			}
 			symbol = (symbol << 1) | bit
@@ -54,7 +54,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 	for symbol < 0x100 {
 		bit := (r >> 7) & 1
 		r <<= 1
-		if err = probs[symbol].Encode(bit, e); err != nil {
+		if err = probs[symbol].Encode(e, bit); err != nil {
 			return
 		}
 		symbol = (symbol << 1) | bit

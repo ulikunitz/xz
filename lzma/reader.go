@@ -5,9 +5,6 @@ import (
 	"io"
 )
 
-// Value of the end of stream (EOS) marker.
-const eos = 1<<32 - 1
-
 // bufferLen is the value used for the bufferLen used by the decoder.
 var bufferLen = 64 * (1 << 10)
 
