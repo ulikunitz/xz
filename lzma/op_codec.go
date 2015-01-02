@@ -1,13 +1,21 @@
 package lzma
 
+import (
+	"bufio"
+	"io"
+)
+
 // states defines the overall state count
 const states = 12
 
+// dictHelper is an interface that provides the required interface to encode or
+// decode operations successfully.
 type dictHelper interface {
 	GetByte(distance int) byte
 	Total() int64
 }
 
+// opCodec provides all information to be able to encode or decode operations.
 type opCodec struct {
 	properties  Properties
 	dict        dictHelper
@@ -33,11 +41,14 @@ func initProbSlice(p []prob) {
 	}
 }
 
-func newOpCodec(p *Properties, dict dictHelper) (c *opCodec, err error) {
+// initOpCodec initializes an opCodec structure.
+func initOpCodec(c *opCodec, p *Properties, dict dictHelper) error {
+	var err error
 	if err = verifyProperties(p); err != nil {
-		return nil, err
+		return err
 	}
-	c = &opCodec{properties: *p, dict: dict}
+	c.properties = *p
+	c.dict = dict
 	c.posBitMask = (uint32(1) << uint(c.properties.PB)) - 1
 	initProbSlice(c.isMatch[:])
 	initProbSlice(c.isRep[:])
@@ -49,21 +60,30 @@ func newOpCodec(p *Properties, dict dictHelper) (c *opCodec, err error) {
 	c.lenCodec = newLengthCodec()
 	c.repLenCodec = newLengthCodec()
 	c.distCodec = newDistCodec()
-	return c, nil
+	return nil
 }
 
+// Properties returns the properites stored in the opCodec structure.
 func (c *opCodec) Properties() Properties {
 	return c.properties
 }
 
-func (c *opCodec) Encode(e *rangeEncoder, op operation) error {
-	panic("TODO")
+// OpReader provides an operation reader from an encoded source.
+type opReader struct {
+	opCodec
+	rd *rangeDecoder
 }
 
-// Close closes the output stream. It writes the end-of-stream marker if
-// required and flushes the range encoder.
-func (c *opCodec) Close(e *rangeEncoder, eos bool) error {
-	panic("TODO")
+// newOpReader creates a new instance of an opReader.
+func newOpReader(r io.Reader, p *Properties, dict dictHelper) (or *opReader, err error) {
+	or = new(opReader)
+	if or.rd, err = newRangeDecoder(bufio.NewReader(r)); err != nil {
+		return nil, err
+	}
+	if err = initOpCodec(&or.opCodec, p, dict); err != nil {
+		return nil, err
+	}
+	return or, nil
 }
 
 // updateStateLiteral updates the state for a literal.
@@ -107,14 +127,14 @@ func (c *opCodec) updateStateShortRep() {
 }
 
 // decodeLiteral decodes a literal.
-func (c *opCodec) decodeLiteral(d *rangeDecoder) (op operation, err error) {
-	prevByte := c.dict.GetByte(1)
-	lp, lc := uint(c.properties.LP), uint(c.properties.LC)
-	litState := ((uint32(c.dict.Total()) & ((1 << lp) - 1)) << lc) |
+func (or *opReader) decodeLiteral() (op operation, err error) {
+	prevByte := or.dict.GetByte(1)
+	lp, lc := uint(or.properties.LP), uint(or.properties.LC)
+	litState := ((uint32(or.dict.Total()) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 
-	match := c.dict.GetByte(int(c.rep[0]) + 1)
-	s, err := c.litCodec.Decode(d, c.state, match, litState)
+	match := or.dict.GetByte(int(or.rep[0]) + 1)
+	s, err := or.litCodec.Decode(or.rd, or.state, match, litState)
 	if err != nil {
 		return nil, err
 	}
@@ -124,98 +144,98 @@ func (c *opCodec) decodeLiteral(d *rangeDecoder) (op operation, err error) {
 // eofDecoded indicates an EOF of the decoded file
 var eofDecoded = newError("EOF of decoded stream")
 
-func (c *opCodec) Decode(d *rangeDecoder) (op operation, err error) {
-	posState := uint32(c.dict.Total()) & c.posBitMask
+func (or *opReader) ReadOp() (op operation, err error) {
+	posState := uint32(or.dict.Total()) & or.posBitMask
 
-	state2 := (c.state << maxPosBits) | posState
+	state2 := (or.state << maxPosBits) | posState
 
-	b, err := c.isMatch[state2].Decode(d)
+	b, err := or.isMatch[state2].Decode(or.rd)
 	if err != nil {
 		return nil, err
 	}
 	if b == 0 {
 		// literal
-		op, err := c.decodeLiteral(d)
+		op, err := or.decodeLiteral()
 		if err != nil {
 			return nil, err
 		}
-		c.updateStateLiteral()
+		or.updateStateLiteral()
 		return op, nil
 	}
-	b, err = c.isRep[c.state].Decode(d)
+	b, err = or.isRep[or.state].Decode(or.rd)
 	if err != nil {
 		return nil, err
 	}
 	if b == 0 {
 		// simple match
-		c.rep[3], c.rep[2], c.rep[1] = c.rep[2], c.rep[1], c.rep[0]
-		c.updateStateMatch()
+		or.rep[3], or.rep[2], or.rep[1] = or.rep[2], or.rep[1], or.rep[0]
+		or.updateStateMatch()
 		// The length decoder returns the length offset.
-		n, err := c.lenCodec.Decode(d, posState)
+		n, err := or.lenCodec.Decode(or.rd, posState)
 		if err != nil {
 			return nil, err
 		}
 		// The dist decoder returns the distance offset. The actual
 		// distance is 1 higher.
-		c.rep[0], err = c.distCodec.Decode(n, d)
+		or.rep[0], err = or.distCodec.Decode(or.rd, n)
 		if err != nil {
 			return nil, err
 		}
-		if c.rep[0] == eos {
-			if !d.possiblyAtEnd() {
+		if or.rep[0] == eos {
+			if !or.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
 			return nil, eofDecoded
 		}
 		op = rep{length: int(n) + minLength,
-			distance: int(c.rep[0]) + minDistance}
+			distance: int(or.rep[0]) + minDistance}
 		return op, nil
 	}
-	b, err = c.isRepG0[c.state].Decode(d)
+	b, err = or.isRepG0[or.state].Decode(or.rd)
 	if err != nil {
 		return nil, err
 	}
-	dist := c.rep[0]
+	dist := or.rep[0]
 	if b == 0 {
 		// rep match 0
-		b, err = c.isRepG0Long[state2].Decode(d)
+		b, err = or.isRepG0Long[state2].Decode(or.rd)
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
-			c.updateStateShortRep()
+			or.updateStateShortRep()
 			op = rep{length: 1,
 				distance: int(dist) + minDistance}
 			return op, nil
 		}
 	} else {
-		b, err = c.isRepG1[c.state].Decode(d)
+		b, err = or.isRepG1[or.state].Decode(or.rd)
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
-			dist = c.rep[1]
+			dist = or.rep[1]
 		} else {
-			b, err = c.isRepG2[c.state].Decode(d)
+			b, err = or.isRepG2[or.state].Decode(or.rd)
 			if err != nil {
 				return nil, err
 			}
 			if b == 0 {
-				dist = c.rep[2]
+				dist = or.rep[2]
 			} else {
-				dist = c.rep[3]
-				c.rep[3] = c.rep[2]
+				dist = or.rep[3]
+				or.rep[3] = or.rep[2]
 			}
-			c.rep[2] = c.rep[1]
+			or.rep[2] = or.rep[1]
 		}
-		c.rep[1] = c.rep[0]
-		c.rep[0] = dist
+		or.rep[1] = or.rep[0]
+		or.rep[0] = dist
 	}
-	n, err := c.repLenCodec.Decode(d, posState)
+	n, err := or.repLenCodec.Decode(or.rd, posState)
 	if err != nil {
 		return nil, err
 	}
-	c.updateStateRep()
+	or.updateStateRep()
 	op = rep{length: int(n) + minLength, distance: int(dist) + minDistance}
 	return op, nil
 }
