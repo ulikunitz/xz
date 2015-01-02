@@ -2,7 +2,9 @@ package hash
 
 // CyclicPoly provides a cyclic polynomial rolling hash.
 type CyclicPoly struct {
-	N int
+	h uint64
+	p []uint64
+	i int
 }
 
 // ror rotates the unsigned 64-bit integer to right. The argument s must be
@@ -18,27 +20,28 @@ func NewCyclicPoly(n int) *CyclicPoly {
 	if n < 1 {
 		panic("argument n must be positive")
 	}
-	return &CyclicPoly{N: n}
+	return &CyclicPoly{p: make([]uint64, 0, n)}
 }
 
-// Hashes computes all hashes for the given byte slice.
-func (r *CyclicPoly) Hashes(p []byte) []uint64 {
-	m, n := len(p), r.N
-	if m < n {
-		return nil
+// Len returns the length of the byte sequence for which a hash is generated.
+func (r *CyclicPoly) Len() int {
+	return cap(r.p)
+}
+
+// Hash hashes the next byte and returns a hash value. The complete becomes
+// available after at least Len() bytes have been hashed.
+func (r *CyclicPoly) Hash(x byte) uint64 {
+	y := hash[x]
+	if len(r.p) < cap(r.p) {
+		r.h = ror(r.h, 1) ^ y
+		r.p = append(r.p, y)
+	} else {
+		r.h ^= ror(r.p[r.i], uint(cap(r.p)-1))
+		r.h = ror(r.h, 1) ^ y
+		r.p[r.i] = y
+		r.i = (r.i + 1) % cap(r.p)
 	}
-	h := make([]uint64, m-n+1)
-	h[0] = hash[p[0]]
-	for i := 1; i < n; i++ {
-		h[0] = ror(h[0], 1)
-		h[0] ^= hash[p[i]]
-	}
-	for i := 1; i < len(h); i++ {
-		h[i] = h[i-1] ^ ror(hash[p[i-1]], uint(n-1))
-		h[i] = ror(h[i], 1)
-		h[i] ^= hash[p[i+n-1]]
-	}
-	return h
+	return r.h
 }
 
 // Stores the hash for the individual bytes.
