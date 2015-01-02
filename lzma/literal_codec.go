@@ -24,7 +24,7 @@ func newLiteralCodec(lc, lp int) *literalCodec {
 
 // Encode encodes the byte s using a range encoder as well as the current LZMA
 // encoder state, a match byte and the literal state.
-func (c *literalCodec) Encode(s byte, e *rangeEncoder,
+func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 	state uint32, match byte, litState uint32,
 ) (err error) {
 	k := litState * 0x300

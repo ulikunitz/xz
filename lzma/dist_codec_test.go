@@ -31,7 +31,7 @@ func TestDistCodec(t *testing.T) {
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		dist, l := randomDistL(i)
-		if err = de.Encode(dist, l, e); err != nil {
+		if err = de.Encode(e, dist, l); err != nil {
 			t.Fatalf("de.Encode: %s", err)
 		}
 	}

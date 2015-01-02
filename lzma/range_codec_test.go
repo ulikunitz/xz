@@ -19,7 +19,7 @@ func TestDirectEncoding(t *testing.T) {
 		de := makeDirectCodec(8)
 		b := []byte(s)
 		for _, x := range b {
-			if err := de.Encode(uint32(x), e); err != nil {
+			if err := de.Encode(e, uint32(x)); err != nil {
 				t.Fatalf("de.Encode: %s", err)
 			}
 		}

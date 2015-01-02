@@ -27,7 +27,7 @@ func TestLiteralCodec(t *testing.T) {
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		s, state, match, litState := random(lc, lp)
-		if err = le.Encode(s, e, state, match, litState); err != nil {
+		if err = le.Encode(e, s, state, match, litState); err != nil {
 			t.Fatalf("le.Encode: %s", err)
 		}
 	}

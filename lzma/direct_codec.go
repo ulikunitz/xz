@@ -22,7 +22,7 @@ func (dc directCodec) Bits() int {
 
 // Encode uses the range encoder to encode a value with the fixed number of
 // bits. The most-significant bit is encoded first.
-func (dc directCodec) Encode(v uint32, e *rangeEncoder) error {
+func (dc directCodec) Encode(e *rangeEncoder, v uint32) error {
 	for i := int(dc) - 1; i >= 0; i-- {
 		if err := e.DirectEncodeBit(v >> uint(i)); err != nil {
 			return err

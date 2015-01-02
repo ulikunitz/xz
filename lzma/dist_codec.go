@@ -54,8 +54,7 @@ func lenState(l uint32) uint32 {
 // the full range of uint32 values. To get the distance offset the actual match
 // distance has to be decreased by 1. A distance offset of 0xffffffff (eos)
 // indicates the end of the stream.
-func (dc *distCodec) Encode(dist uint32, l uint32, e *rangeEncoder,
-) (err error) {
+func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) {
 	// Compute the posSlot using nlz32
 	var posSlot uint32
 	var bits uint32
@@ -79,7 +78,7 @@ func (dc *distCodec) Encode(dist uint32, l uint32, e *rangeEncoder,
 		return tc.Encode(dist, e)
 	}
 	dic := directCodec(bits - alignBits)
-	if err = dic.Encode(dist>>alignBits, e); err != nil {
+	if err = dic.Encode(e, dist>>alignBits); err != nil {
 		return
 	}
 	return dc.alignCodec.Encode(dist, e)

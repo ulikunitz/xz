@@ -42,7 +42,7 @@ func newLengthCodec() *lengthCodec {
 //
 //   l = length - minLength
 //
-func (lc *lengthCodec) Encode(l uint32, e *rangeEncoder, posState uint32,
+func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
 	if l > maxLength-minLength {
 		return newError("length out of range")
