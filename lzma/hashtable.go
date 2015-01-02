@@ -113,7 +113,7 @@ func newHashTable(exponent int, h hash.Roller) *hashTable {
 // get retrieves possible values for the byte slice b. b must have at least the
 // length as required by the hash function and should have the correct length.
 func (t *hashTable) get(b []byte) []uint32 {
-	h := t.h.Hashes(b)[0]
+	h := hash.Hashes(t.h, b)[0]
 	return t.getEntries(h)
 }
 
@@ -130,7 +130,7 @@ func (t *hashTable) getEntries(h uint64) []uint32 {
 // put puts the hash value for a byte sequence into the hash table. b should
 // have the length as supported by the rolling hash.
 func (t *hashTable) put(b []byte, p uint32) {
-	h := t.h.Hashes(b)[0]
+	h := hash.Hashes(t.h, b)[0]
 	t.putEntry(h, p)
 }
 
@@ -138,7 +138,7 @@ func (t *hashTable) put(b []byte, p uint32) {
 // following the first one, will have the p value increased with the offset in
 // the byte sequence.
 func (t *hashTable) putAll(b []byte, p uint32) {
-	hashes := t.h.Hashes(b)
+	hashes := hash.Hashes(t.h, b)
 	for i, h := range hashes {
 		t.putEntry(h, p+uint32(i))
 	}
