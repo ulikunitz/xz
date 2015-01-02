@@ -218,9 +218,9 @@ func (p *decoderDict) setEOF(eof bool) {
 	p.eof = eof
 }
 
-// getByte returns the byte at distance d. If the distance is too large, the
+// GetByte returns the byte at distance d. If the distance is too large, the
 // function returns zero.
-func (p *decoderDict) getByte(d int) byte {
+func (p *decoderDict) GetByte(d int) byte {
 	if d <= 0 {
 		panic("d must be positive")
 	}
@@ -232,4 +232,9 @@ func (p *decoderDict) getByte(d int) byte {
 		i += cap(p.data)
 	}
 	return p.data[i]
+}
+
+// Total returns the number of total bytes read with this dictionary.
+func (p *decoderDict) Total() int64 {
+	return p.total
 }

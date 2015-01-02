@@ -207,7 +207,7 @@ var litCounter int
 
 // decodeLiteral decodes a literal.
 func (l *Reader) decodeLiteral() (op operation, err error) {
-	prevByte := l.dict.getByte(1)
+	prevByte := l.dict.GetByte(1)
 	lp, lc := uint(l.properties.LP), uint(l.properties.LC)
 	litState := ((uint32(l.dict.total) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
@@ -216,7 +216,7 @@ func (l *Reader) decodeLiteral() (op operation, err error) {
 	xlog.Printf(Debug, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
 		prevByte, l.dict.total)
 
-	match := l.dict.getByte(int(l.rep[0]) + 1)
+	match := l.dict.GetByte(int(l.rep[0]) + 1)
 	s, err := l.litCodec.Decode(l.rd, l.state, match, litState)
 	if err != nil {
 		return nil, err
