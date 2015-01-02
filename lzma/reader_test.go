@@ -21,14 +21,15 @@ func TestNewReader(t *testing.T) {
 		t.Fatalf("NewReader: %s", err)
 	}
 	t.Logf("decoder %#v", l)
-	if l.properties.LC != 3 {
-		t.Errorf("LC %d; want %d", l.properties.LC, 3)
+	props := l.Properties()
+	if props.LC != 3 {
+		t.Errorf("LC %d; want %d", props.LC, 3)
 	}
-	if l.properties.LP != 0 {
-		t.Errorf("LP %d; want %d", l.properties.LP, 0)
+	if props.LP != 0 {
+		t.Errorf("LP %d; want %d", props.LP, 0)
 	}
-	if l.properties.PB != 2 {
-		t.Errorf("PB %d; want %d", l.properties.PB, 2)
+	if props.PB != 2 {
+		t.Errorf("PB %d; want %d", props.PB, 2)
 	}
 }
 

@@ -3,8 +3,6 @@ package lzma
 import (
 	"bufio"
 	"io"
-
-	"github.com/uli-go/xz/xlog"
 )
 
 // Value of the end of stream (EOS) marker.
@@ -18,16 +16,17 @@ const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
-	dict *decoderDict
-	rd   *rangeDecoder
-	*codecState
+	dict       *decoderDict
+	or         *opReader
+	unpackLen  uint64
+	currentLen uint64
 }
 
 // NewReader creates an LZMA reader. It reads the classic, original LZMA
 // format. Note that LZMA2 uses a different header format.
-//
-// Note that the caller will have to close the reader.
 func NewReader(r io.Reader) (*Reader, error) {
+
+	// read header
 	f := bufio.NewReader(r)
 	properties, err := readProperties(f)
 	if err != nil {
@@ -42,15 +41,12 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	state, err := newCodecState(properties, unpackLen)
-	if err != nil {
-		return nil, err
-	}
-	l := &Reader{codecState: state}
+
+	l := &Reader{unpackLen: unpackLen}
 	if l.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
 		return nil, err
 	}
-	if l.rd, err = newRangeDecoder(f); err != nil {
+	if l.or, err = newOpReader(f, properties, l.dict); err != nil {
 		return nil, err
 	}
 	return l, nil
@@ -111,13 +107,17 @@ func (l *Reader) Read(p []byte) (n int, err error) {
 // Indicates that the end of stream marker has been unexpected.
 var errUnexpectedEOS = newError("unexpected end-of-stream marker")
 
+// errWrongTermination indicates that a termination symbol has been received,
+// but the range decoder could still produces more data
+var errWrongTermination = newError("end of stream marker at wrong place")
+
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (l *Reader) fill() error {
 	if l.dict.eof {
 		return nil
 	}
 	for l.dict.readable() < l.dict.b {
-		op, err := l.decodeOp()
+		op, err := l.or.ReadOp()
 		if err != nil {
 			switch {
 			case err == eofDecoded:
@@ -151,8 +151,8 @@ func (l *Reader) fill() error {
 		}
 		if n == l.unpackLen {
 			l.dict.eof = true
-			if !l.rd.possiblyAtEnd() {
-				if _, err = l.decodeOp(); err != eofDecoded {
+			if !l.or.rd.possiblyAtEnd() {
+				if _, err = l.or.ReadOp(); err != eofDecoded {
 					return newError(
 						"wrong length in header")
 				}
@@ -163,171 +163,7 @@ func (l *Reader) fill() error {
 	return nil
 }
 
-// updateStateLiteral updates the state for a literal.
-func (l *Reader) updateStateLiteral() {
-	switch {
-	case l.state < 4:
-		l.state = 0
-		return
-	case l.state < 10:
-		l.state -= 3
-		return
-	}
-	l.state -= 6
-}
-
-// updateStateMatch updates the state for a match.
-func (l *Reader) updateStateMatch() {
-	if l.state < 7 {
-		l.state = 7
-	} else {
-		l.state = 10
-	}
-}
-
-// updateStateRep updates the state for a repetition.
-func (l *Reader) updateStateRep() {
-	if l.state < 7 {
-		l.state = 8
-	} else {
-		l.state = 11
-	}
-}
-
-// updateStateShortRep updates the state for a short repetition.
-func (l *Reader) updateStateShortRep() {
-	if l.state < 7 {
-		l.state = 9
-	} else {
-		l.state = 11
-	}
-}
-
-var litCounter int
-
-// decodeLiteral decodes a literal.
-func (l *Reader) decodeLiteral() (op operation, err error) {
-	prevByte := l.dict.GetByte(1)
-	lp, lc := uint(l.properties.LP), uint(l.properties.LC)
-	litState := ((uint32(l.dict.total) & ((1 << lp) - 1)) << lc) |
-		(uint32(prevByte) >> (8 - lc))
-
-	litCounter++
-	xlog.Printf(Debug, "L %3d %2d 0x%02x %3d\n", litCounter, litState,
-		prevByte, l.dict.total)
-
-	match := l.dict.GetByte(int(l.rep[0]) + 1)
-	s, err := l.litCodec.Decode(l.rd, l.state, match, litState)
-	if err != nil {
-		return nil, err
-	}
-	return lit{s}, nil
-}
-
-// errWrongTermination indicates that a termination symbol has been received,
-// but the range decoder could still produces more data
-var errWrongTermination = newError(
-	"end of stream marker at wrong place")
-
-var opCounter int
-
-// decodeOp decodes an operation. The function returns eofDecoded if there is
-// an explicit termination marker.
-func (l *Reader) decodeOp() (op operation, err error) {
-	posState := uint32(l.dict.total) & l.posBitMask
-
-	opCounter++
-	xlog.Printf(Debug, "S %3d %2d %2d\n", opCounter, l.state, posState)
-
-	state2 := (l.state << maxPosBits) | posState
-
-	b, err := l.isMatch[state2].Decode(l.rd)
-	if err != nil {
-		return nil, err
-	}
-	if b == 0 {
-		// literal
-		op, err := l.decodeLiteral()
-		if err != nil {
-			return nil, err
-		}
-		l.updateStateLiteral()
-		return op, nil
-	}
-	b, err = l.isRep[l.state].Decode(l.rd)
-	if err != nil {
-		return nil, err
-	}
-	if b == 0 {
-		// simple match
-		l.rep[3], l.rep[2], l.rep[1] = l.rep[2], l.rep[1], l.rep[0]
-		l.updateStateMatch()
-		// The length decoder returns the length offset.
-		n, err := l.lenCodec.Decode(l.rd, posState)
-		if err != nil {
-			return nil, err
-		}
-		// The dist decoder returns the distance offset. The actual
-		// distance is 1 higher.
-		l.rep[0], err = l.distCodec.Decode(l.rd, n)
-		if err != nil {
-			return nil, err
-		}
-		if l.rep[0] == eos {
-			if !l.rd.possiblyAtEnd() {
-				return nil, errWrongTermination
-			}
-			return nil, eofDecoded
-		}
-		op = rep{length: int(n) + minLength,
-			distance: int(l.rep[0]) + minDistance}
-		return op, nil
-	}
-	b, err = l.isRepG0[l.state].Decode(l.rd)
-	if err != nil {
-		return nil, err
-	}
-	dist := l.rep[0]
-	if b == 0 {
-		// rep match 0
-		b, err = l.isRepG0Long[state2].Decode(l.rd)
-		if err != nil {
-			return nil, err
-		}
-		if b == 0 {
-			l.updateStateShortRep()
-			op = rep{length: 1,
-				distance: int(l.rep[0]) + minDistance}
-			return op, nil
-		}
-	} else {
-		b, err = l.isRepG1[l.state].Decode(l.rd)
-		if err != nil {
-			return nil, err
-		}
-		if b == 0 {
-			dist = l.rep[1]
-		} else {
-			b, err = l.isRepG2[l.state].Decode(l.rd)
-			if err != nil {
-				return nil, err
-			}
-			if b == 0 {
-				dist = l.rep[2]
-			} else {
-				dist = l.rep[3]
-				l.rep[3] = l.rep[2]
-			}
-			l.rep[2] = l.rep[1]
-		}
-		l.rep[1] = l.rep[0]
-		l.rep[0] = dist
-	}
-	n, err := l.repLenCodec.Decode(l.rd, posState)
-	if err != nil {
-		return nil, err
-	}
-	l.updateStateRep()
-	op = rep{length: int(n) + minLength, distance: int(dist) + minDistance}
-	return op, nil
+// Properties returns the properties of the LZMA reader.
+func (l *Reader) Properties() Properties {
+	return l.or.properties
 }
