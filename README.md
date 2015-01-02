@@ -9,9 +9,5 @@ The classic LZMA decoder works now for the example files.
 
 ## TODO
 
-1. Implement opReader based on opCodec.
-2. Use opReader in lzma.Reader.
-3. Change hash.Roller interface to elementar operations supported by
-   functions.
-4. Write the opWriter.
-5. Write the opGenerator.
+1. Write the opWriter.
+2. Write an op generator consisting of the dictionary and the hashes.
