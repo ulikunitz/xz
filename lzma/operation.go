@@ -11,8 +11,8 @@ type operation interface {
 
 // rep represents a repetition at the given distance and the given length
 type rep struct {
+	distance int64
 	length   int
-	distance int
 }
 
 // applyDecoderDict applies the repetition on the decoder dictionary.

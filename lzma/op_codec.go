@@ -202,7 +202,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 			return nil, eofDecoded
 		}
 		op = rep{length: int(n) + minLength,
-			distance: int(or.rep[0]) + minDistance}
+			distance: int64(or.rep[0]) + minDistance}
 		return op, nil
 	}
 	b, err = or.isRepG0[state].Decode(or.rd)
@@ -219,7 +219,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		if b == 0 {
 			or.updateStateShortRep()
 			op = rep{length: 1,
-				distance: int(dist) + minDistance}
+				distance: int64(dist) + minDistance}
 			return op, nil
 		}
 	} else {
@@ -250,7 +250,8 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		return nil, err
 	}
 	or.updateStateRep()
-	op = rep{length: int(n) + minLength, distance: int(dist) + minDistance}
+	op = rep{length: int(n) + minLength,
+		distance: int64(dist) + minDistance}
 	return op, nil
 }
 
