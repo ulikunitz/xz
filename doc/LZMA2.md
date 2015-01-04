@@ -24,6 +24,8 @@ U      | unpacked size byte
 P      | packed size byte
 S      | properties byte
 
+The unpacke size and packed size are written in big-endian byte order.
+
 The properties byte provides the parameters pb, lc, lp using following
 formula:
 
