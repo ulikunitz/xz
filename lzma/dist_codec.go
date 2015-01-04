@@ -4,7 +4,7 @@ package lzma
 const (
 	// minimum supported distance
 	minDistance = 1
-	// maximum supported distance
+	// maximum supported distance, value is used for the eos marker.
 	maxDistance = 1 << 32
 	// number of the supported len states
 	lenStates = 4

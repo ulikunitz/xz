@@ -11,6 +11,7 @@ type operation interface {
 
 // rep represents a repetition at the given distance and the given length
 type rep struct {
+	// supports all possible distance values, including the eos marker
 	distance int64
 	length   int
 }

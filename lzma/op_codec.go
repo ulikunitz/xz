@@ -9,7 +9,7 @@ import (
 const states = 12
 
 // Value of the end of stream (EOS) marker.
-const eos = 1<<32 - 1
+const eosDist = 1<<32 - 1
 
 // dictHelper is an interface that provides the required interface to encode or
 // decode operations successfully.
@@ -157,9 +157,12 @@ func (or *opReader) decodeLiteral() (op operation, err error) {
 	return lit{s}, nil
 }
 
-// eofDecoded indicates an EOF of the decoded file
-var eofDecoded = newError("EOF of decoded stream")
+// eos indicates an explicit end of stream
+var eos = newError("end of decoded stream")
 
+// ReadOp decodes the next operation from the compressed stream. It returns the
+// operation. If an exlicit end of stream marker is identified the eos error is
+// returned.
 func (or *opReader) ReadOp() (op operation, err error) {
 	state, state2, posState := or.states()
 
@@ -195,11 +198,11 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if or.rep[0] == eos {
+		if or.rep[0] == eosDist {
 			if !or.rd.possiblyAtEnd() {
 				return nil, errWrongTermination
 			}
-			return nil, eofDecoded
+			return nil, eos
 		}
 		op = rep{length: int(n) + minLength,
 			distance: int64(or.rep[0]) + minDistance}
@@ -261,6 +264,7 @@ type opWriter struct {
 	re *rangeEncoder
 }
 
+// newOpWriter creates a new operation writer.
 func newOpWriter(w io.Writer, p *Properties, dict dictHelper) (ow *opWriter, err error) {
 	ow = new(opWriter)
 	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
@@ -272,6 +276,7 @@ func newOpWriter(w io.Writer, p *Properties, dict dictHelper) (ow *opWriter, err
 	return ow, nil
 }
 
+// writeLiteral writes a literal into the operation stream
 func (ow *opWriter) writeLiteral(l lit) error {
 	var err error
 	state, state2, _ := ow.states()
@@ -288,6 +293,12 @@ func (ow *opWriter) writeLiteral(l lit) error {
 	return nil
 }
 
+// writeEOS writes the explicit EOS marker
+func (ow *opWriter) writeEOS() error {
+	return ow.writeRep(rep{distance: maxDistance, length: minLength})
+}
+
+// writeRep writes a repetition operation into the operation stream
 func (ow *opWriter) writeRep(r rep) error {
 	var err error
 	if !(minDistance <= r.distance && r.distance <= maxDistance) {
@@ -368,24 +379,7 @@ func (ow *opWriter) writeRep(r rep) error {
 	return ow.repLenCodec.Encode(ow.re, n, posState)
 }
 
-func (ow *opWriter) writeEOS() error {
-	var err error
-	state, state2, posState := ow.states()
-	if err = ow.isMatch[state2].Encode(ow.re, 1); err != nil {
-		return err
-	}
-	if err = ow.isRep[state].Encode(ow.re, 0); err != nil {
-		return err
-	}
-	ow.rep[3], ow.rep[2], ow.rep[1], ow.rep[0] = ow.rep[2], ow.rep[1],
-		ow.rep[0], eos
-	ow.updateStateMatch()
-	if err = ow.lenCodec.Encode(ow.re, 0, posState); err != nil {
-		return err
-	}
-	return ow.distCodec.Encode(ow.re, eos, 0)
-}
-
+// WriteOp writes an operation value into the stream.
 func (ow *opWriter) WriteOp(op operation) error {
 	switch x := op.(type) {
 	case rep:

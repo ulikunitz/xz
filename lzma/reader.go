@@ -117,7 +117,7 @@ func (l *Reader) fill() error {
 		op, err := l.or.ReadOp()
 		if err != nil {
 			switch {
-			case err == eofDecoded:
+			case err == eos:
 				if l.unpackLen != NoUnpackLen &&
 					l.currentLen != l.unpackLen {
 					return errUnexpectedEOS
@@ -149,7 +149,7 @@ func (l *Reader) fill() error {
 		if n == l.unpackLen {
 			l.dict.eof = true
 			if !l.or.rd.possiblyAtEnd() {
-				if _, err = l.or.ReadOp(); err != eofDecoded {
+				if _, err = l.or.ReadOp(); err != eos {
 					return newError(
 						"wrong length in header")
 				}
