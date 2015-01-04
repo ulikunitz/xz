@@ -213,11 +213,6 @@ func (p *decoderDict) copyMatch(d, n int) error {
 	return nil
 }
 
-// setEOF sets the eof flag.
-func (p *decoderDict) setEOF(eof bool) {
-	p.eof = eof
-}
-
 // GetByte returns the byte at distance d. If the distance is too large, the
 // function returns zero.
 func (p *decoderDict) GetByte(d int) byte {

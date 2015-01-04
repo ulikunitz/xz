@@ -164,7 +164,7 @@ func TestDecoderDictEOF(t *testing.T) {
 	if n != len(buf) {
 		t.Fatalf("p.Write: returned %d; want %d", n, len(buf))
 	}
-	p.setEOF(true)
+	p.eof = true
 	n, err = p.Read(buf)
 	if err != nil {
 		t.Fatalf("p.Read: error %s not expected", err)
