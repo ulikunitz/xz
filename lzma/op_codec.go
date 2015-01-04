@@ -44,8 +44,8 @@ func initProbSlice(p []prob) {
 	}
 }
 
-// initOpCodec initializes an opCodec structure.
-func initOpCodec(c *opCodec, p *Properties, dict dictHelper) error {
+// init initializes an opCodec structure.
+func (c *opCodec) init(p *Properties, dict dictHelper) error {
 	var err error
 	if err = verifyProperties(p); err != nil {
 		return err
@@ -83,7 +83,7 @@ func newOpReader(r io.Reader, p *Properties, dict dictHelper) (or *opReader, err
 	if or.rd, err = newRangeDecoder(bufio.NewReader(r)); err != nil {
 		return nil, err
 	}
-	if err = initOpCodec(&or.opCodec, p, dict); err != nil {
+	if err = or.opCodec.init(p, dict); err != nil {
 		return nil, err
 	}
 	return or, nil
@@ -265,7 +265,7 @@ func newOpWriter(w io.Writer, p *Properties, dict dictHelper) (ow *opWriter, err
 	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
 		return nil, err
 	}
-	if err = initOpCodec(&ow.opCodec, p, dict); err != nil {
+	if err = ow.opCodec.init(p, dict); err != nil {
 		return nil, err
 	}
 	return ow, nil
