@@ -11,17 +11,10 @@ const states = 12
 // Value of the end of stream (EOS) marker.
 const eosDist = 1<<32 - 1
 
-// dictHelper is an interface that provides the required interface to encode or
-// decode operations successfully.
-type dictHelper interface {
-	GetByte(distance int) byte
-	Total() int64
-}
-
 // opCodec provides all information to be able to encode or decode operations.
 type opCodec struct {
 	properties  Properties
-	dict        dictHelper
+	dict        *dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -45,7 +38,7 @@ func initProbSlice(p []prob) {
 }
 
 // init initializes an opCodec structure.
-func (c *opCodec) init(p *Properties, dict dictHelper) error {
+func (c *opCodec) init(p *Properties, dict *dictionary) error {
 	var err error
 	if err = verifyProperties(p); err != nil {
 		return err
@@ -78,7 +71,7 @@ type opReader struct {
 }
 
 // newOpReader creates a new instance of an opReader.
-func newOpReader(r io.Reader, p *Properties, dict dictHelper) (or *opReader, err error) {
+func newOpReader(r io.Reader, p *Properties, dict *dictionary) (or *opReader, err error) {
 	or = new(opReader)
 	if or.rd, err = newRangeDecoder(bufio.NewReader(r)); err != nil {
 		return nil, err
@@ -265,7 +258,7 @@ type opWriter struct {
 }
 
 // newOpWriter creates a new operation writer.
-func newOpWriter(w io.Writer, p *Properties, dict dictHelper) (ow *opWriter, err error) {
+func newOpWriter(w io.Writer, p *Properties, dict *dictionary) (ow *opWriter, err error) {
 	ow = new(opWriter)
 	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
 		return nil, err

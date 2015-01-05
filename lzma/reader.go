@@ -43,7 +43,8 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err = l.dict.init(historyLen, bufferLen); err != nil {
 		return nil, err
 	}
-	if l.or, err = newOpReader(f, properties, &l.dict); err != nil {
+	l.or, err = newOpReader(f, properties, &l.dict.dictionary)
+	if err != nil {
 		return nil, err
 	}
 	return l, nil
