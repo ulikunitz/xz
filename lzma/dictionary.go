@@ -169,15 +169,15 @@ type readerDict struct {
 	closed    bool
 }
 
-func (r *readerDict) init(historyLen, bufferLen int) error {
+func newReaderDict(historyLen, bufferLen int) (r *readerDict, err error) {
 	if historyLen < 1 {
-		return newError("history length must be at least one byte")
+		return nil, newError("history length must be at least one byte")
 	}
 	if int64(historyLen) > MaxDictLen {
-		return newError("history length must be less than 2^32")
+		return nil, newError("history length must be less than 2^32")
 	}
 	if bufferLen < 1 {
-		return newError("bufferLen must at least support 1 byte")
+		return nil, newError("bufferLen must at least support 1 byte")
 	}
 	// There should be enough capacity for a single match.
 	capacity := 1 + maxLength
@@ -187,9 +187,9 @@ func (r *readerDict) init(historyLen, bufferLen int) error {
 	if bufferLen > capacity {
 		capacity = bufferLen
 	}
-	*r = readerDict{bufferLen: bufferLen}
+	r = &readerDict{bufferLen: bufferLen}
 	r.dictionary.init(capacity, capacity)
-	return nil
+	return r, nil
 }
 
 func (r *readerDict) reopen() {

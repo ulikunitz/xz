@@ -13,7 +13,7 @@ const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
-	dict       readerDict
+	dict       *readerDict
 	or         *opReader
 	unpackLen  uint64
 	currentLen uint64
@@ -40,7 +40,8 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 
 	l := &Reader{unpackLen: unpackLen}
-	if err = l.dict.init(historyLen, bufferLen); err != nil {
+	l.dict, err = newReaderDict(historyLen, bufferLen)
+	if err != nil {
 		return nil, err
 	}
 	l.or, err = newOpReader(f, properties, &l.dict.dictionary)
@@ -144,7 +145,7 @@ func (l *Reader) fill() error {
 		}
 		l.currentLen = n
 
-		if err = op.applyReaderDict(&l.dict); err != nil {
+		if err = op.applyReaderDict(l.dict); err != nil {
 			return err
 		}
 		if n == l.unpackLen {

@@ -19,8 +19,7 @@ func TestReaderDict(t *testing.T) {
 
 	r := rand.New(rand.NewSource(15))
 	buf := make([]byte, 30)
-	d := new(readerDict)
-	err := d.init(10, 20)
+	d, err := newReaderDict(10, 20)
 	if err != nil {
 		t.Fatal("couldn't create reader dictionary.")
 	}
@@ -73,8 +72,7 @@ func TestReaderDict(t *testing.T) {
 func TestReaderDictCopyMatch(t *testing.T) {
 	r := rand.New(rand.NewSource(15))
 	buf := make([]byte, 30)
-	p := new(readerDict)
-	err := p.init(10, 10)
+	p, err := newReaderDict(10, 10)
 	if err != nil {
 		t.Fatalf("readerDict.init: %s", err)
 	}
@@ -124,8 +122,7 @@ func TestReaderDictCopyMatch(t *testing.T) {
 }
 
 func TestReaderDictReset(t *testing.T) {
-	p := new(readerDict)
-	err := p.init(10, 10)
+	p, err := newReaderDict(10, 10)
 	if err != nil {
 		t.Fatalf("readerDict.init: %s", err)
 	}
@@ -154,8 +151,7 @@ func TestReaderDictReset(t *testing.T) {
 }
 
 func TestReaderDictEOF(t *testing.T) {
-	p := new(readerDict)
-	err := p.init(10, 10)
+	p, err := newReaderDict(10, 10)
 	if err != nil {
 		t.Fatalf("newDecoderDict: %s", err)
 	}
