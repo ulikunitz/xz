@@ -22,7 +22,7 @@ type Writer struct {
 	writtenLen uint64
 	// end-of-stream marker required
 	eos  bool
-	dict *encoderDict
+	dict *writerDict
 	// hash table for four-byte sequences
 	t4 *hashTable
 	// hash table for two-byte sequences
@@ -71,7 +71,7 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err = verifyProperties(p); err != nil {
 		return nil, err
 	}
-	dict, err := newEncoderDict(defaultBufferLen, int(p.DictLen))
+	dict, err := newWriterDict(defaultBufferLen, int(p.DictLen))
 	if err != nil {
 		return nil, err
 	}
