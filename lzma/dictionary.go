@@ -20,7 +20,7 @@ func (d *dictionary) init(historyLen, capacity int) error {
 	if historyLen < 1 {
 		return newError("history length must be at least one byte")
 	}
-	if historyLen > MaxDictLen {
+	if int64(historyLen) > MaxDictLen {
 		return newError("history length must be less than 2^32")
 	}
 	if historyLen > capacity {
