@@ -184,11 +184,7 @@ func newReaderDict(historyLen, bufferLen int) (r *readerDict, err error) {
 	if bufferLen < 1 {
 		return nil, newError("bufferLen must at least support 1 byte")
 	}
-	// There should be enough capacity for a single match.
-	capacity := 1 + maxLength
-	if historyLen > capacity {
-		capacity = historyLen
-	}
+	capacity := historyLen
 	if bufferLen > capacity {
 		capacity = bufferLen
 	}
@@ -236,4 +232,23 @@ func (r *readerDict) Read(p []byte) (n int, err error) {
 		err = nil
 	}
 	return
+}
+
+type writerDict struct {
+	dictionary
+	bufferLen int
+	off       int64
+}
+
+func newWriterDict(historyLen, bufferLen int) (w *writerDict, err error) {
+	if historyLen < 1 {
+		return nil, newError("history length must be at least one byte")
+	}
+	if int64(historyLen) > MaxDictLen {
+		return nil, newError("history length must be less than 2^32")
+	}
+	if bufferLen < 1 {
+		return nil, newError("bufferLen must at least support 1 byte")
+	}
+	panic("TODO")
 }

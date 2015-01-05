@@ -51,7 +51,7 @@ func TestReaderDict(t *testing.T) {
 		t.Fatalf("d.Read(buf) = %d; want %d", n, 2)
 	}
 	t.Logf("d %#v", d)
-	buf = buf[:19]
+	buf = buf[:10]
 	fillRandomBuf(buf, r)
 	if n, err = d.Write(buf); err != nil {
 		t.Fatalf("d.Write(buf) #2: %s", err)
@@ -62,6 +62,7 @@ func TestReaderDict(t *testing.T) {
 	t.Logf("d %#v", d)
 	buf = buf[:19]
 	if n, err = d.Read(buf); err != nil {
+		t.Logf("d.Len() %d", d.Len())
 		t.Fatalf("d.Read(buf) #2: %s", err)
 	}
 	if n != 19 {
@@ -72,7 +73,7 @@ func TestReaderDict(t *testing.T) {
 func TestReaderDictCopyMatch(t *testing.T) {
 	r := rand.New(rand.NewSource(15))
 	buf := make([]byte, 30)
-	p, err := newReaderDict(10, 10)
+	p, err := newReaderDict(16, 10)
 	if err != nil {
 		t.Fatalf("readerDict.init: %s", err)
 	}
