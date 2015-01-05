@@ -9,6 +9,6 @@ The classic LZMA decoder works now for the example files.
 
 ## TODO
 
-1. Write the encoder dictionary.
+1. Write the writer dictionary extension.
 2. Review hash table implementation.
-1. Write an op generator consisting of the dictionary and the hashes.
+3. Write an op generator consisting of the dictionary and the hashes.
