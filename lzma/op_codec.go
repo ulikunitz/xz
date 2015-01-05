@@ -125,7 +125,7 @@ func (c *opCodec) updateStateShortRep() {
 // Computes the states of the operation codec.
 func (c *opCodec) states() (state, state2, posState uint32) {
 	state = c.state
-	posState = uint32(c.dict.Total()) & c.posBitMask
+	posState = uint32(c.dict.total) & c.posBitMask
 	state2 = (c.state << maxPosBits) | posState
 	return
 }
@@ -133,7 +133,7 @@ func (c *opCodec) states() (state, state2, posState uint32) {
 func (c *opCodec) litState() uint32 {
 	prevByte := c.dict.GetByte(1)
 	lp, lc := uint(c.properties.LP), uint(c.properties.LC)
-	litState := ((uint32(c.dict.Total())) & ((1 << lp) - 1) << lc) |
+	litState := ((uint32(c.dict.total)) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
 }
