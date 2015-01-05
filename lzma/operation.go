@@ -5,7 +5,7 @@ import "fmt"
 // operation represents an operation on the dictionary during encoding or
 // decoding.
 type operation interface {
-	applyDecoderDict(d *decoderDict) error
+	applyReaderDict(d *readerDict) error
 	Len() int
 }
 
@@ -16,9 +16,12 @@ type rep struct {
 	length   int
 }
 
-// applyDecoderDict applies the repetition on the decoder dictionary.
-func (r rep) applyDecoderDict(d *decoderDict) error {
-	return d.copyMatch(r.distance, r.length)
+// applyReaderDict applies the repetition on the decoder dictionary.
+func (r rep) applyReaderDict(d *readerDict) error {
+	if d.writable() >= r.length {
+		return d.copyMatch(r.distance, r.length)
+	}
+	return newError("insufficient space in reader dictionary")
 }
 
 // Len return the length of the repetition.
@@ -36,9 +39,12 @@ type lit struct {
 	b byte
 }
 
-// applyDecoderDict appends the literal to the decoder dictionary.
-func (l lit) applyDecoderDict(d *decoderDict) error {
-	return d.addByte(l.b)
+// applyReaderDict appends the literal to the decoder dictionary.
+func (l lit) applyReaderDict(d *readerDict) error {
+	if d.writable() >= 1 {
+		return d.addByte(l.b)
+	}
+	return newError("insufficient space in reader dictionary")
 }
 
 // Len returns 1 for the single byte literal.

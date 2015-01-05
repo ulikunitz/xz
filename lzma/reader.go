@@ -13,7 +13,7 @@ const NoUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
-	dict       *decoderDict
+	dict       readerDict
 	or         *opReader
 	unpackLen  uint64
 	currentLen uint64
@@ -40,10 +40,10 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 
 	l := &Reader{unpackLen: unpackLen}
-	if l.dict, err = newDecoderDict(bufferLen, historyLen); err != nil {
+	if err = l.dict.init(historyLen, bufferLen); err != nil {
 		return nil, err
 	}
-	if l.or, err = newOpReader(f, properties, l.dict); err != nil {
+	if l.or, err = newOpReader(f, properties, &l.dict); err != nil {
 		return nil, err
 	}
 	return l, nil
@@ -110,10 +110,10 @@ var errWrongTermination = newError("end of stream marker at wrong place")
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
 func (l *Reader) fill() error {
-	if l.dict.eof {
+	if l.dict.closed {
 		return nil
 	}
-	for l.dict.readable() < l.dict.b {
+	for l.dict.readable() < l.dict.bufferLen {
 		op, err := l.or.ReadOp()
 		if err != nil {
 			switch {
@@ -122,7 +122,7 @@ func (l *Reader) fill() error {
 					l.currentLen != l.unpackLen {
 					return errUnexpectedEOS
 				}
-				l.dict.eof = true
+				l.dict.closed = true
 				return nil
 			case err == io.EOF:
 				return newError(
@@ -138,16 +138,16 @@ func (l *Reader) fill() error {
 				"negative op length or overflow of decodedLen")
 		}
 		if n > l.unpackLen {
-			l.dict.eof = true
+			l.dict.closed = true
 			return newError("decoded stream too long")
 		}
 		l.currentLen = n
 
-		if err = op.applyDecoderDict(l.dict); err != nil {
+		if err = op.applyReaderDict(&l.dict); err != nil {
 			return err
 		}
 		if n == l.unpackLen {
-			l.dict.eof = true
+			l.dict.closed = true
 			if !l.or.rd.possiblyAtEnd() {
 				if _, err = l.or.ReadOp(); err != eos {
 					return newError(

@@ -86,6 +86,12 @@ func (d *dictionary) GetByte(distance int) byte {
 	return d.data[i]
 }
 
+// Total returns the total offset. It has been added to satisfy the DictHelper
+// interface of op_codec.go.
+func (d *dictionary) Total() int64 {
+	return d.total
+}
+
 // Write appends the bytes from p into dictionary. It is always guaranteed that
 // the last capacity bytes are stored in the dictionary. The total counter is
 // advanced accordingly. The function never returns an error.
@@ -102,8 +108,9 @@ func (d *dictionary) Write(p []byte) (n int, err error) {
 }
 
 // AddByte appends a byte to the dictionary. The function is always successful.
-func (d *dictionary) addByte(b byte) {
+func (d *dictionary) addByte(b byte) error {
 	d.Write([]byte{b})
+	return nil
 }
 
 // copyMatch copies a match on the top of the dictionary.

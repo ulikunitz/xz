@@ -82,6 +82,8 @@ func (p *encoderDict) writable() int {
 	return n
 }
 
+var errOverflow = newError("overflow")
+
 // Write writes data into the buffer. If the size of p exceeds the number of
 // bytes that is writable errOverflow will be returned.
 func (p *encoderDict) Write(d []byte) (n int, err error) {
