@@ -59,9 +59,9 @@ func (d *dictionary) index(offset int64) int {
 	return int(offset % int64(len(d.data)))
 }
 
-// Moves the total counter k points forward. The function assumes that the
-// content starting at the old total position is already correct for the next k
-// bytes.
+// advbance moves the total counter k points forward. The function assumes that
+// the content starting at the old total position is already correct for the
+// next k bytes.
 func (d *dictionary) advance(k int) {
 	if k < 0 {
 		panic("k out of range")
@@ -131,7 +131,9 @@ func (d *dictionary) copyMatch(distance int64, length int) error {
 	return nil
 }
 
-var errAgain = newError("not enough data in buffer")
+// errAgain indicates that there is not enough data and the call should be
+// repeated.
+var errAgain = newError("not enough data; repeat")
 
 // ReadAt reads data from the history. The offset must be inside the actual
 // history.
@@ -162,6 +164,8 @@ func (d *dictionary) ReadAt(p []byte, off int64) (n int, err error) {
 	return n, nil
 }
 
+// readerDict represents a reader dictionary for reading. It maintains another
+// reader counter.
 type readerDict struct {
 	dictionary
 	bufferLen int
@@ -169,6 +173,7 @@ type readerDict struct {
 	closed    bool
 }
 
+// newReaderDict created a new reader dict value.
 func newReaderDict(historyLen, bufferLen int) (r *readerDict, err error) {
 	if historyLen < 1 {
 		return nil, newError("history length must be at least one byte")
@@ -192,20 +197,26 @@ func newReaderDict(historyLen, bufferLen int) (r *readerDict, err error) {
 	return r, nil
 }
 
+// reopen reopens a reader dictionary
 func (r *readerDict) reopen() {
 	r.closed = false
 	r.off = r.total
 }
 
+// reset resets the reader dictionary. If it has been closed it will be opened
+// again.
 func (r *readerDict) reset() {
 	r.dictionary.reset()
 	r.reopen()
 }
 
+// readable returns the number of readable bytes.
 func (r *readerDict) readable() int {
 	return int(r.total - r.off)
 }
 
+// writable returns the number of writable bytes. For a closed reader
+// dictionary not bytes will be writable.
 func (r *readerDict) writable() int {
 	if r.closed {
 		return 0
@@ -213,6 +224,8 @@ func (r *readerDict) writable() int {
 	return r.Cap() - r.readable()
 }
 
+// Read reads the given byte slice from the reader dictionary. The reader
+// offset will be updated.
 func (r *readerDict) Read(p []byte) (n int, err error) {
 	n, err = r.ReadAt(p, r.off)
 	r.off += int64(n)
