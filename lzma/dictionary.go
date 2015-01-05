@@ -86,19 +86,30 @@ func (d *dictionary) GetByte(distance int) byte {
 	return d.data[i]
 }
 
-// Write appends the bytes from p into dictionary. It is always guaranteed that
-// the last capacity bytes are stored in the dictionary. The total counter is
-// advanced accordingly. The function never returns an error.
-func (d *dictionary) Write(p []byte) (n int, err error) {
+// WriteAt stores data at a specific position in the dictionary. The function
+// doesn't return an error even if p is bigger than the capacity.
+func (d *dictionary) WriteAt(p []byte, off int64) (n int, err error) {
 	n = len(p)
 	// No optimization for large arrays.
 	for len(p) > 0 {
-		t := d.index(d.total)
-		k := copy(d.data[t:], p)
-		d.advance(k)
+		i := d.index(off)
+		k := copy(d.data[i:], p)
+		off += int64(k)
+		if off < 0 {
+			panic("overflow off")
+		}
 		p = p[k:]
 	}
-	return n, nil
+	return
+}
+
+// Write appends the bytes from p into dictionary. The total counter is
+// advanced accordingly. The function never returns an error even if not the
+// whole array can be stored in the dictionary.
+func (d *dictionary) Write(p []byte) (n int, err error) {
+	n, err = d.WriteAt(p, d.total)
+	d.total += int64(n)
+	return
 }
 
 // AddByte appends a byte to the dictionary. The function is always successful.
@@ -115,17 +126,21 @@ func (d *dictionary) copyMatch(distance int64, length int) error {
 	if !(1 <= length && length < maxLength) {
 		return newError("length out of range [1,maxLength]")
 	}
+	src := d.total - int64(distance)
+	end := src + int64(length)
+	e := d.index(end)
 	for length > 0 {
-		src := d.total - distance
-		end := src + int64(length)
+		s := d.index(end - int64(length))
+		var t int
 		if end > d.total {
-			end = d.total
+			t = d.index(d.total)
+		} else {
+			t = e
 		}
-		s, e := d.index(src), d.index(end)
-		if s >= e {
-			e = len(d.data)
+		if s >= t {
+			t = len(d.data)
 		}
-		k, _ := d.Write(d.data[s:e])
+		k, _ := d.Write(d.data[s:t])
 		length -= k
 	}
 	return nil
@@ -252,5 +267,28 @@ func newWriterDict(historyLen, bufferLen int) (w *writerDict, err error) {
 	if bufferLen < 1 {
 		return nil, newError("bufferLen must at least support 1 byte")
 	}
-	panic("TODO")
+	capacity := historyLen + bufferLen
+	w = &writerDict{bufferLen: bufferLen}
+	if err = w.dictionary.init(historyLen, capacity); err != nil {
+		return nil, err
+	}
+	return w, err
+}
+
+func (w *writerDict) buffered() int {
+	return int(w.off - w.total)
+}
+
+// Write copies date in slice into the writer dictionary. There must be enough
+// space available. If there is not enough space in the buffer errAgain is
+// returned.
+func (w *writerDict) Write(p []byte) (n int, err error) {
+	n = int(w.total + int64(w.bufferLen) - w.off)
+	if n < len(p) {
+		err = errAgain
+		p = p[:n]
+	}
+	n, _ = w.dictionary.WriteAt(p, w.off)
+	w.off += int64(n)
+	return
 }
