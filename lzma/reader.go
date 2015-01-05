@@ -5,8 +5,8 @@ import (
 	"io"
 )
 
-// bufferLen is the value used for the bufferLen used by the decoder.
-var bufferLen = 64 * (1 << 10)
+// defaultBufferLen defines the default buffer length
+const defaultBufferLen = 4096
 
 // NoUnpackLen provides the header value for an EOS marker in the stream.
 const NoUnpackLen uint64 = 1<<64 - 1
@@ -40,7 +40,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 
 	l := &Reader{unpackLen: unpackLen}
-	l.dict, err = newReaderDict(historyLen, bufferLen)
+	l.dict, err = newReaderDict(historyLen, defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}

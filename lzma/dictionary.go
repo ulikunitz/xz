@@ -189,7 +189,9 @@ func newReaderDict(historyLen, bufferLen int) (r *readerDict, err error) {
 		capacity = bufferLen
 	}
 	r = &readerDict{bufferLen: bufferLen}
-	r.dictionary.init(capacity, capacity)
+	if err = r.dictionary.init(capacity, capacity); err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 

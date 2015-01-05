@@ -71,7 +71,7 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err = verifyProperties(p); err != nil {
 		return nil, err
 	}
-	dict, err := newEncoderDict(bufferLen, int(p.DictLen))
+	dict, err := newEncoderDict(defaultBufferLen, int(p.DictLen))
 	if err != nil {
 		return nil, err
 	}
