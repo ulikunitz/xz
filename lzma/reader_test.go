@@ -20,7 +20,6 @@ func TestNewReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("decoder %#v", l)
 	props := l.Properties()
 	if props.LC != 3 {
 		t.Errorf("LC %d; want %d", props.LC, 3)
