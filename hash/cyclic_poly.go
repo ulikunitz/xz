@@ -30,7 +30,7 @@ func (r *CyclicPoly) Len() int {
 
 // Hash hashes the next byte and returns a hash value. The complete becomes
 // available after at least Len() bytes have been hashed.
-func (r *CyclicPoly) Hash(x byte) uint64 {
+func (r *CyclicPoly) RollByte(x byte) uint64 {
 	y := hash[x]
 	if len(r.p) < cap(r.p) {
 		r.h = ror(r.h, 1) ^ y

@@ -4,10 +4,11 @@ package hash
 // valid after hash has been called Len times.
 type Roller interface {
 	Len() int
-	Hash(x byte) uint64
+	RollByte(x byte) uint64
 }
 
-// Hashes computes all hash values for the array p.
+// Hashes computes all hash values for the array p. Note that the state of the
+// roller is changed.
 func Hashes(r Roller, p []byte) []uint64 {
 	n := r.Len()
 	if len(p) < n {
@@ -15,10 +16,10 @@ func Hashes(r Roller, p []byte) []uint64 {
 	}
 	h := make([]uint64, len(p)-n+1)
 	for i := 0; i < n-1; i++ {
-		r.Hash(p[i])
+		r.RollByte(p[i])
 	}
 	for i := range h {
-		h[i] = r.Hash(p[i+n-1])
+		h[i] = r.RollByte(p[i+n-1])
 	}
 	return h
 }

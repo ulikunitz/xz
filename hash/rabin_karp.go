@@ -46,7 +46,7 @@ func (r *RabinKarp) Len() int {
 }
 
 // Hash computes the hash after x has been added.
-func (r *RabinKarp) Hash(x byte) uint64 {
+func (r *RabinKarp) RollByte(x byte) uint64 {
 	if len(r.p) < cap(r.p) {
 		r.h += uint64(x)
 		r.h *= r.A
