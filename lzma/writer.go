@@ -2,8 +2,6 @@ package lzma
 
 import (
 	"io"
-
-	"github.com/uli-go/xz/hash"
 )
 
 // defaultProperties defines the default properties for the Writer.
@@ -17,6 +15,7 @@ var defaultProperties = Properties{
 // because of the arithmethic coder.
 type Writer struct {
 	w          io.Writer
+	ow         *opWriter
 	properties Properties
 	unpackLen  uint64
 	writtenLen uint64
@@ -71,19 +70,22 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err = verifyProperties(p); err != nil {
 		return nil, err
 	}
-	dict, err := newWriterDict(defaultBufferLen, int(p.DictLen))
-	if err != nil {
-		return nil, err
-	}
 	exp := hashTableExponent(p.DictLen)
 	lw := &Writer{
 		w:          w,
 		properties: *p,
 		unpackLen:  length,
 		eos:        eos,
-		dict:       dict,
-		t4:         newHashTable(exp, hash.NewCyclicPoly(4)),
-		t2:         newHashTable(exp, hash.NewCyclicPoly(2)),
+		t4:         newHashTable(exp, 4),
+		t2:         newHashTable(exp, 2),
+	}
+	lw.dict, err = newWriterDict(defaultBufferLen, int(p.DictLen))
+	if err != nil {
+		return nil, err
+	}
+	lw.ow, err = newOpWriter(w, &lw.properties, &lw.dict.dictionary)
+	if err != nil {
+		return nil, err
 	}
 	return lw, nil
 }
@@ -116,7 +118,7 @@ func writeHeader(w *Writer) error {
 // NewWriterLenEOS creates a new LZMA writer. A predefinied length can be
 // provided and the writing of an end-of-stream marker can be controlled. If
 // the argument NoUnpackLen will be provided for the lenght a end-of-stream
-// marker will be written regardless of the eos parameter.T
+// marker will be written regardless of the eos parameter.
 func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writer, error) {
 	lw, err := newWriter(w, p, length, eos)
 	if err != nil {
@@ -128,12 +130,52 @@ func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writ
 	return lw, nil
 }
 
-// Writes data into the writer buffer.
-func (l *Writer) Write(p []byte) (int, error) {
-	panic("TODO")
+// Write moves data into the internal buffer and triggers its compression.
+func (l *Writer) Write(p []byte) (n int, err error) {
+	for n < len(p) {
+		k, err := l.dict.Write(p[n:])
+		n += k
+		if err != nil && err != errAgain {
+			return n, err
+		}
+		if err = l.process(0); err != nil {
+			return n, err
+		}
+	}
+	return n, nil
 }
 
-// Close flushes all data out and writes the EOS marker if requested.
+// Close terminates the LZMA stream. It doesn't close the underlying writer
+// though.
 func (l *Writer) Close() error {
-	panic("TODO")
+	var err error
+	if err = l.process(allData); err != nil {
+		return err
+	}
+	if l.eos {
+		if err = l.ow.writeEOS(); err != nil {
+			return err
+		}
+	}
+	return l.ow.Close()
+}
+
+const (
+	allData = 1 << iota
+)
+
+// process encodes the data written into the dictionary buffer. The allData
+// flag requires all data remaining in the buffer to be encoded.
+func (l *Writer) process(flags int) error {
+	lowMark := 0
+	if flags&allData == 0 {
+		lowMark = maxLength
+	}
+	for l.dict.buffered() >= lowMark {
+		// transform head into operation
+		// write operation
+		// advance total pointer including updating hashes
+		panic("TODO")
+	}
+	return nil
 }

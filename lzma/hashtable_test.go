@@ -1,9 +1,8 @@
 package lzma
 
 import (
+	"fmt"
 	"testing"
-
-	"github.com/uli-go/xz/hash"
 )
 
 func TestSlot(t *testing.T) {
@@ -28,30 +27,31 @@ func TestSlot(t *testing.T) {
 	}
 }
 
-func TestHashtablePut(t *testing.T) {
-	h := hash.NewCyclicPoly(4)
-	ht := newHashTable(minTableExponent, h)
-	b := []byte("Hell")
-	r := ht.get(b)
-	if len(r) != 0 {
-		t.Fatalf("len(r) %d; want 0", len(r))
+func TestHashTable(t *testing.T) {
+	ht := newHashTable(9, 2)
+	s := "abcabcdefghijklmn"
+	n, err := ht.Write([]byte(s))
+	if err != nil {
+		t.Fatalf("ht.Write: error %s", err)
 	}
-	ht.put(b, 42)
-	r = ht.get(b)
-	if len(r) != 1 {
-		t.Fatalf("len(r) %d; want 1", len(r))
+	if n != len(s) {
+		t.Fatalf("ht.Write returned %d; want %d", n, len(s))
 	}
-	if r[0] != 42 {
-		t.Fatalf("r[0] %d; want 42", r[0])
+	tests := []struct {
+		s string
+		w string
+	}{
+		{"ab", "[0 3]"},
+		{"bc", "[1 4]"},
+		{"ca", "[2]"},
+		{"xx", "[]"},
+		{"gh", "[9]"},
 	}
-	ht.put(b, 43)
-	r = ht.get(b)
-	if len(r) != 2 {
-		t.Fatalf("len(r) %d; want 2", len(r))
-	}
-	for i := 0; i < 2; i++ {
-		if r[i] != uint32(42+i) {
-			t.Fatalf("r[%d] %d; want %d", i, r[i], uint32(42+i))
+	for _, c := range tests {
+		offs := ht.Offsets([]byte(c.s))
+		o := fmt.Sprintf("%v", offs)
+		if o != c.w {
+			t.Errorf("%s: offsets %s; want %s", c.s, o, c.w)
 		}
 	}
 }
