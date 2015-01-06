@@ -251,12 +251,15 @@ func (r *readerDict) Read(p []byte) (n int, err error) {
 	return
 }
 
+// writerDict is used for encoding LZMA files.
 type writerDict struct {
 	dictionary
 	bufferLen int
 	off       int64
 }
 
+// newWriterDict creates a new writer dictionary. The capacity of the buffer
+// will be the total of historyLen and bufferLen.
 func newWriterDict(historyLen, bufferLen int) (w *writerDict, err error) {
 	if historyLen < 1 {
 		return nil, newError("history length must be at least one byte")
@@ -275,6 +278,8 @@ func newWriterDict(historyLen, bufferLen int) (w *writerDict, err error) {
 	return w, err
 }
 
+// buffered returns the number of buffered byted. The buffer is not part of the
+// history.
 func (w *writerDict) buffered() int {
 	return int(w.off - w.total)
 }
