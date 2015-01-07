@@ -1,14 +1,11 @@
-# xz
+# Package xz
 
-Native Go Language implementation of the xz LZMA2 compression.
+This Go language package will provide support for the xz compression
+support. The complete package is written in Go and doesn't use any
+existing C library.
 
-This Go package is currently under development. You cannot use it even at your
-own risk.
+The package is currently under development. You cannot use it even on
+your own risk.
 
-The classic LZMA decoder works now for the example files.
-
-## TODO
-
-1. Write the writer dictionary extension.
-2. Review hash table implementation.
-3. Write an op generator consisting of the dictionary and the hashes.
+At this point the decoder for classic LZMA files works. This decoder
+will be used by the LZMA2 format, that is contained by the xz format.
