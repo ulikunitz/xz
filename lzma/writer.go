@@ -65,8 +65,7 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 		unpackLen:  length,
 		eos:        eos,
 	}
-	lw.dict = new(writerDict)
-	err = initWriterDict(lw.dict, int(p.DictLen), defaultBufferLen)
+	lw.dict, err = newWriterDict(int(p.DictLen), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}

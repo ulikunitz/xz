@@ -37,8 +37,21 @@ type writerDict struct {
 	buffer
 }
 
-func initWriterDict(wd *writerDict, historyLen, bufferLen int) error {
-	panic("TODO")
+func newWriterDict(historyLen, bufferLen int) (wd *writerDict, err error) {
+	if !(1 <= historyLen && int64(historyLen) < MaxDictLen) {
+		return nil, newError("historyLen out of range")
+	}
+	if bufferLen <= 0 {
+		return nil, newError("bufferLen must be greater than zero")
+	}
+	capacity := historyLen + bufferLen
+	wd = &writerDict{}
+	err = initBuffer(&wd.buffer, capacity)
+	if err != nil {
+		return nil, err
+	}
+	wd.writeLimit = bufferLen
+	return wd, nil
 }
 
 func (wd *writerDict) Byte(dist int) byte {
