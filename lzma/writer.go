@@ -66,11 +66,11 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 		eos:        eos,
 	}
 	lw.dict = new(writerDict)
-	err = initWriterDict(lw.dict, defaultBufferLen, int(p.DictLen))
+	err = initWriterDict(lw.dict, int(p.DictLen), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
-	lw.ow, err = newOpWriter(w, &lw.properties, &lw.dict.dictionary)
+	lw.ow, err = newOpWriter(w, &lw.properties, lw.dict)
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +162,11 @@ const (
 // process encodes the data written into the dictionary buffer. The allData
 // flag requires all data remaining in the buffer to be encoded.
 func (l *Writer) process(flags int) error {
-	lowMark := 0
+	var lowMark int
 	if flags&allData == 0 {
 		lowMark = maxLength
 	}
-	for l.dict.buffered() >= lowMark {
+	for l.dict.Readable() >= lowMark {
 		// transform head into operation
 		// write operation
 		// advance total pointer including updating hashes

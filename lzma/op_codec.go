@@ -11,10 +11,16 @@ const states = 12
 // Value of the end of stream (EOS) marker.
 const eosDist = 1<<32 - 1
 
+// dictionary abstracts the concrete dictionary away
+type dictionary interface {
+	Byte(dist int) byte
+	Offset() int64
+}
+
 // opCodec provides all information to be able to encode or decode operations.
 type opCodec struct {
 	properties  Properties
-	dict        *dictionary
+	dict        dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -38,7 +44,7 @@ func initProbSlice(p []prob) {
 }
 
 // init initializes an opCodec structure.
-func (c *opCodec) init(p *Properties, dict *dictionary) error {
+func (c *opCodec) init(p *Properties, dict dictionary) error {
 	var err error
 	if err = verifyProperties(p); err != nil {
 		return err
@@ -71,7 +77,7 @@ type opReader struct {
 }
 
 // newOpReader creates a new instance of an opReader.
-func newOpReader(r io.Reader, p *Properties, dict *dictionary) (or *opReader, err error) {
+func newOpReader(r io.Reader, p *Properties, dict dictionary) (or *opReader, err error) {
 	or = new(opReader)
 	if or.rd, err = newRangeDecoder(bufio.NewReader(r)); err != nil {
 		return nil, err
@@ -125,15 +131,15 @@ func (c *opCodec) updateStateShortRep() {
 // Computes the states of the operation codec.
 func (c *opCodec) states() (state, state2, posState uint32) {
 	state = c.state
-	posState = uint32(c.dict.total) & c.posBitMask
+	posState = uint32(c.dict.Offset()) & c.posBitMask
 	state2 = (c.state << maxPosBits) | posState
 	return
 }
 
 func (c *opCodec) litState() uint32 {
-	prevByte := c.dict.GetByte(1)
+	prevByte := c.dict.Byte(1)
 	lp, lc := uint(c.properties.LP), uint(c.properties.LC)
-	litState := ((uint32(c.dict.total)) & ((1 << lp) - 1) << lc) |
+	litState := ((uint32(c.dict.Offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
 }
@@ -142,7 +148,7 @@ func (c *opCodec) litState() uint32 {
 func (or *opReader) decodeLiteral() (op operation, err error) {
 	litState := or.litState()
 
-	match := or.dict.GetByte(int(or.rep[0]) + 1)
+	match := or.dict.Byte(int(or.rep[0]) + 1)
 	s, err := or.litCodec.Decode(or.rd, or.state, match, litState)
 	if err != nil {
 		return nil, err
@@ -258,7 +264,7 @@ type opWriter struct {
 }
 
 // newOpWriter creates a new operation writer.
-func newOpWriter(w io.Writer, p *Properties, dict *dictionary) (ow *opWriter, err error) {
+func newOpWriter(w io.Writer, p *Properties, dict dictionary) (ow *opWriter, err error) {
 	ow = new(opWriter)
 	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
 		return nil, err
@@ -277,7 +283,7 @@ func (ow *opWriter) writeLiteral(l lit) error {
 		return err
 	}
 	litState := ow.litState()
-	match := ow.dict.GetByte(int(ow.rep[0]) + 1)
+	match := ow.dict.Byte(int(ow.rep[0]) + 1)
 	err = ow.litCodec.Encode(ow.re, l.b, state, match, litState)
 	if err != nil {
 		return err

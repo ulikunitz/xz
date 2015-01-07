@@ -44,7 +44,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.or, err = newOpReader(f, properties, &l.dict.dictionary)
+	l.or, err = newOpReader(f, properties, l.dict)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (l *Reader) fill() error {
 	if l.dict.closed {
 		return nil
 	}
-	for l.dict.readable() < l.dict.bufferLen {
+	for l.dict.Readable() < l.dict.bufferLen {
 		op, err := l.or.ReadOp()
 		if err != nil {
 			switch {

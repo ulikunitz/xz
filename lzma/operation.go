@@ -18,10 +18,8 @@ type rep struct {
 
 // applyReaderDict applies the repetition on the decoder dictionary.
 func (r rep) applyReaderDict(d *readerDict) error {
-	if d.writable() >= r.length {
-		return d.copyMatch(r.distance, r.length)
-	}
-	return newError("insufficient space in reader dictionary")
+	_, err := d.WriteRep(r.distance, r.length)
+	return err
 }
 
 // Len return the length of the repetition.
@@ -41,10 +39,7 @@ type lit struct {
 
 // applyReaderDict appends the literal to the decoder dictionary.
 func (l lit) applyReaderDict(d *readerDict) error {
-	if d.writable() >= 1 {
-		return d.addByte(l.b)
-	}
-	return newError("insufficient space in reader dictionary")
+	return d.WriteByte(l.b)
 }
 
 // Len returns 1 for the single byte literal.
