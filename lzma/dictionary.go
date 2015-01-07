@@ -258,24 +258,22 @@ type writerDict struct {
 	off       int64
 }
 
-// newWriterDict creates a new writer dictionary. The capacity of the buffer
+// initWriterDict initializes the writerDict value. The capacity of the buffer
 // will be the total of historyLen and bufferLen.
-func newWriterDict(historyLen, bufferLen int) (w *writerDict, err error) {
+func initWriterDict(w *writerDict, historyLen, bufferLen int) error {
 	if historyLen < 1 {
-		return nil, newError("history length must be at least one byte")
+		return newError("history length must be at least one byte")
 	}
 	if int64(historyLen) > MaxDictLen {
-		return nil, newError("history length must be less than 2^32")
+		return newError("history length must be less than 2^32")
 	}
 	if bufferLen < 1 {
-		return nil, newError("bufferLen must at least support 1 byte")
+		return newError("bufferLen must at least support 1 byte")
 	}
 	capacity := historyLen + bufferLen
-	w = &writerDict{bufferLen: bufferLen}
-	if err = w.dictionary.init(historyLen, capacity); err != nil {
-		return nil, err
-	}
-	return w, err
+	*w = writerDict{bufferLen: bufferLen}
+	err := w.dictionary.init(historyLen, capacity)
+	return err
 }
 
 // buffered returns the number of buffered byted. The buffer is not part of the
@@ -295,5 +293,65 @@ func (w *writerDict) Write(p []byte) (n int, err error) {
 	}
 	n, _ = w.dictionary.WriteAt(p, w.off)
 	w.off += int64(n)
+	return
+}
+
+// adjustMax fixes the max value so that the range [off, off+max] is inside the
+// dictionary.
+func (w *writerDict) adjustMax(off, max int64) int64 {
+	bottom := w.total - int64(w.Len())
+	if off < bottom {
+		return 0
+	}
+	delta := w.off - off
+	if delta < 0 {
+		return 0
+	}
+	if delta < max {
+		return delta
+	}
+	return max
+}
+
+// countEqualBytes counts the equal bytes starting at offsets off1 and off2. If
+// the dictionary doesn't cover the offsets zero is returned.
+func (w *writerDict) countEqualBytes(off1, off2 int64, max int) int {
+	n := int64(max)
+	n = w.adjustMax(off1, n)
+	n = w.adjustMax(off2, n)
+	for k := int64(0); k < n; k++ {
+		i, j := w.index(off1+k), w.index(off2+k)
+		if w.data[i] != w.data[j] {
+			return int(k)
+		}
+	}
+	return int(n)
+}
+
+// copyTo copies n bytes to the writer. Function returns always an error if
+// not all requested bytes can be writen. This is for instance the case if the
+// range [off,off+n] is outside the dictionary and the buffer.
+func (wd *writerDict) copyTo(w io.Writer, off int64, n int) (copied int, err error) {
+	k := wd.adjustMax(off, int64(n))
+	start, end := off, off+k
+	for off < end {
+		i := wd.index(off)
+		delta := int(end - off)
+		var p []byte
+		if i > len(wd.data)-delta {
+			p = wd.data[i:]
+		} else {
+			p = wd.data[i : i+delta]
+		}
+		m, err := w.Write(p)
+		off += int64(m)
+		if err != nil {
+			return int(off - start), err
+		}
+	}
+	copied = int(off - start)
+	if copied < n {
+		err = newError("section out of range")
+	}
 	return
 }

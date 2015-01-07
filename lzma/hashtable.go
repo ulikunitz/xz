@@ -94,33 +94,52 @@ type hashTable struct {
 	// exponent used to compute the hash table size
 	exp  int
 	mask uint64
+	// historyLen
+	hlen int64
 	// hashOffset
 	hoff int64
 	wr   hash.Roller
 	hr   hash.Roller
 }
 
-// newHashTable creates a new hash table. The size of the table with 2^exp and
-// n determines the byte slice size to be hashed.
-func newHashTable(exp int, n int) *hashTable {
-	if !(minTableExponent <= exp && exp <= maxTableExponent) {
-		panic("argument exp out of range")
+// hashTableExponent derives the hash table exponent from the history length.
+func hashTableExponent(n uint32) int {
+	e := 30 - nlz32(n)
+	switch {
+	case e < minTableExponent:
+		e = minTableExponent
+	case e > maxTableExponent:
+		e = maxTableExponent
 	}
+	return e
+}
+
+// newHashTable creates a new hash table for n-byte sequences.
+func newHashTable(historyLen, n int) (t *hashTable, err error) {
+	if historyLen < 1 {
+		return nil, newError("history length must be at least one byte")
+	}
+	if int64(historyLen) > MaxDictLen {
+		return nil, newError("history length must be less than 2^32")
+	}
+	exp := hashTableExponent(uint32(historyLen))
 	if !(1 <= n && n <= 4) {
-		panic("argument n out of range")
+		return nil, newError("argument n out of range")
 	}
 	slotLen := int(1) << uint(exp)
 	if slotLen <= 0 {
-		panic("exponent is too large")
+		return nil, newError("exponent is too large")
 	}
-	return &hashTable{
+	t = &hashTable{
 		t:    make([]slot, slotLen),
 		exp:  exp,
 		mask: (uint64(1) << uint(exp)) - 1,
-		hoff: int64(-n),
+		hlen: int64(historyLen),
+		hoff: -int64(n),
 		wr:   newRoller(n),
 		hr:   newRoller(n),
 	}
+	return t, nil
 }
 
 // SliceLen returns the slice length.
@@ -162,14 +181,18 @@ func (t *hashTable) getOffsets(h uint64) []int64 {
 	if len(e) == 0 {
 		return nil
 	}
-	offsets := make([]int64, len(e))
+	offsets := make([]int64, 0, len(e))
 	base := t.hoff &^ (1<<32 - 1)
-	for i, u := range e {
+	start := t.hoff + int64(t.SliceLen()) - t.hlen
+	for _, u := range e {
 		o := base | int64(u)
 		if o > t.hoff {
 			o -= 1 << 32
 		}
-		offsets[i] = o
+		if o < start {
+			continue
+		}
+		offsets = append(offsets, o)
 	}
 	return offsets
 }

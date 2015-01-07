@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"bytes"
 	"io"
 	"math/rand"
 	"os"
@@ -180,5 +181,65 @@ func TestReaderDictEOF(t *testing.T) {
 	}
 	if n != 0 {
 		t.Fatalf("p.Read: returned %d bytes; want %d", n, 0)
+	}
+}
+
+func TestCountEqualBytes(t *testing.T) {
+	d := new(writerDict)
+	err := initWriterDict(d, 10, 10)
+	if err != nil {
+		t.Fatalf("initWriterDict: error %s", err)
+	}
+	buf := []byte("abcabcdab")
+	n, err := d.Write(buf)
+	if err != nil {
+		t.Fatalf("d.Write(buf): error %s", err)
+	}
+	if n != len(buf) {
+		t.Fatalf("d.Write(buf) returns %d; want %d", n, len(buf))
+	}
+	tests := []struct {
+		off1, off2 int64
+		max        int
+		r          int
+	}{
+		{0, 3, 4, 3},
+		{3, 6, 4, 0},
+		{0, 7, 8, 2},
+	}
+	for _, c := range tests {
+		n = d.countEqualBytes(c.off1, c.off2, c.max)
+		t.Logf("test case: %v", c)
+		if n != c.r {
+			t.Errorf("d.countEqualBytes(%d,%d,%d) returns %d; "+
+				"want %d", c.off1, c.off2, c.max, n, c.r)
+		}
+	}
+}
+
+func TestCopyTo(t *testing.T) {
+	d := new(writerDict)
+	err := initWriterDict(d, 10, 10)
+	if err != nil {
+		t.Fatalf("initWriterDict: error %s", err)
+	}
+	s := "abcabcdab"
+	n, err := d.Write([]byte(s))
+	if err != nil {
+		t.Fatalf("d.Write(buf): error %s", err)
+	}
+	if n != len(s) {
+		t.Fatalf("d.Write(buf) returns %d; want %d", n, len(s))
+	}
+	var buf bytes.Buffer
+	n, err = d.copyTo(&buf, d.total, 3)
+	if err != nil {
+		t.Errorf("d.copyTo: error %s", err)
+	}
+	if n != 3 {
+		t.Errorf("d.copyTo returned %d; want %d", n, 3)
+	}
+	if buf.String() != "abc" {
+		t.Errorf("buf.String() is %s; want %s", buf.String(), "abc")
 	}
 }

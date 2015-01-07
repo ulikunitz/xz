@@ -28,7 +28,10 @@ func TestSlot(t *testing.T) {
 }
 
 func TestHashTable(t *testing.T) {
-	ht := newHashTable(9, 2)
+	ht, err := newHashTable(32, 2)
+	if err != nil {
+		t.Fatalf("newHashTable: error %s", err)
+	}
 	s := "abcabcdefghijklmn"
 	n, err := ht.Write([]byte(s))
 	if err != nil {

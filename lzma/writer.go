@@ -42,18 +42,6 @@ func NewWriterLen(w io.Writer, p *Properties, length uint64) (*Writer, error) {
 	return NewWriterLenEOS(w, p, length, false)
 }
 
-// hashTableExponent derives the hash table exponent from the dict length.
-func hashTableExponent(dictLen uint32) int {
-	e := 30 - nlz32(dictLen)
-	switch {
-	case e < minTableExponent:
-		e = minTableExponent
-	case e > maxTableExponent:
-		e = maxTableExponent
-	}
-	return e
-}
-
 // newWriter creates a new writer without writing the header.
 func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	error) {
@@ -76,14 +64,21 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 		properties: *p,
 		unpackLen:  length,
 		eos:        eos,
-		t4:         newHashTable(exp, 4),
-		t2:         newHashTable(exp, 2),
 	}
-	lw.dict, err = newWriterDict(defaultBufferLen, int(p.DictLen))
+	lw.dict = new(writerDict)
+	err = initWriterDict(lw.dict, defaultBufferLen, int(p.DictLen))
 	if err != nil {
 		return nil, err
 	}
 	lw.ow, err = newOpWriter(w, &lw.properties, &lw.dict.dictionary)
+	if err != nil {
+		return nil, err
+	}
+	lw.t4, err = newHashTable(exp, 4)
+	if err != nil {
+		return nil, err
+	}
+	lw.t2, err = newHashTable(exp, 2)
 	if err != nil {
 		return nil, err
 	}
