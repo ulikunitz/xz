@@ -151,8 +151,10 @@ func (lw *Writer) Close() error {
 // The allData flag tells the process method that all data must be processed.
 const allData = 1
 
+// indicates an empty buffer
 var errEmptyBuf = newError("empty buffer")
 
+// potentialOffsets creates a list of potential offsets for matches.
 func (lw *Writer) potentialOffsets(p []byte) []int64 {
 	head := lw.dict.Offset()
 	start := lw.dict.start
@@ -180,6 +182,7 @@ func (lw *Writer) potentialOffsets(p []byte) []int64 {
 	return offs
 }
 
+// errNoMatch indicates that no match could be found
 var errNoMatch = newError("no match found")
 
 func (lw *Writer) bestMatch(offsets []int64) (m match, err error) {
@@ -208,6 +211,7 @@ func (lw *Writer) bestMatch(offsets []int64) (m match, err error) {
 	return match{distance: head - off, length: length}, nil
 }
 
+// findOp finds an operation for the head of the dictionary.
 func (lw *Writer) findOp() (op operation, err error) {
 	p := make([]byte, 4)
 	n, err := lw.dict.PeekHead(p)
@@ -221,20 +225,30 @@ func (lw *Writer) findOp() (op operation, err error) {
 		return nil, errEmptyBuf
 	}
 	offs := lw.potentialOffsets(p[:n])
-	if m, err := lw.bestMatch(offs); err == nil {
-		return m, nil
+	m, err := lw.bestMatch(offs)
+	if err == errNoMatch {
+		return lit{b: p[0]}, nil
 	}
-	return lit{b: p[0]}, nil
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
+// readOp converts the head of the dictionary into a buffer. The head of the
+// dictionary will be advanced by copying the data coverd by the operation into
+// the hash table.
 func (lw *Writer) readOp() (op operation, err error) {
 	op, err = lw.findOp()
 	if err != nil {
 		return nil, err
 	}
-	_, err = lw.dict.Discard(op.Len())
+	n, err := lw.dict.Copy(lw.t4, op.Len())
 	if err != nil {
 		return nil, err
+	}
+	if n < op.Len() {
+		return nil, errAgain
 	}
 	return op, nil
 }
