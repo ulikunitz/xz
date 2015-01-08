@@ -58,7 +58,6 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err = verifyProperties(p); err != nil {
 		return nil, err
 	}
-	exp := hashTableExponent(p.DictLen)
 	lw := &Writer{
 		w:          w,
 		properties: *p,
@@ -73,7 +72,7 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err != nil {
 		return nil, err
 	}
-	lw.t4, err = newHashTable(exp, 4)
+	lw.t4, err = newHashTable(int(p.DictLen), 4)
 	if err != nil {
 		return nil, err
 	}

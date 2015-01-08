@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"github.com/uli-go/xz/hash"
+	"github.com/uli-go/xz/xlog"
 )
 
 /* For compression we need to find byte sequences that match the current byte
@@ -161,6 +162,7 @@ func (t *hashTable) WriteByte(b byte) error {
 	h := t.wr.RollByte(b)
 	t.hoff++
 	if t.hoff >= 0 {
+		xlog.Printf(Debug, "HT 0x%016x %04d put\n", h, t.hoff)
 		t.putEntry(h, uint32(t.hoff))
 	}
 	return nil
@@ -185,6 +187,12 @@ func (t *hashTable) getOffsets(h uint64) []int64 {
 	offsets := make([]int64, 0, len(e))
 	base := t.hoff &^ (1<<32 - 1)
 	start := t.hoff + int64(t.SliceLen()) - t.hlen
+	if start < 0 {
+		start = 0
+	}
+	xlog.Printf(Debug,
+		"HT 0x%016x %04d start %d base %d sl %d hlen %d e %v",
+		h, t.hoff, start, base, t.SliceLen(), t.hlen, e)
 	for _, u := range e {
 		o := base | int64(u)
 		if o > t.hoff {
@@ -221,5 +229,7 @@ func (t *hashTable) Offset() int64 {
 // lengths.
 func (t *hashTable) Offsets(p []byte) []int64 {
 	h := t.hash(p)
-	return t.getOffsets(h)
+	offs := t.getOffsets(h)
+	xlog.Printf(Debug, "HT 0x%016x %04d get %v\n", h, t.hoff, offs)
+	return offs
 }

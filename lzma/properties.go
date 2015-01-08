@@ -48,6 +48,10 @@ func verifyProperties(p *Properties) error {
 	if !(MinDictLen <= p.DictLen && p.DictLen <= MaxDictLen) {
 		return newError("DictLen out of range")
 	}
+	hlen := int(p.DictLen)
+	if hlen < 0 {
+		return newError("DictLen cannot be converted into int")
+	}
 	return nil
 }
 
