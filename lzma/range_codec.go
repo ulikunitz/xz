@@ -1,26 +1,39 @@
 package lzma
 
 import (
+	"bufio"
 	"io"
 
 	"github.com/uli-go/xz/xlog"
 )
 
 // newRangeEncoder creates a new range encoder.
-func newRangeEncoder(w io.ByteWriter) *rangeEncoder {
-	return &rangeEncoder{w: w, range_: 0xffffffff, cacheSize: 1}
+func newRangeEncoder(w io.Writer) *rangeEncoder {
+	return &rangeEncoder{
+		w:         bufio.NewWriter(w),
+		range_:    0xffffffff,
+		cacheSize: 1}
 }
+
+var encBitCounter int
 
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
+	e.bitCounter++
 	e.range_ >>= 1
 	e.low += uint64(e.range_) & (0 - (uint64(b) & 1))
-	return e.normalize()
+	if err := e.normalize(); err != nil {
+		return err
+	}
+
+	xlog.Printf(Debug, "D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
+	return nil
 }
 
 // EncodeBit encodes the least significant bit of b. The p value will be
 // updated by the function depending on the bit encoded.
 func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
+	e.bitCounter++
 	bound := p.bound(e.range_)
 	if b&1 == 0 {
 		e.range_ = bound
@@ -30,7 +43,13 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		e.range_ -= bound
 		p.dec()
 	}
-	return e.normalize()
+	if err := e.normalize(); err != nil {
+		return err
+	}
+
+	xlog.Printf(Debug, "B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_,
+		*p, b)
+	return nil
 }
 
 // Flush writes a complete copy of the low value.
@@ -40,7 +59,7 @@ func (e *rangeEncoder) Flush() error {
 			return err
 		}
 	}
-	return nil
+	return e.w.Flush()
 }
 
 // newRangeDecoder initializes a range decoder. It reads five bytes from the
@@ -62,9 +81,7 @@ var bitCounter int
 // contain the bit at the least-significant position. All other bits will be
 // zero.
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
-	bitCounter++
-	xlog.Printf(Debug, "D %3d 0x%08x:0x%08x\n", bitCounter, d.range_,
-		d.code)
+	d.bitCounter++
 	d.range_ >>= 1
 	d.code -= d.range_
 	t := 0 - (d.code >> 31)
@@ -78,7 +95,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 
 	b = (t + 1) & 1
 
-	xlog.Printf(Debug, "O %3d %d\n", bitCounter, b)
+	xlog.Printf(Debug, "D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
 	return b, nil
 }
 
@@ -86,9 +103,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
-	bitCounter++
-	xlog.Printf(Debug, "B %3d 0x%08x:0x%08x 0x%03x\n", bitCounter,
-		d.range_, d.code, *p)
+	d.bitCounter++
 	bound := p.bound(d.range_)
 	if d.code < bound {
 		d.range_ = bound
@@ -107,8 +122,8 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		return 0, err
 	}
 
-	xlog.Printf(Debug, "O %3d %d\n", bitCounter, b)
-
+	xlog.Printf(Debug, "B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_,
+		*p, b)
 	return b, nil
 }
 
@@ -116,11 +131,13 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 // overflow therefore we need uint64. The cache value is used to handle
 // overflows.
 type rangeEncoder struct {
-	w         io.ByteWriter
+	w         *bufio.Writer
 	range_    uint32
 	low       uint64
 	cacheSize int64
 	cache     byte
+	// for debugging
+	bitCounter int
 }
 
 // shiftLow() shifts the low value for 8 bit. The shifted byte is written into
@@ -164,6 +181,8 @@ type rangeDecoder struct {
 	r      io.ByteReader
 	range_ uint32
 	code   uint32
+	// for Debugging
+	bitCounter int
 }
 
 // init initializes the range decoder, by reading from the byte reader.

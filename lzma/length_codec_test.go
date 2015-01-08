@@ -46,3 +46,34 @@ func TestLengthCodecRange(t *testing.T) {
 	}
 	t.Logf("error %s", err)
 }
+
+func TestLengthCodecAll(t *testing.T) {
+	var buf bytes.Buffer
+	e := newRangeEncoder(&buf)
+	le := newLengthCodec()
+	for i := minLength; i < maxLength; i++ {
+		u := uint32(i - minLength)
+		err := le.Encode(e, u, 0)
+		if err != nil {
+			t.Fatalf("le.Encode(e, %d, 0) error %s", u, err)
+		}
+	}
+	if err := e.Flush(); err != nil {
+		t.Fatalf("e.Flush error %s", err)
+	}
+	d, err := newRangeDecoder(&buf)
+	if err != nil {
+		t.Fatalf("newRangeDecoder error %s", err)
+	}
+	ld := newLengthCodec()
+	for i := minLength; i < maxLength; i++ {
+		u := uint32(i - minLength)
+		l, err := ld.Decode(d, 0)
+		if err != nil {
+			t.Fatalf("ld.Decode(e, 0) error %s", err)
+		}
+		if l != u {
+			t.Errorf("ld.Decode(e, 0) returned %d; want %d", l, u)
+		}
+	}
+}

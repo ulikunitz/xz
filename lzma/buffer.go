@@ -295,6 +295,7 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 		err = errAgain
 		p = p[:n]
 	}
+	n = len(p)
 	b.writeSlice(p)
 	return
 }

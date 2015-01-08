@@ -266,7 +266,7 @@ type opWriter struct {
 // newOpWriter creates a new operation writer.
 func newOpWriter(w io.Writer, p *Properties, dict dictionary) (ow *opWriter, err error) {
 	ow = new(opWriter)
-	if ow.re = newRangeEncoder(bufio.NewWriter(w)); err != nil {
+	if ow.re = newRangeEncoder(w); err != nil {
 		return nil, err
 	}
 	if err = ow.opCodec.init(p, dict); err != nil {
@@ -297,6 +297,13 @@ func (ow *opWriter) writeEOS() error {
 	return ow.writeMatch(match{distance: maxDistance, length: minLength})
 }
 
+func iverson(ok bool) uint32 {
+	if ok {
+		return 1
+	}
+	return 0
+}
+
 // writeRep writes a repetition operation into the operation stream
 func (ow *opWriter) writeMatch(m match) error {
 	var err error
@@ -318,12 +325,13 @@ func (ow *opWriter) writeMatch(m match) error {
 			break
 		}
 	}
+	b := iverson(g < 4)
+	if err = ow.isRep[state].Encode(ow.re, b); err != nil {
+		return err
+	}
 	n := uint32(m.length - minLength)
-	if g > 4 {
+	if b == 0 {
 		// simple match
-		if err = ow.isRep[state].Encode(ow.re, 0); err != nil {
-			return err
-		}
 		ow.rep[3], ow.rep[2], ow.rep[1], ow.rep[0] = ow.rep[2],
 			ow.rep[1], ow.rep[0], dist
 		ow.updateStateMatch()
@@ -332,41 +340,34 @@ func (ow *opWriter) writeMatch(m match) error {
 		}
 		return ow.distCodec.Encode(ow.re, dist, n)
 	}
-	if err = ow.isRep[state].Encode(ow.re, 1); err != nil {
+	b = iverson(g != 0)
+	if err = ow.isRepG0[state].Encode(ow.re, b); err != nil {
 		return err
 	}
-	if g == 0 {
-		if err = ow.isRepG0[state].Encode(ow.re, 0); err != nil {
+	if b == 0 {
+		// g == 0
+		b = iverson(m.length != 1)
+		if err = ow.isRepG0Long[state2].Encode(ow.re, b); err != nil {
 			return err
 		}
-		if m.length == 1 {
+		if b == 0 {
 			ow.updateStateShortRep()
-			return ow.isRepG0Long[state2].Encode(ow.re, 0)
+			return nil
 		}
 	} else {
-		if err = ow.isRepG0[state].Encode(ow.re, 1); err != nil {
+		// g in {1,2,3}
+		b = iverson(g != 1)
+		if err = ow.isRepG1[state].Encode(ow.re, b); err != nil {
 			return err
 		}
-		if g == 1 {
-			err = ow.isRepG1[state].Encode(ow.re, 0)
+		if b == 1 {
+			// g in {2,3}
+			b = iverson(g != 2)
+			err = ow.isRepG2[state].Encode(ow.re, b)
 			if err != nil {
 				return err
 			}
-		} else {
-			err = ow.isRepG1[state].Encode(ow.re, 1)
-			if err != nil {
-				return err
-			}
-			if g == 2 {
-				err = ow.isRepG2[state].Encode(ow.re, 0)
-				if err != nil {
-					return err
-				}
-			} else {
-				err = ow.isRepG2[state].Encode(ow.re, 1)
-				if err != nil {
-					return err
-				}
+			if b == 1 {
 				ow.rep[3] = ow.rep[2]
 			}
 			ow.rep[2] = ow.rep[1]

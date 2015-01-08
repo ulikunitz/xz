@@ -2,6 +2,8 @@ package lzma
 
 import (
 	"io"
+
+	"github.com/uli-go/xz/xlog"
 )
 
 // defaultProperties defines the default properties for the Writer.
@@ -119,14 +121,14 @@ func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writ
 }
 
 // Write moves data into the internal buffer and triggers its compression.
-func (l *Writer) Write(p []byte) (n int, err error) {
+func (lw *Writer) Write(p []byte) (n int, err error) {
 	for n < len(p) {
-		k, err := l.dict.Write(p[n:])
+		k, err := lw.dict.Write(p[n:])
 		n += k
 		if err != nil && err != errAgain {
 			return n, err
 		}
-		if err = l.process(0); err != nil {
+		if err = lw.process(0); err != nil {
 			return n, err
 		}
 	}
@@ -145,7 +147,10 @@ func (lw *Writer) Close() error {
 			return err
 		}
 	}
-	return lw.ow.Close()
+	if err = lw.ow.Close(); err != nil {
+		return err
+	}
+	return lw.dict.Close()
 }
 
 // The allData flag tells the process method that all data must be processed.
@@ -171,7 +176,7 @@ func (lw *Writer) potentialOffsets(p []byte) []int64 {
 		// distances from the hash table
 		offs = append(offs, lw.t4.Offsets(p)...)
 	}
-	for i := 3; i >= 0; i++ {
+	for i := 3; i >= 0; i-- {
 		// distances from the repetition for length less than 4
 		dist := int64(lw.ow.rep[i]) + minDistance
 		off := head - dist
@@ -235,22 +240,17 @@ func (lw *Writer) findOp() (op operation, err error) {
 	return m, nil
 }
 
-// readOp converts the head of the dictionary into a buffer. The head of the
-// dictionary will be advanced by copying the data coverd by the operation into
+// discardOp advances the head of the dictionary and writes the the bytes into
 // the hash table.
-func (lw *Writer) readOp() (op operation, err error) {
-	op, err = lw.findOp()
-	if err != nil {
-		return nil, err
-	}
+func (lw *Writer) discardOp(op operation) error {
 	n, err := lw.dict.Copy(lw.t4, op.Len())
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if n < op.Len() {
-		return nil, errAgain
+		return errAgain
 	}
-	return op, nil
+	return nil
 }
 
 // process encodes the data written into the dictionary buffer. The allData
@@ -258,14 +258,19 @@ func (lw *Writer) readOp() (op operation, err error) {
 func (lw *Writer) process(flags int) error {
 	var lowMark int
 	if flags&allData == 0 {
-		lowMark = maxLength
+		lowMark = maxLength - 1
 	}
-	for lw.dict.Readable() >= lowMark {
-		op, err := lw.readOp()
+	for lw.dict.Readable() > lowMark {
+		op, err := lw.findOp()
 		if err != nil {
+			xlog.Printf(Debug, "findOp error %s\n", err)
 			return err
 		}
 		if err = lw.ow.WriteOp(op); err != nil {
+			return err
+		}
+		xlog.Printf(Debug, "op %s", op)
+		if err = lw.discardOp(op); err != nil {
 			return err
 		}
 	}

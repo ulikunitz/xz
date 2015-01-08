@@ -1,5 +1,7 @@
 package lzma
 
+import "github.com/uli-go/xz/xlog"
+
 // literalCodec supports the encoding of literal. It provides 768 probability
 // values per literal state. The upper 512 probabilities are used with the
 // context of a match bit.
@@ -59,6 +61,8 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 		}
 		symbol = (symbol << 1) | bit
 	}
+	xlog.Printf(Debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
+		litState)
 	return nil
 }
 
@@ -96,7 +100,10 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 		}
 		symbol = (symbol << 1) | bit
 	}
-	return byte(symbol - 0x100), nil
+	s = byte(symbol - 0x100)
+	xlog.Printf(Debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
+		litState)
+	return s, nil
 }
 
 // minLC and maxLC define the range for LC values.

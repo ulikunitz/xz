@@ -3,6 +3,8 @@ package lzma
 import (
 	"bufio"
 	"io"
+
+	"github.com/uli-go/xz/xlog"
 )
 
 // defaultBufferLen defines the default buffer length
@@ -22,7 +24,6 @@ type Reader struct {
 // NewReader creates an LZMA reader. It reads the classic, original LZMA
 // format. Note that LZMA2 uses a different header format.
 func NewReader(r io.Reader) (*Reader, error) {
-
 	// read header
 	f := bufio.NewReader(r)
 	properties, err := readProperties(f)
@@ -133,6 +134,7 @@ func (l *Reader) fill() error {
 				return err
 			}
 		}
+		xlog.Printf(Debug, "op %s", op)
 
 		n := l.currentLen + uint64(op.Len())
 		if n < l.currentLen {
