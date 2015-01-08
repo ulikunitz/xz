@@ -1,6 +1,9 @@
 package lzma
 
-import "fmt"
+import (
+	"fmt"
+	"unicode"
+)
 
 // operation represents an operation on the dictionary during encoding or
 // decoding.
@@ -10,26 +13,26 @@ type operation interface {
 }
 
 // rep represents a repetition at the given distance and the given length
-type rep struct {
+type match struct {
 	// supports all possible distance values, including the eos marker
 	distance int64
 	length   int
 }
 
 // applyReaderDict applies the repetition on the decoder dictionary.
-func (r rep) applyReaderDict(d *readerDict) error {
-	_, err := d.WriteRep(r.distance, r.length)
+func (m match) applyReaderDict(d *readerDict) error {
+	_, err := d.WriteRep(m.distance, m.length)
 	return err
 }
 
 // Len return the length of the repetition.
-func (r rep) Len() int {
-	return r.length
+func (m match) Len() int {
+	return m.length
 }
 
 // String returns a string representation for the repetition.
-func (r rep) String() string {
-	return fmt.Sprintf("rep(%d,%d)", r.distance, r.length)
+func (m match) String() string {
+	return fmt.Sprintf("match{%d,%d}", m.distance, m.length)
 }
 
 // lit represents a single byte literal.
@@ -49,5 +52,11 @@ func (l lit) Len() int {
 
 // String returns a string representation for the literal.
 func (l lit) String() string {
-	return fmt.Sprintf("lit(%02x %c)", l.b, l.b)
+	var c byte
+	if unicode.IsPrint(rune(l.b)) {
+		c = l.b
+	} else {
+		c = '.'
+	}
+	return fmt.Sprintf("lit{%02x %c}", l.b, c)
 }

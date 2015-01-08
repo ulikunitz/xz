@@ -203,7 +203,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 			}
 			return nil, eos
 		}
-		op = rep{length: int(n) + minLength,
+		op = match{length: int(n) + minLength,
 			distance: int64(or.rep[0]) + minDistance}
 		return op, nil
 	}
@@ -220,7 +220,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		}
 		if b == 0 {
 			or.updateStateShortRep()
-			op = rep{length: 1,
+			op = match{length: 1,
 				distance: int64(dist) + minDistance}
 			return op, nil
 		}
@@ -252,7 +252,7 @@ func (or *opReader) ReadOp() (op operation, err error) {
 		return nil, err
 	}
 	or.updateStateRep()
-	op = rep{length: int(n) + minLength,
+	op = match{length: int(n) + minLength,
 		distance: int64(dist) + minDistance}
 	return op, nil
 }
@@ -294,18 +294,18 @@ func (ow *opWriter) writeLiteral(l lit) error {
 
 // writeEOS writes the explicit EOS marker
 func (ow *opWriter) writeEOS() error {
-	return ow.writeRep(rep{distance: maxDistance, length: minLength})
+	return ow.writeMatch(match{distance: maxDistance, length: minLength})
 }
 
 // writeRep writes a repetition operation into the operation stream
-func (ow *opWriter) writeRep(r rep) error {
+func (ow *opWriter) writeMatch(m match) error {
 	var err error
-	if !(minDistance <= r.distance && r.distance <= maxDistance) {
+	if !(minDistance <= m.distance && m.distance <= maxDistance) {
 		return newError("distance out of range")
 	}
-	dist := uint32(r.distance - minDistance)
-	if !(minLength <= r.length && r.length <= maxLength) &&
-		!(dist == ow.rep[0] && r.length == 1) {
+	dist := uint32(m.distance - minDistance)
+	if !(minLength <= m.length && m.length <= maxLength) &&
+		!(dist == ow.rep[0] && m.length == 1) {
 		return newError("length out of range")
 	}
 	state, state2, posState := ow.states()
@@ -318,7 +318,7 @@ func (ow *opWriter) writeRep(r rep) error {
 			break
 		}
 	}
-	n := uint32(r.length - minLength)
+	n := uint32(m.length - minLength)
 	if g > 4 {
 		// simple match
 		if err = ow.isRep[state].Encode(ow.re, 0); err != nil {
@@ -339,7 +339,7 @@ func (ow *opWriter) writeRep(r rep) error {
 		if err = ow.isRepG0[state].Encode(ow.re, 0); err != nil {
 			return err
 		}
-		if r.length == 1 {
+		if m.length == 1 {
 			ow.updateStateShortRep()
 			return ow.isRepG0Long[state2].Encode(ow.re, 0)
 		}
@@ -381,8 +381,8 @@ func (ow *opWriter) writeRep(r rep) error {
 // WriteOp writes an operation value into the stream.
 func (ow *opWriter) WriteOp(op operation) error {
 	switch x := op.(type) {
-	case rep:
-		return ow.writeRep(x)
+	case match:
+		return ow.writeMatch(x)
 	case lit:
 		return ow.writeLiteral(x)
 	}

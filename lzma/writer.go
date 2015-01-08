@@ -24,8 +24,6 @@ type Writer struct {
 	dict *writerDict
 	// hash table for four-byte sequences
 	t4 *hashTable
-	// hash table for two-byte sequences
-	t2 *hashTable
 }
 
 // NewWriter creates a new LZMA writer using the given properties. It doesn't
@@ -77,10 +75,6 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err != nil {
 		return nil, err
 	}
-	lw.t2, err = newHashTable(exp, 2)
-	if err != nil {
-		return nil, err
-	}
 	return lw, nil
 }
 
@@ -98,14 +92,14 @@ func putUint64LE(b []byte, x uint64) {
 }
 
 // writeHeader writes the classic header into the output writer.
-func writeHeader(w *Writer) error {
-	err := writeProperties(w.w, &w.properties)
+func (lw *Writer) writeHeader() error {
+	err := writeProperties(lw.w, &lw.properties)
 	if err != nil {
 		return err
 	}
 	b := make([]byte, 8)
-	putUint64LE(b, w.unpackLen)
-	_, err = w.w.Write(b)
+	putUint64LE(b, lw.unpackLen)
+	_, err = lw.w.Write(b)
 	return err
 }
 
@@ -118,7 +112,7 @@ func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writ
 	if err != nil {
 		return nil, err
 	}
-	if err = writeHeader(lw); err != nil {
+	if err = lw.writeHeader(); err != nil {
 		return nil, err
 	}
 	return lw, nil
@@ -141,35 +135,125 @@ func (l *Writer) Write(p []byte) (n int, err error) {
 
 // Close terminates the LZMA stream. It doesn't close the underlying writer
 // though.
-func (l *Writer) Close() error {
+func (lw *Writer) Close() error {
 	var err error
-	if err = l.process(allData); err != nil {
+	if err = lw.process(allData); err != nil {
 		return err
 	}
-	if l.eos {
-		if err = l.ow.writeEOS(); err != nil {
+	if lw.eos {
+		if err = lw.ow.writeEOS(); err != nil {
 			return err
 		}
 	}
-	return l.ow.Close()
+	return lw.ow.Close()
 }
 
-const (
-	allData = 1 << iota
-)
+// The allData flag tells the process method that all data must be processed.
+const allData = 1
+
+var errEmptyBuf = newError("empty buffer")
+
+func (lw *Writer) potentialOffsets(p []byte) []int64 {
+	head := lw.dict.Offset()
+	start := lw.dict.start
+	offs := make([]int64, 0, 32)
+	// add potential offsets with highest priority at the top
+	for i := 1; i < 3; i++ {
+		// distance -1, -2, -3
+		off := head - int64(i)
+		if start <= off {
+			offs = append(offs, off)
+		}
+	}
+	if len(p) == 4 {
+		// distances from the hash table
+		offs = append(offs, lw.t4.Offsets(p)...)
+	}
+	for i := 3; i >= 0; i++ {
+		// distances from the repetition for length less than 4
+		dist := int64(lw.ow.rep[i]) + minDistance
+		off := head - dist
+		if start <= off {
+			offs = append(offs, off)
+		}
+	}
+	return offs
+}
+
+var errNoMatch = newError("no match found")
+
+func (lw *Writer) bestMatch(offsets []int64) (m match, err error) {
+	// creates a match for 1
+	head := lw.dict.Offset()
+	off := int64(-1)
+	length := 0
+	for i := len(offsets) - 1; i >= 0; i-- {
+		n := lw.dict.EqualBytes(head, offsets[i], maxLength)
+		if n > length {
+			off, length = offsets[i], n
+		}
+	}
+	if off < 0 {
+		err = errNoMatch
+		return
+	}
+	if length == 1 {
+		dist := int64(lw.ow.rep[0]) + minDistance
+		offRep0 := head - dist
+		if off != offRep0 {
+			err = errNoMatch
+			return
+		}
+	}
+	return match{distance: head - off, length: length}, nil
+}
+
+func (lw *Writer) findOp() (op operation, err error) {
+	p := make([]byte, 4)
+	n, err := lw.dict.PeekHead(p)
+	if err != nil && err != errAgain && err != io.EOF {
+		return nil, err
+	}
+	if n <= 0 {
+		if n < 0 {
+			panic("strange n")
+		}
+		return nil, errEmptyBuf
+	}
+	offs := lw.potentialOffsets(p[:n])
+	if m, err := lw.bestMatch(offs); err == nil {
+		return m, nil
+	}
+	return lit{b: p[0]}, nil
+}
+
+func (lw *Writer) readOp() (op operation, err error) {
+	op, err = lw.findOp()
+	if err != nil {
+		return nil, err
+	}
+	_, err = lw.dict.Discard(op.Len())
+	if err != nil {
+		return nil, err
+	}
+	return op, nil
+}
 
 // process encodes the data written into the dictionary buffer. The allData
 // flag requires all data remaining in the buffer to be encoded.
-func (l *Writer) process(flags int) error {
+func (lw *Writer) process(flags int) error {
 	var lowMark int
 	if flags&allData == 0 {
 		lowMark = maxLength
 	}
-	for l.dict.Readable() >= lowMark {
-		// transform head into operation
-		// write operation
-		// advance total pointer including updating hashes
-		panic("TODO")
+	for lw.dict.Readable() >= lowMark {
+		op, err := lw.readOp()
+		if err != nil {
+			return err
+		}
+		if err = lw.ow.WriteOp(op); err != nil {
+			return err
+		}
 	}
 	return nil
 }

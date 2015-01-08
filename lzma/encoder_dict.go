@@ -68,9 +68,7 @@ func newEncoderDict(historyLen, bufferLen int) (d *encoderDict, err error) {
 	return
 }
 
-var errNoMatch = newError("no match")
-
-func (d *encoderDict) newRep(off int64, n int) (r rep, err error) {
+func (d *encoderDict) newMatch(off int64, n int) (m match, err error) {
 	head := d.Offset()
 	start := d.Offset() - int64(d.HistoryLen())
 	if !(start <= off && off < head) {
@@ -82,10 +80,10 @@ func (d *encoderDict) newRep(off int64, n int) (r rep, err error) {
 		return
 	}
 	dist := head - off
-	return rep{distance: dist, length: n}, nil
+	return match{distance: dist, length: n}, nil
 }
 
-func (d *encoderDict) bestMatch(offsets []int64) (r rep, err error) {
+func (d *encoderDict) bestMatch(offsets []int64) (m match, err error) {
 	head := d.Offset()
 	off := int64(-1)
 	n := 0
@@ -100,10 +98,8 @@ func (d *encoderDict) bestMatch(offsets []int64) (r rep, err error) {
 		err = errNoMatch
 		return
 	}
-	return d.newRep(off, n)
+	return d.newMatch(off, n)
 }
-
-var errEmptyBuf = newError("empty buffer")
 
 // TODO: code doesn't create "Short Rep Matches" and "Rep Matches" are not
 // prioritized
