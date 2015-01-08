@@ -1,5 +1,9 @@
 package lzma
 
+var (
+	errDist = newError("distance out of range")
+)
+
 type readerDict struct {
 	buffer
 	bufferLen int
@@ -21,16 +25,20 @@ func newReaderDict(historyLen, bufferLen int) (rd *readerDict, err error) {
 	return
 }
 
-func (rd *readerDict) WriteRep(dist int64, n int) (written int, err error) {
-	panic("TODO")
-}
-
 func (rd *readerDict) Offset() int64 {
 	return rd.end
 }
 
+func (rd *readerDict) WriteRep(dist int64, n int) (written int, err error) {
+	if !(1 <= dist && dist <= int64(rd.Len())) {
+		return 0, errDist
+	}
+	return rd.WriteRepOff(n, rd.end-dist)
+}
+
 func (rd *readerDict) Byte(dist int) byte {
-	panic("TODO")
+	c, _ := rd.ReadByteAt(rd.end - int64(dist))
+	return c
 }
 
 type writerDict struct {
