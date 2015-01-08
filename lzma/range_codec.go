@@ -64,8 +64,8 @@ func (e *rangeEncoder) Flush() error {
 
 // newRangeDecoder initializes a range decoder. It reads five bytes from the
 // reader and therefore may return an error.
-func newRangeDecoder(r io.ByteReader) (d *rangeDecoder, err error) {
-	d = &rangeDecoder{r: r}
+func newRangeDecoder(r io.Reader) (d *rangeDecoder, err error) {
+	d = &rangeDecoder{r: bufio.NewReader(r)}
 	err = d.init()
 	return
 }
@@ -178,7 +178,7 @@ func (e *rangeEncoder) normalize() error {
 
 // rangeDecoder decodes single bits of the range encoding stream.
 type rangeDecoder struct {
-	r      io.ByteReader
+	r      *bufio.Reader
 	range_ uint32
 	code   uint32
 	// for Debugging

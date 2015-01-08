@@ -1,9 +1,6 @@
 package lzma
 
-import (
-	"bufio"
-	"io"
-)
+import "io"
 
 // states defines the overall state count
 const states = 12
@@ -79,7 +76,7 @@ type opReader struct {
 // newOpReader creates a new instance of an opReader.
 func newOpReader(r io.Reader, p *Properties, dict dictionary) (or *opReader, err error) {
 	or = new(opReader)
-	if or.rd, err = newRangeDecoder(bufio.NewReader(r)); err != nil {
+	if or.rd, err = newRangeDecoder(r); err != nil {
 		return nil, err
 	}
 	if err = or.opCodec.init(p, dict); err != nil {
