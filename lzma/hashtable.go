@@ -167,7 +167,8 @@ func (t *hashTable) WriteByte(b byte) error {
 }
 
 // Write converts the bytes provided into hash tables and stores the
-// abbreviated offsets into the hash table.
+// abbreviated offsets into the hash table. The function will never return an
+// error.
 func (t *hashTable) Write(p []byte) (n int, err error) {
 	for _, b := range p {
 		t.WriteByte(b)
@@ -208,6 +209,11 @@ func (t *hashTable) hash(p []byte) uint64 {
 		h = t.hr.RollByte(b)
 	}
 	return h
+}
+
+// Offset returns the current head offset.
+func (t *hashTable) Offset() int64 {
+	return t.hoff + int64(t.SliceLen())
 }
 
 // Offsets returns all potential offsets for the byte slice. The hash for the

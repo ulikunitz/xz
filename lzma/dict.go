@@ -56,24 +56,37 @@ func (rd *readerDict) Byte(dist int) byte {
 // support the finding of string sequences in the history.
 type writerDict struct {
 	buffer
+	bufferLen int
+}
+
+// initWriterDict initializes a writer dictionary.
+func initWriterDict(wd *writerDict, historyLen, bufferLen int) error {
+	if !(1 <= historyLen && int64(historyLen) < MaxDictLen) {
+		return newError("historyLen out of range")
+	}
+	if bufferLen <= 0 {
+		return newError("bufferLen must be greater than zero")
+	}
+	capacity := historyLen + bufferLen
+	*wd = writerDict{bufferLen: bufferLen}
+	err := initBuffer(&wd.buffer, capacity)
+	if err != nil {
+		return err
+	}
+	wd.writeLimit = bufferLen
+	return nil
 }
 
 // newWriterDict creates a new writer dictionary.
 func newWriterDict(historyLen, bufferLen int) (wd *writerDict, err error) {
-	if !(1 <= historyLen && int64(historyLen) < MaxDictLen) {
-		return nil, newError("historyLen out of range")
-	}
-	if bufferLen <= 0 {
-		return nil, newError("bufferLen must be greater than zero")
-	}
-	capacity := historyLen + bufferLen
-	wd = &writerDict{}
-	err = initBuffer(&wd.buffer, capacity)
-	if err != nil {
-		return nil, err
-	}
-	wd.writeLimit = bufferLen
-	return wd, nil
+	wd = new(writerDict)
+	err = initWriterDict(wd, historyLen, bufferLen)
+	return
+}
+
+// HistoryLen returns the history length.
+func (wd *writerDict) HistoryLen() int {
+	return wd.Cap() - wd.bufferLen
 }
 
 // Returns the byte at the given distance to the dictionary head.
@@ -85,4 +98,8 @@ func (wd *writerDict) Byte(dist int) byte {
 // Offset returns the offset of the head.
 func (wd *writerDict) Offset() int64 {
 	return wd.cursor
+}
+
+func (wd *writerDict) PeekHead(p []byte) (n int, err error) {
+	return wd.ReadAt(p, wd.cursor)
 }
