@@ -164,8 +164,8 @@ func (lw *Writer) potentialOffsets(p []byte) []int64 {
 	start := lw.dict.start
 	offs := make([]int64, 0, 32)
 	// add potential offsets with highest priority at the top
-	for i := 1; i < 3; i++ {
-		// distance -1, -2, -3
+	for i := 1; i < 11; i++ {
+		// distance 1 to 8
 		off := head - int64(i)
 		if start <= off {
 			offs = append(offs, off)
