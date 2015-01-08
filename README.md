@@ -9,5 +9,6 @@ your own risk.*
 
 # Progress
 
-A simple encoder and decoder for the LZMA  format are working. These
-streams must now be embedded in LZMA2 and the xz format.
+Encoding and decoding of LZMA files/byte streams is working and so we can
+compress and decompress files. The LZMA byte streams need now be
+embedded in readers and writers for the LZMA2 and xz container formats.
