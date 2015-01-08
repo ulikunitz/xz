@@ -48,10 +48,17 @@ func (rd *readerDict) Byte(dist int) byte {
 	return c
 }
 
+// writerDict is the dictionary used for writing. It is a ring buffer using the
+// cursor offset for the dictionary head. The capacity for the buffer is
+// the sum of historyLen and bufferLen.
+//
+// The actual writer uses encoderDict, which is an extension of writerDict to
+// support the finding of string sequences in the history.
 type writerDict struct {
 	buffer
 }
 
+// newWriterDict creates a new writer dictionary.
 func newWriterDict(historyLen, bufferLen int) (wd *writerDict, err error) {
 	if !(1 <= historyLen && int64(historyLen) < MaxDictLen) {
 		return nil, newError("historyLen out of range")
@@ -69,10 +76,13 @@ func newWriterDict(historyLen, bufferLen int) (wd *writerDict, err error) {
 	return wd, nil
 }
 
+// Returns the byte at the given distance to the dictionary head.
 func (wd *writerDict) Byte(dist int) byte {
-	panic("TODO")
+	c, _ := wd.ReadByteAt(wd.cursor - int64(dist))
+	return c
 }
 
+// Offset returns the offset of the head.
 func (wd *writerDict) Offset() int64 {
 	return wd.cursor
 }
