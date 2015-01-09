@@ -2,7 +2,9 @@ package lzma
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 )
@@ -59,4 +61,31 @@ func TestWriterCycle(t *testing.T) {
 	if !bytes.Equal(orig, decoded) {
 		t.Fatalf("decoded file differs from original")
 	}
+}
+
+func Example_writer() {
+	pr, pw := io.Pipe()
+	go func() {
+		w, err := NewWriter(pw)
+		if err != nil {
+			log.Fatal(err)
+		}
+		input := []byte("The quick brown fox jumps over the lazy dog.")
+		if _, err = w.Write(input); err != nil {
+			log.Fatal(err)
+		}
+		if err = w.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	r, err := NewReader(pr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.Copy(os.Stdout, r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output:
+	// The quick brown fox jumps over the lazy dog.
 }
