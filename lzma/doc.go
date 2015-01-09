@@ -1,8 +1,5 @@
-// Package lzma provides a reader and writer for LZMA files.
+// Package lzma provides a reader and a writer for LZMA files.
 //
-// Usage:
-//
-//   r, err := lzma.NewReader(f)
-//
-//   w, err := lzma.NewWriter(f)
+// The package is written completely in Go and doesn't rely on any external
+// library.
 package lzma

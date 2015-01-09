@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -107,6 +108,24 @@ func TestReaderAll(t *testing.T) {
 	for _, fn := range files {
 		testDecodeFile(t, fn, orig)
 	}
+}
+
+//
+func Example_reader() {
+	f, err := os.Open("fox.lzma")
+	if err != nil {
+		log.Fatal(err)
+	}
+	r, err := NewReader(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = io.Copy(os.Stdout, r)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Output:
+	// The quick brown fox jumps over the lazy dog.
 }
 
 type wrapTest struct {
