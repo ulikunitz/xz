@@ -13,15 +13,14 @@ const defaultBufferLen = 4096
 // NoUnpackLen provides the header value for an EOS marker in the stream.
 const noUnpackLen int64 = -1
 
-// Reader is able to read a LZMA byte stream and to read the plain text.
+// Reader supports the reading of LZMA byte streams.
 type Reader struct {
 	dict      *readerDict
 	or        *opReader
 	unpackLen int64
 }
 
-// NewReader creates an LZMA reader. It reads the classic, original LZMA
-// format. Note that LZMA2 uses a different header format.
+// NewReader creates a reader for LZMA byte streams.
 func NewReader(r io.Reader) (*Reader, error) {
 	// read header
 	f := bufio.NewReader(r)
@@ -42,20 +41,20 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 
 	historyLen := int(properties.DictLen)
-	l := &Reader{unpackLen: unpackLen}
-	l.dict, err = newReaderDict(historyLen, defaultBufferLen)
+	lr := &Reader{unpackLen: unpackLen}
+	lr.dict, err = newReaderDict(historyLen, defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
-	l.or, err = newOpReader(f, properties, l.dict)
+	lr.or, err = newOpReader(f, properties, lr.dict)
 	if err != nil {
 		return nil, err
 	}
-	l.or.properties.Len = unpackLen
+	lr.or.properties.Len = unpackLen
 	if unpackLen == noUnpackLen {
-		l.or.properties.EOS = true
+		lr.or.properties.EOS = true
 	}
-	return l, nil
+	return lr, nil
 }
 
 // getUint64LE converts the uint64 value stored as little endian to an uint64
@@ -88,10 +87,10 @@ func readUint64LE(r io.Reader) (x uint64, err error) {
 //
 // The end of the LZMA stream is indicated by EOF. There might be other errors
 // returned. The decoder will not be able to recover from an error returned.
-func (l *Reader) Read(p []byte) (n int, err error) {
+func (lr *Reader) Read(p []byte) (n int, err error) {
 	for {
 		var k int
-		k, err = l.dict.Read(p[n:])
+		k, err = lr.dict.Read(p[n:])
 		n += k
 		switch {
 		case err == io.EOF:
@@ -104,7 +103,7 @@ func (l *Reader) Read(p []byte) (n int, err error) {
 		case n == len(p):
 			return n, nil
 		}
-		if err = l.fill(); err != nil {
+		if err = lr.fill(); err != nil {
 			return n, err
 		}
 	}
@@ -118,20 +117,20 @@ var errUnexpectedEOS = newError("unexpected end-of-stream marker")
 var errWrongTermination = newError("end of stream marker at wrong place")
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
-func (l *Reader) fill() error {
-	if l.dict.closed {
+func (lr *Reader) fill() error {
+	if lr.dict.closed {
 		return nil
 	}
-	for l.dict.Readable() < l.dict.bufferLen {
-		op, err := l.or.ReadOp()
+	for lr.dict.Readable() < lr.dict.bufferLen {
+		op, err := lr.or.ReadOp()
 		if err != nil {
 			switch {
 			case err == eos:
-				if l.unpackLen != noUnpackLen &&
-					l.dict.Offset() != l.unpackLen {
+				if lr.unpackLen != noUnpackLen &&
+					lr.dict.Offset() != lr.unpackLen {
 					return errUnexpectedEOS
 				}
-				l.dict.closed = true
+				lr.dict.closed = true
 				return nil
 			case err == io.EOF:
 				return newError(
@@ -142,16 +141,16 @@ func (l *Reader) fill() error {
 		}
 		xlog.Printf(debug, "op %s", op)
 
-		if err = op.applyReaderDict(l.dict); err != nil {
+		if err = op.applyReaderDict(lr.dict); err != nil {
 			return err
 		}
-		if l.unpackLen != noUnpackLen && l.dict.Offset() > l.unpackLen {
+		if lr.unpackLen != noUnpackLen && lr.dict.Offset() > lr.unpackLen {
 			return newError("actual uncompressed length too large")
 		}
-		if l.dict.Offset() == l.unpackLen {
-			l.dict.closed = true
-			if !l.or.rd.possiblyAtEnd() {
-				if _, err = l.or.ReadOp(); err != eos {
+		if lr.dict.Offset() == lr.unpackLen {
+			lr.dict.closed = true
+			if !lr.or.rd.possiblyAtEnd() {
+				if _, err = lr.or.ReadOp(); err != eos {
 					return newError(
 						"wrong length in header")
 				}
@@ -164,6 +163,6 @@ func (l *Reader) fill() error {
 
 // Properties returns the properties of the LZMA reader. The properties reflect
 // the status provided by the header of the LZMA file.
-func (l *Reader) Properties() Properties {
-	return l.or.properties
+func (lr *Reader) Properties() Properties {
+	return lr.or.properties
 }
