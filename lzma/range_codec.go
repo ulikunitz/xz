@@ -6,8 +6,6 @@ import (
 	"github.com/uli-go/xz/xlog"
 )
 
-const maxConsecutiveEmptyReads = 100
-
 type bWriter struct {
 	io.Writer
 	a []byte
