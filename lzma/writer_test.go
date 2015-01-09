@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"io/ioutil"
@@ -63,10 +64,12 @@ func TestWriterCycle(t *testing.T) {
 	}
 }
 
+// The example uses the buffered reader and writer from package bufio.
 func Example_writer() {
 	pr, pw := io.Pipe()
+	br, bw := bufio.NewReader(pr), bufio.NewWriter(pw)
 	go func() {
-		w, err := NewWriter(pw)
+		w, err := NewWriter(bw)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -77,8 +80,12 @@ func Example_writer() {
 		if err = w.Close(); err != nil {
 			log.Fatal(err)
 		}
+		// reader waits for the data
+		if err = bw.Flush(); err != nil {
+			log.Fatal(err)
+		}
 	}()
-	r, err := NewReader(pr)
+	r, err := NewReader(br)
 	if err != nil {
 		log.Fatal(err)
 	}

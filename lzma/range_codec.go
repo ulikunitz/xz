@@ -1,16 +1,79 @@
 package lzma
 
 import (
-	"bufio"
 	"io"
 
 	"github.com/uli-go/xz/xlog"
 )
 
+const maxConsecutiveEmptyReads = 100
+
+type bWriter struct {
+	io.Writer
+	a []byte
+}
+
+func newByteWriter(w io.Writer) io.ByteWriter {
+	if b, ok := w.(io.ByteWriter); ok {
+		return b
+	}
+	return &bWriter{w, make([]byte, 1)}
+}
+
+func (b *bWriter) WriteByte(c byte) error {
+	b.a[0] = c
+	n, err := b.Write(b.a)
+	switch {
+	case n > 1:
+		panic("n > 1 for writing a single byte")
+	case n == 1:
+		return nil
+	case err == nil:
+		panic("no error for n == 0")
+	}
+	return err
+}
+
+type bReader struct {
+	io.Reader
+	a []byte
+}
+
+func newByteReader(r io.Reader) io.ByteReader {
+	if b, ok := r.(io.ByteReader); ok {
+		return b
+	}
+	return &bReader{r, make([]byte, 1)}
+}
+
+func (b bReader) ReadByte() (byte, error) {
+	n, err := b.Read(b.a)
+	switch {
+	case n > 1:
+		panic("n < 1 for reading a single byte")
+	case n == 1:
+		return b.a[0], nil
+	}
+	return 0, err
+}
+
+// rangeEncoder implements range encoding of single bits. The low value can
+// overflow therefore we need uint64. The cache value is used to handle
+// overflows.
+type rangeEncoder struct {
+	w         io.ByteWriter
+	range_    uint32
+	low       uint64
+	cacheSize int64
+	cache     byte
+	// for debugging
+	bitCounter int
+}
+
 // newRangeEncoder creates a new range encoder.
 func newRangeEncoder(w io.Writer) *rangeEncoder {
 	return &rangeEncoder{
-		w:         bufio.NewWriter(w),
+		w:         newByteWriter(w),
 		range_:    0xffffffff,
 		cacheSize: 1}
 }
@@ -53,19 +116,19 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 }
 
 // Flush writes a complete copy of the low value.
-func (e *rangeEncoder) Flush() error {
+func (e *rangeEncoder) Close() error {
 	for i := 0; i < 5; i++ {
 		if err := e.shiftLow(); err != nil {
 			return err
 		}
 	}
-	return e.w.Flush()
+	return nil
 }
 
 // newRangeDecoder initializes a range decoder. It reads five bytes from the
 // reader and therefore may return an error.
 func newRangeDecoder(r io.Reader) (d *rangeDecoder, err error) {
-	d = &rangeDecoder{r: bufio.NewReader(r)}
+	d = &rangeDecoder{r: newByteReader(r)}
 	err = d.init()
 	return
 }
@@ -127,19 +190,6 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	return b, nil
 }
 
-// rangeEncoder implements range encoding of single bits. The low value can
-// overflow therefore we need uint64. The cache value is used to handle
-// overflows.
-type rangeEncoder struct {
-	w         *bufio.Writer
-	range_    uint32
-	low       uint64
-	cacheSize int64
-	cache     byte
-	// for debugging
-	bitCounter int
-}
-
 // shiftLow() shifts the low value for 8 bit. The shifted byte is written into
 // the byte writer. The cache value is used to handle overflows.
 func (e *rangeEncoder) shiftLow() error {
@@ -178,7 +228,7 @@ func (e *rangeEncoder) normalize() error {
 
 // rangeDecoder decodes single bits of the range encoding stream.
 type rangeDecoder struct {
-	r      *bufio.Reader
+	r      io.ByteReader
 	range_ uint32
 	code   uint32
 	// for debugging

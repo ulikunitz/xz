@@ -390,5 +390,5 @@ func (ow *opWriter) WriteOp(op operation) error {
 // Close stops the operation writer. The range encoder is flushed out. The
 // underlying writer is not closed.
 func (ow *opWriter) Close() error {
-	return ow.re.Flush()
+	return ow.re.Close()
 }

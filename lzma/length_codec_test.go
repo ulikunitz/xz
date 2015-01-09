@@ -15,7 +15,7 @@ func TestLengthCodec(t *testing.T) {
 			t.Fatalf("le.Encode: %s", err)
 		}
 	}
-	if err = e.Flush(); err != nil {
+	if err = e.Close(); err != nil {
 		t.Fatalf("e.Close(): %s", err)
 	}
 	t.Logf("buffer length: %d", buf.Len())
@@ -58,8 +58,8 @@ func TestLengthCodecAll(t *testing.T) {
 			t.Fatalf("le.Encode(e, %d, 0) error %s", u, err)
 		}
 	}
-	if err := e.Flush(); err != nil {
-		t.Fatalf("e.Flush error %s", err)
+	if err := e.Close(); err != nil {
+		t.Fatalf("e.Close error %s", err)
 	}
 	d, err := newRangeDecoder(&buf)
 	if err != nil {

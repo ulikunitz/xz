@@ -35,8 +35,8 @@ func TestDistCodec(t *testing.T) {
 			t.Fatalf("de.Encode: %s", err)
 		}
 	}
-	if err = e.Flush(); err != nil {
-		t.Fatalf("e.Flush: %s", err)
+	if err = e.Close(); err != nil {
+		t.Fatalf("e.Close: %s", err)
 	}
 	t.Logf("buffer length %d", buf.Len())
 

@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"bufio"
 	"io"
 
 	"github.com/uli-go/xz/xlog"
@@ -48,9 +47,10 @@ func readHeader(r io.Reader) (p *Properties, err error) {
 
 // NewReader creates a reader for LZMA byte streams. It reads the LZMA file
 // header.
+//
+// For high performance use a buffered reader.
 func NewReader(r io.Reader) (*Reader, error) {
-	f := bufio.NewReader(r)
-	p, err := readHeader(f)
+	p, err := readHeader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	lr.or, err = newOpReader(f, p, lr.dict)
+	lr.or, err = newOpReader(r, p, lr.dict)
 	if err != nil {
 		return nil, err
 	}

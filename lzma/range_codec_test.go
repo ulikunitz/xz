@@ -23,8 +23,8 @@ func TestDirectEncoding(t *testing.T) {
 				t.Fatalf("de.Encode: %s", err)
 			}
 		}
-		if err := e.Flush(); err != nil {
-			t.Fatalf("e.Flush: %s", err)
+		if err := e.Close(); err != nil {
+			t.Fatalf("e.Close: %s", err)
 		}
 		var out []byte
 		d, err := newRangeDecoder(&buf)
@@ -59,8 +59,8 @@ func TestTreeEncoding(t *testing.T) {
 				t.Fatalf("te.Encode: %s", err)
 			}
 		}
-		if err := e.Flush(); err != nil {
-			t.Fatalf("e.flush: %s", err)
+		if err := e.Close(); err != nil {
+			t.Fatalf("e.Close: %s", err)
 		}
 		var out []byte
 		d, err := newRangeDecoder(&buf)
@@ -92,7 +92,7 @@ func TestTreeReverseEncoding(t *testing.T) {
 				t.Fatalf("te.Encode: %s", err)
 			}
 		}
-		if err := e.Flush(); err != nil {
+		if err := e.Close(); err != nil {
 			t.Fatalf("e.flush: %s", err)
 		}
 		var out []byte

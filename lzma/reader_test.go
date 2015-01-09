@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"io/ioutil"
@@ -17,7 +18,7 @@ func TestNewReader(t *testing.T) {
 		t.Fatalf("open examples/a.lzma: %s", err)
 	}
 	defer f.Close()
-	l, err := NewReader(f)
+	l, err := NewReader(bufio.NewReader(f))
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
@@ -54,7 +55,7 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 	}
 	defer f.Close()
 	t.Logf("file %s opened", filename)
-	l, err := NewReader(f)
+	l, err := NewReader(bufio.NewReader(f))
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
@@ -115,7 +116,7 @@ func Example_reader() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	r, err := NewReader(f)
+	r, err := NewReader(bufio.NewReader(f))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 	t.Logf("%s file %s opened", w.name, filename)
 	l, err := NewReader(w.wrap(f))
 	if err != nil {
-		t.Fatalf("NewReader: %s", err)
+		t.Fatalf("%s NewReader: %s", w.name, err)
 	}
 	decoded, err := ioutil.ReadAll(l)
 	if err != nil {
@@ -163,7 +164,7 @@ func TestReaderWrap(t *testing.T) {
 		{"DataErrReader", iotest.DataErrReader},
 		{"HalfReader", iotest.HalfReader},
 		{"OneByteReader", iotest.OneByteReader},
-		{"TimeoutReader", iotest.TimeoutReader},
+		// TimeOutReader would require buffer
 	}
 	orig := readOrigFile(t)
 	for _, tst := range tests {

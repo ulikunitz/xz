@@ -30,6 +30,8 @@ var Default = Properties{
 // Default Properties.
 //
 // Don't forget to call Close() for the writer after all data has been written.
+//
+// For high performance use a buffered writer.
 func NewWriter(w io.Writer) (*Writer, error) {
 	return NewWriterP(w, Default)
 }
@@ -132,7 +134,8 @@ func (lw *Writer) Write(p []byte) (n int, err error) {
 }
 
 // Close terminates the LZMA stream. It doesn't close the underlying writer
-// though.
+// though and leaves it alone. In some scenarios explicit closing of the
+// underlying writer is required.
 func (lw *Writer) Close() error {
 	var err error
 	if err = lw.process(allData); err != nil {
