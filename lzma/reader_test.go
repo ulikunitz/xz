@@ -51,9 +51,13 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 	pathname := filepath.Join(dirname, filename)
 	f, err := os.Open(pathname)
 	if err != nil {
-		t.Fatalf("Open(\"%s\"): %s", pathname, err)
+		t.Fatalf("Open(%q): %s", pathname, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			t.Fatalf("f.Close() error %s", err)
+		}
+	}()
 	t.Logf("file %s opened", filename)
 	l, err := NewReader(bufio.NewReader(f))
 	if err != nil {
@@ -86,7 +90,11 @@ func TestReaderAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %s", err)
 	}
-	defer dir.Close()
+	defer func() {
+		if err := dir.Close(); err != nil {
+			t.Fatalf("dir.Close() error %s", err)
+		}
+	}()
 	all, err := dir.Readdirnames(0)
 	if err != nil {
 		t.Fatalf("Readdirnames: %s", err)
@@ -116,6 +124,11 @@ func Example_reader() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	r, err := NewReader(bufio.NewReader(f))
 	if err != nil {
 		log.Fatal(err)
@@ -139,7 +152,11 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 	if err != nil {
 		t.Fatalf("Open(\"%s\"): %s", pathname, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	t.Logf("%s file %s opened", w.name, filename)
 	l, err := NewReader(w.wrap(f))
 	if err != nil {
@@ -178,7 +195,11 @@ func TestReaderBadFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %s", err)
 	}
-	defer dir.Close()
+	defer func() {
+		if err := dir.Close(); err != nil {
+			t.Fatalf("dir.Close() error %s", err)
+		}
+	}()
 	all, err := dir.Readdirnames(0)
 	if err != nil {
 		t.Fatalf("Readdirnames: %s", err)
@@ -201,7 +222,11 @@ func TestReaderBadFiles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Open(\"%s\"): %s", pathname, err)
 		}
-		defer f.Close()
+		defer func(f *os.File) {
+			if err := f.Close(); err != nil {
+				t.Fatalf("f.Close() error %s", err)
+			}
+		}(f)
 		t.Logf("file %s opened", filename)
 		l, err := NewReader(f)
 		if err != nil {
