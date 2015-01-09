@@ -11,12 +11,11 @@ import (
 // Using an arithmetic coder it cannot support flushing. A writer must be
 // closed.
 type Writer struct {
-	w          io.Writer
-	ow         *opWriter
-	props      Properties
-	unpackLen  uint64
-	writtenLen uint64
-	dict       *writerDict
+	w         io.Writer
+	ow        *opWriter
+	props     Properties
+	unpackLen int64
+	dict      *writerDict
 	// hash table for four-byte sequences
 	t4 *hashTable
 }
@@ -47,7 +46,7 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err = verifyProperties(&p); err != nil {
 		return nil, err
 	}
-	length := uint64(p.Len)
+	length := p.Len
 	if length == 0 {
 		length = noUnpackLen
 		p.EOS = true
@@ -100,7 +99,7 @@ func (lw *Writer) writeHeader() error {
 		return err
 	}
 	b := make([]byte, 8)
-	putUint64LE(b, lw.unpackLen)
+	putUint64LE(b, uint64(lw.unpackLen))
 	_, err = lw.w.Write(b)
 	return err
 }

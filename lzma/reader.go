@@ -11,14 +11,13 @@ import (
 const defaultBufferLen = 4096
 
 // NoUnpackLen provides the header value for an EOS marker in the stream.
-const noUnpackLen uint64 = 1<<64 - 1
+const noUnpackLen int64 = -1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
-	dict       *readerDict
-	or         *opReader
-	unpackLen  uint64
-	currentLen uint64
+	dict      *readerDict
+	or        *opReader
+	unpackLen int64
 }
 
 // NewReader creates an LZMA reader. It reads the classic, original LZMA
@@ -30,16 +29,19 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	historyLen := int(properties.DictLen)
-	if historyLen < 0 {
-		return nil, newError(
-			"property DictLen exceeds maximum int value")
+	if err = verifyProperties(properties); err != nil {
+		return nil, err
 	}
-	unpackLen, err := readUint64LE(f)
+	u, err := readUint64LE(f)
 	if err != nil {
 		return nil, err
 	}
+	unpackLen := int64(u)
+	if unpackLen < noUnpackLen {
+		newError("unpack length greater than MaxInt64 not supported")
+	}
 
+	historyLen := int(properties.DictLen)
 	l := &Reader{unpackLen: unpackLen}
 	l.dict, err = newReaderDict(historyLen, defaultBufferLen)
 	if err != nil {
@@ -48,6 +50,10 @@ func NewReader(r io.Reader) (*Reader, error) {
 	l.or, err = newOpReader(f, properties, l.dict)
 	if err != nil {
 		return nil, err
+	}
+	l.or.properties.Len = unpackLen
+	if unpackLen == noUnpackLen {
+		l.or.properties.EOS = true
 	}
 	return l, nil
 }
@@ -122,7 +128,7 @@ func (l *Reader) fill() error {
 			switch {
 			case err == eos:
 				if l.unpackLen != noUnpackLen &&
-					l.currentLen != l.unpackLen {
+					l.dict.Offset() != l.unpackLen {
 					return errUnexpectedEOS
 				}
 				l.dict.closed = true
@@ -136,21 +142,13 @@ func (l *Reader) fill() error {
 		}
 		xlog.Printf(debug, "op %s", op)
 
-		n := l.currentLen + uint64(op.Len())
-		if n < l.currentLen {
-			return newError(
-				"negative op length or overflow of decodedLen")
-		}
-		if n > l.unpackLen {
-			l.dict.closed = true
-			return newError("decoded stream too long")
-		}
-		l.currentLen = n
-
 		if err = op.applyReaderDict(l.dict); err != nil {
 			return err
 		}
-		if n == l.unpackLen {
+		if l.unpackLen != noUnpackLen && l.dict.Offset() > l.unpackLen {
+			return newError("actual uncompressed length too large")
+		}
+		if l.dict.Offset() == l.unpackLen {
 			l.dict.closed = true
 			if !l.or.rd.possiblyAtEnd() {
 				if _, err = l.or.ReadOp(); err != eos {
