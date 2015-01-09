@@ -124,17 +124,16 @@ func Example_reader() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
+	// no need for defer; Fatal calls os.Exit(1) that doesn't execute deferred functions
 	r, err := NewReader(bufio.NewReader(f))
 	if err != nil {
 		log.Fatal(err)
 	}
 	_, err = io.Copy(os.Stdout, r)
 	if err != nil {
+		log.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
 		log.Fatal(err)
 	}
 	// Output:

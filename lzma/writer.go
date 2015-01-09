@@ -31,7 +31,8 @@ var Default = Properties{
 //
 // Don't forget to call Close() for the writer after all data has been written.
 //
-// For high performance use a buffered writer.
+// For high performance use a buffered writer. But be aware that Close will not
+// flush it.
 func NewWriter(w io.Writer) (*Writer, error) {
 	return NewWriterP(w, Default)
 }
