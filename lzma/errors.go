@@ -6,9 +6,9 @@ type lerror struct {
 	Msg string
 }
 
-// Error returns the error message with the prefix "lzma - ".
+// Error returns the error message with the prefix "lzma: ".
 func (e lerror) Error() string {
-	return "lzma - " + e.Msg
+	return "lzma: " + e.Msg
 }
 
 // newError creates a new lzma error with the given message.
