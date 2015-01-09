@@ -13,15 +13,14 @@ func TestWriterCycle(t *testing.T) {
 		t.Fatalf("OpenFile writer.txt error %s", err)
 	}
 	defer wdebug.Close()
-	DebugOn(wdebug)
-	defer DebugOff()
+	debugOn(wdebug)
+	defer debugOff()
 
 	orig := readOrigFile(t)
 	buf := new(bytes.Buffer)
-	// TODO interface
-	w, err := NewWriter(buf, nil)
+	w, err := NewWriter(buf)
 	if err != nil {
-		t.Fatalf("properties")
+		t.Fatalf("NewWriter: error %s", err)
 	}
 	n, err := w.Write(orig)
 	if err != nil {
@@ -43,7 +42,7 @@ func TestWriterCycle(t *testing.T) {
 		t.Fatalf("OpenFile reader.txt error %s", err)
 	}
 	defer rdebug.Close()
-	DebugOn(rdebug)
+	debugOn(rdebug)
 	lr, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)

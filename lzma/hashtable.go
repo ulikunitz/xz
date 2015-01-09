@@ -162,7 +162,7 @@ func (t *hashTable) WriteByte(b byte) error {
 	h := t.wr.RollByte(b)
 	t.hoff++
 	if t.hoff >= 0 {
-		xlog.Printf(Debug, "HT 0x%016x %04d put\n", h, t.hoff)
+		xlog.Printf(debug, "HT 0x%016x %04d put\n", h, t.hoff)
 		t.putEntry(h, uint32(t.hoff))
 	}
 	return nil
@@ -190,7 +190,7 @@ func (t *hashTable) getOffsets(h uint64) []int64 {
 	if start < 0 {
 		start = 0
 	}
-	xlog.Printf(Debug,
+	xlog.Printf(debug,
 		"HT 0x%016x %04d start %d base %d sl %d hlen %d e %v",
 		h, t.hoff, start, base, t.SliceLen(), t.hlen, e)
 	for _, u := range e {
@@ -230,6 +230,6 @@ func (t *hashTable) Offset() int64 {
 func (t *hashTable) Offsets(p []byte) []int64 {
 	h := t.hash(p)
 	offs := t.getOffsets(h)
-	xlog.Printf(Debug, "HT 0x%016x %04d get %v\n", h, t.hoff, offs)
+	xlog.Printf(debug, "HT 0x%016x %04d get %v\n", h, t.hoff, offs)
 	return offs
 }

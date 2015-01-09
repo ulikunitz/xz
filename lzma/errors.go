@@ -1,12 +1,16 @@
 package lzma
 
-// Error represents an LZMA-specific error. At this point in time it ensures
-// that the method Error prefixes the message Msg with the string "lzma - ".
+// Error represents an LZMA-specific error. It allows the testing against LZMA
+// errors.
+//
+//  if _, ok := err.(lzma.Error); ok {
+//  	fmt.Println("lzma error %s", err)
+//  }
 type Error struct {
 	Msg string
 }
 
-// Errors returns the error message with the prefix "lzma - ".
+// Error returns the error message with the prefix "lzma - ".
 func (e Error) Error() string {
 	return "lzma - " + e.Msg
 }

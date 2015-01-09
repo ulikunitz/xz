@@ -11,7 +11,7 @@ import (
 const defaultBufferLen = 4096
 
 // NoUnpackLen provides the header value for an EOS marker in the stream.
-const NoUnpackLen uint64 = 1<<64 - 1
+const noUnpackLen uint64 = 1<<64 - 1
 
 // Reader is able to read a LZMA byte stream and to read the plain text.
 type Reader struct {
@@ -121,7 +121,7 @@ func (l *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if l.unpackLen != NoUnpackLen &&
+				if l.unpackLen != noUnpackLen &&
 					l.currentLen != l.unpackLen {
 					return errUnexpectedEOS
 				}
@@ -134,7 +134,7 @@ func (l *Reader) fill() error {
 				return err
 			}
 		}
-		xlog.Printf(Debug, "op %s", op)
+		xlog.Printf(debug, "op %s", op)
 
 		n := l.currentLen + uint64(op.Len())
 		if n < l.currentLen {

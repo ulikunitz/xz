@@ -6,69 +6,62 @@ import (
 	"github.com/uli-go/xz/xlog"
 )
 
-// defaultProperties defines the default properties for the Writer.
-var defaultProperties = Properties{
+// Writer supports the LZMA compression of a file.
+//
+// Using an arithmetic coder it cannot support flushing. A writer must be
+// closed.
+type Writer struct {
+	w          io.Writer
+	ow         *opWriter
+	props      Properties
+	unpackLen  uint64
+	writtenLen uint64
+	dict       *writerDict
+	// hash table for four-byte sequences
+	t4 *hashTable
+}
+
+// Default defines the properties used by NewWriter.
+var Default = Properties{
 	LC:      3,
 	LP:      0,
 	PB:      2,
 	DictLen: 1 << 12}
 
-// Writer supports the LZMA compression of a file. It cannot support flushing
-// because of the arithmethic coder.
-type Writer struct {
-	w          io.Writer
-	ow         *opWriter
-	properties Properties
-	unpackLen  uint64
-	writtenLen uint64
-	// end-of-stream marker required
-	eos  bool
-	dict *writerDict
-	// hash table for four-byte sequences
-	t4 *hashTable
+// NewWriter creates a new writer. The properties stored in Default will be
+// used.
+//
+// Don't forget to call Close() for the writer after all data has been written.
+func NewWriter(w io.Writer) (*Writer, error) {
+	return NewWriterP(w, Default)
 }
 
-// NewWriter creates a new LZMA writer using the given properties. It doesn't
-// provide an unpack length and creates an explicit end of stream. The classic
-// LZMA header will be created. If p is nil default parameters will be used.
-func NewWriter(w io.Writer, p *Properties) (*Writer, error) {
-	return NewWriterLenEOS(w, p, NoUnpackLen, true)
-}
-
-// NewWriterLen creates a new LZMA writer and a predefined length. There will
-// be no end-of-stream marker created unless NoUnpackLen is used as length. If
-// p is nil default parameters will be used.
-func NewWriterLen(w io.Writer, p *Properties, length uint64) (*Writer, error) {
-	return NewWriterLenEOS(w, p, length, false)
-}
-
-// newWriter creates a new writer without writing the header.
-func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
-	error) {
-	if length == NoUnpackLen {
-		eos = true
-	}
+// NewWriterP creates a new writer with the given Properties.
+//
+// Don't forget to call Close() for the writer after all data has been written.
+func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if w == nil {
 		return nil, newError("can't support a nil writer")
 	}
-	if p == nil {
-		p = &defaultProperties
-	}
 	var err error
-	if err = verifyProperties(p); err != nil {
+	if err = verifyProperties(&p); err != nil {
 		return nil, err
 	}
+	length := uint64(p.Len)
+	if length == 0 {
+		length = noUnpackLen
+		p.EOS = true
+	}
 	lw := &Writer{
-		w:          w,
-		properties: *p,
-		unpackLen:  length,
-		eos:        eos,
+		w:         w,
+		props:     p,
+		unpackLen: length,
 	}
 	lw.dict, err = newWriterDict(int(p.DictLen), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
-	lw.ow, err = newOpWriter(w, &lw.properties, lw.dict)
+	lw.ow, err = newOpWriter(w, &p, lw.dict)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +69,15 @@ func newWriter(w io.Writer, p *Properties, length uint64, eos bool) (*Writer,
 	if err != nil {
 		return nil, err
 	}
+	if err = lw.writeHeader(); err != nil {
+		return nil, err
+	}
 	return lw, nil
+}
+
+// Properties returns the properties of the LZMA writer.
+func (lw *Writer) Properties() Properties {
+	return lw.props
 }
 
 // putUint64LE puts the uint64 value into the byte slice as little endian
@@ -94,7 +95,7 @@ func putUint64LE(b []byte, x uint64) {
 
 // writeHeader writes the classic header into the output writer.
 func (lw *Writer) writeHeader() error {
-	err := writeProperties(lw.w, &lw.properties)
+	err := writeProperties(lw.w, &lw.props)
 	if err != nil {
 		return err
 	}
@@ -102,21 +103,6 @@ func (lw *Writer) writeHeader() error {
 	putUint64LE(b, lw.unpackLen)
 	_, err = lw.w.Write(b)
 	return err
-}
-
-// NewWriterLenEOS creates a new LZMA writer. A predefinied length can be
-// provided and the writing of an end-of-stream marker can be controlled. If
-// the argument NoUnpackLen will be provided for the lenght a end-of-stream
-// marker will be written regardless of the eos parameter.
-func NewWriterLenEOS(w io.Writer, p *Properties, length uint64, eos bool) (*Writer, error) {
-	lw, err := newWriter(w, p, length, eos)
-	if err != nil {
-		return nil, err
-	}
-	if err = lw.writeHeader(); err != nil {
-		return nil, err
-	}
-	return lw, nil
 }
 
 // Write moves data into the internal buffer and triggers its compression.
@@ -141,7 +127,7 @@ func (lw *Writer) Close() error {
 	if err = lw.process(allData); err != nil {
 		return err
 	}
-	if lw.eos {
+	if lw.props.EOS {
 		if err = lw.ow.writeEOS(); err != nil {
 			return err
 		}
@@ -189,6 +175,9 @@ func (lw *Writer) potentialOffsets(p []byte) []int64 {
 // errNoMatch indicates that no match could be found
 var errNoMatch = newError("no match found")
 
+// bestMatch finds the best match for the given offsets.
+//
+// TODO: compare all possible commands for compressed bits per encoded bits.
 func (lw *Writer) bestMatch(offsets []int64) (m match, err error) {
 	// creates a match for 1
 	head := lw.dict.Offset()
@@ -262,13 +251,13 @@ func (lw *Writer) process(flags int) error {
 	for lw.dict.Readable() > lowMark {
 		op, err := lw.findOp()
 		if err != nil {
-			xlog.Printf(Debug, "findOp error %s\n", err)
+			xlog.Printf(debug, "findOp error %s\n", err)
 			return err
 		}
 		if err = lw.ow.WriteOp(op); err != nil {
 			return err
 		}
-		xlog.Printf(Debug, "op %s", op)
+		xlog.Printf(debug, "op %s", op)
 		if err = lw.discardOp(op); err != nil {
 			return err
 		}

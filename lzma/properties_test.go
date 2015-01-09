@@ -6,7 +6,7 @@ import (
 )
 
 func TestVerify(t *testing.T) {
-	err := verifyProperties(&defaultProperties)
+	err := verifyProperties(&Default)
 	if err != nil {
 		t.Errorf("verifyProperties(&defaultProperties) error %s", err)
 	}
@@ -19,7 +19,7 @@ func TestVerify(t *testing.T) {
 
 func TestWriteProperties(t *testing.T) {
 	p := new(Properties)
-	*p = defaultProperties
+	*p = Default
 	buf := new(bytes.Buffer)
 	var err error
 	if err = writeProperties(buf, p); err != nil {

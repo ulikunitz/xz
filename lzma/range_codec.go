@@ -26,7 +26,7 @@ func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 		return err
 	}
 
-	xlog.Printf(Debug, "D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
+	xlog.Printf(debug, "D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		return err
 	}
 
-	xlog.Printf(Debug, "B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_,
+	xlog.Printf(debug, "B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_,
 		*p, b)
 	return nil
 }
@@ -95,7 +95,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 
 	b = (t + 1) & 1
 
-	xlog.Printf(Debug, "D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
+	xlog.Printf(debug, "D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
 	return b, nil
 }
 
@@ -122,7 +122,7 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		return 0, err
 	}
 
-	xlog.Printf(Debug, "B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_,
+	xlog.Printf(debug, "B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_,
 		*p, b)
 	return b, nil
 }
@@ -181,7 +181,7 @@ type rangeDecoder struct {
 	r      *bufio.Reader
 	range_ uint32
 	code   uint32
-	// for Debugging
+	// for debugging
 	bitCounter int
 }
 

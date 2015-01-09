@@ -4,7 +4,7 @@ import (
 	"io"
 )
 
-// Maximum and minimum values for the individual properties.
+// Maximum and minimum values for individual properties.
 const (
 	MinLC      = 0
 	MaxLC      = 8
@@ -18,8 +18,9 @@ const (
 
 // Properties provide the LZMA properties.
 //
-// Note that on 32-bit platforms not all possible dictionary length can be
-// supported.
+// The dictLen will be limited to MaxInt32 on 32-bit platforms. If the Len
+// field is larger than zero the LZMA writer will put the unpackLen in the LZMA
+// header.
 type Properties struct {
 	// number of literal context bits
 	LC int
@@ -29,6 +30,10 @@ type Properties struct {
 	PB int
 	// length of the dictionary history in bytes
 	DictLen uint32
+	// unpacked length
+	Len int64
+	// end-of-stream marker requested or present
+	EOS bool
 }
 
 // verifyProperties checks properties for errors.
@@ -51,6 +56,9 @@ func verifyProperties(p *Properties) error {
 	hlen := int(p.DictLen)
 	if hlen < 0 {
 		return newError("DictLen cannot be converted into int")
+	}
+	if p.Len < 0 {
+		return newError("length must not be negative")
 	}
 	return nil
 }

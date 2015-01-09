@@ -7,18 +7,18 @@ import (
 	"github.com/uli-go/xz/xlog"
 )
 
-// Debug stores a reference to a logger. It may contain nil for no output.
-var Debug xlog.Logger
+// debug stores a reference to a logger. It may contain nil for no output.
+var debug xlog.Logger
 
-// DebugOn uses the log.Logger type to write information on the given writer.
+// debugOn uses the log.Logger type to write information on the given writer.
 // If w is nil no output will be written.
-func DebugOn(w io.Writer) {
+func debugOn(w io.Writer) {
 	if w == nil {
-		Debug = nil
+		debug = nil
 		return
 	}
-	Debug = log.New(w, "", 0)
+	debug = log.New(w, "", 0)
 }
 
-// DebugOff() switches the debugging output off.
-func DebugOff() { Debug = nil }
+// debugOff() switches the debugging output off.
+func debugOff() { debug = nil }

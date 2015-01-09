@@ -61,7 +61,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 		}
 		symbol = (symbol << 1) | bit
 	}
-	xlog.Printf(Debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
+	xlog.Printf(debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
 		litState)
 	return nil
 }
@@ -101,7 +101,7 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 		symbol = (symbol << 1) | bit
 	}
 	s = byte(symbol - 0x100)
-	xlog.Printf(Debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
+	xlog.Printf(debug, "LIT 0x%02x %2d 0x%02x %2d", s, state, match,
 		litState)
 	return s, nil
 }

@@ -46,7 +46,7 @@ func newLengthCodec() *lengthCodec {
 //
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
-	xlog.Printf(Debug, "LEN %d", posState)
+	xlog.Printf(debug, "LEN %d", posState)
 	if l > maxLength-minLength {
 		return newError("length out of range")
 	}
@@ -71,7 +71,7 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 	if err = lc.high.Encode(e, l-16); err != nil {
 		return
 	}
-	xlog.Printf(Debug, "LEN %3d %2d\n", l, posState)
+	xlog.Printf(debug, "LEN %3d %2d\n", l, posState)
 	return nil
 }
 
@@ -79,9 +79,9 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 // to the length offset l.
 func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 ) (l uint32, err error) {
-	xlog.Printf(Debug, "LEN %d", posState)
+	xlog.Printf(debug, "LEN %d", posState)
 	defer func() {
-		xlog.Printf(Debug, "LEN %3d %2d\n", l, posState)
+		xlog.Printf(debug, "LEN %3d %2d\n", l, posState)
 	}()
 	var b uint32
 	if b, err = lc.choice[0].Decode(d); err != nil {
