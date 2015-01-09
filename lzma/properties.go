@@ -32,7 +32,7 @@ type Properties struct {
 	DictLen uint32
 	// unpacked length
 	Len int64
-	// end-of-stream marker requested or present
+	// end-of-stream marker requested
 	EOS bool
 }
 

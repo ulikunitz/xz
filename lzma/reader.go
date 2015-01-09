@@ -127,7 +127,6 @@ func (l *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				l.or.properties.EOS = true
 				if l.unpackLen != noUnpackLen &&
 					l.dict.Offset() != l.unpackLen {
 					return errUnexpectedEOS
@@ -163,7 +162,8 @@ func (l *Reader) fill() error {
 	return nil
 }
 
-// Properties returns the properties of the LZMA reader.
+// Properties returns the properties of the LZMA reader. The properties reflect
+// the status provided by the header of the LZMA file.
 func (l *Reader) Properties() Properties {
 	return l.or.properties
 }
