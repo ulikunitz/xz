@@ -127,6 +127,7 @@ func (l *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
+				l.or.properties.EOS = true
 				if l.unpackLen != noUnpackLen &&
 					l.dict.Offset() != l.unpackLen {
 					return errUnexpectedEOS
