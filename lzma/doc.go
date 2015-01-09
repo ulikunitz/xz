@@ -1,4 +1,8 @@
-// Package lzma provides the routines to support the LZMA compression.
+// Package lzma provides a reader and writer for LZMA files.
 //
-// LZMA2 consists of segments encoded in LZMA or not encoded at all.
+// Usage:
+//
+//   r, err := lzma.NewReader(f)
+//
+//   w, err := lzma.NewWriter(f)
 package lzma
