@@ -106,6 +106,16 @@ func (lw *Writer) writeHeader() error {
 
 // Write moves data into the internal buffer and triggers its compression.
 func (lw *Writer) Write(p []byte) (n int, err error) {
+	end := lw.dict.end + int64(len(p))
+	if end < 0 {
+		panic("end counter overflow")
+	}
+	var rerr error
+	if lw.unpackLen != noUnpackLen && end > lw.unpackLen {
+		m := lw.unpackLen - end
+		p = p[:m]
+		rerr = newError("write exceeds unpackLen")
+	}
 	for n < len(p) {
 		k, err := lw.dict.Write(p[n:])
 		n += k
@@ -116,7 +126,7 @@ func (lw *Writer) Write(p []byte) (n int, err error) {
 			return n, err
 		}
 	}
-	return n, nil
+	return n, rerr
 }
 
 // Close terminates the LZMA stream. It doesn't close the underlying writer
