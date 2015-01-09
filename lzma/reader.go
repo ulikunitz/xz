@@ -10,49 +10,61 @@ import (
 // defaultBufferLen defines the default buffer length
 const defaultBufferLen = 4096
 
-// NoUnpackLen provides the header value for an EOS marker in the stream.
-const noUnpackLen int64 = -1
+// noHeaderLen defines the value of the length field in the LZMA header.
+const noHeaderLen uint64 = 1<<64 - 1
 
 // Reader supports the reading of LZMA byte streams.
 type Reader struct {
-	dict      *readerDict
-	or        *opReader
-	unpackLen int64
+	dict  *readerDict
+	or    *opReader
+	props *Properties
 }
 
-// NewReader creates a reader for LZMA byte streams.
-func NewReader(r io.Reader) (*Reader, error) {
-	// read header
-	f := bufio.NewReader(r)
-	properties, err := readProperties(f)
+// readHeader reads the classic header for LZMA files.
+func readHeader(r io.Reader) (p *Properties, err error) {
+	p, err = readProperties(r)
 	if err != nil {
 		return nil, err
 	}
-	if err = verifyProperties(properties); err != nil {
-		return nil, err
-	}
-	u, err := readUint64LE(f)
+	u, err := readUint64LE(r)
 	if err != nil {
 		return nil, err
 	}
-	unpackLen := int64(u)
-	if unpackLen < noUnpackLen {
-		newError("unpack length greater than MaxInt64 not supported")
+	if u == noHeaderLen {
+		p.Len = 0
+		p.EOS = true
+		p.LenInHeader = false
+		return p, nil
 	}
+	p.Len = int64(u)
+	if p.Len < 0 {
+		return nil, newError(
+			"unpack length in header not supported by int64")
+	}
+	p.EOS = false
+	p.LenInHeader = true
+	return p, nil
+}
 
-	historyLen := int(properties.DictLen)
-	lr := &Reader{unpackLen: unpackLen}
-	lr.dict, err = newReaderDict(historyLen, defaultBufferLen)
+// NewReader creates a reader for LZMA byte streams. It reads the LZMA file
+// header.
+func NewReader(r io.Reader) (*Reader, error) {
+	f := bufio.NewReader(r)
+	p, err := readHeader(f)
 	if err != nil {
 		return nil, err
 	}
-	lr.or, err = newOpReader(f, properties, lr.dict)
+	if err = verifyProperties(p); err != nil {
+		return nil, err
+	}
+	lr := &Reader{props: p}
+	lr.dict, err = newReaderDict(int(p.DictLen), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
-	lr.or.properties.Len = unpackLen
-	if unpackLen == noUnpackLen {
-		lr.or.properties.EOS = true
+	lr.or, err = newOpReader(f, p, lr.dict)
+	if err != nil {
+		return nil, err
 	}
 	return lr, nil
 }
@@ -126,11 +138,14 @@ func (lr *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if lr.unpackLen != noUnpackLen &&
-					lr.dict.Offset() != lr.unpackLen {
+				if lr.props.LenInHeader &&
+					lr.dict.Offset() != lr.props.Len {
 					return errUnexpectedEOS
 				}
 				lr.dict.closed = true
+				if !lr.or.rd.possiblyAtEnd() {
+					return newError("data after eos")
+				}
 				return nil
 			case err == io.EOF:
 				return newError(
@@ -144,15 +159,19 @@ func (lr *Reader) fill() error {
 		if err = op.applyReaderDict(lr.dict); err != nil {
 			return err
 		}
-		if lr.unpackLen != noUnpackLen && lr.dict.Offset() > lr.unpackLen {
-			return newError("actual uncompressed length too large")
-		}
-		if lr.dict.Offset() == lr.unpackLen {
+		if lr.props.LenInHeader && lr.dict.Offset() >= lr.props.Len {
+			if lr.dict.Offset() > lr.props.Len {
+				return newError(
+					"more data than announced in header")
+			}
 			lr.dict.closed = true
 			if !lr.or.rd.possiblyAtEnd() {
 				if _, err = lr.or.ReadOp(); err != eos {
 					return newError(
 						"wrong length in header")
+				}
+				if !lr.or.rd.possiblyAtEnd() {
+					return newError("data after eos")
 				}
 			}
 			return nil
@@ -164,5 +183,5 @@ func (lr *Reader) fill() error {
 // Properties returns the properties of the LZMA reader. The properties reflect
 // the status provided by the header of the LZMA file.
 func (lr *Reader) Properties() Properties {
-	return lr.or.properties
+	return *lr.props
 }

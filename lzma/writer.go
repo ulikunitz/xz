@@ -11,11 +11,10 @@ import (
 // Using an arithmetic coder it cannot support flushing. A writer must be
 // closed.
 type Writer struct {
-	w         io.Writer
-	ow        *opWriter
-	props     Properties
-	unpackLen int64
-	dict      *writerDict
+	w     io.Writer
+	ow    *opWriter
+	props Properties
+	dict  *writerDict
 	// hash table for four-byte sequences
 	t4 *hashTable
 }
@@ -27,15 +26,16 @@ var Default = Properties{
 	PB:      2,
 	DictLen: 1 << 12}
 
-// NewWriter creates a new writer. The properties stored in Default will be
-// used.
+// NewWriter creates a new writer. It writes the LZMA header. It will use the
+// Default Properties.
 //
 // Don't forget to call Close() for the writer after all data has been written.
 func NewWriter(w io.Writer) (*Writer, error) {
 	return NewWriterP(w, Default)
 }
 
-// NewWriterP creates a new writer with the given Properties.
+// NewWriterP creates a new writer with the given Properties. It writes the
+// LZMA header.
 //
 // Don't forget to call Close() for the writer after all data has been written.
 func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
@@ -46,15 +46,12 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err = verifyProperties(&p); err != nil {
 		return nil, err
 	}
-	length := p.Len
-	if length == 0 {
-		length = noUnpackLen
+	if p.Len == 0 && !p.LenInHeader {
 		p.EOS = true
 	}
 	lw := &Writer{
-		w:         w,
-		props:     p,
-		unpackLen: length,
+		w:     w,
+		props: p,
 	}
 	lw.dict, err = newWriterDict(int(p.DictLen), defaultBufferLen)
 	if err != nil {
@@ -99,7 +96,13 @@ func (lw *Writer) writeHeader() error {
 		return err
 	}
 	b := make([]byte, 8)
-	putUint64LE(b, uint64(lw.unpackLen))
+	var l uint64
+	if lw.props.LenInHeader {
+		l = uint64(lw.props.Len)
+	} else {
+		l = noHeaderLen
+	}
+	putUint64LE(b, l)
 	_, err = lw.w.Write(b)
 	return err
 }
@@ -111,9 +114,8 @@ func (lw *Writer) Write(p []byte) (n int, err error) {
 		panic("end counter overflow")
 	}
 	var rerr error
-	if lw.unpackLen != noUnpackLen && end > lw.unpackLen {
-		m := lw.unpackLen - end
-		p = p[:m]
+	if lw.props.LenInHeader && end > lw.props.Len {
+		p = p[:lw.props.Len-end]
 		rerr = newError("write exceeds unpackLen")
 	}
 	for n < len(p) {

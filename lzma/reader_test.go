@@ -58,7 +58,6 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("unpackLen %d", l.unpackLen)
 	decoded, err := ioutil.ReadAll(l)
 	if err != nil {
 		t.Fatalf("ReadAll: %s", err)
@@ -145,7 +144,6 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
-	t.Logf("unpackLen %d", l.unpackLen)
 	decoded, err := ioutil.ReadAll(l)
 	if err != nil {
 		t.Fatalf("%s ReadAll: %s", w.name, err)

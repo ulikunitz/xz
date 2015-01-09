@@ -18,9 +18,7 @@ const (
 
 // Properties provide the LZMA properties.
 //
-// The dictLen will be limited to MaxInt32 on 32-bit platforms. If the Len
-// field is larger than zero the LZMA writer will put the unpackLen in the LZMA
-// header.
+// The dictLen will be limited to MaxInt32 on 32-bit platforms.
 type Properties struct {
 	// number of literal context bits
 	LC int
@@ -30,8 +28,10 @@ type Properties struct {
 	PB int
 	// length of the dictionary history in bytes
 	DictLen uint32
-	// unpacked length
+	// length of uncompressed data
 	Len int64
+	// header includes unpacked length
+	LenInHeader bool
 	// end-of-stream marker requested
 	EOS bool
 }
