@@ -2,16 +2,14 @@
 
 # Subpackage lzma
 
-## golzma
+## Prepare Release 0.2
 
-1. Put the functions in the xz/pack package to prevent reinventing the
-   wheel. Those commands can then be used for optimization.
-1. Add -c version
-
+1. Update README.md
+2. Pull dev from master
+3. Create tag
 
 ## LZMA2 preparation
 
-1. Write a test for the full buffer condition for the Reader
 1. include readProperties into readHeader
 2. include writeProperties into writeHeader
 3. Create
@@ -22,6 +20,12 @@
    use it in NewWriterP
 5. Implement for Reader and Writer
     Reset(flags int, p *Properties) error
+
+## golzma
+
+1. Put the functions in the xz/pack package to prevent reinventing the
+   wheel. Those commands can then be used for optimization.
+2. Add -c  flag
 
 # Log
 
