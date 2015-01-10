@@ -67,8 +67,8 @@ func TestWriterCycle(t *testing.T) {
 // The example uses the buffered reader and writer from package bufio.
 func Example_writer() {
 	pr, pw := io.Pipe()
-	br, bw := bufio.NewReader(pr), bufio.NewWriter(pw)
 	go func() {
+		bw := bufio.NewWriter(pw)
 		w, err := NewWriter(bw)
 		if err != nil {
 			log.Fatal(err)
@@ -85,7 +85,7 @@ func Example_writer() {
 			log.Fatal(err)
 		}
 	}()
-	r, err := NewReader(br)
+	r, err := NewReader(pr)
 	if err != nil {
 		log.Fatal(err)
 	}
