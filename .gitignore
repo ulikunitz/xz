@@ -2,3 +2,5 @@
 
 lzma/writer.txt
 lzma/reader.txt
+
+cmd/lzmago/lzmago
