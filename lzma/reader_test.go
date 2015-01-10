@@ -240,3 +240,79 @@ func TestReaderBadFiles(t *testing.T) {
 		t.Logf("%s: error %s", filename, err)
 	}
 }
+
+type repReader byte
+
+func (r repReader) Read(p []byte) (n int, err error) {
+	for i := range p {
+		p[i] = byte(r)
+	}
+	return len(p), nil
+}
+
+func newRepReader(c byte, n int64) *io.LimitedReader {
+	return &io.LimitedReader{R: repReader(c), N: n}
+}
+
+func newCodeReader(r io.Reader) *io.PipeReader {
+	pr, pw := io.Pipe()
+	go func() {
+		bw := bufio.NewWriter(pw)
+		lw, err := NewWriter(bw)
+		if err != nil {
+			log.Fatalf("NewWriter() error %s", err)
+		}
+		if _, err = io.Copy(lw, r); err != nil {
+			log.Fatalf("io.Copy error %s", err)
+		}
+		if err = lw.Close(); err != nil {
+			log.Fatalf("lw.Close error %s", err)
+		}
+		if err = bw.Flush(); err != nil {
+			log.Fatalf("bw.Flush() error %s", err)
+		}
+		if err = pw.CloseWithError(io.EOF); err != nil {
+			log.Fatalf("pw.CloseWithError(io.EOF) error %s", err)
+		}
+	}()
+	return pr
+}
+
+func TestReaderErrAgain(t *testing.T) {
+	lengths := []int64{0, 128, 1024, 4095, 4096, 4097, 8191, 8192, 8193}
+	buf := make([]byte, 128)
+	const c = 'A'
+	for _, n := range lengths {
+		t.Logf("n: %d", n)
+		pr := newCodeReader(newRepReader(c, n))
+		r, err := NewReader(pr)
+		if err != nil {
+			t.Fatalf("NewReader(pr) error %s", err)
+		}
+		k := int64(0)
+		for {
+			m, err := r.Read(buf)
+			k += int64(m)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Errorf("r.Read(buf) error %s", err)
+				break
+			}
+			if m > len(buf) {
+				t.Fatalf("r.Read(buf) %d; want <= %d", m,
+					len(buf))
+			}
+			for i, b := range buf[:m] {
+				if b != c {
+					t.Fatalf("buf[%d]=%c; want %c", i, b,
+						c)
+				}
+			}
+		}
+		if k != n {
+			t.Errorf("Read %d bytes; want %d", k, n)
+		}
+	}
+}

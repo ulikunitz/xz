@@ -133,7 +133,7 @@ func (lr *Reader) fill() error {
 	if lr.dict.closed {
 		return nil
 	}
-	for lr.dict.Readable() < lr.dict.bufferLen {
+	for lr.dict.Writable() >= maxLength {
 		op, err := lr.or.ReadOp()
 		if err != nil {
 			switch {
