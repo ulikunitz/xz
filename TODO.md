@@ -8,7 +8,11 @@
 2. Pull dev from master
 3. Create tag
 
-## LZMA2 preparation
+## Package lzma
+
+1. Rename Copy program by WriteTo
+
+### LZMA2 preparation
 
 1. include readProperties into readHeader
 2. include writeProperties into writeHeader
@@ -21,7 +25,7 @@
 5. Implement for Reader and Writer
     Reset(flags int, p *Properties) error
 
-## golzma
+## lzmago
 
 1. Put the functions in the xz/pack package to prevent reinventing the
    wheel. Those commands can then be used for optimization.
