@@ -31,9 +31,14 @@
 
 ## 2015-01-10
 
-1. Implemented simple golzma tool
+1. Implemented simple lzmago tool
 2. Tested tool against large 4.4G file
     - compression worked correctly; tested decompression with lzma
     - decompression hits a full buffer condition
 3. Fixed a bug in the compressor and wrote a test for it
 4. Executed full cycle for 4.4 GB file; performance can be improved ;-)
+
+## 2015-01-11
+
+1. Release 0.2 because of the working LZMA encoder and decoder.
+2. some small work lzmago using the log package.
