@@ -1,18 +1,11 @@
 /*
-Package xlog provides a Logger interface and supporting functions
-to support control over debug output.
+Package xlog provides a Logger interface and provides an implememntation of
+this interface that keeps quiet.
 
-The Go standard library supports a log package that provides an interface to
-log messages. Unfortunately it doesn't support the enabling or disabling of
-such output. Calling the function on a nil Logger pointer, results in a panic.
-During the development of the lzma package I needed a way to
-disable and enable debug output in a package. A possibility would be to
-ioutil.Discard, but it would do all the formatting before used.
+A possibility would be to ioutil.Discard, but this would imply the cost of
+formating the messages.
 
-The Logger interface is simple and it is supported by the log.Logger type. The
-package provides currently only Print, Printf, Println for the interface but
-this should be sufficient for debugging. If the Logger interface is nil, the
-function don't do anything.
+The Logger interface provides all methods that makes sense for a debug logger.
 
 The glog package, full path github.com/golang/glog, provides more functionality
 but depends on flag.Parse() to be called. This is not what I need for simple
@@ -20,34 +13,32 @@ debugging of test functions.
 */
 package xlog
 
-import "fmt"
+import "log"
 
-// This package requires types to support this interface. The log.Logger type
-// supports this interface.
+// We use this interface to handle a logger.
 type Logger interface {
-	Output(calldepth int, s string) error
+	Print(v ...interface{})
+	Printf(format string, v ...interface{})
+	Println(v ...interface{})
+	SetFlags(flags int)
+	SetPrefix(prefix string)
+	Flags() int
+	Prefix() string
 }
 
-// Print outputs the arguments using the logger. If the logger is nil nothing
-// will be printed.
-func Print(l Logger, v ...interface{}) {
-	if l != nil {
-		l.Output(2, fmt.Sprint(v...))
-	}
+// A logger that keeps quiet.
+var Quiet = &xLogger{flags: log.LstdFlags}
+
+// xLogger is a logger that does nothing.
+type xLogger struct {
+	flags  int
+	prefix string
 }
 
-// Printf prints the arguments using the format string. If the logger argument
-// is nil nothing will be printed.
-func Printf(l Logger, format string, v ...interface{}) {
-	if l != nil {
-		l.Output(2, fmt.Sprintf(format, v...))
-	}
-}
-
-// Println prints the arguments and adds a newline. If the logger argument is
-// nil nothing will be printed.
-func Println(l Logger, v ...interface{}) {
-	if l != nil {
-		l.Output(2, fmt.Sprintln(v...))
-	}
-}
+func (x *xLogger) Flags() int                             { return x.flags }
+func (x *xLogger) Prefix() string                         { return x.prefix }
+func (x *xLogger) Print(v ...interface{})                 {}
+func (x *xLogger) Printf(format string, v ...interface{}) {}
+func (x *xLogger) Println(v ...interface{})               {}
+func (x *xLogger) SetFlags(flags int)                     { x.flags = flags }
+func (x *xLogger) SetPrefix(prefix string)                { x.prefix = prefix }

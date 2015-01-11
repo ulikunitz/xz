@@ -2,8 +2,6 @@ package lzma
 
 import (
 	"io"
-
-	"github.com/uli-go/xz/xlog"
 )
 
 // defaultBufferLen defines the default buffer length
@@ -154,7 +152,7 @@ func (lr *Reader) fill() error {
 				return err
 			}
 		}
-		xlog.Printf(debug, "op %s", op)
+		debug.Printf("op %s", op)
 
 		if err = op.applyReaderDict(lr.dict); err != nil {
 			return err

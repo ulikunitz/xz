@@ -1,10 +1,6 @@
 package lzma
 
-import (
-	"io"
-
-	"github.com/uli-go/xz/xlog"
-)
+import "io"
 
 type bWriter struct {
 	io.Writer
@@ -87,7 +83,7 @@ func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 		return err
 	}
 
-	xlog.Printf(debug, "D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
+	debug.Printf("D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
 	return nil
 }
 
@@ -108,8 +104,7 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		return err
 	}
 
-	xlog.Printf(debug, "B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_,
-		*p, b)
+	debug.Printf("B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_, *p, b)
 	return nil
 }
 
@@ -156,7 +151,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 
 	b = (t + 1) & 1
 
-	xlog.Printf(debug, "D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
+	debug.Printf("D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
 	return b, nil
 }
 
@@ -183,8 +178,7 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		return 0, err
 	}
 
-	xlog.Printf(debug, "B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_,
-		*p, b)
+	debug.Printf("B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_, *p, b)
 	return b, nil
 }
 

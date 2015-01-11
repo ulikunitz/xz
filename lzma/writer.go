@@ -1,10 +1,6 @@
 package lzma
 
-import (
-	"io"
-
-	"github.com/uli-go/xz/xlog"
-)
+import "io"
 
 // Writer supports the LZMA compression of a file.
 //
@@ -266,13 +262,13 @@ func (lw *Writer) process(flags int) error {
 	for lw.dict.Readable() > lowMark {
 		op, err := lw.findOp()
 		if err != nil {
-			xlog.Printf(debug, "findOp error %s\n", err)
+			debug.Printf("findOp error %s\n", err)
 			return err
 		}
 		if err = lw.ow.WriteOp(op); err != nil {
 			return err
 		}
-		xlog.Printf(debug, "op %s", op)
+		debug.Printf("op %s", op)
 		if err = lw.discardOp(op); err != nil {
 			return err
 		}
