@@ -61,7 +61,7 @@ type rangeEncoder struct {
 	cacheSize int64
 	cache     byte
 	// for debugging
-	bitCounter int
+	// bitCounter int
 }
 
 // newRangeEncoder creates a new range encoder.
@@ -76,21 +76,21 @@ var encBitCounter int
 
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
-	e.bitCounter++
+	// e.bitCounter++
 	e.range_ >>= 1
 	e.low += uint64(e.range_) & (0 - (uint64(b) & 1))
 	if err := e.normalize(); err != nil {
 		return err
 	}
 
-	debug.Printf("D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
+	// debug.Printf("D %3d %0x08x %d\n", e.bitCounter, e.range_, b)
 	return nil
 }
 
 // EncodeBit encodes the least significant bit of b. The p value will be
 // updated by the function depending on the bit encoded.
 func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
-	e.bitCounter++
+	// e.bitCounter++
 	bound := p.bound(e.range_)
 	if b&1 == 0 {
 		e.range_ = bound
@@ -104,7 +104,7 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		return err
 	}
 
-	debug.Printf("B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_, *p, b)
+	// debug.Printf("B %3d 0x%08x 0x%03x %d\n", e.bitCounter, e.range_, *p, b)
 	return nil
 }
 
@@ -137,7 +137,7 @@ var bitCounter int
 // contain the bit at the least-significant position. All other bits will be
 // zero.
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
-	d.bitCounter++
+	// d.bitCounter++
 	d.range_ >>= 1
 	d.code -= d.range_
 	t := 0 - (d.code >> 31)
@@ -151,7 +151,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 
 	b = (t + 1) & 1
 
-	debug.Printf("D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
+	// debug.Printf("D %3d 0x%08x %d\n", d.bitCounter, d.range_, b)
 	return b, nil
 }
 
@@ -159,7 +159,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
-	d.bitCounter++
+	// d.bitCounter++
 	bound := p.bound(d.range_)
 	if d.code < bound {
 		d.range_ = bound
@@ -178,7 +178,7 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		return 0, err
 	}
 
-	debug.Printf("B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_, *p, b)
+	// debug.Printf("B %3d 0x%08x 0x%03x %d\n", d.bitCounter, d.range_, *p, b)
 	return b, nil
 }
 
@@ -224,7 +224,7 @@ type rangeDecoder struct {
 	range_ uint32
 	code   uint32
 	// for debugging
-	bitCounter int
+	// bitCounter int
 }
 
 // init initializes the range decoder, by reading from the byte reader.
