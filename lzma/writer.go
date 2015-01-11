@@ -64,7 +64,7 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = lw.writeHeader(); err != nil {
+	if err = writeHeader(w, &lw.props); err != nil {
 		return nil, err
 	}
 	return lw, nil
@@ -73,37 +73,6 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 // Properties returns the properties of the LZMA writer.
 func (lw *Writer) Properties() Properties {
 	return lw.props
-}
-
-// putUint64LE puts the uint64 value into the byte slice as little endian
-// value. The byte slice b must have at least place for 8 bytes.
-func putUint64LE(b []byte, x uint64) {
-	b[0] = byte(x)
-	b[1] = byte(x >> 8)
-	b[2] = byte(x >> 16)
-	b[3] = byte(x >> 24)
-	b[4] = byte(x >> 32)
-	b[5] = byte(x >> 40)
-	b[6] = byte(x >> 48)
-	b[7] = byte(x >> 56)
-}
-
-// writeHeader writes the classic header into the output writer.
-func (lw *Writer) writeHeader() error {
-	err := writeProperties(lw.w, &lw.props)
-	if err != nil {
-		return err
-	}
-	b := make([]byte, 8)
-	var l uint64
-	if lw.props.LenInHeader {
-		l = uint64(lw.props.Len)
-	} else {
-		l = noHeaderLen
-	}
-	putUint64LE(b, l)
-	_, err = lw.w.Write(b)
-	return err
 }
 
 // Write moves data into the internal buffer and triggers its compression.

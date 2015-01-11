@@ -16,7 +16,7 @@ const (
 	MaxDictLen = 1<<32 - 1
 )
 
-// Properties provide the LZMA properties.
+// Properties are the parameters of an LZMA stream.
 //
 // The dictLen will be limited to MaxInt32 on 32-bit platforms.
 type Properties struct {
@@ -72,6 +72,20 @@ func getUint32LE(b []byte) uint32 {
 	return x
 }
 
+// getUint64LE converts the uint64 value stored as little endian to an uint64
+// value.
+func getUint64LE(b []byte) uint64 {
+	x := uint64(b[7]) << 56
+	x |= uint64(b[6]) << 48
+	x |= uint64(b[5]) << 40
+	x |= uint64(b[4]) << 32
+	x |= uint64(b[3]) << 24
+	x |= uint64(b[2]) << 16
+	x |= uint64(b[1]) << 8
+	x |= uint64(b[0])
+	return x
+}
+
 // putUint32LE puts an uint32 integer into a byte slice that must have at least
 // a lenght of 4 bytes.
 func putUint32LE(b []byte, x uint32) {
@@ -81,15 +95,25 @@ func putUint32LE(b []byte, x uint32) {
 	b[3] = byte(x >> 24)
 }
 
-// readProperties reads the LZMA properties using the classic LZMA file header.
-func readProperties(r io.Reader) (p *Properties, err error) {
-	b := make([]byte, 5)
-	n, err := io.ReadFull(r, b)
+// putUint64LE puts the uint64 value into the byte slice as little endian
+// value. The byte slice b must have at least place for 8 bytes.
+func putUint64LE(b []byte, x uint64) {
+	b[0] = byte(x)
+	b[1] = byte(x >> 8)
+	b[2] = byte(x >> 16)
+	b[3] = byte(x >> 24)
+	b[4] = byte(x >> 32)
+	b[5] = byte(x >> 40)
+	b[6] = byte(x >> 48)
+	b[7] = byte(x >> 56)
+}
+
+// readHeader reads the classic LZMA header.
+func readHeader(r io.Reader) (p *Properties, err error) {
+	b := make([]byte, 13)
+	_, err = io.ReadFull(r, b)
 	if err != nil {
 		return nil, err
-	}
-	if n != 5 {
-		return nil, newError("properties not read correctly")
 	}
 	p = new(Properties)
 	x := int(b[0])
@@ -105,19 +129,39 @@ func readProperties(r io.Reader) (p *Properties, err error) {
 		// The LZMA specification makes the following recommendation.
 		p.DictLen = MinDictLen
 	}
+	u := getUint64LE(b[5:])
+	if u == noHeaderLen {
+		p.Len = 0
+		p.EOS = true
+		p.LenInHeader = false
+		return p, nil
+	}
+	p.Len = int64(u)
+	if p.Len < 0 {
+		return nil, newError(
+			"unpack length in header not supported by int64")
+	}
+	p.EOS = false
+	p.LenInHeader = true
 	return p, nil
 }
 
-// writeProperties writes properties to the stream. Note that properties are
-// verified for out of range error to ensure that the properties can properly
-// read from the stream again.
-func writeProperties(w io.Writer, p *Properties) (err error) {
+// writeHeader writes the header for classic LZMA files.
+func writeHeader(w io.Writer, p *Properties) error {
+	var err error
 	if err = verifyProperties(p); err != nil {
 		return err
 	}
-	b := make([]byte, 5)
+	b := make([]byte, 13)
 	b[0] = byte((p.PB*5+p.LP)*9 + p.LC)
 	putUint32LE(b[1:5], p.DictLen)
+	var l uint64
+	if p.LenInHeader {
+		l = uint64(p.Len)
+	} else {
+		l = noHeaderLen
+	}
+	putUint64LE(b[5:], l)
 	_, err = w.Write(b)
 	return err
 }

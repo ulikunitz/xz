@@ -17,32 +17,6 @@ type Reader struct {
 	props *Properties
 }
 
-// readHeader reads the classic header for LZMA files.
-func readHeader(r io.Reader) (p *Properties, err error) {
-	p, err = readProperties(r)
-	if err != nil {
-		return nil, err
-	}
-	u, err := readUint64LE(r)
-	if err != nil {
-		return nil, err
-	}
-	if u == noHeaderLen {
-		p.Len = 0
-		p.EOS = true
-		p.LenInHeader = false
-		return p, nil
-	}
-	p.Len = int64(u)
-	if p.Len < 0 {
-		return nil, newError(
-			"unpack length in header not supported by int64")
-	}
-	p.EOS = false
-	p.LenInHeader = true
-	return p, nil
-}
-
 // NewReader creates a reader for LZMA byte streams. It reads the LZMA file
 // header.
 //
@@ -65,20 +39,6 @@ func NewReader(r io.Reader) (*Reader, error) {
 		return nil, err
 	}
 	return lr, nil
-}
-
-// getUint64LE converts the uint64 value stored as little endian to an uint64
-// value.
-func getUint64LE(b []byte) uint64 {
-	x := uint64(b[7]) << 56
-	x |= uint64(b[6]) << 48
-	x |= uint64(b[5]) << 40
-	x |= uint64(b[4]) << 32
-	x |= uint64(b[3]) << 24
-	x |= uint64(b[2]) << 16
-	x |= uint64(b[1]) << 8
-	x |= uint64(b[0])
-	return x
 }
 
 // readUint64LE reads a uint64 little-endian integer from reader.
