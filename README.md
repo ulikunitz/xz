@@ -9,10 +9,8 @@ work for you or the APIs to be stable.
 
 # Status
 
-Package xz/lzma has now working support for "classic" lzma files. Files
-compressed with the lzma tools available on Linux can be decompressed
-and files can be compressed. An extremely simple lzmago binary is now
-provided for testing.
+Package xz/lzma has now working support for "classic" lzma files. An
+extremely simple lzmago binary is now provided for testing.
 
 To test it call the following command.
 
