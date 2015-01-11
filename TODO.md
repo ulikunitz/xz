@@ -8,10 +8,6 @@
 2. Pull dev from master
 3. Create tag
 
-## Package lzma
-
-1. Rename Copy program by WriteTo
-
 ### LZMA2 preparation
 
 1. include readProperties into readHeader
@@ -44,5 +40,6 @@
 
 ## 2015-01-11
 
-1. Release 0.2 because of the working LZMA encoder and decoder.
+1. Release v0.2 because of the working LZMA encoder and decoder.
 2. some small work lzmago using the log package.
+3. Removed method CopyAt from buffer because it isn't used anywhere.
