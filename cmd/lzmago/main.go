@@ -18,7 +18,6 @@ const (
 
 var (
 	uncompress = pflag.BoolP("decompress", "d", false, "decompresses files")
-	help       = pflag.BoolP("help", "h", false, "prints usage message")
 )
 
 func compressedName(name string) (string, error) {
@@ -128,10 +127,6 @@ func uncompressFile(name string) (err error) {
 
 func main() {
 	pflag.Parse()
-	if *help {
-		pflag.Usage()
-		os.Exit(0)
-	}
 	status := 0
 	if *uncompress {
 		// uncompress files
