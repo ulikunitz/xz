@@ -171,8 +171,8 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	return
 }
 
-// copyNOff is a helper method for CopyAt and Copy.
-func (b *buffer) copyNOff(w io.Writer, n int, off int64) (copied int, err error) {
+// copyAt is a helper for Copy.
+func (b *buffer) copyAt(w io.Writer, n int, off int64) (copied int, err error) {
 	start, end := off, off+int64(n)
 	e := b.index(end)
 	for off < end {
@@ -193,34 +193,6 @@ func (b *buffer) copyNOff(w io.Writer, n int, off int64) (copied int, err error)
 	return int(off - start), err
 }
 
-// CopyAt behaves like ReadAt but writes the data into the writer.
-func (b *buffer) CopyAt(w io.Writer, n int, off int64) (copied int, err error) {
-	if n < 0 {
-		return 0, errNegLen
-	}
-	if off < b.start {
-		return 0, errOffset
-	}
-	k := b.end - off
-	if k < int64(n) {
-		if k < 0 {
-			return 0, errOffset
-		}
-		if b.closed {
-			err = io.EOF
-		} else {
-			err = errAgain
-		}
-		n = int(k)
-	}
-	var cerr error
-	copied, cerr = b.copyNOff(w, n, off)
-	if cerr != nil {
-		err = cerr
-	}
-	return
-}
-
 // Copy behaves like read but the data is written into the writer.
 func (b *buffer) Copy(w io.Writer, n int) (copied int, err error) {
 	if n < 0 {
@@ -236,7 +208,7 @@ func (b *buffer) Copy(w io.Writer, n int) (copied int, err error) {
 		}
 		n = int(k)
 	}
-	copied, err = b.copyNOff(w, n, b.cursor)
+	copied, err = b.copyAt(w, n, b.cursor)
 	b.cursor += int64(copied)
 	return
 }
