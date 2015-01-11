@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	cmdName = "golzma"
+	cmdName = "lzmago"
 	lzmaExt = ".lzma"
 )
 
@@ -126,24 +127,26 @@ func uncompressFile(name string) (err error) {
 }
 
 func main() {
+	log.SetPrefix(fmt.Sprintf("%s: ", cmdName))
+	log.SetFlags(0)
 	pflag.Parse()
-	status := 0
+	if len(pflag.Args()) == 0 {
+		log.Print("For help use option -h")
+		os.Exit(0)
+	}
 	if *uncompress {
 		// uncompress files
 		for _, name := range pflag.Args() {
 			if err := uncompressFile(name); err != nil {
-				status = 1
-				fmt.Fprintf(os.Stderr, "%s: %s\n", cmdName, err)
+				log.Fatal(err)
 			}
 		}
 	} else {
 		// compress files
 		for _, name := range pflag.Args() {
 			if err := compressFile(name); err != nil {
-				status = 1
-				fmt.Fprintf(os.Stderr, "%s: %s\n", cmdName, err)
+				log.Fatal(err)
 			}
 		}
 	}
-	os.Exit(status)
 }
