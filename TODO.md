@@ -10,15 +10,13 @@
 
 ### LZMA2 preparation
 
-1. include readProperties into readHeader
-2. include writeProperties into writeHeader
-3. Create
+1. Create
     NewRawReader(p *Properties) (*Reader, error);
    use it in NewReader
-4. Create
+2. Create
     NewRawWriter(p *Properties) (*Writer, error);
    use it in NewWriterP
-5. Implement for Reader and Writer
+3. Implement for Reader and Writer
     Reset(flags int, p *Properties) error
 
 ## lzmago
@@ -40,6 +38,4 @@
 
 ## 2015-01-11
 
-1. Release v0.2 because of the working LZMA encoder and decoder.
-2. some small work lzmago using the log package.
-3. Removed method CopyAt from buffer because it isn't used anywhere.
+- Release v0.2 because of the working LZMA encoder and decoder
