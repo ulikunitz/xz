@@ -28,7 +28,7 @@ type Properties struct {
 	PB int
 	// size of the dictionary in bytes
 	DictSize uint32
-	// size of uncompressed data
+	// size of uncompressed data in bytes
 	Size int64
 	// header includes unpacked size
 	SizeInHeader bool
