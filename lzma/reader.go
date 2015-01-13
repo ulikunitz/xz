@@ -30,7 +30,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 		return nil, err
 	}
 	lr := &Reader{props: p}
-	lr.dict, err = newReaderDict(int(p.DictLen), defaultBufferLen)
+	lr.dict, err = newReaderDict(int(p.DictSize), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +96,8 @@ func (lr *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if lr.props.LenInHeader &&
-					lr.dict.Offset() != lr.props.Len {
+				if lr.props.SizeInHeader &&
+					lr.dict.Offset() != lr.props.Size {
 					return errUnexpectedEOS
 				}
 				lr.dict.closed = true
@@ -117,8 +117,8 @@ func (lr *Reader) fill() error {
 		if err = op.applyReaderDict(lr.dict); err != nil {
 			return err
 		}
-		if lr.props.LenInHeader && lr.dict.Offset() >= lr.props.Len {
-			if lr.dict.Offset() > lr.props.Len {
+		if lr.props.SizeInHeader && lr.dict.Offset() >= lr.props.Size {
+			if lr.dict.Offset() > lr.props.Size {
 				return newError(
 					"more data than announced in header")
 			}

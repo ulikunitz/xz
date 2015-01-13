@@ -17,10 +17,10 @@ type Writer struct {
 
 // Default defines the properties used by NewWriter.
 var Default = Properties{
-	LC:      3,
-	LP:      0,
-	PB:      2,
-	DictLen: 1 << 12}
+	LC:       3,
+	LP:       0,
+	PB:       2,
+	DictSize: 1 << 12}
 
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
 // Default Properties.
@@ -45,14 +45,14 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err = verifyProperties(&p); err != nil {
 		return nil, err
 	}
-	if p.Len == 0 && !p.LenInHeader {
+	if p.Size == 0 && !p.SizeInHeader {
 		p.EOS = true
 	}
 	lw := &Writer{
 		w:     w,
 		props: p,
 	}
-	lw.dict, err = newWriterDict(int(p.DictLen), defaultBufferLen)
+	lw.dict, err = newWriterDict(int(p.DictSize), defaultBufferLen)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	lw.t4, err = newHashTable(int(p.DictLen), 4)
+	lw.t4, err = newHashTable(int(p.DictSize), 4)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +82,8 @@ func (lw *Writer) Write(p []byte) (n int, err error) {
 		panic("end counter overflow")
 	}
 	var rerr error
-	if lw.props.LenInHeader && end > lw.props.Len {
-		p = p[:lw.props.Len-end]
+	if lw.props.SizeInHeader && end > lw.props.Size {
+		p = p[:lw.props.Size-end]
 		rerr = newError("write exceeds unpackLen")
 	}
 	for n < len(p) {

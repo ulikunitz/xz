@@ -6,19 +6,19 @@ import (
 
 // Maximum and minimum values for individual properties.
 const (
-	MinLC      = 0
-	MaxLC      = 8
-	MinLP      = 0
-	MaxLP      = 4
-	MinPB      = 0
-	MaxPB      = 4
-	MinDictLen = 1 << 12
-	MaxDictLen = 1<<32 - 1
+	MinLC       = 0
+	MaxLC       = 8
+	MinLP       = 0
+	MaxLP       = 4
+	MinPB       = 0
+	MaxPB       = 4
+	MinDictSize = 1 << 12
+	MaxDictSize = 1<<32 - 1
 )
 
 // Properties are the parameters of an LZMA stream.
 //
-// The dictLen will be limited to MaxInt32 on 32-bit platforms.
+// The dictSize will be limited by MaxInt32 on 32-bit platforms.
 type Properties struct {
 	// number of literal context bits
 	LC int
@@ -26,12 +26,12 @@ type Properties struct {
 	LP int
 	// number of position bits
 	PB int
-	// length of the dictionary history in bytes
-	DictLen uint32
-	// length of uncompressed data
-	Len int64
-	// header includes unpacked length
-	LenInHeader bool
+	// size of the dictionary in bytes
+	DictSize uint32
+	// size of uncompressed data
+	Size int64
+	// header includes unpacked size
+	SizeInHeader bool
 	// end-of-stream marker requested
 	EOS bool
 }
@@ -50,14 +50,14 @@ func verifyProperties(p *Properties) error {
 	if !(MinPB <= p.PB && p.PB <= MaxPB) {
 		return newError("PB out ouf range")
 	}
-	if !(MinDictLen <= p.DictLen && p.DictLen <= MaxDictLen) {
-		return newError("DictLen out of range")
+	if !(MinDictSize <= p.DictSize && p.DictSize <= MaxDictSize) {
+		return newError("DictSize out of range")
 	}
-	hlen := int(p.DictLen)
+	hlen := int(p.DictSize)
 	if hlen < 0 {
-		return newError("DictLen cannot be converted into int")
+		return newError("DictSize cannot be converted into int")
 	}
-	if p.Len < 0 {
+	if p.Size < 0 {
 		return newError("length must not be negative")
 	}
 	return nil
@@ -124,25 +124,25 @@ func readHeader(r io.Reader) (p *Properties, err error) {
 	if !(MinPB <= p.PB && p.PB <= MaxPB) {
 		return nil, newError("PB out of range")
 	}
-	p.DictLen = getUint32LE(b[1:])
-	if p.DictLen < MinDictLen {
+	p.DictSize = getUint32LE(b[1:])
+	if p.DictSize < MinDictSize {
 		// The LZMA specification makes the following recommendation.
-		p.DictLen = MinDictLen
+		p.DictSize = MinDictSize
 	}
 	u := getUint64LE(b[5:])
 	if u == noHeaderLen {
-		p.Len = 0
+		p.Size = 0
 		p.EOS = true
-		p.LenInHeader = false
+		p.SizeInHeader = false
 		return p, nil
 	}
-	p.Len = int64(u)
-	if p.Len < 0 {
+	p.Size = int64(u)
+	if p.Size < 0 {
 		return nil, newError(
 			"unpack length in header not supported by int64")
 	}
 	p.EOS = false
-	p.LenInHeader = true
+	p.SizeInHeader = true
 	return p, nil
 }
 
@@ -154,10 +154,10 @@ func writeHeader(w io.Writer, p *Properties) error {
 	}
 	b := make([]byte, 13)
 	b[0] = byte((p.PB*5+p.LP)*9 + p.LC)
-	putUint32LE(b[1:5], p.DictLen)
+	putUint32LE(b[1:5], p.DictSize)
 	var l uint64
-	if p.LenInHeader {
-		l = uint64(p.Len)
+	if p.SizeInHeader {
+		l = uint64(p.Size)
 	} else {
 		l = noHeaderLen
 	}

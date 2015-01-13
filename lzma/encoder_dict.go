@@ -8,19 +8,19 @@ type index struct {
 	t2 *hashTable
 }
 
-func initIndex(idx *index, historyLen int) error {
-	if historyLen < 1 {
+func initIndex(idx *index, historySize int) error {
+	if historySize < 1 {
 		return newError("history length must be at least one byte")
 	}
-	if int64(historyLen) > MaxDictLen {
+	if int64(historySize) > MaxDictSize {
 		return newError("history length must be less than 2^32")
 	}
 	*idx = index{}
 	var err error
-	if idx.t4, err = newHashTable(historyLen, 4); err != nil {
+	if idx.t4, err = newHashTable(historySize, 4); err != nil {
 		return err
 	}
-	if idx.t2, err = newHashTable(historyLen, 2); err != nil {
+	if idx.t2, err = newHashTable(historySize, 2); err != nil {
 		return err
 	}
 	return nil
@@ -55,13 +55,13 @@ type encoderDict struct {
 	idx index
 }
 
-func newEncoderDict(historyLen, bufferLen int) (d *encoderDict, err error) {
+func newEncoderDict(historySize, bufferSize int) (d *encoderDict, err error) {
 	d = new(encoderDict)
-	err = initWriterDict(&d.writerDict, historyLen, bufferLen)
+	err = initWriterDict(&d.writerDict, historySize, bufferSize)
 	if err != nil {
 		return nil, err
 	}
-	err = initIndex(&d.idx, historyLen)
+	err = initIndex(&d.idx, historySize)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func newEncoderDict(historyLen, bufferLen int) (d *encoderDict, err error) {
 
 func (d *encoderDict) newMatch(off int64, n int) (m match, err error) {
 	head := d.Offset()
-	start := d.Offset() - int64(d.HistoryLen())
+	start := d.Offset() - int64(d.HistorySize())
 	if !(start <= off && off < head) {
 		err = errOffset
 		return

@@ -42,8 +42,8 @@ func (b *buffer) Cap() int {
 	return len(b.data)
 }
 
-// Len returns the data amount currently stored in the buffer. It will grow
-// from zero to the capacity of the buffer.
+// Len returns the length of the data already stored in the buffer. It will
+// increase from zero to the buffer capacity.
 func (b *buffer) Len() int {
 	return int(b.end - b.start)
 }

@@ -94,7 +94,7 @@ type hashTable struct {
 	// exponent used to compute the hash table size
 	exp  int
 	mask uint64
-	// historyLen
+	// historySize
 	hlen int64
 	// hashOffset
 	hoff int64
@@ -115,14 +115,14 @@ func hashTableExponent(n uint32) int {
 }
 
 // newHashTable creates a new hash table for n-byte sequences.
-func newHashTable(historyLen, n int) (t *hashTable, err error) {
-	if historyLen < 1 {
+func newHashTable(historySize, n int) (t *hashTable, err error) {
+	if historySize < 1 {
 		return nil, newError("history length must be at least one byte")
 	}
-	if int64(historyLen) > MaxDictLen {
+	if int64(historySize) > MaxDictSize {
 		return nil, newError("history length must be less than 2^32")
 	}
-	exp := hashTableExponent(uint32(historyLen))
+	exp := hashTableExponent(uint32(historySize))
 	if !(1 <= n && n <= 4) {
 		return nil, newError("argument n out of range")
 	}
@@ -134,7 +134,7 @@ func newHashTable(historyLen, n int) (t *hashTable, err error) {
 		t:    make([]slot, slotLen),
 		exp:  exp,
 		mask: (uint64(1) << uint(exp)) - 1,
-		hlen: int64(historyLen),
+		hlen: int64(historySize),
 		hoff: -int64(n),
 		wr:   newRoller(n),
 		hr:   newRoller(n),
