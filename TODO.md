@@ -17,7 +17,9 @@
     NewRawWriter(p *Properties) (*Writer, error);
    use it in NewWriterP
 3. Implement for Reader and Writer
-    Reset(flags int, p *Properties) error
+    ResetDict() error
+    ResetState() error
+    ResetProperties(p *Properties) error
 
 ## lzmago
 
