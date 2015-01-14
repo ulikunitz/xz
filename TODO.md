@@ -10,13 +10,15 @@
 
 ### LZMA2 preparation
 
-1. Create
+1. Rename Property type to Parameter type
+2. Reintroduce Property as new type
+3. Create
     NewRawReader(p *Properties) (*Reader, error);
    use it in NewReader
-2. Create
+4. Create
     NewRawWriter(p *Properties) (*Writer, error);
    use it in NewWriterP
-3. Implement for Reader and Writer
+5. Implement for Reader and Writer
     ResetDict() error
     ResetState() error
     ResetProperties(p *Properties) error
