@@ -4,7 +4,7 @@ import (
 	"io"
 )
 
-// Maximum and minimum values for individual properties.
+// Maximum and minimum values for individual parameters.
 const (
 	MinLC       = 0
 	MaxLC       = 8
@@ -16,10 +16,11 @@ const (
 	MaxDictSize = 1<<32 - 1
 )
 
-// Properties are the parameters of an LZMA stream.
+// Parameters contain all information required to decode or encode an LZMA
+// stream.
 //
-// The dictSize will be limited by MaxInt32 on 32-bit platforms.
-type Properties struct {
+// The DictSize will be limited by MaxInt32 on 32-bit platforms.
+type Parameters struct {
 	// number of literal context bits
 	LC int
 	// number of literal position bits
@@ -36,10 +37,10 @@ type Properties struct {
 	EOS bool
 }
 
-// verifyProperties checks properties for errors.
-func verifyProperties(p *Properties) error {
+// verifyParameters checks parameters for errors.
+func verifyParameters(p *Parameters) error {
 	if p == nil {
-		return newError("properties must be non-nil")
+		return newError("parameters must be non-nil")
 	}
 	if !(MinLC <= p.LC && p.LC <= MaxLC) {
 		return newError("LC out of range")
@@ -109,13 +110,13 @@ func putUint64LE(b []byte, x uint64) {
 }
 
 // readHeader reads the classic LZMA header.
-func readHeader(r io.Reader) (p *Properties, err error) {
+func readHeader(r io.Reader) (p *Parameters, err error) {
 	b := make([]byte, 13)
 	_, err = io.ReadFull(r, b)
 	if err != nil {
 		return nil, err
 	}
-	p = new(Properties)
+	p = new(Parameters)
 	x := int(b[0])
 	p.LC = x % 9
 	x /= 9
@@ -147,9 +148,9 @@ func readHeader(r io.Reader) (p *Properties, err error) {
 }
 
 // writeHeader writes the header for classic LZMA files.
-func writeHeader(w io.Writer, p *Properties) error {
+func writeHeader(w io.Writer, p *Parameters) error {
 	var err error
-	if err = verifyProperties(p); err != nil {
+	if err = verifyParameters(p); err != nil {
 		return err
 	}
 	b := make([]byte, 13)

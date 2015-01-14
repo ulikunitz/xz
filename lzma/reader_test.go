@@ -22,15 +22,15 @@ func TestNewReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
-	props := l.Properties()
-	if props.LC != 3 {
-		t.Errorf("LC %d; want %d", props.LC, 3)
+	params := l.Parameters()
+	if params.LC != 3 {
+		t.Errorf("LC %d; want %d", params.LC, 3)
 	}
-	if props.LP != 0 {
-		t.Errorf("LP %d; want %d", props.LP, 0)
+	if params.LP != 0 {
+		t.Errorf("LP %d; want %d", params.LP, 0)
 	}
-	if props.PB != 2 {
-		t.Errorf("PB %d; want %d", props.PB, 2)
+	if params.PB != 2 {
+		t.Errorf("PB %d; want %d", params.PB, 2)
 	}
 }
 

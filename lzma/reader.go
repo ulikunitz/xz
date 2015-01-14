@@ -12,9 +12,9 @@ const noHeaderLen uint64 = 1<<64 - 1
 
 // Reader supports the reading of LZMA byte streams.
 type Reader struct {
-	dict  *readerDict
-	or    *opReader
-	props *Properties
+	dict   *readerDict
+	or     *opReader
+	params *Parameters
 }
 
 // NewReader creates a reader for LZMA byte streams. It reads the LZMA file
@@ -26,10 +26,10 @@ func NewReader(r io.Reader) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = verifyProperties(p); err != nil {
+	if err = verifyParameters(p); err != nil {
 		return nil, err
 	}
-	lr := &Reader{props: p}
+	lr := &Reader{params: p}
 	lr.dict, err = newReaderDict(int(p.DictSize), defaultBufferLen)
 	if err != nil {
 		return nil, err
@@ -96,8 +96,8 @@ func (lr *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if lr.props.SizeInHeader &&
-					lr.dict.Offset() != lr.props.Size {
+				if lr.params.SizeInHeader &&
+					lr.dict.Offset() != lr.params.Size {
 					return errUnexpectedEOS
 				}
 				lr.dict.closed = true
@@ -117,8 +117,8 @@ func (lr *Reader) fill() error {
 		if err = op.applyReaderDict(lr.dict); err != nil {
 			return err
 		}
-		if lr.props.SizeInHeader && lr.dict.Offset() >= lr.props.Size {
-			if lr.dict.Offset() > lr.props.Size {
+		if lr.params.SizeInHeader && lr.dict.Offset() >= lr.params.Size {
+			if lr.dict.Offset() > lr.params.Size {
 				return newError(
 					"more data than announced in header")
 			}
@@ -138,8 +138,8 @@ func (lr *Reader) fill() error {
 	return nil
 }
 
-// Properties returns the properties of the LZMA reader. The properties reflect
+// Parameters returns the parameters of the LZMA reader. The parameters reflect
 // the status provided by the header of the LZMA file.
-func (lr *Reader) Properties() Properties {
-	return *lr.props
+func (lr *Reader) Parameters() Parameters {
+	return *lr.params
 }

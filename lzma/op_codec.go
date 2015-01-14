@@ -16,7 +16,7 @@ type dictionary interface {
 
 // opCodec provides all information to be able to encode or decode operations.
 type opCodec struct {
-	properties  Properties
+	parameters  Parameters
 	dict        dictionary
 	state       uint32
 	posBitMask  uint32
@@ -41,30 +41,30 @@ func initProbSlice(p []prob) {
 }
 
 // init initializes an opCodec structure.
-func (c *opCodec) init(p *Properties, dict dictionary) error {
+func (c *opCodec) init(p *Parameters, dict dictionary) error {
 	var err error
-	if err = verifyProperties(p); err != nil {
+	if err = verifyParameters(p); err != nil {
 		return err
 	}
-	c.properties = *p
+	c.parameters = *p
 	c.dict = dict
-	c.posBitMask = (uint32(1) << uint(c.properties.PB)) - 1
+	c.posBitMask = (uint32(1) << uint(c.parameters.PB)) - 1
 	initProbSlice(c.isMatch[:])
 	initProbSlice(c.isRep[:])
 	initProbSlice(c.isRepG0[:])
 	initProbSlice(c.isRepG1[:])
 	initProbSlice(c.isRepG2[:])
 	initProbSlice(c.isRepG0Long[:])
-	c.litCodec = newLiteralCodec(c.properties.LC, c.properties.LP)
+	c.litCodec = newLiteralCodec(c.parameters.LC, c.parameters.LP)
 	c.lenCodec = newLengthCodec()
 	c.repLenCodec = newLengthCodec()
 	c.distCodec = newDistCodec()
 	return nil
 }
 
-// Properties returns the properites stored in the opCodec structure.
-func (c *opCodec) Properties() Properties {
-	return c.properties
+// Parameters returns the parameters stored in the opCodec structure.
+func (c *opCodec) Parameters() Parameters {
+	return c.parameters
 }
 
 // opReader provides an operation reader from an encoded source.
@@ -74,7 +74,7 @@ type opReader struct {
 }
 
 // newOpReader creates a new instance of an opReader.
-func newOpReader(r io.Reader, p *Properties, dict dictionary) (or *opReader, err error) {
+func newOpReader(r io.Reader, p *Parameters, dict dictionary) (or *opReader, err error) {
 	or = new(opReader)
 	if or.rd, err = newRangeDecoder(r); err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (c *opCodec) states() (state, state2, posState uint32) {
 
 func (c *opCodec) litState() uint32 {
 	prevByte := c.dict.Byte(1)
-	lp, lc := uint(c.properties.LP), uint(c.properties.LC)
+	lp, lc := uint(c.parameters.LP), uint(c.parameters.LC)
 	litState := ((uint32(c.dict.Offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
@@ -261,7 +261,7 @@ type opWriter struct {
 }
 
 // newOpWriter creates a new operation writer.
-func newOpWriter(w io.Writer, p *Properties, dict dictionary) (ow *opWriter, err error) {
+func newOpWriter(w io.Writer, p *Parameters, dict dictionary) (ow *opWriter, err error) {
 	ow = new(opWriter)
 	if ow.re = newRangeEncoder(w); err != nil {
 		return nil, err

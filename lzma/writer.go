@@ -7,23 +7,23 @@ import "io"
 // Using an arithmetic coder it cannot support flushing. A writer must be
 // closed.
 type Writer struct {
-	w     io.Writer
-	ow    *opWriter
-	props Properties
-	dict  *writerDict
+	w      io.Writer
+	ow     *opWriter
+	params Parameters
+	dict   *writerDict
 	// hash table for four-byte sequences
 	t4 *hashTable
 }
 
-// Default defines the properties used by NewWriter.
-var Default = Properties{
+// Default defines the parameters used by NewWriter.
+var Default = Parameters{
 	LC:       3,
 	LP:       0,
 	PB:       2,
 	DictSize: 1 << 12}
 
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
-// Default Properties.
+// Default Parameters.
 //
 // Don't forget to call Close() for the writer after all data has been written.
 //
@@ -33,24 +33,24 @@ func NewWriter(w io.Writer) (*Writer, error) {
 	return NewWriterP(w, Default)
 }
 
-// NewWriterP creates a new writer with the given Properties. It writes the
+// NewWriterP creates a new writer with the given Parameters. It writes the
 // LZMA header.
 //
 // Don't forget to call Close() for the writer after all data has been written.
-func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
+func NewWriterP(w io.Writer, p Parameters) (*Writer, error) {
 	if w == nil {
 		return nil, newError("can't support a nil writer")
 	}
 	var err error
-	if err = verifyProperties(&p); err != nil {
+	if err = verifyParameters(&p); err != nil {
 		return nil, err
 	}
 	if p.Size == 0 && !p.SizeInHeader {
 		p.EOS = true
 	}
 	lw := &Writer{
-		w:     w,
-		props: p,
+		w:      w,
+		params: p,
 	}
 	lw.dict, err = newWriterDict(int(p.DictSize), defaultBufferLen)
 	if err != nil {
@@ -64,15 +64,15 @@ func NewWriterP(w io.Writer, p Properties) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = writeHeader(w, &lw.props); err != nil {
+	if err = writeHeader(w, &lw.params); err != nil {
 		return nil, err
 	}
 	return lw, nil
 }
 
-// Properties returns the properties of the LZMA writer.
-func (lw *Writer) Properties() Properties {
-	return lw.props
+// Parameters returns the parameters of the LZMA writer.
+func (lw *Writer) Parameters() Parameters {
+	return lw.params
 }
 
 // Write moves data into the internal buffer and triggers its compression.
@@ -82,8 +82,8 @@ func (lw *Writer) Write(p []byte) (n int, err error) {
 		panic("end counter overflow")
 	}
 	var rerr error
-	if lw.props.SizeInHeader && end > lw.props.Size {
-		p = p[:lw.props.Size-end]
+	if lw.params.SizeInHeader && end > lw.params.Size {
+		p = p[:lw.params.Size-end]
 		rerr = newError("write exceeds unpackLen")
 	}
 	for n < len(p) {
@@ -107,7 +107,7 @@ func (lw *Writer) Close() error {
 	if err = lw.process(allData); err != nil {
 		return err
 	}
-	if lw.props.EOS {
+	if lw.params.EOS {
 		if err = lw.ow.writeEOS(); err != nil {
 			return err
 		}
