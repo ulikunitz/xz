@@ -16,6 +16,48 @@ const (
 	MaxDictSize = 1<<32 - 1
 )
 
+// Properties contains the parametes lc, lp and pb.
+type Properties struct {
+	// number of literal context bits
+	LC int
+	// number of literal position bits
+	LP int
+	// number of position bits
+	PB int
+}
+
+// verifyProperties checks the argument for any errors.
+func verifyProperties(p *Properties) error {
+	if !(MinLC <= p.LC && p.LC <= MaxLC) {
+		return newError("lc out of range")
+	}
+	if !(MinLP <= p.LP && p.LP <= MaxLC) {
+		return newError("lp out of range")
+	}
+	if !(MinPB <= p.PB && p.PB <= MaxPB) {
+		return newError("pb out of range")
+	}
+	return nil
+}
+
+// props reads a single properties byte.
+func (p *Properties) Decode(b byte) error {
+	x := int(b)
+	p.LC = x % 9
+	x /= 9
+	p.LP = x % 5
+	p.PB = x / 5
+	if !(MinPB <= p.PB && p.PB <= MaxPB) {
+		return newError("PB out of range")
+	}
+	return nil
+}
+
+// Encodes the properties in a single byte.
+func (p *Properties) Byte() byte {
+	return byte((p.PB*5+p.LP)*9 + p.LC)
+}
+
 // Parameters contain all information required to decode or encode an LZMA
 // stream.
 //
@@ -37,19 +79,18 @@ type Parameters struct {
 	EOS bool
 }
 
+// Properties returns lc, lp and pb as Properties value.
+func (p *Parameters) Properties() *Properties {
+	return &Properties{LC: p.LC, LP: p.LP, PB: p.PB}
+}
+
 // verifyParameters checks parameters for errors.
 func verifyParameters(p *Parameters) error {
 	if p == nil {
 		return newError("parameters must be non-nil")
 	}
-	if !(MinLC <= p.LC && p.LC <= MaxLC) {
-		return newError("LC out of range")
-	}
-	if !(MinLP <= p.LP && p.LP <= MaxLP) {
-		return newError("LP out of range")
-	}
-	if !(MinPB <= p.PB && p.PB <= MaxPB) {
-		return newError("PB out ouf range")
+	if err := verifyProperties(p.Properties()); err != nil {
+		return err
 	}
 	if !(MinDictSize <= p.DictSize && p.DictSize <= MaxDictSize) {
 		return newError("DictSize out of range")
@@ -117,14 +158,11 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 		return nil, err
 	}
 	p = new(Parameters)
-	x := int(b[0])
-	p.LC = x % 9
-	x /= 9
-	p.LP = x % 5
-	p.PB = x / 5
-	if !(MinPB <= p.PB && p.PB <= MaxPB) {
-		return nil, newError("PB out of range")
+	var props Properties
+	if err = props.Decode(b[0]); err != nil {
+		return nil, err
 	}
+	p.LC, p.LP, p.PB = props.LC, props.LP, props.PB
 	p.DictSize = getUint32LE(b[1:])
 	if p.DictSize < MinDictSize {
 		// The LZMA specification makes the following recommendation.
@@ -154,7 +192,7 @@ func writeHeader(w io.Writer, p *Parameters) error {
 		return err
 	}
 	b := make([]byte, 13)
-	b[0] = byte((p.PB*5+p.LP)*9 + p.LC)
+	b[0] = p.Properties().Byte()
 	putUint32LE(b[1:5], p.DictSize)
 	var l uint64
 	if p.SizeInHeader {
