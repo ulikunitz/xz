@@ -82,6 +82,11 @@ func (p *Parameters) Properties() Properties {
 	return props
 }
 
+// SetProperties sets the LC, LP and PB fields.
+func (p *Parameters) SetProperties(props Properties) {
+	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
+}
+
 // verifyParameters checks parameters for errors.
 func verifyParameters(p *Parameters) error {
 	if p == nil {
