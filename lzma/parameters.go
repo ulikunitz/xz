@@ -19,6 +19,8 @@ const (
 // Properties contains the parametes lc, lp and pb.
 type Properties byte
 
+// NewProperties returns a new properties value. It verifies the validity of
+// the arguments.
 func NewProperties(lc, lp, pb int) (p Properties, err error) {
 	if err = verifyProperties(lc, lp, pb); err != nil {
 		return
@@ -26,14 +28,17 @@ func NewProperties(lc, lp, pb int) (p Properties, err error) {
 	return Properties((pb*5+lp)*9 + lc), nil
 }
 
+// LC returns the number of literal context bits.
 func (p Properties) LC() int {
 	return int(p) % 9
 }
 
+// LP returns the number of literal position bits.
 func (p Properties) LP() int {
 	return (int(p) / 9) % 5
 }
 
+// PB returns the number of position bits.
 func (p Properties) PB() int {
 	return int(p) / 45
 }
