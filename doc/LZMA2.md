@@ -42,3 +42,5 @@ Name  | Range  | Description
 lc    | [0,8]  | number of literal context bits
 lp    | [0,4]  | number of literal pos bits
 pb    | [0,4]  | the number of pos bits
+
+The uncompressed data is written into the dictionary.
