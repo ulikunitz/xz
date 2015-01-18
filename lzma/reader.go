@@ -146,13 +146,12 @@ const (
 	RState = 1 << iota
 	RProperties
 	RDict
+	RUncompressed
 )
 
 // Reset allows the reuse of the LZMA reader using the provide io.Reader. The
-// behaviour of the function is controlled by the flags RState, RProperties and
-// RDict. RState forces the reinitialization of the LZ operation decoder,
-// RProperties provides new properties and RDict will reset the dictionary.
-// Note that new properties will imply a state reset.
+// behaviour of the function is controlled by the flags RState, RProperties,
+// RDict and RUncompressed.
 func (lr *Reader) Reset(r io.Reader, p Properties, flags int) error {
 	panic("TODO")
 }
