@@ -45,7 +45,7 @@ func NewWriterP(w io.Writer, p Parameters) (*Writer, error) {
 		w:      w,
 		params: p,
 	}
-	lw.dict, err = newWriterDict(int(p.DictSize), defaultBufferLen)
+	lw.dict, err = newWriterDict(int(p.DictSize), p.BufferSize)
 	if err != nil {
 		return nil, err
 	}

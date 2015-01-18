@@ -76,6 +76,8 @@ type Parameters struct {
 	SizeInHeader bool
 	// end-of-stream marker requested
 	EOS bool
+	// buffer size
+	BufferSize int
 }
 
 // Properties returns lc, lp and pb as Properties value.
@@ -92,11 +94,22 @@ func (p *Parameters) SetProperties(props Properties) {
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 }
 
-// normalizeSize ensure that the value for DictSize put to the correct size if
-// too small.
+// normalizeSize puts the size on a normalized size. If DictSize and BufferSize
+// is zero, then it is set to the value in Default. If both size are too small
+// they will set to the minimum size possible. Note that buffer size less then
+// zero are ignored and are invalid by verifyParameters.
 func normalizeSizes(p *Parameters) {
+	if p.DictSize == 0 {
+		p.DictSize = Default.DictSize
+	}
 	if p.DictSize < MinDictSize {
 		p.DictSize = MinDictSize
+	}
+	if p.BufferSize == 0 {
+		p.BufferSize = Default.BufferSize
+	}
+	if 0 <= p.BufferSize && p.BufferSize < minLength {
+		p.BufferSize = maxLength
 	}
 }
 
@@ -123,10 +136,12 @@ func verifyParameters(p *Parameters) error {
 
 // Default defines the parameters used by NewWriter.
 var Default = Parameters{
-	LC:       3,
-	LP:       0,
-	PB:       2,
-	DictSize: 4096}
+	LC:         3,
+	LP:         0,
+	PB:         2,
+	DictSize:   MinDictSize,
+	BufferSize: 4096,
+}
 
 // getUint32LE reads an uint32 integer from a byte slize
 func getUint32LE(b []byte) uint32 {
@@ -189,21 +204,18 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 		p.Size = 0
 		p.EOS = true
 		p.SizeInHeader = false
-		return p, nil
+	} else {
+		p.Size = int64(u)
+		if p.Size < 0 {
+			return nil, newError(
+				"unpack length in header not supported by" +
+					" int64")
+		}
+		p.EOS = false
+		p.SizeInHeader = true
 	}
-	p.Size = int64(u)
-	if p.Size < 0 {
-		return nil, newError(
-			"unpack length in header not supported by int64")
-	}
-	p.EOS = false
-	p.SizeInHeader = true
 
 	normalizeSizes(p)
-	if err = verifyParameters(p); err != nil {
-		return nil, err
-	}
-
 	return p, nil
 }
 

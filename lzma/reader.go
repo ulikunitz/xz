@@ -4,9 +4,6 @@ import (
 	"io"
 )
 
-// defaultBufferLen defines the default buffer length
-const defaultBufferLen = 4096
-
 // noHeaderLen defines the value of the length field in the LZMA header.
 const noHeaderLen uint64 = 1<<64 - 1
 
@@ -30,7 +27,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 		return nil, err
 	}
 	lr := &Reader{params: p}
-	lr.dict, err = newReaderDict(int(p.DictSize), defaultBufferLen)
+	lr.dict, err = newReaderDict(int(p.DictSize), p.BufferSize)
 	if err != nil {
 		return nil, err
 	}
