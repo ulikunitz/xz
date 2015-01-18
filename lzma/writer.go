@@ -15,13 +15,6 @@ type Writer struct {
 	t4 *hashTable
 }
 
-// Default defines the parameters used by NewWriter.
-var Default = Parameters{
-	LC:       3,
-	LP:       0,
-	PB:       2,
-	DictSize: 1 << 12}
-
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
 // Default Parameters.
 //

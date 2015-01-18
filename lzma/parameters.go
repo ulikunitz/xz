@@ -92,6 +92,14 @@ func (p *Parameters) SetProperties(props Properties) {
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 }
 
+// normalizeSize ensure that the value for DictSize put to the correct size if
+// too small.
+func normalizeSizes(p *Parameters) {
+	if p.DictSize < MinDictSize {
+		p.DictSize = MinDictSize
+	}
+}
+
 // verifyParameters checks parameters for errors.
 func verifyParameters(p *Parameters) error {
 	if p == nil {
@@ -112,6 +120,13 @@ func verifyParameters(p *Parameters) error {
 	}
 	return nil
 }
+
+// Default defines the parameters used by NewWriter.
+var Default = Parameters{
+	LC:       3,
+	LP:       0,
+	PB:       2,
+	DictSize: 4096}
 
 // getUint32LE reads an uint32 integer from a byte slize
 func getUint32LE(b []byte) uint32 {
@@ -168,14 +183,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	p = new(Parameters)
 	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
-	if err = verifyProperties(p.LC, p.LP, p.PB); err != nil {
-		return nil, err
-	}
 	p.DictSize = getUint32LE(b[1:])
-	if p.DictSize < MinDictSize {
-		// The LZMA specification makes the following recommendation.
-		p.DictSize = MinDictSize
-	}
 	u := getUint64LE(b[5:])
 	if u == noHeaderLen {
 		p.Size = 0
@@ -190,6 +198,12 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	}
 	p.EOS = false
 	p.SizeInHeader = true
+
+	normalizeSizes(p)
+	if err = verifyParameters(p); err != nil {
+		return nil, err
+	}
+
 	return p, nil
 }
 
