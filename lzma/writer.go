@@ -34,6 +34,7 @@ func NewWriterP(w io.Writer, p Parameters) (*Writer, error) {
 	if w == nil {
 		return nil, newError("can't support a nil writer")
 	}
+	normalizeSizes(&p)
 	var err error
 	if err = verifyParameters(&p); err != nil {
 		return nil, err
