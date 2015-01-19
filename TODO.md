@@ -1,14 +1,20 @@
 # TODO list
 
+# Release v0.3
+
+- Working LZMA2 implementation
+
+# Release 1.0
+
+1. Add godoc URL to README.md. (godoc.org)
+
+# Package xz
+
+- Provide user the capability to get uncompressed size before unpacking.
+
 # Subpackage lzma
 
-## Prepare Release 0.2
-
-1. Update README.md
-2. Pull dev from master
-3. Create tag
-
-### LZMA2 preparation
+## LZMA2 preparation
 
 1. Implement for Reader and Writer
     Reset(flags int, p *Properties) error
@@ -19,7 +25,11 @@
     NewRawWriter(p *Properties) (*Writer, error);
    use it in NewWriterP
 
-## lzmago
+## Optimizations
+
+- Use radix trees (crit-bit trees) instead of the hash.
+
+# lzmago binary
 
 1. Put the functions in the xz/pack package to prevent reinventing the
    wheel. Those commands can then be used for optimization.
