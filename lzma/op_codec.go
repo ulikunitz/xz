@@ -57,12 +57,6 @@ func (c *opCodec) init(p Properties, dict dictionary) {
 	c.distCodec = newDistCodec()
 }
 
-// opReader provides an operation reader from an encoded source.
-type opReader struct {
-	opCodec
-	rd *rangeDecoder
-}
-
 // updateStateLiteral updates the state for a literal.
 func (c *opCodec) updateStateLiteral() {
 	switch {
