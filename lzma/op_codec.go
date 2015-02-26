@@ -16,7 +16,7 @@ type dictionary interface {
 
 // opCodec provides all information to be able to encode or decode operations.
 type opCodec struct {
-	parameters  Parameters
+	properties  Properties
 	dict        dictionary
 	state       uint32
 	posBitMask  uint32
@@ -41,30 +41,20 @@ func initProbSlice(p []prob) {
 }
 
 // init initializes an opCodec structure.
-func (c *opCodec) init(p *Parameters, dict dictionary) error {
-	var err error
-	if err = verifyParameters(p); err != nil {
-		return err
-	}
-	c.parameters = *p
+func (c *opCodec) init(p Properties, dict dictionary) {
+	c.properties = p
 	c.dict = dict
-	c.posBitMask = (uint32(1) << uint(c.parameters.PB)) - 1
+	c.posBitMask = (uint32(1) << uint(c.properties.PB())) - 1
 	initProbSlice(c.isMatch[:])
 	initProbSlice(c.isRep[:])
 	initProbSlice(c.isRepG0[:])
 	initProbSlice(c.isRepG1[:])
 	initProbSlice(c.isRepG2[:])
 	initProbSlice(c.isRepG0Long[:])
-	c.litCodec = newLiteralCodec(c.parameters.LC, c.parameters.LP)
+	c.litCodec = newLiteralCodec(c.properties.LC(), c.properties.LP())
 	c.lenCodec = newLengthCodec()
 	c.repLenCodec = newLengthCodec()
 	c.distCodec = newDistCodec()
-	return nil
-}
-
-// Parameters returns the parameters stored in the opCodec structure.
-func (c *opCodec) Parameters() Parameters {
-	return c.parameters
 }
 
 // opReader provides an operation reader from an encoded source.
@@ -79,9 +69,7 @@ func newOpReader(r io.Reader, p *Parameters, dict dictionary) (or *opReader, err
 	if or.rd, err = newRangeDecoder(r); err != nil {
 		return nil, err
 	}
-	if err = or.opCodec.init(p, dict); err != nil {
-		return nil, err
-	}
+	or.opCodec.init(p.Properties(), dict)
 	return or, nil
 }
 
@@ -135,7 +123,7 @@ func (c *opCodec) states() (state, state2, posState uint32) {
 
 func (c *opCodec) litState() uint32 {
 	prevByte := c.dict.Byte(1)
-	lp, lc := uint(c.parameters.LP), uint(c.parameters.LC)
+	lp, lc := uint(c.properties.LP()), uint(c.properties.LC())
 	litState := ((uint32(c.dict.Offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
@@ -266,9 +254,7 @@ func newOpWriter(w io.Writer, p *Parameters, dict dictionary) (ow *opWriter, err
 	if ow.re = newRangeEncoder(w); err != nil {
 		return nil, err
 	}
-	if err = ow.opCodec.init(p, dict); err != nil {
-		return nil, err
-	}
+	ow.opCodec.init(p.Properties(), dict)
 	return ow, nil
 }
 
