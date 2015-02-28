@@ -107,7 +107,7 @@ func (b *buffer) readOff(p []byte, off int64) {
 }
 
 // ReadAt reads data into p at the specified offset. The offset must be inside
-// the buffer. It the slice cannot be completely filed errAgain is reported
+// the buffer. It the slice cannot be completely filled errAgain is reported
 // unless the buffer is not closed. In that case the function returns io.EOF.
 func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	if off < b.start {
