@@ -15,15 +15,10 @@ type Reader struct {
 	params *Parameters
 }
 
-// NewReader creates a reader for LZMA byte streams. It reads the LZMA file
-// header.
-//
-// For high performance use a buffered reader.
-func NewReader(r io.Reader) (*Reader, error) {
-	p, err := readHeader(r)
-	if err != nil {
-		return nil, err
-	}
+// newDataReader creates a reader that reads the LZMA data stream. It doesn't
+// process any data information.
+func newDataReader(r io.Reader, p *Parameters) (*Reader, error) {
+	var err error
 	if err = verifyParameters(p); err != nil {
 		return nil, err
 	}
@@ -37,6 +32,18 @@ func NewReader(r io.Reader) (*Reader, error) {
 	}
 	lr.opCodec.init(p.Properties(), lr.dict)
 	return lr, nil
+}
+
+// NewReader creates a reader for LZMA byte streams. It reads the LZMA file
+// header.
+//
+// For high performance use a buffered reader.
+func NewReader(r io.Reader) (*Reader, error) {
+	p, err := readHeader(r)
+	if err != nil {
+		return nil, err
+	}
+	return newDataReader(r, p)
 }
 
 // readUint64LE reads a uint64 little-endian integer from reader.
