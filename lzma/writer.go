@@ -16,6 +16,36 @@ type Writer struct {
 	t4 *hashTable
 }
 
+// newDataWriter creates a writer that doesn't write a header for the stream.
+func newDataWriter(w io.Writer, p *Parameters) (*Writer, error) {
+	if w == nil {
+		return nil, newError("can't support a nil writer")
+	}
+	lw := &Writer{
+		w:      w,
+		params: *p,
+	}
+	p = &lw.params
+	normalizeSizes(p)
+	var err error
+	if err = verifyParameters(p); err != nil {
+		return nil, err
+	}
+	if p.Size == 0 && !p.SizeInHeader {
+		p.EOS = true
+	}
+	lw.dict, err = newWriterDict(int(p.DictSize), p.BufferSize)
+	if err != nil {
+		return nil, err
+	}
+	lw.re = newRangeEncoder(w)
+	lw.opCodec.init(p.Properties(), lw.dict)
+	if lw.t4, err = newHashTable(int(p.DictSize), 4); err != nil {
+		return nil, err
+	}
+	return lw, nil
+}
+
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
 // Default Parameters.
 //
@@ -32,32 +62,11 @@ func NewWriter(w io.Writer) (*Writer, error) {
 //
 // Don't forget to call Close() for the writer after all data has been written.
 func NewWriterP(w io.Writer, p Parameters) (*Writer, error) {
-	if w == nil {
-		return nil, newError("can't support a nil writer")
-	}
-	normalizeSizes(&p)
-	var err error
-	if err = verifyParameters(&p); err != nil {
-		return nil, err
-	}
-	if p.Size == 0 && !p.SizeInHeader {
-		p.EOS = true
-	}
-	lw := &Writer{
-		w:      w,
-		params: p,
-	}
-	lw.dict, err = newWriterDict(int(p.DictSize), p.BufferSize)
+	lw, err := newDataWriter(w, &p)
 	if err != nil {
 		return nil, err
 	}
-	lw.re = newRangeEncoder(w)
-	lw.opCodec.init(p.Properties(), lw.dict)
-	lw.t4, err = newHashTable(int(p.DictSize), 4)
-	if err != nil {
-		return nil, err
-	}
-	if err = writeHeader(w, &lw.params); err != nil {
+	if err = writeHeader(lw.w, &lw.params); err != nil {
 		return nil, err
 	}
 	return lw, nil
