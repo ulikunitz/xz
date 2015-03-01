@@ -129,8 +129,6 @@ func (d *rangeDecoder) possiblyAtEnd() bool {
 	return d.code == 0
 }
 
-var bitCounter int
-
 // DirectDecodeBit decodes a bit with probability 1/2. The return value b will
 // contain the bit at the least-significant position. All other bits will be
 // zero.
