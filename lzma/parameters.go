@@ -95,9 +95,10 @@ func (p *Parameters) SetProperties(props Properties) {
 }
 
 // normalizeSize puts the size on a normalized size. If DictSize and BufferSize
-// is zero, then it is set to the value in Default. If both size are too small
-// they will set to the minimum size possible. Note that buffer size less then
-// zero are ignored and are invalid by verifyParameters.
+// are zero, then it is set to the value in Default. If both size values are
+// too small they will set to the minimum size possible. Note that a buffer
+// size less then zero will be ignored and will cause an error by
+// verifyParameters.
 func normalizeSizes(p *Parameters) {
 	if p.DictSize == 0 {
 		p.DictSize = Default.DictSize
