@@ -72,8 +72,6 @@ func newRangeEncoder(w io.Writer) *rangeEncoder {
 		cacheSize: 1}
 }
 
-var encBitCounter int
-
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 	// e.bitCounter++
