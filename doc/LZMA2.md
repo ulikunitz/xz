@@ -2,6 +2,36 @@
 
 LZMA2 is a container of chunks. Each chunk is lead by a control byte.
 
+Additional the LZMA2 format requires a byte that encodes the dictionary
+size using following encoding.
+
+Bits | Mask | Description
+----:|-----:|:------------------------------------------------
+ 0-5 | 0x3F | Dictionary Size
+ 6-7 | 0xC0 | Reserved for future use; Must be zero
+
+The dictionary size is encoded with a one-bit mantissa and five-bit
+exponent. The smalles dictionary size is 4 KiB and the bigges is 4 GiB
+- 1 B.
+
+|Raw Value | Mantissa | Exponent | Dictionary size|
+|---------:|---------:|---------:|---------------:|
+|        0 |        2 |       11 |          4 KiB |
+|        1 |        3 |       11 |          6 KiB |
+|        2 |        2 |       12 |          8 KiB |
+|        3 |        3 |       12 |         12 KiB |
+|      ... |      ... |      ... |            ... |
+|       36 |        2 |       29 |       1024 MiB |
+|       37 |        3 |       29 |       1536 MiB |
+|       38 |        2 |       30 |       2048 MiB |
+|       39 |        3 |       30 |       3072 MiB |
+|       40 |        2 |       31 |  4096 MiB - 1B |
+
+For test purposes we add the dictionary size byte as first byte of a
+LZMA2 stream.
+
+## Chunks
+
 Following the C implementation in the LZMA SDK the control byte can be
 described as such:
 
