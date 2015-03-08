@@ -1,4 +1,4 @@
-# LZMA2 Format
+% LZMA2 format
 
 LZMA2 is a container of chunks. Each chunk is lead by a control byte.
 
