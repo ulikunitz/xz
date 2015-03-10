@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"github.com/uli-go/xz/hash"
+	"github.com/uli-go/xz/lzlib"
 )
 
 /* For compression we need to find byte sequences that match the current byte
@@ -104,7 +105,7 @@ type hashTable struct {
 
 // hashTableExponent derives the hash table exponent from the history length.
 func hashTableExponent(n uint32) int {
-	e := 30 - nlz32(n)
+	e := 30 - lzlib.NLZ32(n)
 	switch {
 	case e < minTableExponent:
 		e = minTableExponent

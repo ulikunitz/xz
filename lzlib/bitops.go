@@ -1,4 +1,6 @@
-package lzma
+package lzlib
+
+/* Naming conventions follows the CodeReviewComments in the Go Wiki. */
 
 // ntz32Const is used by ntz32 and nlz32.
 const ntz32Const = 0x04d7651f
@@ -11,8 +13,8 @@ var ntz32Table = [32]int8{
 	31, 23, 18, 5, 21, 9, 15, 11,
 	30, 17, 8, 14, 29, 13, 28, 27}
 
-// ntz32 computes the number of trailing zeros for an unsigned 32-bit integer.
-func ntz32(x uint32) int {
+// NTZ32 computes the number of trailing zeros for an unsigned 32-bit integer.
+func NTZ32(x uint32) int {
 	if x == 0 {
 		return 32
 	}
@@ -20,8 +22,8 @@ func ntz32(x uint32) int {
 	return int(ntz32Table[x>>27])
 }
 
-// nlz32 computes the number of leading zeros for an unsigned 32-bit integer.
-func nlz32(x uint32) int {
+// NLZ32 computes the number of leading zeros for an unsigned 32-bit integer.
+func NLZ32(x uint32) int {
 	// Smear left most bit to the right
 	x |= x >> 1
 	x |= x >> 2
