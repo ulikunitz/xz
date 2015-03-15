@@ -9,13 +9,24 @@ import (
 // Represents the dictionary size for the LZMA2 format.
 type DictSize byte
 
+const (
+	// maximum code supported by the DictSize type
+	maxDictSizeCode DictSize = 40
+	// Shift for the mantissas 2 and 3
+	dictSizeShift = 11
+	// minimal supported dictionary size
+	minDictSize uint32 = 2 << dictSizeShift
+	// maximal supported dictionary size
+	maxDictSize uint32 = 0xffffffff
+)
+
 // DictSizeCeil computes the upper ceiling DictSize for the given number of
 // bytes.
 func DictSizeCeil(s uint32) DictSize {
 	switch {
-	case s == 0xffffffff:
-		return 40
-	case s < 4096:
+	case s == maxDictSize:
+		return maxDictSizeCode
+	case s <= minDictSize:
 		return 0
 	}
 	var n int
@@ -32,14 +43,14 @@ func DictSizeCeil(s uint32) DictSize {
 
 // Size returns the actual size of the dictionary for a dictionary.
 func (s DictSize) Size() uint32 {
-	if s > 40 {
-		panic("invalid dictionary size")
-	}
-	if s == 40 {
-		return 0xffffffff
+	if s >= maxDictSizeCode {
+		if s > maxDictSizeCode {
+			panic("invalid dictionary size")
+		}
+		return maxDictSize
 	}
 	m := 0x2 | (s & 1)
-	exp := 11 + (s >> 1)
+	exp := dictSizeShift + (s >> 1)
 	r := uint32(m) << exp
 	return r
 }
@@ -53,7 +64,7 @@ func convert(s uint32) string {
 	if s < mib {
 		return fmt.Sprintf("%d KiB", s/kib)
 	}
-	if s < 0xffffffff {
+	if s < maxDictSize {
 		return fmt.Sprintf("%d MiB", s/mib)
 	}
 	return "4096 MiB - 1B"
