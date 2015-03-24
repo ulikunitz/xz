@@ -16,14 +16,19 @@
 
 ## LZMA2 preparation
 
-1. Implement for Reader and Writer
-    Reset(flags int, p *Properties) error
-2. Create
-    NewRawReader(p *Properties) (*Reader, error);
-   use it in NewReader
-3. Create
-    NewRawWriter(p *Properties) (*Writer, error);
-   use it in NewWriterP
+1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
+
+   a) Implement writerDict that combines writing into the dictionary and
+      hashing.
+   b) Reuse readerDict.
+   b) opCodec should also be implemented in a way that it can be reused.
+   c) Implement baseReader allowing the reuse of readerDict and opCodec.
+   d) Implement NewClassicReader and NewClassicWriter based on baseReader
+      and baseWriter and test it.
+   e) Implement NewReader and NewWriter using basedReader and baseWriter
+      supporting LZMA2.
+
+2. Remove lzma package and lzlib package.
 
 ## Optimizations
 
