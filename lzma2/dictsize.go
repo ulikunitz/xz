@@ -2,8 +2,6 @@ package lzma2
 
 import (
 	"fmt"
-
-	"github.com/uli-go/xz/lzlib"
 )
 
 // Represents the dictionary size for the LZMA2 format.
@@ -35,7 +33,7 @@ func DictSizeCeil(s uint32) DictSize {
 		n += 1
 	}
 	x = s >> 11
-	k := uint(30 - lzlib.NLZ32(x))
+	k := uint(30 - nlz32(x))
 	x >>= k
 	n += (int(k) << 1) | (int(x) & 1)
 	return DictSize(n)
