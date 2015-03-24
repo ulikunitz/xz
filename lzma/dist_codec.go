@@ -1,7 +1,5 @@
 package lzma
 
-import "github.com/uli-go/xz/lzlib"
-
 // Constants used by the distance codec.
 const (
 	// minimum supported distance
@@ -57,13 +55,13 @@ func lenState(l uint32) uint32 {
 // distance has to be decreased by 1. A distance offset of 0xffffffff (eos)
 // indicates the end of the stream.
 func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) {
-	// Compute the posSlot using lzlib.NLZ32
+	// Compute the posSlot using nlz32
 	var posSlot uint32
 	var bits uint32
 	if dist < startPosModel {
 		posSlot = dist
 	} else {
-		bits = uint32(30 - lzlib.NLZ32(dist))
+		bits = uint32(30 - nlz32(dist))
 		posSlot = startPosModel - 2 + (bits << 1)
 		posSlot += (dist >> uint(bits)) & 1
 	}
