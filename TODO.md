@@ -12,9 +12,9 @@
 
 - Provide user the capability to get uncompressed size before unpacking.
 
-# Subpackage lzma
+# Subpackage lzma2
 
-## LZMA2 preparation
+## LZMA2 support
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
@@ -41,6 +41,15 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-03-24
+
+After thinking long about the LZMA2 code and several false starts, I
+have now a plan to create a self-sufficient lzma2 package that supports
+the classic LZMA format as well as LZMA2. The core idea is to support a
+baseReader and baseWriter type that support the basic LZMA stream
+without any headers. Both types must support the reuse of dictionaries
+and the opCodec.
 
 ## 2015-01-10
 
