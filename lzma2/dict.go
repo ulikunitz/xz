@@ -13,13 +13,13 @@ var errDist = newError("distance out of range")
 // the end field as head for the dictionary.
 type readerDict struct {
 	buffer
-	bufferSize int
+	bufferSize int64
 }
 
 // newReaderDict creates a new reader dictionary. The capacity of the ring
 // buffer will be the maximum of historySize and bufferSize.
-func newReaderDict(historySize, bufferSize int) (rd *readerDict, err error) {
-	if !(1 <= historySize && int64(historySize) < MaxDictSize) {
+func newReaderDict(historySize, bufferSize int64) (rd *readerDict, err error) {
+	if !(1 <= historySize && historySize < MaxDictSize) {
 		return nil, newError("historySize out of range")
 	}
 	if bufferSize <= 0 {
@@ -49,25 +49,26 @@ func (rd *readerDict) WriteRep(dist int64, n int) (written int, err error) {
 }
 
 // Byte returns a byte at the given distance.
-func (rd *readerDict) Byte(dist int) byte {
-	c, _ := rd.ReadByteAt(rd.end - int64(dist))
+func (rd *readerDict) Byte(dist int64) byte {
+	c, _ := rd.ReadByteAt(rd.end - dist)
 	return c
 }
 
-// writerDict is the dictionary used for writing. It is a ring buffer using the
-// cursor offset for the dictionary head. The capacity for the buffer is
-// the sum of historySize and bufferSize.
+// writerDict is the dictionary used for writing. It includes also a hashtable.
+// It is a ring buffer using the cursor offset for the dictionary head. The
+// capacity for the buffer is the sum of historySize and bufferSize.
 //
 // The actual writer uses encoderDict, which is an extension of writerDict to
 // support the finding of string sequences in the history.
 type writerDict struct {
 	buffer
-	bufferSize int
+	bufferSize int64
+	ht         *hashTable
 }
 
 // initWriterDict initializes a writer dictionary.
-func initWriterDict(wd *writerDict, historySize, bufferSize int) error {
-	if !(1 <= historySize && int64(historySize) < MaxDictSize) {
+func initWriterDict(wd *writerDict, historySize, bufferSize int64) error {
+	if !(1 <= historySize && historySize < MaxDictSize) {
 		return newError("historySize out of range")
 	}
 	if bufferSize <= 0 {
@@ -84,14 +85,14 @@ func initWriterDict(wd *writerDict, historySize, bufferSize int) error {
 }
 
 // newWriterDict creates a new writer dictionary.
-func newWriterDict(historySize, bufferSize int) (wd *writerDict, err error) {
+func newWriterDict(historySize, bufferSize int64) (wd *writerDict, err error) {
 	wd = new(writerDict)
 	err = initWriterDict(wd, historySize, bufferSize)
 	return
 }
 
 // HistorySize returns the history length.
-func (wd *writerDict) HistorySize() int {
+func (wd *writerDict) HistorySize() int64 {
 	return wd.Cap() - wd.bufferSize
 }
 

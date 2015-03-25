@@ -22,7 +22,7 @@ type buffer struct {
 	// updates
 	end int64
 	// writeLimit gives the maximum distance between end and cursor
-	writeLimit int
+	writeLimit int64
 	// marks the buffer as closed for writing
 	closed bool
 }
@@ -33,13 +33,13 @@ var (
 	errAgain        = newError("buffer exceeded; repeat")
 	errNegLen       = newError("length is negative")
 	errNrOverflow   = newError("number overflow")
-	errCapacity     = newError("capacity must be larger than zero")
+	errCapacity     = newError("capacity out of range")
 	errClosedBuffer = newError("buffer is closed for writing")
 )
 
 // Cap returns the capacity of the ring buffer.
-func (b *buffer) Cap() int {
-	return len(b.data)
+func (b *buffer) Cap() int64 {
+	return int64(len(b.data))
 }
 
 // Len returns the length of the data already stored in the buffer. It will
@@ -81,16 +81,17 @@ func (b *buffer) index(off int64) int {
 }
 
 // initBuffer initializes an already allocated buffer.
-func initBuffer(b *buffer, capacity int) error {
-	if capacity <= 0 {
+func initBuffer(b *buffer, capacity int64) error {
+	c := int(capacity)
+	if c <= 0 {
 		return errCapacity
 	}
-	*b = buffer{data: make([]byte, capacity), writeLimit: capacity}
+	*b = buffer{data: make([]byte, c), writeLimit: capacity}
 	return nil
 }
 
 // newBuffer creates a new buffer instance.
-func newBuffer(capacity int) (b *buffer, err error) {
+func newBuffer(capacity int64) (b *buffer, err error) {
 	b = new(buffer)
 	err = initBuffer(b, capacity)
 	return
