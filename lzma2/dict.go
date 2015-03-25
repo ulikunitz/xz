@@ -111,3 +111,8 @@ func (wd *writerDict) Offset() int64 {
 func (wd *writerDict) PeekHead(p []byte) (n int, err error) {
 	return wd.ReadAt(p, wd.cursor)
 }
+
+// AdvanceHead moves the head n bytes forward.
+func (wd *writerDict) AdvanceHead(n int) (advanced int, err error) {
+	return wd.Copy(wd.t4, n)
+}
