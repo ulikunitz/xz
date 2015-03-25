@@ -63,7 +63,7 @@ func (rd *readerDict) Byte(dist int64) byte {
 type writerDict struct {
 	buffer
 	bufferSize int64
-	ht         *hashTable
+	t4         *hashTable
 }
 
 // initWriterDict initializes a writer dictionary.
@@ -81,7 +81,8 @@ func initWriterDict(wd *writerDict, historySize, bufferSize int64) error {
 		return err
 	}
 	wd.writeLimit = bufferSize
-	return nil
+	wd.t4, err = newHashTable(historySize, 4)
+	return err
 }
 
 // newWriterDict creates a new writer dictionary.
