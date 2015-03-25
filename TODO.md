@@ -19,7 +19,7 @@
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
    a) Implement writerDict that combines writing into the dictionary and
-      hashing.
+      hashing. Integrate hashtable into writerDict. Test it!
    b) Reuse readerDict.
    b) opCodec should also be implemented in a way that it can be reused.
    c) Implement baseReader allowing the reuse of readerDict and opCodec.
@@ -41,6 +41,10 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-03-25
+
+I started to implement the writerDict.
 
 ## 2015-03-24
 
