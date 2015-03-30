@@ -219,9 +219,8 @@ func (t *hashTable) Offset() int64 {
 	return t.hoff + int64(t.SliceLen())
 }
 
-// Offsets returns all potential offsets for the byte slice. The hash for the
-// last n bytes is used. The function panics if p doesn't have the right
-// lengths.
+// Offsets returns all potential offsets for the byte slice. The function
+// panics if p doesn't have the right length.
 func (t *hashTable) Offsets(p []byte) []int64 {
 	h := t.hash(p)
 	offs := t.getOffsets(h)

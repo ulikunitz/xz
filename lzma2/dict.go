@@ -117,3 +117,9 @@ func (wd *writerDict) PeekHead(p []byte) (n int, err error) {
 func (wd *writerDict) AdvanceHead(n int) (advanced int, err error) {
 	return wd.Copy(wd.t4, n)
 }
+
+// Offsets returns all potential offsets for the byte slice. The function
+// panics if len(p) is not 4.
+func (wd *writerDict) Offsets(p []byte) []int64 {
+	return wd.t4.Offsets(p)
+}
