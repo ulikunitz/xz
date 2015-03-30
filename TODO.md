@@ -18,9 +18,7 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) Implement writerDict that combines writing into the dictionary and
-      hashing. Integrate hashtable into writerDict. Test it!
-   b) Reuse readerDict.
+   a) Reuse readerDict.
    b) opCodec should also be implemented in a way that it can be reused.
    c) Implement baseReader allowing the reuse of readerDict and opCodec.
    d) Implement NewClassicReader and NewClassicWriter based on baseReader
@@ -28,7 +26,7 @@
    e) Implement NewReader and NewWriter using basedReader and baseWriter
       supporting LZMA2.
 
-2. Remove lzma package and lzlib package.
+2. Remove lzma package.
 
 ## Optimizations
 
@@ -41,6 +39,10 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-03-30
+
+Finished the type writerDict and wrote a simple test.
 
 ## 2015-03-25
 
