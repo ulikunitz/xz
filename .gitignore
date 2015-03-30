@@ -4,3 +4,6 @@ lzma/writer.txt
 lzma/reader.txt
 
 cmd/lzmago/lzmago
+
+# vim swap file
+.*.swp
