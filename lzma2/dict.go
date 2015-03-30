@@ -108,6 +108,7 @@ func (wd *writerDict) Offset() int64 {
 	return wd.cursor
 }
 
+// PeekHead reads bytes from the Head without moving it.
 func (wd *writerDict) PeekHead(p []byte) (n int, err error) {
 	return wd.ReadAt(p, wd.cursor)
 }
