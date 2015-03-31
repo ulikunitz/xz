@@ -18,12 +18,11 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) Reuse readerDict.
-   b) opCodec should also be implemented in a way that it can be reused.
-   c) Implement baseReader allowing the reuse of readerDict and opCodec.
-   d) Implement NewClassicReader and NewClassicWriter based on baseReader
+   a) opCodec should also be implemented in a way that it can be reused.
+   b) Implement baseReader allowing the reuse of readerDict and opCodec.
+   c) Implement NewClassicReader and NewClassicWriter based on baseReader
       and baseWriter and test it.
-   e) Implement NewReader and NewWriter using basedReader and baseWriter
+   d) Implement NewReader and NewWriter using basedReader and baseWriter
       supporting LZMA2.
 
 2. Remove lzma package.
@@ -39,6 +38,18 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-03-31
+
+Removed only a TODO item. 
+
+However in Francesco Campoy's presentation "Go for Javaneros
+(Javaïstes?)" is the the idea that using an embedded field E, all the
+methods of E will be defined on T. If E is an interface T satisfies E.
+
+https://talks.golang.org/2014/go4java.slide#51
+
+I have never used this, but it seems to be a cool idea.
 
 ## 2015-03-30
 
