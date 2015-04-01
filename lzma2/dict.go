@@ -1,11 +1,5 @@
 package lzma2
 
-// Maximum and minimum supported dictionary size.
-const (
-	MinDictSize = 1 << 12
-	MaxDictSize = 1<<32 - 1
-)
-
 // errDist indicates that the distance is out of range.
 var errDist = newError("distance out of range")
 
