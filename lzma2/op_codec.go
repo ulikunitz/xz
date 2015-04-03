@@ -8,7 +8,7 @@ const eosDist = 1<<32 - 1
 
 // dictionary abstracts the concrete dictionary away
 type dictionary interface {
-	Byte(dist int) byte
+	Byte(dist int64) byte
 	Offset() int64
 }
 
