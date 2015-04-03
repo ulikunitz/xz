@@ -18,11 +18,10 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) opCodec should also be implemented in a way that it can be reused.
-   b) Implement baseReader allowing the reuse of readerDict and opCodec.
-   c) Implement NewClassicReader and NewClassicWriter based on baseReader
+   a) Implement baseReader allowing the reuse of readerDict and opCodec.
+   b) Implement NewClassicReader and NewClassicWriter based on baseReader
       and baseWriter and test it.
-   d) Implement NewReader and NewWriter using basedReader and baseWriter
+   c) Implement NewReader and NewWriter using basedReader and baseWriter
       supporting LZMA2.
 
 2. Remove lzma package.
@@ -38,6 +37,12 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-03
+
+The opCodec has been copied yesterday to lzma2. opCodec has a high
+number of dependencies on other files in lzma2. Therefore I had to copy
+almost all files from lzma.
 
 ## 2015-03-31
 
