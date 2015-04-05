@@ -11,20 +11,20 @@ type Parameters struct {
 
 // Reader supports the reading of a raw LZMA stream without a header.
 type Reader struct {
-	opCodec *opCodec
-	dict    *ReaderDict
+	OpCodec *OpCodec
+	Dict    *ReaderDict
 	rd      *rangeDecoder
 	params  Parameters
 }
 
-// init initializes the Reader. Note that the dict field is taken from the
-// opCodec value.
-func (br *Reader) init(r io.Reader, oc *opCodec, params Parameters) error {
+// init initializes the Reader. Note that the Dict field is taken from the
+// OpCodec value.
+func (br *Reader) init(r io.Reader, oc *OpCodec, params Parameters) error {
 	switch {
 	case r == nil:
 		return newError("newBaseReader argument r is nil")
 	case oc == nil:
-		return newError("newBaseReader argument opCodec is nil")
+		return newError("newBaseReader argument OpCodec is nil")
 	}
 	dict, ok := oc.dict.(*ReaderDict)
 	if !ok {
@@ -37,7 +37,7 @@ func (br *Reader) init(r io.Reader, oc *opCodec, params Parameters) error {
 	if params.sizeInHeader && params.size < 0 {
 		return newError("negative size parameter")
 	}
-	*br = Reader{opCodec: oc, dict: dict, rd: rd, params: params}
+	*br = Reader{OpCodec: oc, Dict: dict, rd: rd, params: params}
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (br *Reader) init(r io.Reader, oc *opCodec, params Parameters) error {
 func (br *Reader) Read(p []byte) (n int, err error) {
 	for {
 		var k int
-		k, err = br.dict.Read(p[n:])
+		k, err = br.Dict.Read(p[n:])
 		n += k
 		switch {
 		case err == io.EOF:
@@ -71,10 +71,10 @@ func (br *Reader) Read(p []byte) (n int, err error) {
 
 // decodeLiteral reads a literal
 func (br *Reader) decodeLiteral() (op operation, err error) {
-	oc := br.opCodec
+	oc := br.OpCodec
 	litState := oc.litState()
 
-	match := br.dict.Byte(int64(oc.rep[0]) + 1)
+	match := br.Dict.Byte(int64(oc.rep[0]) + 1)
 	s, err := oc.litCodec.Decode(br.rd, oc.state, match, litState)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ var eos = newError("end of decoded stream")
 // operation. If an exlicit end of stream marker is identified the eos error is
 // returned.
 func (br *Reader) readOp() (op operation, err error) {
-	oc := br.opCodec
+	oc := br.OpCodec
 	state, state2, posState := oc.states()
 
 	b, err := oc.isMatch[state2].Decode(br.rd)
@@ -192,21 +192,21 @@ func (br *Reader) readOp() (op operation, err error) {
 	return op, nil
 }
 
-// fill puts at lest the requested number of bytes into the decoder dictionary.
+// fill puts at lest the requested number of bytes into the decoder Dictionary.
 func (br *Reader) fill() error {
-	if br.dict.closed {
+	if br.Dict.closed {
 		return nil
 	}
-	for br.dict.Writable() >= MaxLength {
+	for br.Dict.Writable() >= MaxLength {
 		op, err := br.readOp()
 		if err != nil {
 			switch {
 			case err == eos:
 				if br.params.sizeInHeader &&
-					br.dict.Offset() != br.params.size {
+					br.Dict.Offset() != br.params.size {
 					return errUnexpectedEOS
 				}
-				br.dict.closed = true
+				br.Dict.closed = true
 				if !br.rd.possiblyAtEnd() {
 					return newError("data after eos")
 				}
@@ -220,15 +220,15 @@ func (br *Reader) fill() error {
 		}
 		debug.Printf("op %s", op)
 
-		if err = op.applyReaderDict(br.dict); err != nil {
+		if err = op.applyReaderDict(br.Dict); err != nil {
 			return err
 		}
-		if br.params.sizeInHeader && br.dict.Offset() >= br.params.size {
-			if br.dict.Offset() > br.params.size {
+		if br.params.sizeInHeader && br.Dict.Offset() >= br.params.size {
+			if br.Dict.Offset() > br.params.size {
 				return newError(
 					"more data than announced in header")
 			}
-			br.dict.closed = true
+			br.Dict.closed = true
 			if !br.rd.possiblyAtEnd() {
 				if _, err = br.readOp(); err != eos {
 					return newError(

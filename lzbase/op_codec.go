@@ -12,8 +12,8 @@ type dictionary interface {
 	Offset() int64
 }
 
-// opCodec provides all information to be able to encode or decode operations.
-type opCodec struct {
+// OpCodec provides all information to be able to encode or decode operations.
+type OpCodec struct {
 	properties  Properties
 	dict        dictionary
 	state       uint32
@@ -38,8 +38,8 @@ func initProbSlice(p []prob) {
 	}
 }
 
-// init initializes an opCodec structure.
-func (c *opCodec) init(p Properties, dict dictionary) {
+// init initializes an OpCodec structure.
+func (c *OpCodec) Init(p Properties, dict dictionary) {
 	c.properties = p
 	c.dict = dict
 	c.posBitMask = (uint32(1) << uint(c.properties.PB())) - 1
@@ -56,7 +56,7 @@ func (c *opCodec) init(p Properties, dict dictionary) {
 }
 
 // updateStateLiteral updates the state for a literal.
-func (c *opCodec) updateStateLiteral() {
+func (c *OpCodec) updateStateLiteral() {
 	switch {
 	case c.state < 4:
 		c.state = 0
@@ -69,7 +69,7 @@ func (c *opCodec) updateStateLiteral() {
 }
 
 // updateStateMatch updates the state for a match.
-func (c *opCodec) updateStateMatch() {
+func (c *OpCodec) updateStateMatch() {
 	if c.state < 7 {
 		c.state = 7
 	} else {
@@ -78,7 +78,7 @@ func (c *opCodec) updateStateMatch() {
 }
 
 // updateStateRep updates the state for a repetition.
-func (c *opCodec) updateStateRep() {
+func (c *OpCodec) updateStateRep() {
 	if c.state < 7 {
 		c.state = 8
 	} else {
@@ -87,7 +87,7 @@ func (c *opCodec) updateStateRep() {
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (c *opCodec) updateStateShortRep() {
+func (c *OpCodec) updateStateShortRep() {
 	if c.state < 7 {
 		c.state = 9
 	} else {
@@ -96,14 +96,14 @@ func (c *opCodec) updateStateShortRep() {
 }
 
 // Computes the states of the operation codec.
-func (c *opCodec) states() (state, state2, posState uint32) {
+func (c *OpCodec) states() (state, state2, posState uint32) {
 	state = c.state
 	posState = uint32(c.dict.Offset()) & c.posBitMask
 	state2 = (c.state << maxPosBits) | posState
 	return
 }
 
-func (c *opCodec) litState() uint32 {
+func (c *OpCodec) litState() uint32 {
 	prevByte := c.dict.Byte(1)
 	lp, lc := uint(c.properties.LP()), uint(c.properties.LC())
 	litState := ((uint32(c.dict.Offset())) & ((1 << lp) - 1) << lc) |
