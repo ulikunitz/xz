@@ -17,30 +17,28 @@ type baseReader struct {
 	sp      sizeParam
 }
 
-// newBaseReader creates a new base reader.
-func newBaseReader(r io.Reader, opCodec *opCodec, sp sizeParam) (br *baseReader, err error) {
+// init initializes the baseReader. Note that the dict field is taken from the
+// opCodec value.
+func (br *baseReader) init(r io.Reader, oc *opCodec, sp sizeParam) error {
 	switch {
 	case r == nil:
-		return nil, newError("newBaseReader argument r is nil")
-	case opCodec == nil:
-		return nil, newError("newBaseReader argument opCodec is nil")
+		return newError("newBaseReader argument r is nil")
+	case oc == nil:
+		return newError("newBaseReader argument opCodec is nil")
 	}
-	dict, ok := opCodec.dict.(*readerDict)
+	dict, ok := oc.dict.(*readerDict)
 	if !ok {
-		return nil, newError("op codec for reader expected")
+		return newError("op codec for reader expected")
 	}
 	rd, err := newRangeDecoder(r)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if sp.sizeInHeader && sp.size < 0 {
-		return nil, newError("negative size parameter")
+		return newError("negative size parameter")
 	}
-	return &baseReader{
-		opCodec: opCodec,
-		dict:    dict,
-		rd:      rd,
-		sp:      sp}, nil
+	*br = baseReader{opCodec: oc, dict: dict, rd: rd, sp: sp}
+	return nil
 }
 
 // Reads reads data from the decoder stream.
