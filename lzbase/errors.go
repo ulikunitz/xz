@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // lerror represents an LZMA-specific error. It currently adds the prefix
 // "lzma2: " to all errors created in the package.

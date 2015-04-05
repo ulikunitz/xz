@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 import "io"
 

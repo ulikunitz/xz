@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // maxPosBits defines the number of bits of the position value that are used to
 // to compute the posState value. The value is used to selet the tree codec

@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 /* Naming conventions follows the CodeReviewComments in the Go Wiki. */
 

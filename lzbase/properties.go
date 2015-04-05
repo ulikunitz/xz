@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // Maximum and minimum values for individual parameters.
 const (

@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // errDist indicates that the distance is out of range.
 var errDist = newError("distance out of range")

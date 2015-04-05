@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // states defines the overall state count
 const states = 12

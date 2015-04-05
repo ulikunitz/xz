@@ -1,4 +1,4 @@
-package lzma2
+package lzbase
 
 // Constants used by the distance codec.
 const (
