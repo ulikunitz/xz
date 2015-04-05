@@ -8,7 +8,7 @@ type lerror struct {
 
 // Error returns the error message with the prefix "lzma2: ".
 func (e lerror) Error() string {
-	return "lzma2: " + e.msg
+	return "lzbase: " + e.msg
 }
 
 // newError creates a new lzma error with the given message.
