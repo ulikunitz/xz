@@ -138,7 +138,7 @@ func (br *Reader) readOp() (op operation, err error) {
 			}
 			return nil, eos
 		}
-		op = match{length: int(n) + minLength,
+		op = match{length: int(n) + MinLength,
 			distance: int64(oc.rep[0]) + minDistance}
 		return op, nil
 	}
@@ -187,7 +187,7 @@ func (br *Reader) readOp() (op operation, err error) {
 		return nil, err
 	}
 	oc.updateStateRep()
-	op = match{length: int(n) + minLength,
+	op = match{length: int(n) + MinLength,
 		distance: int64(dist) + minDistance}
 	return op, nil
 }
@@ -197,7 +197,7 @@ func (br *Reader) fill() error {
 	if br.dict.closed {
 		return nil
 	}
-	for br.dict.Writable() >= maxLength {
+	for br.dict.Writable() >= MaxLength {
 		op, err := br.readOp()
 		if err != nil {
 			switch {

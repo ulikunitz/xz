@@ -5,12 +5,12 @@ package lzbase
 // for length encoding and decoding.
 const maxPosBits = 4
 
-// minLength and maxLength give the minimum and maximum values for encoding and
-// decoding length values. minLength gives also the base for the encoded length
+// MinLength and MaxLength give the minimum and maximum values for encoding and
+// decoding length values. MinLength gives also the base for the encoded length
 // values.
 const (
-	minLength = 2
-	maxLength = minLength + 16 + 256 - 1
+	MinLength = 2
+	MaxLength = MinLength + 16 + 256 - 1
 )
 
 // lengthCodec support the encoding of the length value.
@@ -38,14 +38,14 @@ func newLengthCodec() *lengthCodec {
 }
 
 // Encode encodes the length offset. The length offset l can be compute by
-// subtracting minLength (2) from the actual length.
+// subtracting MinLength (2) from the actual length.
 //
-//   l = length - minLength
+//   l = length - MinLength
 //
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
 	debug.Printf("LEN %d", posState)
-	if l > maxLength-minLength {
+	if l > MaxLength-MinLength {
 		return newError("length out of range")
 	}
 	if l < 8 {
@@ -73,7 +73,7 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 	return nil
 }
 
-// Decode reads the length offset. Add minLength to compute the actual length
+// Decode reads the length offset. Add MinLength to compute the actual length
 // to the length offset l.
 func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 ) (l uint32, err error) {
