@@ -18,11 +18,10 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) Implement NewClassicReader using baseReader and test it.
-   b) Implement baseWriter allowing the reuse of writerDict and opCodec.
-   c) Implement NewClassicWriter based on baseWriter and test it.
-   d) Implement NewReader and NewWriter using basedReader and baseWriter
-      supporting LZMA2.
+   a) Implement lzbase.Writer allowing the reuse of writerDict and opCodec.
+   b) Implement lzma.NewWriter based on lzbase.Writer and test it.
+   c) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
+      and lzbase.Writer
 
 2. Remove lzma package.
 
@@ -37,6 +36,10 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-05
+
+Implemented lzma.Reader and tested it.
 
 ## 2015-04-04
 
