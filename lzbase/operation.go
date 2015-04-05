@@ -8,7 +8,7 @@ import (
 // operation represents an operation on the dictionary during encoding or
 // decoding.
 type operation interface {
-	applyReaderDict(d *readerDict) error
+	applyReaderDict(d *ReaderDict) error
 	Len() int
 }
 
@@ -20,7 +20,7 @@ type match struct {
 }
 
 // applyReaderDict applies the repetition on the decoder dictionary.
-func (m match) applyReaderDict(d *readerDict) error {
+func (m match) applyReaderDict(d *ReaderDict) error {
 	_, err := d.WriteRep(m.distance, m.length)
 	return err
 }
@@ -41,7 +41,7 @@ type lit struct {
 }
 
 // applyReaderDict appends the literal to the decoder dictionary.
-func (l lit) applyReaderDict(d *readerDict) error {
+func (l lit) applyReaderDict(d *ReaderDict) error {
 	return d.WriteByte(l.b)
 }
 

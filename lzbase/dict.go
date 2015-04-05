@@ -3,16 +3,16 @@ package lzbase
 // errDist indicates that the distance is out of range.
 var errDist = newError("distance out of range")
 
-// readerDict represents the dictionary for reading. It is a ring buffer using
+// ReaderDict represents the dictionary for reading. It is a ring buffer using
 // the end field as head for the dictionary.
-type readerDict struct {
+type ReaderDict struct {
 	buffer
 	bufferSize int64
 }
 
-// newReaderDict creates a new reader dictionary. The capacity of the ring
+// NewReaderDict creates a new reader dictionary. The capacity of the ring
 // buffer will be the maximum of historySize and bufferSize.
-func newReaderDict(historySize, bufferSize int64) (rd *readerDict, err error) {
+func NewReaderDict(historySize, bufferSize int64) (rd *ReaderDict, err error) {
 	if !(1 <= historySize && historySize < MaxDictSize) {
 		return nil, newError("historySize out of range")
 	}
@@ -23,19 +23,19 @@ func newReaderDict(historySize, bufferSize int64) (rd *readerDict, err error) {
 	if bufferSize > capacity {
 		capacity = bufferSize
 	}
-	rd = &readerDict{bufferSize: bufferSize}
+	rd = &ReaderDict{bufferSize: bufferSize}
 	err = initBuffer(&rd.buffer, capacity)
 	return
 }
 
 // Offset returns the offset of the dictionary head.
-func (rd *readerDict) Offset() int64 {
+func (rd *ReaderDict) Offset() int64 {
 	return rd.end
 }
 
 // WriteRep writes a repetition with the given distance. While distance is
 // given here as int64 the actual limit is the maximum of the int type.
-func (rd *readerDict) WriteRep(dist int64, n int) (written int, err error) {
+func (rd *ReaderDict) WriteRep(dist int64, n int) (written int, err error) {
 	if !(1 <= dist && dist <= int64(rd.Len())) {
 		return 0, errDist
 	}
@@ -43,7 +43,7 @@ func (rd *readerDict) WriteRep(dist int64, n int) (written int, err error) {
 }
 
 // Byte returns a byte at the given distance.
-func (rd *readerDict) Byte(dist int64) byte {
+func (rd *ReaderDict) Byte(dist int64) byte {
 	c, _ := rd.ReadByteAt(rd.end - dist)
 	return c
 }

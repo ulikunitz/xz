@@ -12,7 +12,7 @@ type Parameters struct {
 // Reader supports the reading of a raw LZMA stream without a header.
 type Reader struct {
 	opCodec *opCodec
-	dict    *readerDict
+	dict    *ReaderDict
 	rd      *rangeDecoder
 	params  Parameters
 }
@@ -26,7 +26,7 @@ func (br *Reader) init(r io.Reader, oc *opCodec, params Parameters) error {
 	case oc == nil:
 		return newError("newBaseReader argument opCodec is nil")
 	}
-	dict, ok := oc.dict.(*readerDict)
+	dict, ok := oc.dict.(*ReaderDict)
 	if !ok {
 		return newError("op codec for reader expected")
 	}
