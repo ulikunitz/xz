@@ -18,7 +18,7 @@ type Parameters struct {
 	// number of position bits
 	PB int
 	// size of the dictionary in bytes
-	DictSize uint32
+	DictSize int64
 	// size of uncompressed data in bytes
 	Size int64
 	// header includes unpacked size
@@ -26,7 +26,7 @@ type Parameters struct {
 	// end-of-stream marker requested
 	EOS bool
 	// buffer size
-	BufferSize int
+	BufferSize int64
 }
 
 // Properties returns lc, lp and pb as Properties value.
@@ -152,7 +152,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	p = new(Parameters)
 	props := lzbase.Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
-	p.DictSize = getUint32LE(b[1:])
+	p.DictSize = int64(getUint32LE(b[1:]))
 	u := getUint64LE(b[5:])
 	if u == noHeaderLen {
 		p.Size = 0
@@ -181,7 +181,10 @@ func writeHeader(w io.Writer, p *Parameters) error {
 	}
 	b := make([]byte, 13)
 	b[0] = byte(p.Properties())
-	putUint32LE(b[1:5], p.DictSize)
+	if p.DictSize > lzbase.MaxDictSize {
+		return newError("DictSize exceeds maximum value")
+	}
+	putUint32LE(b[1:5], uint32(p.DictSize))
 	var l uint64
 	if p.SizeInHeader {
 		l = uint64(p.Size)

@@ -6,8 +6,8 @@ const states = 12
 // Value of the end of stream (EOS) marker.
 const eosDist = 1<<32 - 1
 
-// dictionary abstracts the concrete dictionary away
-type dictionary interface {
+// Dictionary abstracts the concrete dictionary away
+type Dictionary interface {
 	Byte(dist int64) byte
 	Offset() int64
 }
@@ -15,7 +15,7 @@ type dictionary interface {
 // OpCodec provides all information to be able to encode or decode operations.
 type OpCodec struct {
 	properties  Properties
-	dict        dictionary
+	dict        Dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -39,7 +39,7 @@ func initProbSlice(p []prob) {
 }
 
 // init initializes an OpCodec structure.
-func (c *OpCodec) Init(p Properties, dict dictionary) {
+func (c *OpCodec) init(p Properties, dict Dictionary) {
 	c.properties = p
 	c.dict = dict
 	c.posBitMask = (uint32(1) << uint(c.properties.PB())) - 1
@@ -53,6 +53,13 @@ func (c *OpCodec) Init(p Properties, dict dictionary) {
 	c.lenCodec = newLengthCodec()
 	c.repLenCodec = newLengthCodec()
 	c.distCodec = newDistCodec()
+}
+
+// NewOpCodec creates a new OpCodec.
+func NewOpCodec(p Properties, dict Dictionary) *OpCodec {
+	oc := new(OpCodec)
+	oc.init(p, dict)
+	return oc
 }
 
 // updateStateLiteral updates the state for a literal.

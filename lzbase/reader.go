@@ -5,8 +5,8 @@ import "io"
 // Parameters provides a size if sizeInHeader is true. The size refers here to
 // the uncompressed size.
 type Parameters struct {
-	size         int64
-	sizeInHeader bool
+	Size         int64
+	SizeInHeader bool
 }
 
 // Reader supports the reading of a raw LZMA stream without a header.
@@ -17,9 +17,9 @@ type Reader struct {
 	params  Parameters
 }
 
-// init initializes the Reader. Note that the Dict field is taken from the
-// OpCodec value.
-func (br *Reader) init(r io.Reader, oc *OpCodec, params Parameters) error {
+// InitReader initializes the Reader. Note that the Dict field is taken from
+// the OpCodec value.
+func InitReader(br *Reader, r io.Reader, oc *OpCodec, params Parameters) error {
 	switch {
 	case r == nil:
 		return newError("newBaseReader argument r is nil")
@@ -34,7 +34,7 @@ func (br *Reader) init(r io.Reader, oc *OpCodec, params Parameters) error {
 	if err != nil {
 		return err
 	}
-	if params.sizeInHeader && params.size < 0 {
+	if params.SizeInHeader && params.Size < 0 {
 		return newError("negative size parameter")
 	}
 	*br = Reader{OpCodec: oc, Dict: dict, rd: rd, params: params}
@@ -202,8 +202,8 @@ func (br *Reader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if br.params.sizeInHeader &&
-					br.Dict.Offset() != br.params.size {
+				if br.params.SizeInHeader &&
+					br.Dict.Offset() != br.params.Size {
 					return errUnexpectedEOS
 				}
 				br.Dict.closed = true
@@ -223,8 +223,8 @@ func (br *Reader) fill() error {
 		if err = op.applyReaderDict(br.Dict); err != nil {
 			return err
 		}
-		if br.params.sizeInHeader && br.Dict.Offset() >= br.params.size {
-			if br.Dict.Offset() > br.params.size {
+		if br.params.SizeInHeader && br.Dict.Offset() >= br.params.Size {
+			if br.Dict.Offset() > br.params.Size {
 				return newError(
 					"more data than announced in header")
 			}
