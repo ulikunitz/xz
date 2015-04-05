@@ -1,7 +1,7 @@
 # .gitignore
 
-lzma/writer.txt
-lzma/reader.txt
+old/lzma/writer.txt
+old/lzma/reader.txt
 
 cmd/lzmago/lzmago
 
