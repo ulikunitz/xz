@@ -2,24 +2,24 @@ package lzbase
 
 import "io"
 
-// sizeParam provides a size if sizeInHeader is true. The size refers here to
+// Parameters provides a size if sizeInHeader is true. The size refers here to
 // the uncompressed size.
-type sizeParam struct {
+type Parameters struct {
 	size         int64
 	sizeInHeader bool
 }
 
-// baseReader supports the reading of a raw LZMA stream without a header.
-type baseReader struct {
+// Reader supports the reading of a raw LZMA stream without a header.
+type Reader struct {
 	opCodec *opCodec
 	dict    *readerDict
 	rd      *rangeDecoder
-	sp      sizeParam
+	params  Parameters
 }
 
-// init initializes the baseReader. Note that the dict field is taken from the
+// init initializes the Reader. Note that the dict field is taken from the
 // opCodec value.
-func (br *baseReader) init(r io.Reader, oc *opCodec, sp sizeParam) error {
+func (br *Reader) init(r io.Reader, oc *opCodec, params Parameters) error {
 	switch {
 	case r == nil:
 		return newError("newBaseReader argument r is nil")
@@ -34,10 +34,10 @@ func (br *baseReader) init(r io.Reader, oc *opCodec, sp sizeParam) error {
 	if err != nil {
 		return err
 	}
-	if sp.sizeInHeader && sp.size < 0 {
+	if params.sizeInHeader && params.size < 0 {
 		return newError("negative size parameter")
 	}
-	*br = baseReader{opCodec: oc, dict: dict, rd: rd, sp: sp}
+	*br = Reader{opCodec: oc, dict: dict, rd: rd, params: params}
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (br *baseReader) init(r io.Reader, oc *opCodec, sp sizeParam) error {
 //
 // The end of the LZMA stream is indicated by EOF. There might be other errors
 // returned. The decoder will not be able to recover from an error returned.
-func (br *baseReader) Read(p []byte) (n int, err error) {
+func (br *Reader) Read(p []byte) (n int, err error) {
 	for {
 		var k int
 		k, err = br.dict.Read(p[n:])
@@ -70,7 +70,7 @@ func (br *baseReader) Read(p []byte) (n int, err error) {
 }
 
 // decodeLiteral reads a literal
-func (br *baseReader) decodeLiteral() (op operation, err error) {
+func (br *Reader) decodeLiteral() (op operation, err error) {
 	oc := br.opCodec
 	litState := oc.litState()
 
@@ -95,7 +95,7 @@ var eos = newError("end of decoded stream")
 // readOp decodes the next operation from the compressed stream. It returns the
 // operation. If an exlicit end of stream marker is identified the eos error is
 // returned.
-func (br *baseReader) readOp() (op operation, err error) {
+func (br *Reader) readOp() (op operation, err error) {
 	oc := br.opCodec
 	state, state2, posState := oc.states()
 
@@ -193,7 +193,7 @@ func (br *baseReader) readOp() (op operation, err error) {
 }
 
 // fill puts at lest the requested number of bytes into the decoder dictionary.
-func (br *baseReader) fill() error {
+func (br *Reader) fill() error {
 	if br.dict.closed {
 		return nil
 	}
@@ -202,8 +202,8 @@ func (br *baseReader) fill() error {
 		if err != nil {
 			switch {
 			case err == eos:
-				if br.sp.sizeInHeader &&
-					br.dict.Offset() != br.sp.size {
+				if br.params.sizeInHeader &&
+					br.dict.Offset() != br.params.size {
 					return errUnexpectedEOS
 				}
 				br.dict.closed = true
@@ -223,8 +223,8 @@ func (br *baseReader) fill() error {
 		if err = op.applyReaderDict(br.dict); err != nil {
 			return err
 		}
-		if br.sp.sizeInHeader && br.dict.Offset() >= br.sp.size {
-			if br.dict.Offset() > br.sp.size {
+		if br.params.sizeInHeader && br.dict.Offset() >= br.params.size {
+			if br.dict.Offset() > br.params.size {
 				return newError(
 					"more data than announced in header")
 			}
