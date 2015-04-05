@@ -18,7 +18,7 @@ type Properties byte
 // NewProperties returns a new properties value. It verifies the validity of
 // the arguments.
 func NewProperties(lc, lp, pb int) (p Properties, err error) {
-	if err = verifyProperties(lc, lp, pb); err != nil {
+	if err = VerifyProperties(lc, lp, pb); err != nil {
 		return
 	}
 	return Properties((pb*5+lp)*9 + lc), nil
@@ -39,8 +39,8 @@ func (p Properties) PB() int {
 	return int(p) / 45
 }
 
-// verifyProperties checks the argument for any errors.
-func verifyProperties(lc, lp, pb int) error {
+// VerifyProperties checks the argument for any errors.
+func VerifyProperties(lc, lp, pb int) error {
 	if !(MinLC <= lc && lc <= MaxLC) {
 		return newError("lc out of range")
 	}
