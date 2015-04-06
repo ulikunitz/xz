@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/ogier/pflag"
-	"github.com/uli-go/xz/old/lzma"
+	"github.com/uli-go/xz/lzma"
 )
 
 const (
