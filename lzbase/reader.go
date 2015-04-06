@@ -22,9 +22,9 @@ type Reader struct {
 func InitReader(br *Reader, r io.Reader, oc *OpCodec, params Parameters) error {
 	switch {
 	case r == nil:
-		return newError("newBaseReader argument r is nil")
+		return newError("InitReader argument r is nil")
 	case oc == nil:
-		return newError("newBaseReader argument OpCodec is nil")
+		return newError("InitReader argument OpCodec is nil")
 	}
 	dict, ok := oc.dict.(*ReaderDict)
 	if !ok {
