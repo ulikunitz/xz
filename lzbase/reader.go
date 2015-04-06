@@ -24,7 +24,7 @@ func InitReader(br *Reader, r io.Reader, oc *OpCodec, params Parameters) error {
 	case r == nil:
 		return newError("InitReader argument r is nil")
 	case oc == nil:
-		return newError("InitReader argument OpCodec is nil")
+		return newError("InitReader argument oc is nil")
 	}
 	dict, ok := oc.dict.(*ReaderDict)
 	if !ok {
