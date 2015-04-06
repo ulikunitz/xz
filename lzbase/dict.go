@@ -82,8 +82,8 @@ func (wd *WriterDict) HistorySize() int64 {
 }
 
 // Returns the byte at the given distance to the dictionary head.
-func (wd *WriterDict) Byte(dist int) byte {
-	c, _ := wd.ReadByteAt(wd.cursor - int64(dist))
+func (wd *WriterDict) Byte(dist int64) byte {
+	c, _ := wd.ReadByteAt(wd.cursor - dist)
 	return c
 }
 
