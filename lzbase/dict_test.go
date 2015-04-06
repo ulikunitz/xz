@@ -3,7 +3,7 @@ package lzbase
 import "testing"
 
 func TestNewWriterDict(t *testing.T) {
-	wd, err := newWriterDict(10, 10)
+	wd, err := NewWriterDict(10, 10)
 	if err != nil {
 		t.Fatalf("newWriterDict(10, 10): error %s", err)
 	}
