@@ -1,8 +1,5 @@
 # .gitignore
 
-old/lzma/writer.txt
-old/lzma/reader.txt
-
 lzma/writer.txt
 lzma/reader.txt
 
