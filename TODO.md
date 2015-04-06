@@ -7,6 +7,7 @@
 # Release 1.0
 
 1. Add godoc URL to README.md. (godoc.org)
+2. Resolve all issues.
 
 # Package xz
 
@@ -18,12 +19,9 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) Implement lzbase.Writer allowing the reuse of writerDict and opCodec.
-   b) Implement lzma.NewWriter based on lzbase.Writer and test it.
-   c) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
+   a) Work out design for lzma2.
+   b) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
       and lzbase.Writer
-
-2. Remove lzma package.
 
 ## Optimizations
 
@@ -36,6 +34,11 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-06
+
+The new lzma package is now fully usable and lzmago is using it now. The
+old lzma package has been completely removed.
 
 ## 2015-04-05
 
