@@ -45,6 +45,7 @@ func newLengthCodec() *lengthCodec {
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
 	debug.Printf("LEN %d", posState)
+	defer debug.Printf("LEN %3d %2d\n", l, posState)
 	if l > MaxLength-MinLength {
 		return newError("length out of range")
 	}
@@ -69,7 +70,6 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 	if err = lc.high.Encode(e, l-16); err != nil {
 		return
 	}
-	debug.Printf("LEN %3d %2d\n", l, posState)
 	return nil
 }
 

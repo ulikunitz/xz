@@ -2,6 +2,8 @@ package lzbase
 
 import "io"
 
+// Writer allows to generate a LZMA stream, while the OpCodec object can be
+// reused.
 type Writer struct {
 	OpCodec *OpCodec
 	Dict    *WriterDict
@@ -9,6 +11,7 @@ type Writer struct {
 	params  *Parameters
 }
 
+// InitWriter initializes a writer object.
 func InitWriter(bw *Writer, w io.Writer, oc *OpCodec, params Parameters) error {
 	switch {
 	case w == nil:
@@ -167,7 +170,7 @@ func (bw *Writer) findOp() (op operation, err error) {
 // discardOp advances the head of the dictionary and writes the the bytes into
 // the hash table.
 func (bw *Writer) discardOp(op operation) error {
-	n, err := bw.Dict.Copy(bw.Dict.t4, op.Len())
+	n, err := bw.Dict.AdvanceHead(op.Len())
 	if err != nil {
 		return err
 	}

@@ -11,9 +11,9 @@ import (
 // any messages.
 var debug xlog.Logger = xlog.Quiet
 
-// debugOn uses the log.Logger type to write information on the given writer.
+// DebugOn uses the log.Logger type to write information on the given writer.
 // If w is nil no output will be written.
-func debugOn(w io.Writer) {
+func DebugOn(w io.Writer) {
 	if w == nil {
 		debug = xlog.Quiet
 		return
@@ -21,5 +21,5 @@ func debugOn(w io.Writer) {
 	debug = log.New(w, "", 0)
 }
 
-// debugOff() switches the debugging output off.
-func debugOff() { debug = xlog.Quiet }
+// DebugOff() switches the debugging output off.
+func DebugOff() { debug = xlog.Quiet }

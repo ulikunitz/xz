@@ -106,7 +106,7 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 	return nil
 }
 
-// Flush writes a complete copy of the low value.
+// Close writes a complete copy of the low value.
 func (e *rangeEncoder) Close() error {
 	for i := 0; i < 5; i++ {
 		if err := e.shiftLow(); err != nil {
