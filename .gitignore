@@ -3,6 +3,9 @@
 old/lzma/writer.txt
 old/lzma/reader.txt
 
+lzma/writer.txt
+lzma/reader.txt
+
 cmd/lzmago/lzmago
 
 # vim swap file
