@@ -62,3 +62,16 @@ func NewWriterP(w io.Writer, p Parameters) (lw *Writer, err error) {
 	}
 	return lw, nil
 }
+
+// Parametes returns a copy of the parameters for the writer.
+func (lw *Writer) Parameters() Parameters {
+	return *lw.params
+}
+
+// Close closes the writer.
+//
+// Please note that the underlying writer will neither be flushed nor closed.
+func (lw *Writer) Close() error {
+	// function is necessary to have it explicitly documented.
+	return lw.Writer.Close()
+}
