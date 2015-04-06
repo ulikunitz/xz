@@ -2,13 +2,6 @@ package lzbase
 
 import "io"
 
-// Parameters provides a size if sizeInHeader is true. The size refers here to
-// the uncompressed size.
-type Parameters struct {
-	Size         int64
-	SizeInHeader bool
-}
-
 // Reader supports the reading of a raw LZMA stream without a header.
 type Reader struct {
 	OpCodec *OpCodec
@@ -26,6 +19,10 @@ func InitReader(br *Reader, r io.Reader, oc *OpCodec, params Parameters) error {
 	case oc == nil:
 		return newError("InitReader argument oc is nil")
 	}
+	err := verifyParameters(&params)
+	if err != nil {
+		return err
+	}
 	dict, ok := oc.dict.(*ReaderDict)
 	if !ok {
 		return newError("op codec for reader expected")
@@ -33,9 +30,6 @@ func InitReader(br *Reader, r io.Reader, oc *OpCodec, params Parameters) error {
 	rd, err := newRangeDecoder(r)
 	if err != nil {
 		return err
-	}
-	if params.SizeInHeader && params.Size < 0 {
-		return newError("negative size parameter")
 	}
 	*br = Reader{OpCodec: oc, Dict: dict, rd: rd, params: params}
 	return nil
