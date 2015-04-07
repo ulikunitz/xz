@@ -29,7 +29,7 @@ type Parameters struct {
 	BufferSize int64
 }
 
-// Properties returns lc, lp and pb as Properties value.
+// Properties returns LC, LP and PB as Properties value.
 func (p *Parameters) Properties() lzbase.Properties {
 	props, err := lzbase.NewProperties(p.LC, p.LP, p.PB)
 	if err != nil {
