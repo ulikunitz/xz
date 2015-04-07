@@ -1,5 +1,6 @@
 package lzma2
 
+// control represents the control byte of the chunk header
 type control byte
 
 // Constants for control bytes
@@ -22,14 +23,18 @@ const (
 	packedResetDictCtrl = 0xe0
 )
 
+// eos returns whether the control marks the end of the stream
 func (c control) eos() bool {
 	return c == eosCtrl
 }
 
+// packed returns whether the control indicates a packed chunk
 func (c control) packed() bool {
 	return c&packedCtrl == packedCtrl
 }
 
+// resetDict indicates whether the control requires a reset of a
+// dictionary
 func (c control) resetDict() bool {
 	if !c.packed() {
 		return c == copyResetDictCtrl
@@ -37,6 +42,7 @@ func (c control) resetDict() bool {
 	return (c & packedMask) == packedResetDictCtrl
 }
 
+// resetState indicates whether a reset of the encoder state is required
 func (c control) resetState() bool {
 	if !c.packed() {
 		return false
@@ -44,6 +50,7 @@ func (c control) resetState() bool {
 	return (c & packedMask) >= packedResetStateCtrl
 }
 
+// newProps indicates whether new properties are required
 func (c control) newProps() bool {
 	if !c.packed() {
 		return false
@@ -51,6 +58,8 @@ func (c control) newProps() bool {
 	return (c & packedMask) >= packedNewPropsCtrl
 }
 
+// unpackedSizeHighBits returns the high bits of the unpacked size at the right
+// positon of the returned value.
 func (c control) unpackedSizeHighBits() int64 {
 	if !c.packed() {
 		return 0
