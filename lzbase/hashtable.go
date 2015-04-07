@@ -104,7 +104,7 @@ type hashTable struct {
 
 // hashTableExponent derives the hash table exponent from the history length.
 func hashTableExponent(n uint32) int {
-	e := 30 - nlz32(n)
+	e := 30 - NLZ32(n)
 	switch {
 	case e < minTableExponent:
 		e = minTableExponent

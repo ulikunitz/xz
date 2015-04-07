@@ -61,7 +61,7 @@ func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) 
 	if dist < startPosModel {
 		posSlot = dist
 	} else {
-		bits = uint32(30 - nlz32(dist))
+		bits = uint32(30 - NLZ32(dist))
 		posSlot = startPosModel - 2 + (bits << 1)
 		posSlot += (dist >> uint(bits)) & 1
 	}
