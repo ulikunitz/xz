@@ -2,7 +2,9 @@
 
 # Release v0.3
 
-- Working LZMA2 implementation
+1. Working LZMA2 implementation
+2. Support by lzmago tool
+3. Improve documentation
 
 # Release 1.0
 
