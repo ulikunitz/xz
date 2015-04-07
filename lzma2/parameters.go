@@ -53,12 +53,24 @@ func normalizeSizes(p *Parameters) {
 	}
 }
 
+// verifyProperties checks properties according to LZMA2 rules. LZMA2 requires
+// additionally that LC + LP is less or equal 4.
+func verifyProperties(LC, LP, PB int) error {
+	if err := lzbase.VerifyProperties(LC, LP, PB); err != nil {
+		return err
+	}
+	if LC+LP > 4 {
+		return newError("LC + LP must be less or equal 4")
+	}
+	return nil
+}
+
 // verifyParameters checks parameters for errors.
 func verifyParameters(p *Parameters) error {
 	if p == nil {
 		return newError("parameters must be non-nil")
 	}
-	if err := lzbase.VerifyProperties(p.LC, p.LP, p.PB); err != nil {
+	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
 	if !(lzbase.MinDictSize <= p.DictSize &&
