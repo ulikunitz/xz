@@ -1,9 +1,12 @@
 % LZMA2 format
 
-LZMA2 is a container of chunks. Each chunk is lead by a control byte.
+The LZMA2 format suppports flushing, parallel encoding or decoding.
+Chunks of data that cannot be compressed are copied as such.
 
-Additional the LZMA2 format requires a byte that encodes the dictionary
-size using following encoding.
+## Dictionary Size
+
+LZMA2 requires information about the size of the dictionary. This is
+provided by a single byte. 
 
 Bits | Mask | Description
 ----:|-----:|:------------------------------------------------
@@ -31,6 +34,9 @@ For test purposes we add the dictionary size byte as first byte of a
 LZMA2 stream.
 
 ## Chunks
+
+An LZMA2 stream is a sequence of chunks. Each chunk is preceded by a
+control byte and other information.
 
 Following the C implementation in the LZMA SDK the control byte can be
 described as such:
