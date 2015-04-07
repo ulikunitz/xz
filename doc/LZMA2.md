@@ -53,12 +53,6 @@ Chunk header         | Description
 
 The symbols used are described by following table.
 
-A dictionary reset requires always new properties. If this is an
-uncompressed chunk the properties need to be provided in the next
-compressed chunk. New properties require a reset of the state.
-
-Uncompressed data is written into the dictionary.
-
 Symbol | Description
 :----- | :-----------------
 u      | unpacked size bit
@@ -66,16 +60,23 @@ U      | unpacked size byte
 P      | packed size byte
 S      | properties byte
 
-The unpacked size and packed size are written in big-endian byte order.
-The actual size is one more. So a chunk with 1 byte unpacked data will
-store size 0 in the unpacked byte.
+A dictionary reset requires always new properties. If this is an
+uncompressed chunk the properties need to be provided in the next
+compressed chunk. New properties require a reset of the state.
+
+Uncompressed data is written into the dictionary.
+
+The unpacked size and packed size are given in big-endian byte order.
+The values need to be incremented for the actual size. So a chunk with 1
+byte unpacked data will store size 0 in the unpacked byte.
 
 The properties byte provides the parameters pb, lc, lp using following
 formula:
 
     S = (pb * 5 + lp) * 9 + lc
 
-For LZMA2 following limitation has been introduced:
+This is same encoding used for LZMA. For LZMA2 following condition has
+been introduced:
 
     lc + lp <= 4.
 
