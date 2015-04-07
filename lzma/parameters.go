@@ -82,6 +82,9 @@ func verifyParameters(p *Parameters) error {
 	if p.Size < 0 {
 		return newError("length must not be negative")
 	}
+	if p.BufferSize <= 0 {
+		return newError("bufferSize must be positive")
+	}
 	return nil
 }
 
