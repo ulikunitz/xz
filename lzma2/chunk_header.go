@@ -1,5 +1,18 @@
 package lzma2
 
+import (
+	"io"
+
+	"github.com/uli-go/xz/lzbase"
+)
+
+const (
+	minUnpackedSize = 1
+	maxUnpackedSize = 1 << 21
+	minPackedSize   = 1
+	maxPackedSize   = 1 << 16
+)
+
 // control represents the control byte of the chunk header
 type control byte
 
@@ -7,6 +20,8 @@ type control byte
 const (
 	// end of stream
 	eosCtrl control = 0
+	// mask for copy relevant controls
+	copyMask = 0x03
 	// copy content but reset dictionary
 	copyResetDictCtrl = 0x01
 	// copy content without resetting the dictionary
@@ -26,6 +41,16 @@ const (
 // eos returns whether the control marks the end of the stream
 func (c control) eos() bool {
 	return c == eosCtrl
+}
+
+func verifyControl(c control) error {
+	if c.packed() {
+		return nil
+	}
+	if c&^copyMask != 0 {
+		return newError("control has invalid value")
+	}
+	return nil
 }
 
 // packed returns whether the control indicates a packed chunk
@@ -65,4 +90,46 @@ func (c control) unpackedSizeHighBits() int64 {
 		return 0
 	}
 	return int64(c&^packedMask) << 16
+}
+
+type chunkHeader struct {
+	control
+	packedSize   int64
+	unpackedSize int64
+	props        lzbase.Properties
+}
+
+func computeControl(h chunkHeader) control {
+	c := h.control
+	if !c.packed() {
+		return c
+	}
+	u := control((h.unpackedSize-1)>>16) &^ packedMask
+	return (c & packedMask) | u
+}
+
+func verifyChunkHeader(h chunkHeader) error {
+	var err error
+	if err = verifyControl(h.control); err != nil {
+		return err
+	}
+	if !(minPackedSize <= h.packedSize && h.packedSize <= maxPackedSize) {
+		return newError("packedSize out of range")
+	}
+	if !(minUnpackedSize <= h.unpackedSize &&
+		h.unpackedSize <= maxUnpackedSize) {
+		return newError("unpackedSize out of range")
+	}
+	return verifyProperties(h.props.LC(), h.props.LP(), h.props.PB())
+}
+
+func writeChunkHeader(w io.Writer, h chunkHeader) (n int, err error) {
+	if err = verifyChunkHeader(h); err != nil {
+		return 0, err
+	}
+	buf := make([]byte, 1, 5)
+	c := computeControl(h)
+	buf[0] = byte(c)
+	panic("TODO")
+
 }
