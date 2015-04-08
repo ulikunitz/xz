@@ -6,6 +6,9 @@ import (
 	"github.com/uli-go/xz/lzbase"
 )
 
+// Limits for the sizes in the chunk header. Note that the maximum for the size
+// of unpacked data in an unpacked chunk is 2^16 instead of 2^21 for packed
+// chunks.
 const (
 	minUnpackedSize     = 1
 	maxCopyUnpackedSize = 1 << 16
@@ -44,6 +47,7 @@ func (c control) eos() bool {
 	return c == eosCtrl
 }
 
+// verifyControl checks the control byte for errors.
 func verifyControl(c control) error {
 	if c.packed() {
 		return nil
@@ -93,6 +97,8 @@ func (c control) unpackedSizeHighBits() int64 {
 	return int64(c&^packedMask) << 16
 }
 
+// pure returns the control without the unpacked size information for packed
+// chunks.
 func (c control) pure() control {
 	if c.packed() {
 		return c & packedMask
@@ -100,6 +106,7 @@ func (c control) pure() control {
 	return c
 }
 
+// chunkHeader provides a presentation of a chunk header.
 type chunkHeader struct {
 	control
 	packedSize   int64
@@ -107,15 +114,17 @@ type chunkHeader struct {
 	props        lzbase.Properties
 }
 
+// compureControl includes the unpacked size bits into a control.
 func computeControl(h chunkHeader) control {
-	c := h.control
-	if !c.packed() {
-		return c
+	if !h.packed() {
+		return h.control
 	}
 	u := control((h.unpackedSize-1)>>16) &^ packedMask
-	return (c & packedMask) | u
+	return (h.control & packedMask) | u
 }
 
+// maxUnpacked returns the macimum unpacked size supported depending on the
+// packed flag. It returns 2^21 if packed and 2^16 if not.
 func maxUnpacked(packed bool) int64 {
 	if packed {
 		return maxUnpackedSize
@@ -124,6 +133,7 @@ func maxUnpacked(packed bool) int64 {
 	}
 }
 
+// verifyChunkHeader checks a chunk headeer for problems.
 func verifyChunkHeader(h chunkHeader) error {
 	var err error
 	if err = verifyControl(h.control); err != nil {
@@ -148,17 +158,21 @@ func verifyChunkHeader(h chunkHeader) error {
 	return verifyProperties(h.props.LC(), h.props.LP(), h.props.PB())
 }
 
+// getUint16BE reads a uint16 in big-endinan mode from the given array.
 func getUint16BE(b []byte) uint16 {
 	x := uint16(b[0]) << 8
 	x |= uint16(b[1])
 	return x
 }
 
+// putUint16BE puts the uint16 in big-endian mode into the byte array.
 func putUint16BE(b []byte, x uint16) {
 	b[1] = byte(x)
 	b[0] = byte(x >> 8)
 }
 
+// MarshalBinary converst the chunk header in the byte slice data and returns
+// errors if necessary.
 func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	if err = verifyChunkHeader(*h); err != nil {
 		return nil, err
@@ -184,6 +198,8 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+// writeChunkHeader writes the binary representation of the chunk header to the
+// writer.
 func writeChunkHeader(w io.Writer, h chunkHeader) (n int, err error) {
 	data, err := h.MarshalBinary()
 	if err != nil {
@@ -192,6 +208,7 @@ func writeChunkHeader(w io.Writer, h chunkHeader) (n int, err error) {
 	return w.Write(data)
 }
 
+// readChunkHeader reads the chunk header for the reader.
 func readChunkHeader(r io.Reader) (h chunkHeader, err error) {
 	buf := make([]byte, 1, 6)
 	if _, err = io.ReadFull(r, buf); err != nil {
