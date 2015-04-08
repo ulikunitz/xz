@@ -159,29 +159,37 @@ func putUint16BE(b []byte, x uint16) {
 	b[0] = byte(x >> 8)
 }
 
-func writeChunkHeader(w io.Writer, h chunkHeader) (n int, err error) {
-	if err = verifyChunkHeader(h); err != nil {
-		return 0, err
+func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
+	if err = verifyChunkHeader(*h); err != nil {
+		return nil, err
 	}
-	buf := make([]byte, 1, 6)
-	c := computeControl(h)
-	buf[0] = byte(c)
+	data = make([]byte, 1, 6)
+	c := computeControl(*h)
+	data[0] = byte(c)
 	if !c.packed() {
 		if c != eosCtrl {
-			buf = buf[:3]
-			putUint16BE(buf[1:], uint16(h.unpackedSize-1))
+			data = data[:3]
+			putUint16BE(data[1:3], uint16(h.unpackedSize-1))
 		}
 	} else {
 		if !c.newProps() {
-			buf = buf[:5]
+			data = data[:5]
 		} else {
-			buf = buf[:6]
-			buf[5] = byte(h.props)
+			data = data[:6]
+			data[5] = byte(h.props)
 		}
-		putUint16BE(buf[1:3], uint16(h.unpackedSize-1))
-		putUint16BE(buf[3:5], uint16(h.packedSize-1))
+		putUint16BE(data[1:3], uint16(h.unpackedSize-1))
+		putUint16BE(data[3:5], uint16(h.packedSize-1))
 	}
-	return w.Write(buf)
+	return data, nil
+}
+
+func writeChunkHeader(w io.Writer, h chunkHeader) (n int, err error) {
+	data, err := h.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	return w.Write(data)
 }
 
 func readChunkHeader(r io.Reader) (h chunkHeader, err error) {
