@@ -21,8 +21,11 @@
 
 1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
 
-   a) Work out design for lzma2.
-   b) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
+   a) chunkHeader should satisfy BinaryMarshaller and BinaryUnmarshaller
+      interfaces
+   b) add documentation comments for chunkHeader
+   c) Work out design for lzma2.
+   d) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
       and lzbase.Writer
 
 ## Optimizations
