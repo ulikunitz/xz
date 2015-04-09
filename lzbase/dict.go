@@ -1,5 +1,7 @@
 package lzbase
 
+import "io"
+
 // errDist indicates that the distance is out of range.
 var errDist = newError("distance out of range")
 
@@ -106,4 +108,15 @@ func (wd *WriterDict) AdvanceHead(n int) (advanced int, err error) {
 // panics if len(p) is not 4.
 func (wd *WriterDict) Offsets(p []byte) []int64 {
 	return wd.t4.Offsets(p)
+}
+
+// CopyChunk copies the last n bytes into the given writer.
+func (wd *WriterDict) CopyChunk(w io.Writer, n int) (copied int, err error) {
+	if n <= 0 {
+		if n == 0 {
+			return 0, nil
+		}
+		return 0, newError("CopyChunk: argument n must be non-negative")
+	}
+	return wd.copyAt(w, n, wd.cursor-int64(n))
 }
