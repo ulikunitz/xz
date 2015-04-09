@@ -322,3 +322,8 @@ func (bw *Writer) writeOp(op operation) error {
 	}
 	panic("unknown operation type")
 }
+
+// Properties returns the properties of the writer.
+func (bw *Writer) Properties() Properties {
+	return bw.OpCodec.properties
+}
