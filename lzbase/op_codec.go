@@ -14,7 +14,7 @@ type Dictionary interface {
 
 // OpCodec provides all information to be able to encode or decode operations.
 type OpCodec struct {
-	properties  Properties
+	Properties  Properties
 	dict        Dictionary
 	state       uint32
 	posBitMask  uint32
@@ -40,16 +40,16 @@ func initProbSlice(p []prob) {
 
 // init initializes an OpCodec structure.
 func (c *OpCodec) init(p Properties, dict Dictionary) {
-	c.properties = p
+	c.Properties = p
 	c.dict = dict
-	c.posBitMask = (uint32(1) << uint(c.properties.PB())) - 1
+	c.posBitMask = (uint32(1) << uint(c.Properties.PB())) - 1
 	initProbSlice(c.isMatch[:])
 	initProbSlice(c.isRep[:])
 	initProbSlice(c.isRepG0[:])
 	initProbSlice(c.isRepG1[:])
 	initProbSlice(c.isRepG2[:])
 	initProbSlice(c.isRepG0Long[:])
-	c.litCodec = newLiteralCodec(c.properties.LC(), c.properties.LP())
+	c.litCodec = newLiteralCodec(c.Properties.LC(), c.Properties.LP())
 	c.lenCodec = newLengthCodec()
 	c.repLenCodec = newLengthCodec()
 	c.distCodec = newDistCodec()
@@ -112,7 +112,7 @@ func (c *OpCodec) states() (state, state2, posState uint32) {
 
 func (c *OpCodec) litState() uint32 {
 	prevByte := c.dict.Byte(1)
-	lp, lc := uint(c.properties.LP()), uint(c.properties.LC())
+	lp, lc := uint(c.Properties.LP()), uint(c.Properties.LC())
 	litState := ((uint32(c.dict.Offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
