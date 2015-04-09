@@ -27,7 +27,8 @@ func TestDistCodec(t *testing.T) {
 	var err error
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
-	de := newDistCodec()
+	var de distCodec
+	de.init()
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		dist, l := randomDistL(i)
@@ -44,7 +45,8 @@ func TestDistCodec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newRangeEncoder: %s", err)
 	}
-	dd := newDistCodec()
+	var dd distCodec
+	dd.init()
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		want, l := randomDistL(i)

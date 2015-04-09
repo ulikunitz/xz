@@ -1,5 +1,6 @@
 package lzbase
 
+/*
 import "io"
 
 // Writer allows to generate a LZMA stream, while the OpCodec object can be
@@ -327,3 +328,4 @@ func (bw *Writer) writeOp(op operation) error {
 func (bw *Writer) Properties() Properties {
 	return bw.OpCodec.properties
 }
+*/

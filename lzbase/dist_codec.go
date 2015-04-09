@@ -28,8 +28,7 @@ type distCodec struct {
 }
 
 // newDistCodec creates a new distance codec.
-func newDistCodec() *distCodec {
-	dc := new(distCodec)
+func (dc *distCodec) init() {
 	for i := range dc.posSlotCodecs {
 		dc.posSlotCodecs[i] = makeTreeCodec(posSlotBits)
 	}
@@ -39,7 +38,6 @@ func newDistCodec() *distCodec {
 		dc.posModel[i] = makeTreeReverseCodec(bits)
 	}
 	dc.alignCodec = makeTreeReverseCodec(alignBits)
-	return dc
 }
 
 // Converts the value l to a supported lenState value.

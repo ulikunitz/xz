@@ -7,19 +7,18 @@ type literalCodec struct {
 	probs []prob
 }
 
-// newLiteralCodec creates and initializes a literalCodec instance.
-func newLiteralCodec(lc, lp int) *literalCodec {
+// init initializes the literal codec.
+func (c *literalCodec) init(lc, lp int) {
 	switch {
 	case !(minLC <= lc && lc <= maxLC):
 		panic("lc out of range")
 	case !(minLP <= lp && lp <= maxLP):
 		panic("lp out of range")
 	}
-	c := &literalCodec{probs: make([]prob, 0x300<<uint(lc+lp))}
+	c.probs = make([]prob, 0x300<<uint(lc+lp))
 	for i := range c.probs {
 		c.probs[i] = probInit
 	}
-	return c
 }
 
 // Encode encodes the byte s using a range encoder as well as the current LZMA

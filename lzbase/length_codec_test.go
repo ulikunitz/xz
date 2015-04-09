@@ -9,7 +9,8 @@ func TestLengthCodec(t *testing.T) {
 	var err error
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
-	le := newLengthCodec()
+	var le lengthCodec
+	le.init()
 	for l := uint32(0); l < MaxLength-MinLength; l++ {
 		if err = le.Encode(e, l, 0); err != nil {
 			t.Fatalf("le.Encode: %s", err)
@@ -23,7 +24,8 @@ func TestLengthCodec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newRangeDecoder: %s", err)
 	}
-	ld := newLengthCodec()
+	var ld lengthCodec
+	ld.init()
 	for l := uint32(0); l < MaxLength-MinLength; l++ {
 		x, err := ld.Decode(d, 0)
 		if err != nil {
@@ -38,7 +40,8 @@ func TestLengthCodec(t *testing.T) {
 func TestLengthCodecRange(t *testing.T) {
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
-	le := newLengthCodec()
+	var le lengthCodec
+	le.init()
 	l := uint32(MaxLength - MinLength + 1)
 	err := le.Encode(e, l, 0)
 	if err == nil {
@@ -50,7 +53,8 @@ func TestLengthCodecRange(t *testing.T) {
 func TestLengthCodecAll(t *testing.T) {
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
-	le := newLengthCodec()
+	var le lengthCodec
+	le.init()
 	for i := MinLength; i < MaxLength; i++ {
 		u := uint32(i - MinLength)
 		err := le.Encode(e, u, 0)
@@ -65,7 +69,8 @@ func TestLengthCodecAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newRangeDecoder error %s", err)
 	}
-	ld := newLengthCodec()
+	var ld lengthCodec
+	ld.init()
 	for i := MinLength; i < MaxLength; i++ {
 		u := uint32(i - MinLength)
 		l, err := ld.Decode(d, 0)

@@ -22,8 +22,7 @@ type lengthCodec struct {
 }
 
 // newLengthCodec() creates and initializes a new length codec.
-func newLengthCodec() *lengthCodec {
-	lc := new(lengthCodec)
+func (lc *lengthCodec) init() {
 	for i := range lc.choice {
 		lc.choice[i] = probInit
 	}
@@ -34,7 +33,6 @@ func newLengthCodec() *lengthCodec {
 		lc.mid[i] = makeTreeCodec(3)
 	}
 	lc.high = makeTreeCodec(8)
-	return lc
 }
 
 // Encode encodes the length offset. The length offset l can be compute by

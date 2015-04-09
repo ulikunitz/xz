@@ -1,10 +1,11 @@
 package lzbase
 
+/*
 import "io"
 
 // Reader supports the reading of a raw LZMA stream without a header.
 type Reader struct {
-	OpCodec *OpCodec
+	// OpCodec *OpCodec
 	Dict    *ReaderDict
 	rd      *rangeDecoder
 	params  Parameters
@@ -237,3 +238,4 @@ func (br *Reader) fill() error {
 	}
 	return nil
 }
+*/

@@ -23,7 +23,8 @@ func TestLiteralCodec(t *testing.T) {
 	var err error
 	var buf bytes.Buffer
 	e := newRangeEncoder(&buf)
-	le := newLiteralCodec(lc, lp)
+	var le literalCodec
+	le.init(lc, lp)
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		s, state, match, litState := random(lc, lp)
@@ -39,7 +40,8 @@ func TestLiteralCodec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newRangeDecoder: %s", err)
 	}
-	ld := newLiteralCodec(lc, lp)
+	var ld literalCodec
+	ld.init(lc, lp)
 	rand.Seed(1)
 	for i := 0; i < count; i++ {
 		s, state, match, litState := random(lc, lp)
