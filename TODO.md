@@ -20,17 +20,14 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-   a) Implement State as replacement for OpCodec
-      - State supports the Reset method
-      - Support Properties method
-   b) Implement OpEncoder
+   a) Implement OpEncoder
       - WriteOperations
       - Close
       - State is public field
-   c) Implement OpDecoder
+   b) Implement OpDecoder
       - ReadOperations
       - State is public field
-   d) Implement WriterDict
+   c) Implement WriterDict
       - Write
       - Close
       - Reopen
@@ -40,7 +37,7 @@
       - Len
       - Cap
       - Size
-   e) Implement ReaderDict
+   d) Implement ReaderDict
       - Read
       - WriteOperations
       - Close
@@ -50,13 +47,13 @@
       - Cap
       - DictSize
       - Offset
-   f) Implement Writer
+   e) Implement Writer
       - Write
       - Close
       - CompressedSize
       - Size
       - public fields State and Dict
-   g) Implement Reader
+   f) Implement Reader
       - Read
       - CompressedSize
       - Size
@@ -76,6 +73,11 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-08
+
+Came up with a new simplified design for lzbase. I implemented already
+the type State that replaces OpCodec.
 
 ## 2015-04-06
 
