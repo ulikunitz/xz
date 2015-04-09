@@ -32,7 +32,9 @@ func InitWriter(bw *Writer, w io.Writer, oc *OpCodec, params Parameters) error {
 	return nil
 }
 
-// Write moves data into the internal buffer and triggers its compression.
+// Write moves data into the internal buffer and triggers its compression. Note
+// that beside the data held back to enable a large match all data will be be
+// compressed.
 func (bw *Writer) Write(p []byte) (n int, err error) {
 	end := bw.Dict.end + int64(len(p))
 	if end < 0 {
