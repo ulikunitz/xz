@@ -19,11 +19,51 @@
 
 ## LZMA2 support
 
-1. Create a package lzma2 that supports classic LZMA as well as LZMA2.
+1. Redesign lzbase
+   a) Implement State as replacement for OpCodec
+      - State supports the Reset method
+      - Support Properties method
+   b) Implement OpEncoder
+      - WriteOperations
+      - Close
+      - State is public field
+   c) Implement OpDecoder
+      - ReadOperations
+      - State is public field
+   d) Implement WriterDict
+      - Write
+      - Close
+      - Reopen
+      - Reset
+      - Offset
+      - CopyAt
+      - Len
+      - Cap
+      - Size
+   e) Implement ReaderDict
+      - Read
+      - WriteOperations
+      - Close
+      - Reopen
+      - Reset
+      - Len
+      - Cap
+      - DictSize
+      - Offset
+   f) Implement Writer
+      - Write
+      - Close
+      - CompressedSize
+      - Size
+      - public fields State and Dict
+   g) Implement Reader
+      - Read
+      - CompressedSize
+      - Size
+      - State and Dict are fields
 
-   a) Work out design for lzma2.
-   b) Implement lzma2.NewReader and lzma2.NewWriter using lzbase.Reader
-      and lzbase.Writer
+2. Create a package lzma2 that supports classic LZMA as well as LZMA2.
+   a) work on the design
 
 ## Optimizations
 
