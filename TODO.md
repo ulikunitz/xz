@@ -34,7 +34,7 @@
         - Reset
         - Offset
         - CopyAt
-        -  Len
+        - Len
         - Cap
         - Size
     4. Implement ReaderDict
