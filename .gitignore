@@ -1,5 +1,8 @@
 # .gitignore
 
+TODO.html
+README.html
+
 lzma/writer.txt
 lzma/reader.txt
 
