@@ -20,14 +20,14 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-  a. Implement OpEncoder
+  1. Implement OpEncoder
     - WriteOperations
     - Close
     - State is public field
-  b. Implement OpDecoder
+  2. Implement OpDecoder
     - ReadOperations
     - State is public field
-  c. Implement WriterDict
+  3. Implement WriterDict
     - Write
     - Close
     - Reopen
@@ -37,7 +37,7 @@
     -  Len
     - Cap
     - Size
-  d. Implement ReaderDict
+  4. Implement ReaderDict
     - Read
     - WriteOperations
     - Close
@@ -47,13 +47,13 @@
     - Cap
     - DictSize
     - Offset
-  e. Implement Writer
+  5. Implement Writer
     - Write
     - Close
     - CompressedSize
     - Size
     - public fields State and Dict
-  f. Implement Reader
+  6. Implement Reader
     - Read
     - CompressedSize
     - Size
