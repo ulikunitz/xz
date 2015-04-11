@@ -20,44 +20,44 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-  1. Implement OpEncoder
-    - WriteOperations
-    - Close
-    - State is public field
-  2. Implement OpDecoder
-    - ReadOperations
-    - State is public field
-  3. Implement WriterDict
-    - Write
-    - Close
-    - Reopen
-    - Reset
-    - Offset
-    - CopyAt
-    -  Len
-    - Cap
-    - Size
-  4. Implement ReaderDict
-    - Read
-    - WriteOperations
-    - Close
-    - Reopen
-    - Reset
-    - Len
-    - Cap
-    - DictSize
-    - Offset
-  5. Implement Writer
-    - Write
-    - Close
-    - CompressedSize
-    - Size
-    - public fields State and Dict
-  6. Implement Reader
-    - Read
-    - CompressedSize
-    - Size
-    - State and Dict are fields
+    1. Implement OpEncoder
+        - WriteOperations
+        - Close
+        - State is public field
+    2. Implement OpDecoder
+        - ReadOperations
+        - State is public field
+    3. Implement WriterDict
+        - Write
+        - Close
+        - Reopen
+        - Reset
+        - Offset
+        - CopyAt
+        -  Len
+        - Cap
+        - Size
+    4. Implement ReaderDict
+        - Read
+        - WriteOperations
+        - Close
+        - Reopen
+        - Reset
+        - Len
+        - Cap
+        - DictSize
+        - Offset
+    5. Implement Writer
+        - Write
+        - Close
+        - CompressedSize
+        - Size
+        - public fields State and Dict
+    6. Implement Reader
+        - Read
+        - CompressedSize
+        - Size
+        - State and Dict are fields
 
 2. Create a package lzma2 that supports classic LZMA as well as LZMA2.
     a) work on the design
