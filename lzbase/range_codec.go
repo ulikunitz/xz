@@ -2,11 +2,13 @@ package lzbase
 
 import "io"
 
+// bWriter is used to convert a standard io.Writer into an io.ByteWriter.
 type bWriter struct {
 	io.Writer
 	a []byte
 }
 
+// newByteWriter transforms an io.Writer into an io.ByteWriter.
 func newByteWriter(w io.Writer) io.ByteWriter {
 	if b, ok := w.(io.ByteWriter); ok {
 		return b
@@ -14,6 +16,7 @@ func newByteWriter(w io.Writer) io.ByteWriter {
 	return &bWriter{w, make([]byte, 1)}
 }
 
+// WriteByte writes a single byte into the Writer.
 func (b *bWriter) WriteByte(c byte) error {
 	b.a[0] = c
 	n, err := b.Write(b.a)
@@ -28,11 +31,13 @@ func (b *bWriter) WriteByte(c byte) error {
 	return err
 }
 
+// bReader is used to convert an io.Reader into an io.ByteReader.
 type bReader struct {
 	io.Reader
 	a []byte
 }
 
+// newByteReader transforms an io.Reader into an io.ByteReader.
 func newByteReader(r io.Reader) io.ByteReader {
 	if b, ok := r.(io.ByteReader); ok {
 		return b
@@ -40,6 +45,7 @@ func newByteReader(r io.Reader) io.ByteReader {
 	return &bReader{r, make([]byte, 1)}
 }
 
+// ReadByte reads a byte from the wrapped io.ByteReader.
 func (b bReader) ReadByte() (byte, error) {
 	n, err := b.Read(b.a)
 	switch {
