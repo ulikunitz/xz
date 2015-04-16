@@ -208,3 +208,23 @@ func (e *OpEncoder) WriteOps(ops []Operation) (n int, err error) {
 func (e *OpEncoder) Close() error {
 	return e.re.Close()
 }
+
+// OpDecoder translates a byte stream to a sequence of operations.
+type OpDecoder struct {
+	R     io.Reader
+	State *State
+	rd    *rangeDecoder
+}
+
+// NewOpDecoder creates a new OpDecoder valure. Reader and state cannot be
+// shared with other instances.
+func NewOpDecoder(r io.Reader, state *State) (d *OpDecoder, err error) {
+	panic("TODO")
+}
+
+// ReadOps reads a sequence of operations. The number of operations read will
+// be returned. Note that an error may indicate that the read of a full
+// operation has not been successful.
+func (d *OpDecoder) ReadOps(ops []Operation) (n int, err error) {
+	panic("TODO")
+}
