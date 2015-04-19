@@ -19,11 +19,23 @@ type match struct {
 	length   int
 }
 
-// eos is a special kind of match.
-var eos = match{distance: maxDistance, length: MinLength}
-
 // EOSOp may mark the end of an LZMA stream.
-var EOSOp = Operation(eos)
+var EOSOp Operation = match{distance: maxDistance, length: MinLength}
+
+// equalOps returns a boolen reporting whether a and b are of the same length
+// and contain the same operations. The nil argument is equivalent to an empty
+// slice.
+func equalOps(a, b []Operation) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, x := range a {
+		if x != b[i] {
+			return false
+		}
+	}
+	return true
+}
 
 // Len return the length of the repetition.
 func (m match) Len() int {
@@ -361,9 +373,6 @@ var EOS = newError("end of stream")
 func (d *OpDecoder) ReadOps(ops []Operation) (n int, err error) {
 	for ; n < len(ops); n++ {
 		if ops[n], err = d.readOp(); err != nil {
-			if err == io.EOF {
-				return n, EOS
-			}
 			return n, err
 		}
 		if ops[n] == EOSOp {
