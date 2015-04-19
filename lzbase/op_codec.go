@@ -22,8 +22,8 @@ type match struct {
 // eos is a special kind of match.
 var eos = match{distance: maxDistance, length: MinLength}
 
-// EOS may mark the end of an LZMA stream.
-var EOS = Operation(eos)
+// EOSOp may mark the end of an LZMA stream.
+var EOSOp = Operation(eos)
 
 // Len return the length of the repetition.
 func (m match) Len() int {
@@ -217,14 +217,158 @@ type OpDecoder struct {
 }
 
 // NewOpDecoder creates a new OpDecoder valure. Reader and state cannot be
-// shared with other instances.
+// shared with other instances. Note that the function will read five bytes
+// from the reader.
 func NewOpDecoder(r io.Reader, state *State) (d *OpDecoder, err error) {
-	panic("TODO")
+	switch {
+	case r == nil:
+		return nil, newError("NewOpDecoder argument r is nil")
+	case state == nil:
+		return nil, newError("NewOpDecoder argumen state is nil")
+	}
+	d = &OpDecoder{
+		R:     r,
+		State: state,
+	}
+	if d.rd, err = newRangeDecoder(r); err != nil {
+		return nil, err
+	}
+	return d, nil
 }
 
+// decodeLiteral reads a literal
+func (d *OpDecoder) decodeLiteral() (op Operation, err error) {
+	litState := d.State.litState()
+
+	match := d.State.dict.Byte(int64(d.State.rep[0]) + 1)
+	s, err := d.State.litCodec.Decode(d.rd, d.State.state, match, litState)
+	if err != nil {
+		return nil, err
+	}
+	return lit{s}, nil
+}
+
+// errWrongTermination indicates that a termination symbol has been received,
+// but the range decoder could still produces more data
+var errWrongTermination = newError("end of stream marker at wrong place")
+
+// readOp decodes the next operation from the compressed stream. It returns
+// EOSOp if present in stream. If the EOS operation is not at the end of the
+// stream then errWrongTermination is returned.
+func (d *OpDecoder) readOp() (op Operation, err error) {
+	state, state2, posState := d.State.states()
+
+	b, err := d.State.isMatch[state2].Decode(d.rd)
+	if err != nil {
+		return nil, err
+	}
+	if b == 0 {
+		// literal
+		op, err := d.decodeLiteral()
+		if err != nil {
+			return nil, err
+		}
+		d.State.updateStateLiteral()
+		return op, nil
+	}
+	b, err = d.State.isRep[state].Decode(d.rd)
+	if err != nil {
+		return nil, err
+	}
+	if b == 0 {
+		// simple match
+		d.State.rep[3], d.State.rep[2], d.State.rep[1] = d.State.rep[2], d.State.rep[1], d.State.rep[0]
+
+		d.State.updateStateMatch()
+		// The length decoder returns the length offset.
+		n, err := d.State.lenCodec.Decode(d.rd, posState)
+		if err != nil {
+			return nil, err
+		}
+		// The dist decoder returns the distance offset. The actual
+		// distance is 1 higher.
+		d.State.rep[0], err = d.State.distCodec.Decode(d.rd, n)
+		if err != nil {
+			return nil, err
+		}
+		if d.State.rep[0] == eosDist {
+			if !d.rd.possiblyAtEnd() {
+				return nil, errWrongTermination
+			}
+			return EOSOp, nil
+		}
+		op = match{length: int(n) + MinLength,
+			distance: int64(d.State.rep[0]) + minDistance}
+		return op, nil
+	}
+	b, err = d.State.isRepG0[state].Decode(d.rd)
+	if err != nil {
+		return nil, err
+	}
+	dist := d.State.rep[0]
+	if b == 0 {
+		// rep match 0
+		b, err = d.State.isRepG0Long[state2].Decode(d.rd)
+		if err != nil {
+			return nil, err
+		}
+		if b == 0 {
+			d.State.updateStateShortRep()
+			op = match{length: 1,
+				distance: int64(dist) + minDistance}
+			return op, nil
+		}
+	} else {
+		b, err = d.State.isRepG1[state].Decode(d.rd)
+		if err != nil {
+			return nil, err
+		}
+		if b == 0 {
+			dist = d.State.rep[1]
+		} else {
+			b, err = d.State.isRepG2[state].Decode(d.rd)
+			if err != nil {
+				return nil, err
+			}
+			if b == 0 {
+				dist = d.State.rep[2]
+			} else {
+				dist = d.State.rep[3]
+				d.State.rep[3] = d.State.rep[2]
+			}
+			d.State.rep[2] = d.State.rep[1]
+		}
+		d.State.rep[1] = d.State.rep[0]
+		d.State.rep[0] = dist
+	}
+	n, err := d.State.repLenCodec.Decode(d.rd, posState)
+	if err != nil {
+		return nil, err
+	}
+	d.State.updateStateRep()
+	op = match{length: int(n) + MinLength,
+		distance: int64(dist) + minDistance}
+	return op, nil
+}
+
+// EOS error indicates the end of the stream
+var EOS = newError("end of stream")
+
 // ReadOps reads a sequence of operations. The number of operations read will
-// be returned. Note that an error may indicate that the read of a full
-// operation has not been successful.
+// be returned. The end of the operation stream is marked by EOS. Note that an
+// error may indicate that the read of a full operation has not been
+// successful.
 func (d *OpDecoder) ReadOps(ops []Operation) (n int, err error) {
-	panic("TODO")
+	for ; n < len(ops); n++ {
+		if ops[n], err = d.readOp(); err != nil {
+			if err == io.EOF {
+				return n, EOS
+			}
+			return n, err
+		}
+		if ops[n] == EOSOp {
+			return n, EOS
+		}
+	}
+	return n, nil
 }
