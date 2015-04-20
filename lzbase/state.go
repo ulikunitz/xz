@@ -6,16 +6,16 @@ const states = 12
 // Value of the end of stream (EOS) marker.
 const eosDist = 1<<32 - 1
 
-// Dictionary abstracts the two concrete Dictionaries away.
-type Dictionary interface {
+// dictionary abstracts the two concrete Dictionaries away.
+type dictionary interface {
 	Byte(dist int64) byte
 	Offset() int64
 }
 
-// State maintains the full state of the operation encoding process.
-type State struct {
+// state maintains the full state of the operation encoding process.
+type state struct {
 	Properties  Properties
-	dict        Dictionary
+	dict        dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -39,9 +39,9 @@ func initProbSlice(p []prob) {
 }
 
 // Reset sets all state information to the original values.
-func (s *State) Reset() {
+func (s *state) Reset() {
 	lc, lp, pb := s.Properties.LC(), s.Properties.LP(), s.Properties.PB()
-	*s = State{
+	*s = state{
 		Properties: s.Properties,
 		dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
@@ -58,17 +58,15 @@ func (s *State) Reset() {
 	s.distCodec.init()
 }
 
-// NewState creates a new State instance
-func NewState(p Properties, dict Dictionary) *State {
-	s := new(State)
+// initState initialized a state variable.
+func initState(s *state, p Properties, dict dictionary) {
 	s.Properties = p
 	s.dict = dict
 	s.Reset()
-	return s
 }
 
 // updateStateLiteral updates the state for a literal.
-func (s *State) updateStateLiteral() {
+func (s *state) updateStateLiteral() {
 	switch {
 	case s.state < 4:
 		s.state = 0
@@ -81,7 +79,7 @@ func (s *State) updateStateLiteral() {
 }
 
 // updateStateMatch updates the state for a match.
-func (s *State) updateStateMatch() {
+func (s *state) updateStateMatch() {
 	if s.state < 7 {
 		s.state = 7
 	} else {
@@ -90,7 +88,7 @@ func (s *State) updateStateMatch() {
 }
 
 // updateStateRep updates the state for a repetition.
-func (s *State) updateStateRep() {
+func (s *state) updateStateRep() {
 	if s.state < 7 {
 		s.state = 8
 	} else {
@@ -99,7 +97,7 @@ func (s *State) updateStateRep() {
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (s *State) updateStateShortRep() {
+func (s *state) updateStateShortRep() {
 	if s.state < 7 {
 		s.state = 9
 	} else {
@@ -108,18 +106,60 @@ func (s *State) updateStateShortRep() {
 }
 
 // states computes the states of the operation codec.
-func (s *State) states() (state, state2, posState uint32) {
-	state = s.state
+func (s *state) states() (state1, state2, posState uint32) {
+	state1 = s.state
 	posState = uint32(s.dict.Offset()) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
 
 // litState computes the literal state.
-func (s *State) litState() uint32 {
+func (s *state) litState() uint32 {
 	prevByte := s.dict.Byte(1)
 	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
 	litState := ((uint32(s.dict.Offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
+}
+
+// ReaderState represents the state of the operation decoding process.
+type ReaderState struct {
+	state
+}
+
+// NewReaderState allocates and initializes the ReaderState.
+func NewReaderState(p Properties, rd *ReaderDict) *ReaderState {
+	rs := new(ReaderState)
+	initState(&rs.state, p, rd)
+	return rs
+}
+
+// ReaderDict returns the reader dictionary.
+func (rs *ReaderState) ReaderDict() *ReaderDict {
+	rd, ok := rs.dict.(*ReaderDict)
+	if !ok {
+		panic("ReaderState value doesn't contain a ReaderDict value")
+	}
+	return rd
+}
+
+// WriterState represents the state of the operation encoding process.
+type WriterState struct {
+	state
+}
+
+// NewWriterState allocates and initializes a WriterState value.
+func NewWriterState(p Properties, wd *WriterDict) *WriterState {
+	ws := new(WriterState)
+	initState(&ws.state, p, wd)
+	return ws
+}
+
+// WriterDict returns the writer dictionary.
+func (ws *WriterState) WriterDict() *WriterDict {
+	wd, ok := ws.dict.(*WriterDict)
+	if !ok {
+		panic("WriterState value doesn't contain a WriterDict value")
+	}
+	return wd
 }
