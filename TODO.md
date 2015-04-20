@@ -20,44 +20,20 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-    1. Implement OpEncoder
-        - WriteOperations
-        - Close
-        - State is public field
-    2. Implement OpDecoder
-        - ReadOperations
-        - State is public field
-    3. Implement WriterDict
+    1. Implement ReaderState with ReaderDict
+    2. Implement WriterState with WriterDict
+    3. Implement Writer
         - Write
         - Close
-        - Reopen
-        - Reset
-        - Offset
-        - CopyAt
-        - Len
-        - Cap
-        - Size
-    4. Implement ReaderDict
+        - exported fields State; Dict is part of State
+    4. Implement Reader
         - Read
-        - WriteOperations
-        - Close
-        - Reopen
-        - Reset
-        - Len
-        - Cap
-        - DictSize
-        - Offset
-    5. Implement Writer
-        - Write
-        - Close
-        - CompressedSize
-        - Size
-        - public fields State and Dict
-    6. Implement Reader
-        - Read
-        - CompressedSize
-        - Size
-        - State and Dict are fields
+        - State; Dict is part of Stae
+    5. Implement LimitedReader with a fixed number of bytes
+        - LimitedReader checks after reading the given bytes
+          that rd has MaybeEOS() is true
+    6. Implement ReaderCounter that simply counts the bytes written
+    7. Implement WriterCounter that simply counts the bytes read
 
 2. Create a package lzma2 that supports classic LZMA as well as LZMA2.
     a) work on the design
@@ -73,6 +49,26 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-21
+
+While showering today morning I discovered that the design for OpEncoder
+and OpDecoder doesn't work, because encoding/decoding might depend on
+the current status of the dictionary. This is not exactly the right way
+to start the day.
+
+Therefore we need to keep the Reader and Writer design. This time around
+we simplify it by ignoring size limits. These can be added by wrappers
+around the Reader and Writer interfaces. The Parameters type isn't
+needed anymore.
+
+However I will implement a ReaderState and WriterState type to use
+static typing to ensure the right State object is combined with the
+right lzbase.Reader and lzbase.Writer.
+
+## 2015-04-20
+
+Today I implemented the OpDecoder and tested OpEncoder and OpDecoder.
 
 ## 2015-04-08
 
