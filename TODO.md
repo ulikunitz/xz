@@ -20,23 +20,29 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-    1. Implement ReaderState with ReaderDict
-    2. Implement WriterState with WriterDict
-    3. Implement Writer
+    1. Implement Writer
         - Write
         - Close
         - exported fields State; Dict is part of State
-    4. Implement Reader
+    2. Implement Reader
         - Read
         - State; Dict is part of Stae
-    5. Implement LimitedReader with a fixed number of bytes
+    3. Implement LimitedReader with a fixed number of bytes
         - LimitedReader checks after reading the given bytes
           that rd has MaybeEOS() is true
-    6. Implement ReaderCounter that simply counts the bytes written
-    7. Implement WriterCounter that simply counts the bytes read
+    4. Implement ReaderCounter that simply counts the bytes written
+    5. Implement WriterCounter that simply counts the bytes read
 
-2. Create a package lzma2 that supports classic LZMA as well as LZMA2.
-    a) work on the design
+2. Create the package LZMA2 using lzbase
+    1. work on the design
+
+3. Create the package LZMA using lzbase
+
+4. Minimize the interface of lzbase.
+    1. Work partically on ReaderDict and WriterDict.
+        Both types have a lot functions that might not be required out
+        of lzbase.
+   
 
 ## Optimizations
 
@@ -65,6 +71,10 @@ needed anymore.
 However I will implement a ReaderState and WriterState type to use
 static typing to ensure the right State object is combined with the
 right lzbase.Reader and lzbase.Writer.
+
+As a start I have implemented ReaderState and WriterState to ensure
+that the state for reading is only used by readers and WriterState only
+used by Writers. 
 
 ## 2015-04-20
 
