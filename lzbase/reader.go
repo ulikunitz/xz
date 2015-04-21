@@ -167,7 +167,7 @@ func (br *Reader) readOp() (op operation, err error) {
 	return op, nil
 }
 
-// fill puts at lest the requested number of bytes into the decoder Dictionary.
+// fill reads operations and fills the dictionary.
 func (br *Reader) fill() error {
 	if br.dict.closed {
 		return nil
