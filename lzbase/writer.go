@@ -2,6 +2,7 @@ package lzbase
 
 import "io"
 
+// Writer supports the creation of an LZMA stream.
 type Writer struct {
 	State *WriterState
 	re    *rangeEncoder
@@ -9,6 +10,8 @@ type Writer struct {
 	eos   bool
 }
 
+// NewWriter creates a writer using the state. The argument eos defines whether
+// an explicit end-of-stream marker will be written.
 func NewWriter(w io.Writer, state *WriterState, eos bool) (*Writer, error) {
 	if w == nil {
 		return nil, newError("NewWriter argument w is nil")
