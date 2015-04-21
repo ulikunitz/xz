@@ -61,9 +61,6 @@ func (br *Reader) decodeLiteral() (op operation, err error) {
 	return lit{s}, nil
 }
 
-// Indicates that the end of stream marker has been unexpected.
-var errUnexpectedEOS = newError("unexpected end-of-stream marker")
-
 // errWrongTermination indicates that a termination symbol has been received,
 // but the range decoder could still produces more data
 var errWrongTermination = newError("end of stream marker at wrong place")
