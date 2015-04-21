@@ -9,6 +9,7 @@ import (
 // decoding.
 type operation interface {
 	Len() int
+	apply(dict *ReaderDict) error
 }
 
 // rep represents a repetition at the given distance and the given length
@@ -26,6 +27,12 @@ func (m match) Len() int {
 	return m.length
 }
 
+// apply writes the repetition match into the dictionary.
+func (m match) apply(dict *ReaderDict) error {
+	_, err := dict.WriteRep(m.distance, m.length)
+	return err
+}
+
 // String returns a string representation for the repetition.
 func (m match) String() string {
 	return fmt.Sprintf("match{%d,%d}", m.distance, m.length)
@@ -39,6 +46,11 @@ type lit struct {
 // Len returns 1 for the single byte literal.
 func (l lit) Len() int {
 	return 1
+}
+
+// apply writes the litaral byte into the dictionary.
+func (l lit) apply(dict *ReaderDict) error {
+	return dict.WriteByte(l.b)
 }
 
 // String returns a string representation for the literal.
