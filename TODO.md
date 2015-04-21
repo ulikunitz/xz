@@ -20,18 +20,12 @@
 ## LZMA2 support
 
 1. Redesign lzbase
-    1. Implement Writer
-        - Write
-        - Close
-        - exported fields State; Dict is part of State
-    2. Implement Reader
-        - Read
-        - State; Dict is part of Stae
-    3. Implement LimitedReader with a fixed number of bytes
+    1. Test interoperation of Reader and Writer
+    2. Implement LimitedReader with a fixed number of bytes
         - LimitedReader checks after reading the given bytes
           that rd has MaybeEOS() is true
-    4. Implement ReaderCounter that simply counts the bytes written
-    5. Implement WriterCounter that simply counts the bytes read
+    3. Implement ReaderCounter that simply counts the bytes written
+    4. Implement WriterCounter that simply counts the bytes read
 
 2. Create the package LZMA2 using lzbase
     1. work on the design
@@ -55,6 +49,11 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-22
+
+Implemented Reader and Writer during the Bayern game against Porto. The
+second half gave me enough time.
 
 ## 2015-04-21
 
