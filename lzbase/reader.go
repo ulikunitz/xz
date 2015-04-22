@@ -2,12 +2,16 @@ package lzbase
 
 import "io"
 
+// Reader supports the reading of raw LZMA streams without any header
+// information. So it can be used by LZMA and LZMA2 streams.
 type Reader struct {
 	State *ReaderState
 	rd    *rangeDecoder
 	dict  *ReaderDict
 }
 
+// NewReader creates a raw LZMA stream by using the reader state. It should be
+// noted that the ReaderState contains the Dictionary.
 func NewReader(r io.Reader, state *ReaderState) (*Reader, error) {
 	rd, err := newRangeDecoder(r)
 	if err != nil {
