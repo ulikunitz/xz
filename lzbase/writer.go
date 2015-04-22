@@ -113,7 +113,7 @@ func (bw *Writer) bestMatch(offsets []int64) (m match, err error) {
 	}
 	if off < 0 {
 		err = errNoMatch
-
+		return
 	}
 	if length == 1 {
 		dist := int64(bw.State.rep[0]) + minDistance
@@ -211,7 +211,7 @@ func iverson(ok bool) uint32 {
 	return 0
 }
 
-// writeRep writes a repetition operation into the operation stream
+// writeMatch writes a repetition operation into the operation stream
 func (bw *Writer) writeMatch(m match) error {
 	var err error
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
