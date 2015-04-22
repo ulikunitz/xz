@@ -8,14 +8,14 @@ func TestNewWriterDict(t *testing.T) {
 		t.Fatalf("newWriterDict(10, 10): error %s", err)
 	}
 	bytes := []byte("abcdebcde")
-	n, err := wd.Write(bytes)
+	n, err := wd.write(bytes)
 	if err != nil {
 		t.Fatalf("wd.Write(): error %s", err)
 	}
 	if n != len(bytes) {
 		t.Fatalf("wd.Write() wrote %d bytes; want %d", n, len(bytes))
 	}
-	m, err := wd.AdvanceHead(n)
+	m, err := wd.advanceHead(n)
 	if err != nil {
 		t.Fatalf("wd.AdvanceHead(): error %s", err)
 	}
@@ -23,7 +23,7 @@ func TestNewWriterDict(t *testing.T) {
 		t.Fatalf("wd.AdvanceHead() advanced %d bytes; want %d", m, n)
 	}
 	wantedOffsets := []int64{1, 5}
-	offsets := wd.Offsets([]byte("bcde"))
+	offsets := wd.offsets([]byte("bcde"))
 	t.Logf("offsets: %v", offsets)
 	if len(offsets) != len(wantedOffsets) {
 		t.Fatalf("wd.Offsets() returned %d offsets; want %d",

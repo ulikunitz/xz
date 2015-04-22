@@ -27,7 +27,7 @@ func NewReader(r io.Reader, state *ReaderState) (*Reader, error) {
 func (br *Reader) Read(p []byte) (n int, err error) {
 	for {
 		var k int
-		k, err = br.dict.Read(p[n:])
+		k, err = br.dict.read(p[n:])
 		n += k
 		switch {
 		case err == io.EOF:
@@ -50,7 +50,7 @@ func (br *Reader) Read(p []byte) (n int, err error) {
 func (br *Reader) decodeLiteral() (op operation, err error) {
 	litState := br.State.litState()
 
-	match := br.dict.Byte(int64(br.State.rep[0]) + 1)
+	match := br.dict.byteAt(int64(br.State.rep[0]) + 1)
 	s, err := br.State.litCodec.Decode(br.rd, br.State.state.state, match,
 		litState)
 	if err != nil {
@@ -111,7 +111,7 @@ func (br *Reader) readOp() (op operation, err error) {
 			}
 			return nil, eos
 		}
-		op = match{length: int(n) + MinLength,
+		op = match{n: int(n) + MinLength,
 			distance: int64(br.State.rep[0]) + minDistance}
 		return op, nil
 	}
@@ -128,8 +128,7 @@ func (br *Reader) readOp() (op operation, err error) {
 		}
 		if b == 0 {
 			br.State.updateStateShortRep()
-			op = match{length: 1,
-				distance: int64(dist) + minDistance}
+			op = match{n: 1, distance: int64(dist) + minDistance}
 			return op, nil
 		}
 	} else {
@@ -160,8 +159,7 @@ func (br *Reader) readOp() (op operation, err error) {
 		return nil, err
 	}
 	br.State.updateStateRep()
-	op = match{length: int(n) + MinLength,
-		distance: int64(dist) + minDistance}
+	op = match{n: int(n) + MinLength, distance: int64(dist) + minDistance}
 	return op, nil
 }
 
@@ -170,7 +168,7 @@ func (br *Reader) fill() error {
 	if br.dict.closed {
 		return nil
 	}
-	for br.dict.Writable() >= MaxLength {
+	for br.dict.writable() >= MaxLength {
 		op, err := br.readOp()
 		if err != nil {
 			switch {

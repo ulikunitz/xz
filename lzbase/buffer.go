@@ -37,25 +37,25 @@ var (
 	errClosedBuffer = newError("buffer is closed for writing")
 )
 
-// Cap returns the capacity of the ring buffer.
-func (b *buffer) Cap() int64 {
+// capacity returns the size of the ring buffer in bytes
+func (b *buffer) capacity() int64 {
 	return int64(len(b.data))
 }
 
-// Len returns the length of the data already stored in the buffer. It will
+// length returns the number of bytes already stored in the buffer. It will
 // increase from zero to the buffer capacity.
-func (b *buffer) Len() int {
+func (b *buffer) length() int {
 	return int(b.end - b.start)
 }
 
-// Readable returns the number of bytes that are currently available for
+// readable returns the number of bytes that are currently available for
 // reading.
-func (b *buffer) Readable() int {
+func (b *buffer) readable() int {
 	return int(b.end - b.cursor)
 }
 
-// Writable returns the number of byte that are curently available for writing.
-func (b *buffer) Writable() int {
+// writable returns the number of byte that are curently available for writing.
+func (b *buffer) writable() int {
 	return int(b.cursor + int64(b.writeLimit) - b.end)
 }
 
@@ -107,10 +107,10 @@ func (b *buffer) readOff(p []byte, off int64) {
 	}
 }
 
-// ReadAt reads data into p at the specified offset. The offset must be inside
+// readAt reads data into p at the specified offset. The offset must be inside
 // the buffer. It the slice cannot be completely filled errAgain is reported
 // unless the buffer is not closed. In that case the function returns io.EOF.
-func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
+func (b *buffer) readAt(p []byte, off int64) (n int, err error) {
 	if off < b.start {
 		return 0, errOffset
 	}
@@ -131,8 +131,8 @@ func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	return
 }
 
-// Read tries to read data into the buffer. No error is returned if n < len(p).
-func (b *buffer) Read(p []byte) (n int, err error) {
+// read tries to read data into the buffer. No error is returned if n < len(p).
+func (b *buffer) read(p []byte) (n int, err error) {
 	k := b.end - b.cursor
 	n = len(p)
 	if k < int64(n) {
@@ -149,9 +149,9 @@ func (b *buffer) Read(p []byte) (n int, err error) {
 	return
 }
 
-// Discard skips n bytes of reading bytes. If less than n bytes are skipped
+// discard skips n bytes of reading bytes. If less than n bytes are skipped
 // errAgain or io.EOF if closed is returned.
-func (b *buffer) Discard(n int) (discarded int, err error) {
+func (b *buffer) discard(n int) (discarded int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
@@ -172,7 +172,7 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	return
 }
 
-// copyAt is a helper for Copy.
+// copyAt is a helper for copyTo.
 func (b *buffer) copyAt(w io.Writer, n int, off int64) (copied int, err error) {
 	start, end := off, off+int64(n)
 	e := b.index(end)
@@ -194,8 +194,8 @@ func (b *buffer) copyAt(w io.Writer, n int, off int64) (copied int, err error) {
 	return int(off - start), err
 }
 
-// Copy behaves like read but the data is written into the writer.
-func (b *buffer) Copy(w io.Writer, n int) (copied int, err error) {
+// copyTo behaves like read but the data is written into the writer.
+func (b *buffer) copyTo(w io.Writer, n int) (copied int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
@@ -214,8 +214,8 @@ func (b *buffer) Copy(w io.Writer, n int) (copied int, err error) {
 	return
 }
 
-// ReadByteAt reads a single byte at the given offset.
-func (b *buffer) ReadByteAt(off int64) (c byte, err error) {
+// readByteAt reads a single byte at the given offset.
+func (b *buffer) readByteAt(off int64) (c byte, err error) {
 	if !(b.start <= off && off <= b.end) {
 		return 0, errOffset
 	}
@@ -229,8 +229,8 @@ func (b *buffer) ReadByteAt(off int64) (c byte, err error) {
 	return b.data[i], nil
 }
 
-// ReadByte reads a single byte.
-func (b *buffer) ReadByte() (c byte, err error) {
+// readByte reads a single byte.
+func (b *buffer) readByte() (c byte, err error) {
 	if b.cursor == b.end {
 		if b.closed {
 			return 0, io.EOF
@@ -257,13 +257,13 @@ func (b *buffer) writeSlice(p []byte) {
 	b.setEnd(off)
 }
 
-// Writes data into the buffer. If n < len(p) errAgain is returned. If the
+// writes data into the buffer. If n < len(p) errAgain is returned. If the
 // buffer is closed errClosedBuffer is returned.
-func (b *buffer) Write(p []byte) (n int, err error) {
+func (b *buffer) write(p []byte) (n int, err error) {
 	if b.closed {
 		return 0, errClosedBuffer
 	}
-	n = b.Writable()
+	n = b.writable()
 	if n < len(p) {
 		err = errAgain
 		p = p[:n]
@@ -273,12 +273,12 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// Writes a single byte into the buffer.
-func (b *buffer) WriteByte(c byte) error {
+// writes a single byte into the buffer.
+func (b *buffer) writeByte(c byte) error {
 	if b.closed {
 		return errClosedBuffer
 	}
-	if b.Writable() < 1 {
+	if b.writable() < 1 {
 		return errAgain
 	}
 	i := b.index(b.end)
@@ -287,8 +287,8 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
-// WriteRepOff writes a match at the given offset into the buffer.
-func (b *buffer) WriteRepOff(n int, off int64) (written int, err error) {
+// writeRepOff writes a match at the given offset into the buffer.
+func (b *buffer) writeRepOff(n int, off int64) (written int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
@@ -298,7 +298,7 @@ func (b *buffer) WriteRepOff(n int, off int64) (written int, err error) {
 	if !(b.start <= off && off < b.end) {
 		return 0, errOffset
 	}
-	if b.Writable() < n {
+	if b.writable() < n {
 		return 0, errAgain
 	}
 	end := off + int64(n)
@@ -323,14 +323,14 @@ func (b *buffer) WriteRepOff(n int, off int64) (written int, err error) {
 	return n, nil
 }
 
-// Close closes the buffer.
-func (b *buffer) Close() error {
+// close closes the buffer.
+func (b *buffer) closeBuffer() error {
 	b.closed = true
 	return nil
 }
 
-// EqualBytes count the equal bytes at off1 and off2 until max is reached.
-func (b *buffer) EqualBytes(off1, off2 int64, max int) int {
+// equalBytes count the equal bytes at off1 and off2 until max is reached.
+func (b *buffer) equalBytes(off1, off2 int64, max int) int {
 	if off1 < b.start || off2 < b.start {
 		return 0
 	}

@@ -8,8 +8,8 @@ const eosDist = 1<<32 - 1
 
 // dictionary abstracts the two concrete Dictionaries away.
 type dictionary interface {
-	Byte(dist int64) byte
-	Offset() int64
+	byteAt(dist int64) byte
+	offset() int64
 }
 
 // state maintains the full state of the operation encoding process.
@@ -108,16 +108,16 @@ func (s *state) updateStateShortRep() {
 // states computes the states of the operation codec.
 func (s *state) states() (state1, state2, posState uint32) {
 	state1 = s.state
-	posState = uint32(s.dict.Offset()) & s.posBitMask
+	posState = uint32(s.dict.offset()) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
 
 // litState computes the literal state.
 func (s *state) litState() uint32 {
-	prevByte := s.dict.Byte(1)
+	prevByte := s.dict.byteAt(1)
 	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
-	litState := ((uint32(s.dict.Offset())) & ((1 << lp) - 1) << lc) |
+	litState := ((uint32(s.dict.offset())) & ((1 << lp) - 1) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
 }
@@ -135,8 +135,8 @@ func NewReaderState(p Properties, rd *ReaderDict) *ReaderState {
 }
 
 // ReaderDict returns the reader dictionary.
-func (rs *ReaderState) ReaderDict() *ReaderDict {
-	rd, ok := rs.dict.(*ReaderDict)
+func (s *ReaderState) ReaderDict() *ReaderDict {
+	rd, ok := s.dict.(*ReaderDict)
 	if !ok {
 		panic("ReaderState value doesn't contain a ReaderDict value")
 	}

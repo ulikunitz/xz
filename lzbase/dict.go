@@ -30,23 +30,23 @@ func NewReaderDict(historySize, bufferSize int64) (rd *ReaderDict, err error) {
 	return
 }
 
-// Offset returns the offset of the dictionary head.
-func (rd *ReaderDict) Offset() int64 {
+// offset returns the offset of the dictionary head.
+func (rd *ReaderDict) offset() int64 {
 	return rd.end
 }
 
-// WriteRep writes a repetition with the given distance. While distance is
+// writeRep writes a repetition with the given distance. While distance is
 // given here as int64 the actual limit is the maximum of the int type.
-func (rd *ReaderDict) WriteRep(dist int64, n int) (written int, err error) {
-	if !(1 <= dist && dist <= int64(rd.Len())) {
+func (rd *ReaderDict) writeRep(dist int64, n int) (written int, err error) {
+	if !(1 <= dist && dist <= int64(rd.length())) {
 		return 0, errDist
 	}
-	return rd.WriteRepOff(n, rd.end-dist)
+	return rd.writeRepOff(n, rd.end-dist)
 }
 
-// Byte returns a byte at the given distance.
-func (rd *ReaderDict) Byte(dist int64) byte {
-	c, _ := rd.ReadByteAt(rd.end - dist)
+// byteAt returns a byte at the given distance.
+func (rd *ReaderDict) byteAt(dist int64) byte {
+	c, _ := rd.readByteAt(rd.end - dist)
 	return c
 }
 
@@ -78,40 +78,40 @@ func NewWriterDict(historySize, bufferSize int64) (wd *WriterDict, err error) {
 	return wd, nil
 }
 
-// HistorySize returns the history length.
-func (wd *WriterDict) HistorySize() int64 {
-	return wd.Cap() - wd.bufferSize
+// historySize returns the history length.
+func (wd *WriterDict) historySize() int64 {
+	return wd.capacity() - wd.bufferSize
 }
 
-// Returns the byte at the given distance to the dictionary head.
-func (wd *WriterDict) Byte(dist int64) byte {
-	c, _ := wd.ReadByteAt(wd.cursor - dist)
+// byteDist returns the byte at the given distance to the dictionary head.
+func (wd *WriterDict) byteAt(dist int64) byte {
+	c, _ := wd.readByteAt(wd.cursor - dist)
 	return c
 }
 
-// Offset returns the offset of the head.
-func (wd *WriterDict) Offset() int64 {
+// offset returns the offset of the head.
+func (wd *WriterDict) offset() int64 {
 	return wd.cursor
 }
 
-// PeekHead reads bytes from the Head without moving it.
-func (wd *WriterDict) PeekHead(p []byte) (n int, err error) {
-	return wd.ReadAt(p, wd.cursor)
+// peekHead reads bytes from the Head without moving it.
+func (wd *WriterDict) peekHead(p []byte) (n int, err error) {
+	return wd.readAt(p, wd.cursor)
 }
 
-// AdvanceHead moves the head n bytes forward.
-func (wd *WriterDict) AdvanceHead(n int) (advanced int, err error) {
-	return wd.Copy(wd.t4, n)
+// advanceHead moves the head n bytes forward.
+func (wd *WriterDict) advanceHead(n int) (advanced int, err error) {
+	return wd.copyTo(wd.t4, n)
 }
 
 // Offsets returns all potential offsets for the byte slice. The function
 // panics if len(p) is not 4.
-func (wd *WriterDict) Offsets(p []byte) []int64 {
+func (wd *WriterDict) offsets(p []byte) []int64 {
 	return wd.t4.Offsets(p)
 }
 
 // CopyChunk copies the last n bytes into the given writer.
-func (wd *WriterDict) CopyChunk(w io.Writer, n int) (copied int, err error) {
+func (wd *WriterDict) copyChunk(w io.Writer, n int) (copied int, err error) {
 	if n <= 0 {
 		if n == 0 {
 			return 0, nil

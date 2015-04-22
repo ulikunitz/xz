@@ -29,7 +29,7 @@ func (bw *Writer) Write(p []byte) (n int, err error) {
 		panic("end counter overflow")
 	}
 	for n < len(p) {
-		k, err := bw.dict.Write(p[n:])
+		k, err := bw.dict.write(p[n:])
 		n += k
 		if err != nil && err != errAgain {
 			return n, err
@@ -57,7 +57,7 @@ func (bw *Writer) Close() error {
 	if err = bw.re.Close(); err != nil {
 		return err
 	}
-	return bw.dict.Close()
+	return bw.dict.closeBuffer()
 }
 
 // The allData flag tells the process method that all data must be processed.
@@ -68,7 +68,7 @@ var errEmptyBuf = newError("empty buffer")
 
 // potentialOffsets creates a list of potential offsets for matches.
 func (bw *Writer) potentialOffsets(p []byte) []int64 {
-	head := bw.dict.Offset()
+	head := bw.dict.offset()
 	start := bw.dict.start
 	offs := make([]int64, 0, 32)
 	// add potential offsets with highest priority at the top
@@ -81,7 +81,7 @@ func (bw *Writer) potentialOffsets(p []byte) []int64 {
 	}
 	if len(p) == 4 {
 		// distances from the hash table
-		offs = append(offs, bw.dict.Offsets(p)...)
+		offs = append(offs, bw.dict.offsets(p)...)
 	}
 	for i := 3; i >= 0; i-- {
 		// distances from the repetition for length less than 4
@@ -102,11 +102,11 @@ var errNoMatch = newError("no match found")
 // TODO: compare all possible commands for compressed bits per encoded bits.
 func (bw *Writer) bestMatch(offsets []int64) (m match, err error) {
 	// creates a match for 1
-	head := bw.dict.Offset()
+	head := bw.dict.offset()
 	off := int64(-1)
 	length := 0
 	for i := len(offsets) - 1; i >= 0; i-- {
-		n := bw.dict.EqualBytes(head, offsets[i], MaxLength)
+		n := bw.dict.equalBytes(head, offsets[i], MaxLength)
 		if n > length {
 			off, length = offsets[i], n
 		}
@@ -123,13 +123,13 @@ func (bw *Writer) bestMatch(offsets []int64) (m match, err error) {
 			return
 		}
 	}
-	return match{distance: head - off, length: length}, nil
+	return match{distance: head - off, n: length}, nil
 }
 
 // findOp finds an operation for the head of the dictionary.
 func (bw *Writer) findOp() (op operation, err error) {
 	p := make([]byte, 4)
-	n, err := bw.dict.PeekHead(p)
+	n, err := bw.dict.peekHead(p)
 	if err != nil && err != errAgain && err != io.EOF {
 		return nil, err
 	}
@@ -153,11 +153,11 @@ func (bw *Writer) findOp() (op operation, err error) {
 // discardOp advances the head of the dictionary and writes the the bytes into
 // the hash table.
 func (bw *Writer) discardOp(op operation) error {
-	n, err := bw.dict.AdvanceHead(op.Len())
+	n, err := bw.dict.advanceHead(op.length())
 	if err != nil {
 		return err
 	}
-	if n < op.Len() {
+	if n < op.length() {
 		return errAgain
 	}
 	return nil
@@ -170,7 +170,7 @@ func (bw *Writer) process(flags int) error {
 	if flags&allData == 0 {
 		lowMark = MaxLength - 1
 	}
-	for bw.dict.Readable() > lowMark {
+	for bw.dict.readable() > lowMark {
 		op, err := bw.findOp()
 		if err != nil {
 			debug.Printf("findOp error %s\n", err)
@@ -195,7 +195,7 @@ func (bw *Writer) writeLiteral(l lit) error {
 		return err
 	}
 	litState := bw.State.litState()
-	match := bw.dict.Byte(int64(bw.State.rep[0]) + 1)
+	match := bw.dict.byteAt(int64(bw.State.rep[0]) + 1)
 	err = bw.State.litCodec.Encode(bw.re, l.b, state, match, litState)
 	if err != nil {
 		return err
@@ -218,8 +218,8 @@ func (bw *Writer) writeMatch(m match) error {
 		return newError("distance out of range")
 	}
 	dist := uint32(m.distance - minDistance)
-	if !(MinLength <= m.length && m.length <= MaxLength) &&
-		!(dist == bw.State.rep[0] && m.length == 1) {
+	if !(MinLength <= m.n && m.n <= MaxLength) &&
+		!(dist == bw.State.rep[0] && m.n == 1) {
 		return newError("length out of range")
 	}
 	state, state2, posState := bw.State.states()
@@ -236,7 +236,7 @@ func (bw *Writer) writeMatch(m match) error {
 	if err = bw.State.isRep[state].Encode(bw.re, b); err != nil {
 		return err
 	}
-	n := uint32(m.length - MinLength)
+	n := uint32(m.n - MinLength)
 	if b == 0 {
 		// simple match
 		bw.State.rep[3], bw.State.rep[2], bw.State.rep[1], bw.State.rep[0] = bw.State.rep[2],
@@ -253,7 +253,7 @@ func (bw *Writer) writeMatch(m match) error {
 	}
 	if b == 0 {
 		// g == 0
-		b = iverson(m.length != 1)
+		b = iverson(m.n != 1)
 		if err = bw.State.isRepG0Long[state2].Encode(bw.re, b); err != nil {
 			return err
 		}
