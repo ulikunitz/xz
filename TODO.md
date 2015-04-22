@@ -5,9 +5,11 @@
 1. Working LZMA2 implementation
 2. Support by lzmago tool
 3. Improve documentation
+4. Create Release Notes as markdown file.
 
 # Release 1.0
 
+1. Create Release Notes
 1. Add godoc URL to README.md. (godoc.org)
 2. Resolve all issues.
 
