@@ -9,12 +9,6 @@ type Reader struct {
 }
 
 func NewReader(r io.Reader, state *ReaderState) (*Reader, error) {
-	if r == nil {
-		return nil, newError("NewReader argument r is nil")
-	}
-	if state == nil {
-		return nil, newError("NewReader argument state is nil")
-	}
 	rd, err := newRangeDecoder(r)
 	if err != nil {
 		return nil, err

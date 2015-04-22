@@ -12,18 +12,12 @@ type Writer struct {
 
 // NewWriter creates a writer using the state. The argument eos defines whether
 // an explicit end-of-stream marker will be written.
-func NewWriter(w io.Writer, state *WriterState, eos bool) (*Writer, error) {
-	if w == nil {
-		return nil, newError("NewWriter argument w is nil")
-	}
-	if state == nil {
-		return nil, newError("NewWriter argument state is nil")
-	}
+func NewWriter(w io.Writer, state *WriterState, eos bool) *Writer {
 	return &Writer{
 		State: state,
 		re:    newRangeEncoder(w),
 		dict:  state.WriterDict(),
-		eos:   eos}, nil
+		eos:   eos}
 }
 
 // Write moves data into the internal buffer and triggers its compression. Note
