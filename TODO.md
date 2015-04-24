@@ -10,7 +10,7 @@
 # Release 1.0
 
 1. Create Release Notes
-1. Add godoc URL to README.md. (godoc.org)
+1. Add godoc URL to README.md (godoc.org)
 2. Resolve all issues.
 
 # Package xz
@@ -21,21 +21,13 @@
 
 ## LZMA2 support
 
-1. Redesign lzbase
-    1. Test interoperation of Reader and Writer
-    2. Implement LimitedReader with a fixed number of bytes
-        - LimitedReader checks after reading the given bytes
-          that rd has MaybeEOS() is true
-    3. Implement ReaderCounter that simply counts the bytes written
-    4. Implement WriterCounter that simply counts the bytes read
+1. Create the package LZMA2 using lzbase
+    - work on the design
 
-2. Create the package LZMA2 using lzbase
-    1. work on the design
+2. Create the package LZMA using lzbase
 
-3. Create the package LZMA using lzbase
-
-4. Minimize the interface of lzbase.
-    1. Work partically on ReaderDict and WriterDict.
+3. Minimize the interface of lzbase.
+    - Work partically on ReaderDict and WriterDict.
         Both types have a lot functions that might not be required out
         of lzbase.
    
@@ -51,6 +43,12 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-04-23 
+
+Completed yesterday the lzbase classes. I'm a little bit concerned that
+using the components may require too much code, but on the other hand
+there is a lot of flexibility.
 
 ## 2015-04-22
 
