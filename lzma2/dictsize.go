@@ -41,7 +41,7 @@ func DictSizeCeil(s uint32) DictSize {
 	return DictSize(n)
 }
 
-// Size returns the actual size of the dictionary for a dictionary.
+// Size returns the actual size of the dictionary.
 func (s DictSize) Size() uint32 {
 	if s >= maxDictSizeCode {
 		if s > maxDictSizeCode {
