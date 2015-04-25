@@ -2,8 +2,9 @@ package lzbase
 
 import "io"
 
-// LimitedReader wraps the Reader and verifies the EOF condition if N is zero.
-// Note that EOF might be received before N has been counted down.
+// LimitedReader wraps the Reader and allow the reading of maximal N bytes. If
+// the reader returns EOF or the limit is reached the EOF condition is
+// confirmed with the Reader.
 type LimitedReader struct {
 	R *Reader
 	N int64
