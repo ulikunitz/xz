@@ -112,6 +112,11 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 	return nil
 }
 
+// closeLen returns the number of bytes required for closing.
+func (e *rangeEncoder) closeLen() int64 {
+	return e.cacheSize + 4
+}
+
 // Close writes a complete copy of the low value.
 func (e *rangeEncoder) Close() error {
 	for i := 0; i < 5; i++ {

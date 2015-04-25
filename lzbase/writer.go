@@ -5,19 +5,33 @@ import "io"
 // Writer supports the creation of an LZMA stream.
 type Writer struct {
 	State *WriterState
+	lw    *LimitedWriter
 	re    *rangeEncoder
 	dict  *WriterDict
 	eos   bool
 }
 
 // NewWriter creates a writer using the state. The argument eos defines whether
-// an explicit end-of-stream marker will be written.
+// an explicit end-of-stream marker will be written. The writer will be limited
+// by MaxLimit (2^63 - 1), which is practically unlimited.
 func NewWriter(w io.Writer, state *WriterState, eos bool) *Writer {
+	lw := &LimitedWriter{W: w, N: maxLimit}
 	return &Writer{
 		State: state,
-		re:    newRangeEncoder(w),
+		lw:    lw,
+		re:    newRangeEncoder(lw),
 		dict:  state.WriterDict(),
 		eos:   eos}
+}
+
+// Limit returns the number of byte that can still be written at maximum.
+func (bw *Writer) Limit() int64 {
+	return bw.lw.N
+}
+
+// SetLimit sets the number of bytes that can be written at maximum.
+func (bw *Writer) SetLimit(n int64) {
+	bw.lw.N = n
 }
 
 // Write moves data into the internal buffer and triggers its compression. Note
@@ -286,8 +300,16 @@ func (bw *Writer) writeMatch(m match) error {
 	return bw.State.repLenCodec.Encode(bw.re, n, posState)
 }
 
-// writeOp writes an operation value into the stream.
+// maxOpSize gives an upper limit for the number of bytes a single operation
+// might require.
+const maxOpSize = 7
+
+// writeOp writes an operation value into the stream. It checks whether there
+// is still enough space available using an upper limit for the size required.
 func (bw *Writer) writeOp(op operation) error {
+	if bw.lw.N < bw.re.closeLen()+maxOpSize {
+		return Limit
+	}
 	switch x := op.(type) {
 	case match:
 		return bw.writeMatch(x)
