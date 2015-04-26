@@ -7,9 +7,9 @@ import (
 
 // operation represents an operation on the dictionary during encoding or
 // decoding.
-type operation interface {
-	length() int
-	apply(dict *ReaderDict) error
+type Operation interface {
+	Len() int
+	Apply(dict *ReaderDict) error
 }
 
 // rep represents a repetition at the given distance and the given length
@@ -23,13 +23,13 @@ type match struct {
 // eosMatch may mark the end of an LZMA stream.
 var eosMatch = match{distance: maxDistance, n: MinLength}
 
-// length returns the number of bytes matched.
-func (m match) length() int {
+// Len returns the number of bytes matched.
+func (m match) Len() int {
 	return m.n
 }
 
-// apply writes the repetition match into the dictionary.
-func (m match) apply(dict *ReaderDict) error {
+// Apply writes the repetition match into the dictionary.
+func (m match) Apply(dict *ReaderDict) error {
 	_, err := dict.writeRep(m.distance, m.n)
 	return err
 }
@@ -44,13 +44,13 @@ type lit struct {
 	b byte
 }
 
-// length returns 1 for the single byte literal.
-func (l lit) length() int {
+// Len returns 1 for the single byte literal.
+func (l lit) Len() int {
 	return 1
 }
 
-// apply writes the litaral byte into the dictionary.
-func (l lit) apply(dict *ReaderDict) error {
+// Apply writes the literal byte into the dictionary.
+func (l lit) Apply(dict *ReaderDict) error {
 	return dict.writeByte(l.b)
 }
 

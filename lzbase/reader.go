@@ -47,7 +47,7 @@ func (br *Reader) Read(p []byte) (n int, err error) {
 }
 
 // decodeLiteral reads a literal
-func (br *Reader) decodeLiteral() (op operation, err error) {
+func (br *Reader) decodeLiteral() (op Operation, err error) {
 	litState := br.State.litState()
 
 	match := br.dict.byteAt(int64(br.State.rep[0]) + 1)
@@ -69,7 +69,7 @@ var eos = newError("end of decoded stream")
 // readOp decodes the next operation from the compressed stream. It returns the
 // operation. If an exlicit end of stream marker is identified the eos error is
 // returned.
-func (br *Reader) readOp() (op operation, err error) {
+func (br *Reader) readOp() (op Operation, err error) {
 	state, state2, posState := br.State.states()
 
 	b, err := br.State.isMatch[state2].Decode(br.rd)
@@ -187,7 +187,7 @@ func (br *Reader) fill() error {
 		}
 		debug.Printf("op %s", op)
 
-		if err = op.apply(br.dict); err != nil {
+		if err = op.Apply(br.dict); err != nil {
 			return err
 		}
 	}

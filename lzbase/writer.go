@@ -141,7 +141,7 @@ func (bw *Writer) bestMatch(offsets []int64) (m match, err error) {
 }
 
 // findOp finds an operation for the head of the dictionary.
-func (bw *Writer) findOp() (op operation, err error) {
+func (bw *Writer) findOp() (op Operation, err error) {
 	p := make([]byte, 4)
 	n, err := bw.dict.peekHead(p)
 	if err != nil && err != errAgain && err != io.EOF {
@@ -164,19 +164,6 @@ func (bw *Writer) findOp() (op operation, err error) {
 	return m, nil
 }
 
-// discardOp advances the head of the dictionary and writes the the bytes into
-// the hash table.
-func (bw *Writer) discardOp(op operation) error {
-	n, err := bw.dict.advanceHead(op.length())
-	if err != nil {
-		return err
-	}
-	if n < op.length() {
-		return errAgain
-	}
-	return nil
-}
-
 // process encodes the data written into the dictionary buffer. The allData
 // flag requires all data remaining in the buffer to be encoded.
 func (bw *Writer) process(flags int) error {
@@ -194,7 +181,7 @@ func (bw *Writer) process(flags int) error {
 			return err
 		}
 		debug.Printf("op %s", op)
-		if err = bw.discardOp(op); err != nil {
+		if err = bw.dict.DiscardOp(op); err != nil {
 			return err
 		}
 	}
@@ -306,7 +293,7 @@ const maxOpSize = 7
 
 // writeOp writes an operation value into the stream. It checks whether there
 // is still enough space available using an upper limit for the size required.
-func (bw *Writer) writeOp(op operation) error {
+func (bw *Writer) writeOp(op Operation) error {
 	if bw.lw.N < bw.re.closeLen()+maxOpSize {
 		return Limit
 	}

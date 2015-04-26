@@ -99,15 +99,23 @@ func (wd *WriterDict) peekHead(p []byte) (n int, err error) {
 	return wd.readAt(p, wd.cursor)
 }
 
-// advanceHead moves the head n bytes forward.
-func (wd *WriterDict) advanceHead(n int) (advanced int, err error) {
-	return wd.copyTo(wd.t4, n)
-}
-
 // Offsets returns all potential offsets for the byte slice. The function
 // panics if len(p) is not 4.
 func (wd *WriterDict) offsets(p []byte) []int64 {
 	return wd.t4.Offsets(p)
+}
+
+// DiscardOP advances the head of the dictionary and writes the respective
+// bytes into the hash table.
+func (wd *WriterDict) DiscardOp(op Operation) error {
+	n, err := wd.copyTo(wd.t4, op.Len())
+	if err != nil {
+		return err
+	}
+	if n < op.Len() {
+		return errAgain
+	}
+	return nil
 }
 
 // CopyChunk copies the last n bytes into the given writer.
