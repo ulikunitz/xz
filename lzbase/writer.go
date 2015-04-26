@@ -77,93 +77,6 @@ func (bw *Writer) Close() error {
 // The allData flag tells the process method that all data must be processed.
 const allData = 1
 
-// indicates an empty buffer
-var errEmptyBuf = newError("empty buffer")
-
-// potentialOffsets creates a list of potential offsets for matches.
-func (bw *Writer) potentialOffsets(p []byte) []int64 {
-	head := bw.dict.offset()
-	start := bw.dict.start
-	offs := make([]int64, 0, 32)
-	// add potential offsets with highest priority at the top
-	for i := 1; i < 11; i++ {
-		// distance 1 to 8
-		off := head - int64(i)
-		if start <= off {
-			offs = append(offs, off)
-		}
-	}
-	if len(p) == 4 {
-		// distances from the hash table
-		offs = append(offs, bw.dict.offsets(p)...)
-	}
-	for i := 3; i >= 0; i-- {
-		// distances from the repetition for length less than 4
-		dist := int64(bw.State.rep[i]) + minDistance
-		off := head - dist
-		if start <= off {
-			offs = append(offs, off)
-		}
-	}
-	return offs
-}
-
-// errNoMatch indicates that no match could be found
-var errNoMatch = newError("no match found")
-
-// bestMatch finds the best match for the given offsets.
-//
-// TODO: compare all possible commands for compressed bits per encoded bits.
-func (bw *Writer) bestMatch(offsets []int64) (m match, err error) {
-	// creates a match for 1
-	head := bw.dict.offset()
-	off := int64(-1)
-	length := 0
-	for i := len(offsets) - 1; i >= 0; i-- {
-		n := bw.dict.equalBytes(head, offsets[i], MaxLength)
-		if n > length {
-			off, length = offsets[i], n
-		}
-	}
-	if off < 0 {
-		err = errNoMatch
-		return
-	}
-	if length == 1 {
-		dist := int64(bw.State.rep[0]) + minDistance
-		offRep0 := head - dist
-		if off != offRep0 {
-			err = errNoMatch
-			return
-		}
-	}
-	return match{distance: head - off, n: length}, nil
-}
-
-// findOp finds an operation for the head of the dictionary.
-func (bw *Writer) findOp() (op Operation, err error) {
-	p := make([]byte, 4)
-	n, err := bw.dict.peekHead(p)
-	if err != nil && err != errAgain && err != io.EOF {
-		return nil, err
-	}
-	if n <= 0 {
-		if n < 0 {
-			panic("strange n")
-		}
-		return nil, errEmptyBuf
-	}
-	offs := bw.potentialOffsets(p[:n])
-	m, err := bw.bestMatch(offs)
-	if err == errNoMatch {
-		return lit{b: p[0]}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // process encodes the data written into the dictionary buffer. The allData
 // flag requires all data remaining in the buffer to be encoded.
 func (bw *Writer) process(flags int) error {
@@ -172,7 +85,7 @@ func (bw *Writer) process(flags int) error {
 		lowMark = MaxLength - 1
 	}
 	for bw.dict.readable() > lowMark {
-		op, err := bw.findOp()
+		op, err := bw.dict.FindOp(bw.State)
 		if err != nil {
 			debug.Printf("findOp error %s\n", err)
 			return err

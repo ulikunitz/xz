@@ -23,7 +23,7 @@ func TestNewWriterDict(t *testing.T) {
 		t.Fatalf("wd.AdvanceHead() advanced %d bytes; want %d", m, n)
 	}
 	wantedOffsets := []int64{1, 5}
-	offsets := wd.offsets([]byte("bcde"))
+	offsets := wd.t4.Offsets([]byte("bcde"))
 	t.Logf("offsets: %v", offsets)
 	if len(offsets) != len(wantedOffsets) {
 		t.Fatalf("wd.Offsets() returned %d offsets; want %d",
