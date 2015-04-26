@@ -43,7 +43,7 @@ func (bw *Writer) Write(p []byte) (n int, err error) {
 		panic("end counter overflow")
 	}
 	for n < len(p) {
-		k, err := bw.dict.write(p[n:])
+		k, err := bw.dict.Write(p[n:])
 		n += k
 		if err != nil && err != errAgain {
 			return n, err

@@ -8,7 +8,7 @@ func TestNewWriterDict(t *testing.T) {
 		t.Fatalf("newWriterDict(10, 10): error %s", err)
 	}
 	bytes := []byte("abcdebcde")
-	n, err := wd.write(bytes)
+	n, err := wd.Write(bytes)
 	if err != nil {
 		t.Fatalf("wd.Write(): error %s", err)
 	}

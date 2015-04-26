@@ -257,9 +257,9 @@ func (b *buffer) writeSlice(p []byte) {
 	b.setEnd(off)
 }
 
-// writes data into the buffer. If n < len(p) errAgain is returned. If the
+// Write puts data into the buffer. If n < len(p) errAgain is returned. If the
 // buffer is closed errClosedBuffer is returned.
-func (b *buffer) write(p []byte) (n int, err error) {
+func (b *buffer) Write(p []byte) (n int, err error) {
 	if b.closed {
 		return 0, errClosedBuffer
 	}
