@@ -1,7 +1,5 @@
 package lzbase
 
-import "io"
-
 // errDist indicates that the distance is out of range.
 var errDist = newError("distance out of range")
 
@@ -56,6 +54,7 @@ func (rd *ReaderDict) byteAt(dist int64) byte {
 type WriterDict struct {
 	buffer
 	bufferSize int64
+	head       int64
 	t4         *hashTable
 }
 
@@ -94,13 +93,9 @@ func (wd *WriterDict) offset() int64 {
 	return wd.cursor
 }
 
-// CopyChunk copies the last n bytes into the given writer.
-func (wd *WriterDict) copyChunk(w io.Writer, n int) (copied int, err error) {
-	if n <= 0 {
-		if n == 0 {
-			return 0, nil
-		}
-		return 0, newError("CopyChunk: argument n must be non-negative")
-	}
-	return wd.copyAt(w, n, wd.cursor-int64(n))
+// advanceHead moves the head forward and writes the data into the hash
+func (wd *WriterDict) advanceHead(n int) (advanced int, err error) {
+	advanced, err = wd.copyAt(wd.t4, n, wd.head)
+	wd.head += int64(advanced)
+	return
 }

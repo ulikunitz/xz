@@ -15,7 +15,7 @@ func TestNewWriterDict(t *testing.T) {
 	if n != len(bytes) {
 		t.Fatalf("wd.Write() wrote %d bytes; want %d", n, len(bytes))
 	}
-	m, err := wd.copyTo(wd.t4, n)
+	m, err := wd.advanceHead(n)
 	if err != nil {
 		t.Fatalf("wd.AdvanceHead(): error %s", err)
 	}
