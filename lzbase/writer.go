@@ -56,20 +56,5 @@ const allData = 1
 // process encodes the data written into the dictionary buffer. The allData
 // flag requires all data remaining in the buffer to be encoded.
 func (bw *Writer) process(flags int) error {
-	var lowMark int
-	if flags&allData == 0 {
-		lowMark = MaxLength - 1
-	}
-	for bw.enc.dict.readable() > lowMark {
-		op, err := bw.enc.Find()
-		if err != nil {
-			debug.Printf("findOp error %s\n", err)
-			return err
-		}
-		if err = bw.enc.Write(op); err != nil {
-			return err
-		}
-		debug.Printf("op %s", op)
-	}
-	return nil
+	panic("TODO")
 }

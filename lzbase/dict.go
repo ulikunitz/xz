@@ -94,11 +94,6 @@ func (wd *WriterDict) offset() int64 {
 	return wd.cursor
 }
 
-// peekHead reads bytes from the Head without moving it.
-func (wd *WriterDict) peekHead(p []byte) (n int, err error) {
-	return wd.readAt(p, wd.cursor)
-}
-
 // CopyChunk copies the last n bytes into the given writer.
 func (wd *WriterDict) copyChunk(w io.Writer, n int) (copied int, err error) {
 	if n <= 0 {

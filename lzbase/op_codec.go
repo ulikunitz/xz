@@ -121,9 +121,9 @@ func (e *OpEncoder) writeMatch(m match) error {
 	return e.State.repLenCodec.Encode(e.re, n, posState)
 }
 
-// Write writes an operation value into the stream. It checks whether there
+// writeOp writes an operation value into the stream. It checks whether there
 // is still enough space available using an upper limit for the size required.
-func (e *OpEncoder) Write(op Operation) error {
+func (e *OpEncoder) writeOp(op Operation) error {
 	var err error
 	switch x := op.(type) {
 	case match:
@@ -135,6 +135,29 @@ func (e *OpEncoder) Write(op Operation) error {
 		return err
 	}
 	return e.discard(op)
+}
+
+func (e *OpEncoder) WriteOps(ops []Operation) (n int, err error) {
+	for i, op := range ops {
+		if err = e.writeOp(op); err != nil {
+			return i, err
+		}
+	}
+	return len(ops), nil
+}
+
+// discard advances the head of the dictionary and writes the respective
+// bytes into the hash table of the dictionary.
+func (e *OpEncoder) discard(op Operation) error {
+	oplen := op.Len()
+	n, err := e.dict.copyTo(e.dict.t4, oplen)
+	if err != nil {
+		return err
+	}
+	if n < oplen {
+		return errAgain
+	}
+	return nil
 }
 
 // Close closes the encoder and writes the EOS marker if required.
@@ -150,10 +173,38 @@ func (e *OpEncoder) Close() error {
 	return e.dict.closeBuffer()
 }
 
+// errNoMatch indicates that no match could be found
+var errNoMatch = newError("no match found")
+
+func bestMatch(state *WriterState, head int64, offsets []int64) (m match, err error) {
+	dict := state.WriterDict()
+	off := int64(-1)
+	length := 0
+	for i := len(offsets) - 1; i >= 0; i-- {
+		n := dict.equalBytes(head, offsets[i], MaxLength)
+		if n > length {
+			off, length = offsets[i], n
+		}
+	}
+	if off < 0 {
+		err = errNoMatch
+		return
+	}
+	if length == 1 {
+		dist := int64(state.rep[0]) + minDistance
+		offRep0 := head - dist
+		if off != offRep0 {
+			err = errNoMatch
+			return
+		}
+	}
+	return match{distance: head - off, n: length}, nil
+}
+
 // potentialOffsets creates a list of potential offsets for matches.
-func (e *OpEncoder) potentialOffsets(p []byte) []int64 {
-	head := e.dict.offset()
-	start := e.dict.start
+func potentialOffsets(state *WriterState, head int64, p []byte) []int64 {
+	dict := state.WriterDict()
+	start := dict.start
 	offs := make([]int64, 0, 32)
 	// add potential offsets with highest priority at the top
 	for i := 1; i < 11; i++ {
@@ -165,11 +216,11 @@ func (e *OpEncoder) potentialOffsets(p []byte) []int64 {
 	}
 	if len(p) == 4 {
 		// distances from the hash table
-		offs = append(offs, e.dict.t4.Offsets(p)...)
+		offs = append(offs, dict.t4.Offsets(p)...)
 	}
 	for i := 3; i >= 0; i-- {
 		// distances from the repetition for length less than 4
-		dist := int64(e.State.rep[i]) + minDistance
+		dist := int64(state.rep[i]) + minDistance
 		off := head - dist
 		if start <= off {
 			offs = append(offs, off)
@@ -178,48 +229,17 @@ func (e *OpEncoder) potentialOffsets(p []byte) []int64 {
 	return offs
 }
 
-// errNoMatch indicates that no match could be found
-var errNoMatch = newError("no match found")
-
-// bestMatch finds the best match for the given offsets.
-//
-// TODO: compare all possible commands for compressed bits per encoded bits.
-func (e *OpEncoder) bestMatch(offsets []int64) (m match, err error) {
-	// creates a match for 1
-	head := e.dict.offset()
-	off := int64(-1)
-	length := 0
-	for i := len(offsets) - 1; i >= 0; i-- {
-		n := e.dict.equalBytes(head, offsets[i], MaxLength)
-		if n > length {
-			off, length = offsets[i], n
-		}
-	}
-	if off < 0 {
-		err = errNoMatch
-		return
-	}
-	if length == 1 {
-		dist := int64(e.State.rep[0]) + minDistance
-		offRep0 := head - dist
-		if off != offRep0 {
-			err = errNoMatch
-			return
-		}
-	}
-	return match{distance: head - off, n: length}, nil
-}
+// AllData requests from the FindOps function to process all data. Otherwise
+// ops are only searched if they could have the maximum length.
+const AllData = 1
 
 // errEmptyBuf indicates an empty buffer
 var errEmptyBuf = newError("empty buffer")
 
-// Find finds an operation for the head of the dictionary.
-//
-// TODO: Make this function internal and use another interface that returns a
-// list of operations.
-func (e *OpEncoder) Find() (op Operation, err error) {
+func findOp(state *WriterState, head int64) (op Operation, err error) {
+	dict := state.WriterDict()
 	p := make([]byte, 4)
-	n, err := e.dict.peekHead(p)
+	n, err := dict.readAt(p, head)
 	if err != nil && err != errAgain && err != io.EOF {
 		return nil, err
 	}
@@ -229,8 +249,8 @@ func (e *OpEncoder) Find() (op Operation, err error) {
 		}
 		return nil, errEmptyBuf
 	}
-	offs := e.potentialOffsets(p[:n])
-	m, err := e.bestMatch(offs)
+	offs := potentialOffsets(state, head, p[:n])
+	m, err := bestMatch(state, head, offs)
 	if err == errNoMatch {
 		return lit{b: p[0]}, nil
 	}
@@ -240,16 +260,21 @@ func (e *OpEncoder) Find() (op Operation, err error) {
 	return m, nil
 }
 
-// discard advances the head of the dictionary and writes the respective
-// bytes into the hash table of the dictionary.
-func (e *OpEncoder) discard(op Operation) error {
-	oplen := op.Len()
-	n, err := e.dict.copyTo(e.dict.t4, oplen)
-	if err != nil {
-		return err
+// FindOps computes a sequence of operations starting with the current head of
+// the dictionary.
+func FindOps(state *WriterState, ops []Operation, flags int) (n int, err error) {
+	dict := state.WriterDict()
+	head, end := dict.cursor, dict.end
+	if flags&AllData == 0 {
+		end -= MaxLength + 1
 	}
-	if n < oplen {
-		return errAgain
+	for n < len(ops) && head < end {
+		ops[n], err = findOp(state, head)
+		if err != nil {
+			return n, err
+		}
+		head += int64(ops[n].Len())
+		n++
 	}
-	return nil
+	return n, nil
 }
