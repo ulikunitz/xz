@@ -3,23 +3,29 @@ package lzb
 import "errors"
 
 type buffer struct {
-	data   []byte
-	bottom int64
-	top    int64
+	data       []byte
+	bottom     int64 // bottom == max(top - len(data), 0)
+	top        int64
+	writeLimit int64
 }
+
+const maxWriteLimit = 1<<63 - 1
 
 var (
 	errOffset = errors.New("offset outside buffer range")
 	errAgain  = errors.New("buffer overflow; repeat")
 	errNegLen = errors.New("length is negative")
+	errLimit  = errors.New("write limit reached")
 )
 
 func initBuffer(b *buffer, capacity int) {
-	*b = buffer{data: make([]byte, capacity)}
+	*b = buffer{data: make([]byte, capacity), writeLimit: maxWriteLimit}
 }
 
 func newBuffer(capacity int) *buffer {
-	return &buffer{data: make([]byte, capacity)}
+	b := new(buffer)
+	initBuffer(b, capacity)
+	return b
 }
 
 func (b *buffer) capacity() int {
@@ -33,6 +39,9 @@ func (b *buffer) length() int {
 func (b *buffer) setTop(off int64) {
 	if off < 0 {
 		panic("b.Top overflow?")
+	}
+	if off > b.writeLimit {
+		panic("off exceeds writeLimit")
 	}
 	b.top = off
 	b.bottom = off - int64(len(b.data))
@@ -48,36 +57,35 @@ func (b *buffer) index(off int64) int {
 	return int(off % int64(len(b.data)))
 }
 
-func (b *buffer) writeSlice(p []byte) {
+func (b *buffer) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return
 	}
+	var m int
 	off := b.top
-	m := len(p) - len(b.data)
+	if off+int64(len(p)) > b.writeLimit {
+		m = int(b.writeLimit - off)
+		p = p[:m]
+		err = errors.New("write limit reached")
+	}
+	m = len(p) - len(b.data)
 	if m > 0 {
-		off += int64(m)
-		if off < 0 {
-			panic("overflow b.top")
-		}
+		n += m
 		p = p[m:]
 	}
 	for len(p) > 0 {
 		m = copy(b.data[b.index(off):], p)
-		off += int64(m)
-		if off < 0 {
-			panic("overflow b.top")
-		}
+		n += m
 		p = p[m:]
 	}
-	b.setTop(off)
-}
-
-func (b *buffer) Write(p []byte) (n int, err error) {
-	b.writeSlice(p)
-	return len(p), nil
+	b.setTop(off + int64(n))
+	return n, err
 }
 
 func (b *buffer) WriteByte(c byte) error {
+	if b.top >= b.writeLimit {
+		return errLimit
+	}
 	b.data[b.index(b.top)] = c
 	b.setTop(b.top + 1)
 	return nil
@@ -90,7 +98,7 @@ func (b *buffer) writeRep(off int64, n int) (written int, err error) {
 	if !(b.bottom <= off && off <= b.top) {
 		return 0, errOffset
 	}
-	end := off + int64(n)
+	start, end := off, off + int64(n)
 	if !(end <= b.top) {
 		return 0, errAgain
 	}
@@ -103,10 +111,15 @@ func (b *buffer) writeRep(off int64, n int) (written int, err error) {
 		} else {
 			q = b.data[s:]
 		}
-		b.writeSlice(q)
-		off += int64(len(q))
+		n, err := b.Write(q)
+		off += int64(n)
+		if err != nil {
+			break
+		}
+		off += int64(n)
 	}
-	return n, nil
+	b.setTop(off)
+	return int(off - start), nil
 }
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.
