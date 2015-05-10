@@ -17,7 +17,7 @@ To test it call the following command.
     $ lzmago bigfile
 
 After some time a hopefully much smaller file bigfile.lzma will have
-been created. To decompress it use the following commmand.
+been created. To decompress it use the following command.
 
     $ lzmago -d bigfile.lzma
 
