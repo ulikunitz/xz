@@ -1,7 +1,7 @@
 package lzbase
 
 // maxPosBits defines the number of bits of the position value that are used to
-// to compute the posState value. The value is used to selet the tree codec
+// to compute the posState value. The value is used to select the tree codec
 // for length encoding and decoding.
 const maxPosBits = 4
 
