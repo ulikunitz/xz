@@ -9,11 +9,10 @@ func TestInitBuffer(t *testing.T) {
 	var b buffer
 	const capacity = 30
 	initBuffer(&b, capacity)
-	n := b.capacity()
-	if n != capacity {
+	if n := b.capacity(); n != capacity {
 		t.Fatalf("capacity is %d; want %d", n, capacity)
 	}
-	if n = b.length(); n != 0 {
+	if n := b.length(); n != 0 {
 		t.Fatalf("length is %d; want %d", n, 0)
 	}
 
