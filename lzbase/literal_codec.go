@@ -63,7 +63,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 	return nil
 }
 
-// Decode decodes a litral byte using the range decoder as well as the LZMA
+// Decode decodes a literal byte using the range decoder as well as the LZMA
 // state, a match byte, and the literal state.
 func (c *literalCodec) Decode(d *rangeDecoder,
 	state uint32, match byte, litState uint32,

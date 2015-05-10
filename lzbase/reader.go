@@ -67,7 +67,7 @@ var errWrongTermination = newError("end of stream marker at wrong place")
 var eos = newError("end of decoded stream")
 
 // readOp decodes the next operation from the compressed stream. It returns the
-// operation. If an exlicit end of stream marker is identified the eos error is
+// operation. If an explicit end of stream marker is identified the eos error is
 // returned.
 func (br *Reader) readOp() (op Operation, err error) {
 	state, state2, posState := br.State.states()

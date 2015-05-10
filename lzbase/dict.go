@@ -48,7 +48,7 @@ func (rd *ReaderDict) byteAt(dist int64) byte {
 	return c
 }
 
-// WriterDict is the dictionary used for writing. It includes also a hashtable.
+// WriterDict is the dictionary used for writing. It includes also a hash table.
 // It is a ring buffer using the cursor offset for the dictionary head. The
 // capacity for the buffer is the sum of historySize and bufferSize.
 type WriterDict struct {

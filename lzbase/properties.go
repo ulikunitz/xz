@@ -12,7 +12,7 @@ const (
 	MaxDictSize = 1<<32 - 1
 )
 
-// Properties contains the parametes lc, lp and pb.
+// Properties contains the parameters lc, lp and pb.
 type Properties byte
 
 // NewProperties returns a new properties value. It verifies the validity of

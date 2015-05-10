@@ -42,7 +42,7 @@ type slot struct {
 
 const slotFull uint8 = 0x80
 
-// start retuns the start index of the slot
+// start returns the start index of the slot
 func (s *slot) start() int {
 	return int(s.a &^ slotFull)
 }

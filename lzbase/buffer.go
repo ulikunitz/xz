@@ -54,7 +54,7 @@ func (b *buffer) readable() int {
 	return int(b.end - b.cursor)
 }
 
-// writable returns the number of byte that are curently available for writing.
+// writable returns the number of byte that are currently available for writing.
 func (b *buffer) writable() int {
 	return int(b.cursor + int64(b.writeLimit) - b.end)
 }
