@@ -18,6 +18,17 @@ func TestInitBuffer(t *testing.T) {
 
 }
 
+func TestNewBuffer(t *testing.T) {
+	const capacity = 30
+	b := newBuffer(capacity)
+	if n := b.capacity(); n != capacity {
+		t.Fatalf("capacity is %d; want %d", n, capacity)
+	}
+	if n := b.length(); n != 0 {
+		t.Fatalf("length is %d; want %d", n, 0)
+	}
+}
+
 func TestBuffer_Write(t *testing.T) {
 	var b buffer
 	const capacity = 25
