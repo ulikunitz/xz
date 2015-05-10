@@ -107,3 +107,24 @@ func TestBuffer_Write(t *testing.T) {
 		t.Fatalf("b.Write([]byte{}) returned %d; want %d", n, 0)
 	}
 }
+
+func TestBuffer_Write_limit(t *testing.T) {
+	b := newBuffer(20)
+	b.writeLimit = 9
+	p := []byte("0123456789")
+	n, err := b.Write(p)
+	if err != errLimit {
+		t.Fatalf("b.Write error %s; want %s", err, errLimit)
+	}
+	if n != 9 {
+		t.Fatalf("n after b.Write %d; want %d", n, 9)
+	}
+	b.writeLimit += 10
+	n, err = b.Write(p)
+	if err != nil {
+		t.Fatalf("b.Write error %s", err)
+	}
+	if n != 10 {
+		t.Fatalf("n after b.Write %d; want %d", n, 10)
+	}
+}

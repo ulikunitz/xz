@@ -66,7 +66,7 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	if off+int64(len(p)) > b.writeLimit {
 		m = int(b.writeLimit - off)
 		p = p[:m]
-		err = errors.New("write limit reached")
+		err = errLimit
 	}
 	m = len(p) - len(b.data)
 	if m > 0 {
