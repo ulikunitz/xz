@@ -70,15 +70,16 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	}
 	m = len(p) - len(b.data)
 	if m > 0 {
-		n += m
+		off += int64(m)
 		p = p[m:]
 	}
 	for len(p) > 0 {
 		m = copy(b.data[b.index(off):], p)
-		n += m
+		off += int64(m)
 		p = p[m:]
 	}
-	b.setTop(off + int64(n))
+	n = int(off - b.top)
+	b.setTop(off)
 	return n, err
 }
 
@@ -98,7 +99,7 @@ func (b *buffer) writeRep(off int64, n int) (written int, err error) {
 	if !(b.bottom <= off && off <= b.top) {
 		return 0, errOffset
 	}
-	start, end := off, off + int64(n)
+	start, end := off, off+int64(n)
 	if !(end <= b.top) {
 		return 0, errAgain
 	}
