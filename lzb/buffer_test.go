@@ -99,4 +99,11 @@ func TestBuffer_Write(t *testing.T) {
 	if !bytes.Equal(b.data[:10], q[20:]) {
 		t.Fatalf("b.data[:10] is %q; want %q", b.data[:10], q[20:])
 	}
+	n, err = b.Write([]byte{})
+	if err != nil {
+		t.Fatalf("b.Write: error %s", err)
+	}
+	if n != 0 {
+		t.Fatalf("b.Write([]byte{}) returned %d; want %d", n, 0)
+	}
 }
