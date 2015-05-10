@@ -79,4 +79,24 @@ func TestBuffer_Write(t *testing.T) {
 		t.Fatalf("b.Write overflow problem: b.data[:5] is %q; want %q",
 			b.data[:5], p[5:])
 	}
+	q := make([]byte, 0, 30)
+	for i := 0; i < 3; i++ {
+		q = append(q, p...)
+	}
+	n, err = b.Write(q)
+	if err != nil {
+		t.Fatalf("b.Write: unexpected error %s", err)
+	}
+	if n != len(q) {
+		t.Fatalf("b.Write returned n=%d; want %d", n, len(q))
+	}
+	if b.top != 60 {
+		t.Fatalf("b.top is %d; want %d", b.top, 60)
+	}
+	if !bytes.Equal(b.data[10:], q[5:20]) {
+		t.Fatalf("b.data[:10] is %q; want %q", b.data[:10], q[20:])
+	}
+	if !bytes.Equal(b.data[:10], q[20:]) {
+		t.Fatalf("b.data[:10] is %q; want %q", b.data[:10], q[20:])
+	}
 }
