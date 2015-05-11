@@ -131,7 +131,7 @@ loop:
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.
 func (b *buffer) equalBytes(off1, off2 int64, max int) int {
-	if off1 < b.top || off2 < b.top || max <= 0 {
+	if off1 < b.bottom || off2 < b.bottom || max <= 0 {
 		return 0
 	}
 	n := b.top - off1
