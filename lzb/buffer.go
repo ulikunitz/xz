@@ -96,31 +96,37 @@ func (b *buffer) writeRep(off int64, n int) (written int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
-	if !(b.bottom <= off && off <= b.top) {
+	if !(b.bottom <= off && off < b.top) {
 		return 0, errOffset
 	}
+
 	start, end := off, off+int64(n)
-	if !(end <= b.top) {
-		return 0, errAgain
-	}
-	e := b.index(end)
+loop:
 	for off < end {
-		s := b.index(off)
-		var q []byte
-		if s < e {
-			q = b.data[s:e]
+		var next int64
+		if b.top < end {
+			next = b.top
 		} else {
-			q = b.data[s:]
+			next = end
 		}
-		n, err := b.Write(q)
-		off += int64(n)
-		if err != nil {
-			break
+		e := b.index(next)
+		for off < next {
+			s := b.index(off)
+			var q []byte
+			if s < e {
+				q = b.data[s:e]
+			} else {
+				q = b.data[s:]
+			}
+			var k int
+			k, err = b.Write(q)
+			off += int64(k)
+			if err != nil {
+				break loop
+			}
 		}
-		off += int64(n)
 	}
-	b.setTop(off)
-	return int(off - start), nil
+	return int(off - start), err
 }
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.
