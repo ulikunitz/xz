@@ -150,3 +150,39 @@ func TestBuffer_WriteByte(t *testing.T) {
 			err, errLimit)
 	}
 }
+
+func fillBytes(n int) []byte {
+	b := make([]byte, n)
+	for i := 0; i < n; i++ {
+		b[i] = byte(i)
+	}
+	return b
+}
+
+func TestBuffer_WriteRep(t *testing.T) {
+	b := newBuffer(10)
+	b.writeLimit = 12
+	p := fillBytes(5)
+	var err error
+	if _, err = b.Write(p); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	n, err := b.writeRep(3, 5)
+	if err != nil {
+		t.Fatalf("WriteRep error %s", err)
+	}
+	if n != 5 {
+		t.Fatalf("WriteRep returned %d; want %d", n, 5)
+	}
+	w := []byte{3, 4, 3, 4, 3}
+	if !bytes.Equal(b.data[5:10], w) {
+		t.Fatalf("new data is %v; want %v", b.data[5:10], w)
+	}
+	n, err = b.writeRep(0, 3)
+	if err != errLimit {
+		t.Fatalf("b.WriteRep returned error %v; want %v", err, errLimit)
+	}
+	if n != 2 {
+		t.Fatalf("b.WriteRep returned %d; want %d", n, 2)
+	}
+}
