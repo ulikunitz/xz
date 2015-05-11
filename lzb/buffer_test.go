@@ -128,3 +128,25 @@ func TestBuffer_Write_limit(t *testing.T) {
 		t.Fatalf("n after b.Write %d; want %d", n, 10)
 	}
 }
+
+func TestBuffer_WriteByte(t *testing.T) {
+	b := newBuffer(20)
+	b.writeLimit = 2
+	var err error
+	if err = b.WriteByte(1); err != nil {
+		t.Fatalf("b.WriteByte: error %s", err)
+	}
+	if b.top != 1 {
+		t.Fatalf("after WriteByte b.top is %d; want %d", b.top, 1)
+	}
+	if err = b.WriteByte(1); err != nil {
+		t.Fatalf("b.WriteByte: error %s", err)
+	}
+	if b.top != 2 {
+		t.Fatalf("after WriteByte b.top is %d; want %d", b.top, 1)
+	}
+	if err = b.WriteByte(1); err != errLimit {
+		t.Fatalf("b.WriteByte over limit error %#v; expected %#v",
+			err, errLimit)
+	}
+}
