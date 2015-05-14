@@ -8,5 +8,8 @@ lzma/reader.txt
 
 cmd/lzmago/lzmago
 
+# profile files
+*.out
+
 # vim swap file
 .*.swp
