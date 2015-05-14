@@ -92,8 +92,8 @@ func TestDict_move(t *testing.T) {
 		n   int
 		err error
 	}{
-		{-1, errMove},
-		{20, errMove},
+		{-1, errOffset},
+		{20, errOffset},
 		{4, nil},
 	}
 	for _, c := range tests {

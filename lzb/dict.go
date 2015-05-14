@@ -31,13 +31,25 @@ func (d *dict) byteAt(dist int64) byte {
 	return d.buf.data[d.buf.index(off)]
 }
 
-var errMove = errors.New("move outside buffer")
+var errWhence = errors.New("unsupported whence value")
 
-func (d *dict) move(n int) error {
-	off := d.head + int64(n)
+func (d *dict) Seek(offset int64, whence int) (off int64, err error) {
+	switch whence {
+	case 0:
+		off = offset
+	case 1:
+		off = d.head + offset
+	default:
+		return d.head, errWhence
+	}
 	if !(d.buf.bottom <= off && off <= d.buf.top) {
-		return errMove
+		return d.head, errOffset
 	}
 	d.head = off
-	return nil
+	return
+}
+
+func (d *dict) move(n int) error {
+	_, err := d.Seek(int64(n), 1)
+	return err
 }
