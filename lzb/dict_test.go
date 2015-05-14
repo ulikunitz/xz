@@ -30,7 +30,7 @@ func TestNewDict(t *testing.T) {
 	}
 	d, err = newDict(b, 8, 10)
 	if err != nil {
-		t.Fatalf("newDict error %s")
+		t.Fatalf("newDict error %s", err)
 	}
 	if d == nil {
 		t.Fatalf("successful newDict returns nil dictionary pointer")
@@ -42,7 +42,7 @@ func someDict(t *testing.T) *dict {
 	b.Write(fillBytes(8))
 	d, err := newDict(b, 8, 10)
 	if err != nil {
-		t.Fatalf("newDict error %s")
+		t.Fatalf("newDict error %s", err)
 	}
 	return d
 }
@@ -100,7 +100,7 @@ func TestDict_move(t *testing.T) {
 		err := d.move(c.n)
 		if err != c.err {
 			t.Errorf("d.move(%d) returned error %s; expected %s",
-				err, c.err)
+				c.n, err, c.err)
 		}
 	}
 }
