@@ -151,6 +151,10 @@ loop:
 	return int(off - start), err
 }
 
+func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
+	panic("TODO")
+}
+
 // equalBytes count the equal bytes at off1 and off2 until max is reached.
 func (b *buffer) equalBytes(off1, off2 int64, max int) int {
 	if off1 < b.bottom || off2 < b.bottom || max <= 0 {
