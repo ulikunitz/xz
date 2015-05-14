@@ -159,7 +159,7 @@ func fillBytes(n int) []byte {
 	return b
 }
 
-func TestBuffer_WriteRep(t *testing.T) {
+func TestBuffer_writeRep(t *testing.T) {
 	b := newBuffer(10)
 	b.writeLimit = 12
 	p := fillBytes(5)
@@ -169,10 +169,10 @@ func TestBuffer_WriteRep(t *testing.T) {
 	}
 	n, err := b.writeRep(3, 5)
 	if err != nil {
-		t.Fatalf("WriteRep error %s", err)
+		t.Fatalf("writeRep error %s", err)
 	}
 	if n != 5 {
-		t.Fatalf("WriteRep returned %d; want %d", n, 5)
+		t.Fatalf("writeRep returned %d; want %d", n, 5)
 	}
 	w := []byte{3, 4, 3, 4, 3}
 	if !bytes.Equal(b.data[5:10], w) {
@@ -180,9 +180,104 @@ func TestBuffer_WriteRep(t *testing.T) {
 	}
 	n, err = b.writeRep(0, 3)
 	if err != errLimit {
-		t.Fatalf("b.WriteRep returned error %v; want %v", err, errLimit)
+		t.Fatalf("b.writeRep returned error %v; want %v", err, errLimit)
 	}
 	if n != 2 {
-		t.Fatalf("b.WriteRep returned %d; want %d", n, 2)
+		t.Fatalf("b.writeRep returned %d; want %d", n, 2)
 	}
+}
+
+func TestBuffer_writeRep_wrap(t *testing.T) {
+	b := newBuffer(5)
+	p := fillBytes(7)
+	var err error
+	if _, err = b.Write(p); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	n, err := b.writeRep(4, 2)
+	if err != nil {
+		t.Fatalf("writeRep error %s", err)
+	}
+	if n != 2 {
+		t.Fatalf("writeRep returned %d; want %d", n, 2)
+	}
+}
+
+func TestBuffer_writeRep_errors(t *testing.T) {
+	b := newBuffer(5)
+	p := fillBytes(7)
+	var err error
+	if _, err = b.Write(p); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	n, err := b.writeRep(4, -2)
+	if err != errNegLen {
+		t.Fatalf("writeRep error %s; want %s", err, errNegLen)
+	}
+	if n != 0 {
+		t.Fatalf("writeRep returned %d; want %d", n, 0)
+	}
+	n, err = b.writeRep(7, 1)
+	if err != errOffset {
+		t.Fatalf("writeRep error %s; want %s", err, errOffset)
+	}
+}
+
+func TestBuffer_equalBytes(t *testing.T) {
+	b := newBuffer(10)
+	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	tests := []struct {
+		off1, off2 int64
+		max, n     int
+	}{
+		{3, 7, 10, 4},
+		{3, 7, 3, 3},
+		{3, 0, 10, 0}, // index 0 is smaller then bottom
+		{1, 4, 10, 2},
+		{5, 9, 3, 2},
+		{13, 14, 10, 0},
+		{5, 14, 10, 0},
+		{1, 1, 20, 10},
+	}
+	for _, c := range tests {
+		n := b.equalBytes(c.off1, c.off2, c.max)
+		if n != c.n {
+			t.Errorf("b.equalBytes(%d, %d, %d) is %d; want %d",
+				c.off1, c.off2, c.max, n, c.n)
+		}
+	}
+}
+
+func TestBuffer_setTop_panics(t *testing.T) {
+	b := newBuffer(10)
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("setTop: no panic on negative offset")
+			}
+		}()
+		b.setTop(-1)
+	}()
+	func() {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("setTop: no panic " +
+					"for writeLimit violation")
+			}
+		}()
+		b.writeLimit = 3
+		b.setTop(4)
+	}()
+}
+
+func TestBuffer_index_negativeOffset(t *testing.T) {
+	b := newBuffer(10)
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("index: no panic negative offset")
+		}
+	}()
+	b.index(-1)
 }
