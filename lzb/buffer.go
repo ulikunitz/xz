@@ -2,6 +2,12 @@ package lzb
 
 import "errors"
 
+// buffer provides a circular buffer. The type support the io.Writer
+// interface and other functions required to implement a dictionary.
+//
+// The top offset tracks the position of the buffer in the byte stream
+// covered. The bottom offset marks the bottom of the buffer. The
+// writeLimit marks the limit for additional writes.
 type buffer struct {
 	data       []byte
 	bottom     int64 // bottom == max(top - len(data), 0)
@@ -9,8 +15,11 @@ type buffer struct {
 	writeLimit int64
 }
 
+// maxWriteLimit provides the maximum value. Setting the writeLimit to
+// this value disables the writeLimit for all practical purposes.
 const maxWriteLimit = 1<<63 - 1
 
+// Errors returned by buffer methods.
 var (
 	errOffset = errors.New("offset outside buffer range")
 	errAgain  = errors.New("buffer overflow; repeat")
@@ -18,24 +27,30 @@ var (
 	errLimit  = errors.New("write limit reached")
 )
 
+// initBuffer initializes a buffer variable.
 func initBuffer(b *buffer, capacity int) {
 	*b = buffer{data: make([]byte, capacity), writeLimit: maxWriteLimit}
 }
 
+// newBuffer creates a new buffer.
 func newBuffer(capacity int) *buffer {
 	b := new(buffer)
 	initBuffer(b, capacity)
 	return b
 }
 
+// capacity returns the maximum capacity of the buffer.
 func (b *buffer) capacity() int {
 	return len(b.data)
 }
 
+// length returns the actual length of the buffer.
 func (b *buffer) length() int {
 	return int(b.top - b.bottom)
 }
 
+// setTop sets the top and bottom offset. Any modification of the top
+// offset must use this method.
 func (b *buffer) setTop(off int64) {
 	if off < 0 {
 		panic("b.Top overflow?")
@@ -50,6 +65,7 @@ func (b *buffer) setTop(off int64) {
 	}
 }
 
+// index converts a byte stream offset into an index of the data field.
 func (b *buffer) index(off int64) int {
 	if off < 0 {
 		panic("negative offset?")
@@ -57,6 +73,8 @@ func (b *buffer) index(off int64) int {
 	return int(off % int64(len(b.data)))
 }
 
+// Write writes a byte slice into the buffer. It satisfies the io.Write
+// interface.
 func (b *buffer) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return
@@ -83,6 +101,8 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// WriteByte writes a single byte into the buffer. The method satisfies
+// the io.ByteWriter interface.
 func (b *buffer) WriteByte(c byte) error {
 	if b.top >= b.writeLimit {
 		return errLimit
@@ -92,6 +112,8 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
+// writeRep writes a repetition into the buffer. Obviously the method is
+// used to handle matches during decoding the LZMA stream.
 func (b *buffer) writeRep(off int64, n int) (written int, err error) {
 	if n < 0 {
 		return 0, errNegLen
