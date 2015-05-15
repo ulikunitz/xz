@@ -28,18 +28,31 @@ var (
 	errAgain  = errors.New("buffer overflow; repeat")
 	errNegLen = errors.New("length is negative")
 	errLimit  = errors.New("write limit reached")
+	errCap    = errors.New("capacity out of range")
+	errInt64  = errors.New("int64 values not representable as int")
 )
 
-// initBuffer initializes a buffer variable.
-func initBuffer(b *buffer, capacity int) {
-	*b = buffer{data: make([]byte, capacity), writeLimit: maxWriteLimit}
+// toInt converts int64 to int. If the number is not representable as
+// int errInt64 is returned.
+func toInt(n int64) (int, error) {
+	k := int(n)
+	if int64(k) != n {
+		return 0, errInt64
+	}
+	return k, nil
 }
 
 // newBuffer creates a new buffer.
-func newBuffer(capacity int) *buffer {
-	b := new(buffer)
-	initBuffer(b, capacity)
-	return b
+func newBuffer(capacity int64) (b *buffer, err error) {
+	if capacity < 0 {
+		return nil, errCap
+	}
+	c, err := toInt(capacity)
+	if err != nil {
+		return nil, errCap
+	}
+	b = &buffer{data: make([]byte, c), writeLimit: maxWriteLimit}
+	return b, nil
 }
 
 // capacity returns the maximum capacity of the buffer.

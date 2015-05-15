@@ -2,25 +2,24 @@ package lzb
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
-func TestInitBuffer(t *testing.T) {
-	var b buffer
-	const capacity = 30
-	initBuffer(&b, capacity)
-	if n := b.capacity(); n != capacity {
-		t.Fatalf("capacity is %d; want %d", n, capacity)
+func mustNewBuffer(capacity int64) *buffer {
+	b, err := newBuffer(capacity)
+	if err != nil {
+		panic(fmt.Sprintf("mustNewBuffer(%d) error %s", capacity, err))
 	}
-	if n := b.length(); n != 0 {
-		t.Fatalf("length is %d; want %d", n, 0)
-	}
-
+	return b
 }
 
 func TestNewBuffer(t *testing.T) {
 	const capacity = 30
-	b := newBuffer(capacity)
+	b, err := newBuffer(capacity)
+	if err != nil {
+		t.Fatalf("mustNewBuffer(%d) error %s", capacity, err)
+	}
 	if n := b.capacity(); n != capacity {
 		t.Fatalf("capacity is %d; want %d", n, capacity)
 	}
@@ -30,9 +29,7 @@ func TestNewBuffer(t *testing.T) {
 }
 
 func TestBuffer_Write(t *testing.T) {
-	var b buffer
-	const capacity = 25
-	initBuffer(&b, capacity)
+	b := mustNewBuffer(25)
 	p := []byte("0123456789")
 	n, err := b.Write(p)
 	if err != nil {
@@ -109,7 +106,7 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Write_limit(t *testing.T) {
-	b := newBuffer(20)
+	b := mustNewBuffer(20)
 	b.writeLimit = 9
 	p := []byte("0123456789")
 	n, err := b.Write(p)
@@ -130,7 +127,7 @@ func TestBuffer_Write_limit(t *testing.T) {
 }
 
 func TestBuffer_WriteByte(t *testing.T) {
-	b := newBuffer(20)
+	b := mustNewBuffer(2)
 	b.writeLimit = 2
 	var err error
 	if err = b.WriteByte(1); err != nil {
@@ -160,11 +157,11 @@ func fillBytes(n int) []byte {
 }
 
 func TestBuffer_writeRepAt(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	b.writeLimit = 12
 	p := fillBytes(5)
-	var err error
 	t.Logf("b.writeLimit %d", b.writeLimit)
+	var err error
 	if _, err = b.Write(p); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
@@ -191,7 +188,7 @@ func TestBuffer_writeRepAt(t *testing.T) {
 }
 
 func TestBuffer_writeRepAt_wrap(t *testing.T) {
-	b := newBuffer(5)
+	b := mustNewBuffer(5)
 	p := fillBytes(7)
 	var err error
 	if _, err = b.Write(p); err != nil {
@@ -207,7 +204,7 @@ func TestBuffer_writeRepAt_wrap(t *testing.T) {
 }
 
 func TestBuffer_writeRepAt_errors(t *testing.T) {
-	b := newBuffer(5)
+	b := mustNewBuffer(5)
 	p := fillBytes(7)
 	var err error
 	if _, err = b.Write(p); err != nil {
@@ -227,7 +224,7 @@ func TestBuffer_writeRepAt_errors(t *testing.T) {
 }
 
 func TestBuffer_equalBytes(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
@@ -254,7 +251,7 @@ func TestBuffer_equalBytes(t *testing.T) {
 }
 
 func TestBuffer_setTop_panics(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -276,7 +273,7 @@ func TestBuffer_setTop_panics(t *testing.T) {
 }
 
 func TestBuffer_index_negativeOffset(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	defer func() {
 		if r := recover(); r == nil {
 			t.Fatalf("index: no panic negative offset")
@@ -286,7 +283,7 @@ func TestBuffer_index_negativeOffset(t *testing.T) {
 }
 
 func TestBuffer_ReadAt(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
@@ -318,7 +315,7 @@ func TestBuffer_ReadAt(t *testing.T) {
 }
 
 func TestBuffer_ReadAt_error(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
 		t.Fatalf("Write error %s", err)
 	}

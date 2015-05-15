@@ -3,7 +3,7 @@ package lzb
 import "testing"
 
 func TestNewDict(t *testing.T) {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	b.Write(fillBytes(8))
 	d, err := newDict(b, 4, 0)
 	if err == nil {
@@ -38,7 +38,7 @@ func TestNewDict(t *testing.T) {
 }
 
 func someDict(t *testing.T) *dict {
-	b := newBuffer(10)
+	b := mustNewBuffer(10)
 	b.Write(fillBytes(8))
 	d, err := newDict(b, 8, 10)
 	if err != nil {

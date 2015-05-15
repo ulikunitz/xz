@@ -25,12 +25,17 @@ func (r *readBuffer) Seek(offset int64, whence int) (off int64, err error) {
 	return
 }
 
-func newReadBuffer(d *dict) *readBuffer {
-	r := &readBuffer{buffer: d.buf, dict: d}
-	if _, err := r.Seek(r.bottom, 0); err != nil {
-		panic(err)
+func newReadBuffer(capacity int64, dictsize int64) (r *readBuffer, err error) {
+	b, err := newBuffer(capacity)
+	if err != nil {
+		return nil, err
 	}
-	return r
+	d, err := newDict(b, 0, dictsize)
+	if err != nil {
+		return nil, err
+	}
+	r = &readBuffer{buffer: b, dict: d, head: 0}
+	return r, nil
 }
 
 func (r *readBuffer) Read(p []byte) (n int, err error) {
