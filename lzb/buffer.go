@@ -178,12 +178,12 @@ var errSpace = errors.New("out of buffer space")
 
 // Write satisfies the Writer interface for readAtBuffer.
 func (b *readAtBuffer) Write(p []byte) (n int, err error) {
-	k := copy(b.p, p)
-	b.p = b.p[k:]
-	if k < len(p) {
-		return k, errSpace
+	n = copy(b.p, p)
+	b.p = b.p[n:]
+	if n < len(p) {
+		err = errSpace
 	}
-	return k, nil
+	return
 }
 
 // ReadAt provides the ReaderAt interface.
@@ -195,12 +195,7 @@ func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	if end > b.top {
 		end = b.top
 	}
-	w := &readAtBuffer{p: p}
-	n, err = b.writeRangeTo(off, end, w)
-	if err == errSpace {
-		panic("unexpected error")
-	}
-	return
+	return b.writeRangeTo(off, end, &readAtBuffer{p})
 }
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.

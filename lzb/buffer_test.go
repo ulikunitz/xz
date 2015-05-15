@@ -284,3 +284,62 @@ func TestBuffer_index_negativeOffset(t *testing.T) {
 	}()
 	b.index(-1)
 }
+
+func TestBuffer_ReadAt(t *testing.T) {
+	b := newBuffer(10)
+	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	tests := []struct {
+		length int
+		off    int64
+		q      []byte
+		err    error
+	}{
+		{5, 7, []byte("abcd"), nil},
+		{3, 1, []byte("bca"), nil},
+		{3, 4, []byte("bcd"), nil},
+	}
+	for _, c := range tests {
+		p := make([]byte, c.length)
+		n, err := b.ReadAt(p, c.off)
+		if err != c.err {
+			t.Errorf("ReadAt error %s; want %s", err, c.err)
+		}
+		if n != len(c.q) {
+			t.Errorf("ReadAt reports %d bytes read; want %d",
+				n, len(c.q))
+		}
+		p = p[:n]
+		if !bytes.Equal(p, c.q) {
+			t.Errorf("ReadAt returned %v; want %v", p, c.q)
+		}
+	}
+}
+
+func TestBuffer_ReadAt_error(t *testing.T) {
+	b := newBuffer(10)
+	if _, err := b.Write([]byte("abcabcdabcd")); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	p := make([]byte, 10)
+	n, err := b.ReadAt(p, b.top+1)
+	if err != errOffset {
+		t.Fatalf("b.ReadAt returned error %v; want %v", err, errOffset)
+	}
+	if n != 0 {
+		t.Fatalf("b.ReadAt returned %d; want %d", n, 0)
+	}
+}
+
+func TestReadAtBuffer_Write(t *testing.T) {
+	b := &readAtBuffer{make([]byte, 2)}
+	n, err := b.Write([]byte("abc"))
+	if err != errSpace {
+		t.Errorf("readAtBuffer.Write returned error %s; want %s",
+			err, errSpace)
+	}
+	if n != 2 {
+		t.Errorf("readAtBuffer.Write returned %d; want %d", n, 2)
+	}
+}
