@@ -49,3 +49,21 @@ func (r *readBuffer) Read(p []byte) (n int, err error) {
 	}
 	return
 }
+
+func (r *readBuffer) Write(p []byte) (n int, err error) {
+	n, err = r.Write(p)
+	_, serr := r.dict.Seek(int64(n), 1)
+	if err == nil {
+		err = serr
+	}
+	return
+}
+
+func (r *readBuffer) WriteByte(c byte) error {
+	err := r.WriteByte(c)
+	if err != nil {
+		return err
+	}
+	_, err = r.dict.Seek(1, 1)
+	return err
+}
