@@ -164,9 +164,11 @@ func TestBuffer_writeRepAt(t *testing.T) {
 	b.writeLimit = 12
 	p := fillBytes(5)
 	var err error
+	t.Logf("b.writeLimit %d", b.writeLimit)
 	if _, err = b.Write(p); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
+	t.Logf("b.writeLimit %d", b.writeLimit)
 	n, err := b.writeRepAt(5, 3)
 	if err != nil {
 		t.Fatalf("writeRepAt error %s", err)
@@ -178,6 +180,7 @@ func TestBuffer_writeRepAt(t *testing.T) {
 	if !bytes.Equal(b.data[5:10], w) {
 		t.Fatalf("new data is %v; want %v", b.data[5:10], w)
 	}
+	t.Logf("b.writeLimit %d", b.writeLimit)
 	n, err = b.writeRepAt(3, 0)
 	if err != errLimit {
 		t.Fatalf("b.writeRepAt returned error %v; want %v", err, errLimit)

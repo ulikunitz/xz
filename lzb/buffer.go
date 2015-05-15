@@ -115,9 +115,33 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
-// readWriteAt reads n bytes starting at off into the writer. Any writer error
-// is returned.
-func (b *buffer) readWriteAt(w io.Writer, n int, off int64) (written int, err error) {
+// writeRangeTo is a helper function that writes all data between off
+// and end to the writer. The function doesn't check the arguments.
+func (b *buffer) writeRangeTo(off, end int64, w io.Writer) (written int, err error) {
+	// assume that arguments are correct
+	start := off
+	e := b.index(end)
+	for off < end {
+		s := b.index(off)
+		var q []byte
+		if s < e {
+			q = b.data[s:e]
+		} else {
+			q = b.data[s:]
+		}
+		var k int
+		k, err = w.Write(q)
+		off += int64(k)
+		if err != nil {
+			break
+		}
+	}
+	return int(off - start), err
+}
+
+// writeRepAt writes a repetition into the buffer. Obviously the method is
+// used to handle matches during decoding the LZMA stream.
+func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
@@ -126,7 +150,6 @@ func (b *buffer) readWriteAt(w io.Writer, n int, off int64) (written int, err er
 	}
 
 	start, end := off, off+int64(n)
-loop:
 	for off < end {
 		var next int64
 		if b.top < end {
@@ -134,30 +157,14 @@ loop:
 		} else {
 			next = end
 		}
-		e := b.index(next)
-		for off < next {
-			s := b.index(off)
-			var q []byte
-			if s < e {
-				q = b.data[s:e]
-			} else {
-				q = b.data[s:]
-			}
-			var k int
-			k, err = w.Write(q)
-			off += int64(k)
-			if err != nil {
-				break loop
-			}
+		var k int
+		k, err = b.writeRangeTo(off, next, b)
+		off += int64(k)
+		if err != nil {
+			break
 		}
 	}
 	return int(off - start), err
-}
-
-// writeRep writes a repetition into the buffer. Obviously the method is
-// used to handle matches during decoding the LZMA stream.
-func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
-	return b.readWriteAt(b, n, off)
 }
 
 // readAtBuffer provides a wrapper for the p buffer of the ReadAt
@@ -181,10 +188,17 @@ func (b *readAtBuffer) Write(p []byte) (n int, err error) {
 
 // ReadAt provides the ReaderAt interface.
 func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
+	if !(b.bottom <= off && off < b.top) {
+		return 0, errOffset
+	}
+	end := off + int64(len(p))
+	if end > b.top {
+		end = b.top
+	}
 	w := &readAtBuffer{p: p}
-	n, err = b.readWriteAt(w, len(p), off)
+	n, err = b.writeRangeTo(off, end, w)
 	if err == errSpace {
-		err = nil
+		panic("unexpected error")
 	}
 	return
 }
