@@ -104,3 +104,31 @@ func TestDict_move(t *testing.T) {
 		}
 	}
 }
+
+func TestDict_Seek(t *testing.T) {
+	d := someDict(t)
+	tests := []struct {
+		offset int64
+		whence int
+		off    int64
+		err    error
+	}{
+		{0, 0, 0, nil},
+		{2, 1, 2, nil},
+		{0, 2, 8, nil},
+		{0, 3, 8, errWhence},
+		{-1, 0, 8, errOffset},
+		{9, 0, 8, errOffset},
+	}
+	for _, c := range tests {
+		off, err := d.Seek(c.offset, c.whence)
+		if err != c.err {
+			t.Errorf("d.Seek(%d, %d) error %s; want %s",
+				c.offset, c.whence, err, c.err)
+		}
+		if off != c.off {
+			t.Errorf("d.Seek(%d, %d) off %d; want %d",
+				c.offset, c.whence, off, c.off)
+		}
+	}
+}
