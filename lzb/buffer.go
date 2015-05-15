@@ -1,6 +1,9 @@
 package lzb
 
-import "errors"
+import (
+	"errors"
+	"io"
+)
 
 // buffer provides a circular buffer. The type support the io.Writer
 // interface and other functions required to implement a dictionary.
@@ -112,9 +115,9 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
-// writeRep writes a repetition into the buffer. Obviously the method is
-// used to handle matches during decoding the LZMA stream.
-func (b *buffer) writeRep(off int64, n int) (written int, err error) {
+// readWriteAt reads n bytes starting at off into the writer. Any writer error
+// is returned.
+func (b *buffer) readWriteAt(w io.Writer, n int, off int64) (written int, err error) {
 	if n < 0 {
 		return 0, errNegLen
 	}
@@ -141,7 +144,7 @@ loop:
 				q = b.data[s:]
 			}
 			var k int
-			k, err = b.Write(q)
+			k, err = w.Write(q)
 			off += int64(k)
 			if err != nil {
 				break loop
@@ -151,8 +154,39 @@ loop:
 	return int(off - start), err
 }
 
+// writeRep writes a repetition into the buffer. Obviously the method is
+// used to handle matches during decoding the LZMA stream.
+func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
+	return b.readWriteAt(b, n, off)
+}
+
+// readAtBuffer provides a wrapper for the p buffer of the ReadAt
+// function.
+type readAtBuffer struct {
+	p []byte
+}
+
+// errSpace indicates insufficient space in the readAtBuffer.
+var errSpace = errors.New("out of buffer space")
+
+// Write satisfies the Writer interface for readAtBuffer.
+func (b *readAtBuffer) Write(p []byte) (n int, err error) {
+	k := copy(b.p, p)
+	b.p = b.p[k:]
+	if k < len(p) {
+		return k, errSpace
+	}
+	return k, nil
+}
+
+// ReadAt provides the ReaderAt interface.
 func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
-	panic("TODO")
+	w := &readAtBuffer{p: p}
+	n, err = b.readWriteAt(w, len(p), off)
+	if err == errSpace {
+		err = nil
+	}
+	return
 }
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.

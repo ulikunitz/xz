@@ -159,7 +159,7 @@ func fillBytes(n int) []byte {
 	return b
 }
 
-func TestBuffer_writeRep(t *testing.T) {
+func TestBuffer_writeRepAt(t *testing.T) {
 	b := newBuffer(10)
 	b.writeLimit = 12
 	p := fillBytes(5)
@@ -167,59 +167,59 @@ func TestBuffer_writeRep(t *testing.T) {
 	if _, err = b.Write(p); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
-	n, err := b.writeRep(3, 5)
+	n, err := b.writeRepAt(5, 3)
 	if err != nil {
-		t.Fatalf("writeRep error %s", err)
+		t.Fatalf("writeRepAt error %s", err)
 	}
 	if n != 5 {
-		t.Fatalf("writeRep returned %d; want %d", n, 5)
+		t.Fatalf("writeRepAt returned %d; want %d", n, 5)
 	}
 	w := []byte{3, 4, 3, 4, 3}
 	if !bytes.Equal(b.data[5:10], w) {
 		t.Fatalf("new data is %v; want %v", b.data[5:10], w)
 	}
-	n, err = b.writeRep(0, 3)
+	n, err = b.writeRepAt(3, 0)
 	if err != errLimit {
-		t.Fatalf("b.writeRep returned error %v; want %v", err, errLimit)
+		t.Fatalf("b.writeRepAt returned error %v; want %v", err, errLimit)
 	}
 	if n != 2 {
-		t.Fatalf("b.writeRep returned %d; want %d", n, 2)
+		t.Fatalf("b.writeRepAt returned %d; want %d", n, 2)
 	}
 }
 
-func TestBuffer_writeRep_wrap(t *testing.T) {
+func TestBuffer_writeRepAt_wrap(t *testing.T) {
 	b := newBuffer(5)
 	p := fillBytes(7)
 	var err error
 	if _, err = b.Write(p); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
-	n, err := b.writeRep(4, 2)
+	n, err := b.writeRepAt(2, 4)
 	if err != nil {
-		t.Fatalf("writeRep error %s", err)
+		t.Fatalf("writeRepAt error %s", err)
 	}
 	if n != 2 {
-		t.Fatalf("writeRep returned %d; want %d", n, 2)
+		t.Fatalf("writeRepAt returned %d; want %d", n, 2)
 	}
 }
 
-func TestBuffer_writeRep_errors(t *testing.T) {
+func TestBuffer_writeRepAt_errors(t *testing.T) {
 	b := newBuffer(5)
 	p := fillBytes(7)
 	var err error
 	if _, err = b.Write(p); err != nil {
 		t.Fatalf("Write error %s", err)
 	}
-	n, err := b.writeRep(4, -2)
+	n, err := b.writeRepAt(-2, 4)
 	if err != errNegLen {
-		t.Fatalf("writeRep error %s; want %s", err, errNegLen)
+		t.Fatalf("writeRepAt error %s; want %s", err, errNegLen)
 	}
 	if n != 0 {
-		t.Fatalf("writeRep returned %d; want %d", n, 0)
+		t.Fatalf("writeRepAt returned %d; want %d", n, 0)
 	}
-	n, err = b.writeRep(7, 1)
+	n, err = b.writeRepAt(1, 7)
 	if err != errOffset {
-		t.Fatalf("writeRep error %s; want %s", err, errOffset)
+		t.Fatalf("writeRepAt error %s; want %s", err, errOffset)
 	}
 }
 
