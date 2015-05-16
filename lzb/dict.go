@@ -38,6 +38,9 @@ func (d *dict) Seek(offset int64, whence int) (off int64, err error) {
 	case 0:
 		off = offset
 	case 1:
+		if offset == 0 {
+			return d.head, nil
+		}
 		off = d.head + offset
 	case 2:
 		off = d.buf.top + offset
