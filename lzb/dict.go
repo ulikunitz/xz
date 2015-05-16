@@ -15,7 +15,7 @@ func newDict(b *buffer, head int64, size int64) (d *dict, err error) {
 	case size > int64(b.capacity()):
 		return nil, errors.New("size exceeds buffer capacity")
 	case !(b.bottom <= head && head <= b.top):
-		return nil, errors.New("head offset out of range")
+		return nil, errOffset
 	}
 	return &dict{buf: b, head: head, size: size}, nil
 }
