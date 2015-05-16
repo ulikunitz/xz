@@ -14,6 +14,7 @@ const eosDist = 1<<32 - 1
 type dictionary interface {
 	io.Seeker
 	byteAt(dist int64) byte
+	buffer() *buffer
 }
 
 // state maintains the full state of the operation encoding process.

@@ -53,3 +53,7 @@ func (d *dict) Seek(offset int64, whence int) (off int64, err error) {
 	d.head = off
 	return
 }
+
+func (d *dict) buffer() *buffer {
+	return d.buf
+}
