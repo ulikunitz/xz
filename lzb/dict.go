@@ -50,8 +50,3 @@ func (d *dict) Seek(offset int64, whence int) (off int64, err error) {
 	d.head = off
 	return
 }
-
-func (d *dict) move(n int) error {
-	_, err := d.Seek(int64(n), 1)
-	return err
-}

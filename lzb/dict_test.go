@@ -85,26 +85,6 @@ func TestDict_byteAt(t *testing.T) {
 	}
 }
 
-func TestDict_move(t *testing.T) {
-	d := someDict(t)
-	d.head = 0
-	tests := []struct {
-		n   int
-		err error
-	}{
-		{-1, errOffset},
-		{20, errOffset},
-		{4, nil},
-	}
-	for _, c := range tests {
-		err := d.move(c.n)
-		if err != c.err {
-			t.Errorf("d.move(%d) returned error %s; expected %s",
-				c.n, err, c.err)
-		}
-	}
-}
-
 func TestDict_Seek(t *testing.T) {
 	d := someDict(t)
 	tests := []struct {
