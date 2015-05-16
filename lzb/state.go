@@ -1,15 +1,25 @@
 package lzb
 
+import (
+	"fmt"
+	"io"
+)
+
 // states defines the overall state count
 const states = 12
 
 // eosDist represents the end of stream marker
 const eosDist = 1<<32 - 1
 
+type dictionary interface {
+	io.Seeker
+	byteAt(dist int64) byte
+}
+
 // state maintains the full state of the operation encoding process.
 type state struct {
 	Properties  Properties
-	dict        *dict
+	dict        dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -99,10 +109,19 @@ func (s *state) updateStateShortRep() {
 	}
 }
 
+// dictOffset returns the current offset of the dictionary
+func dictOffset(d dictionary) int64 {
+	off, err := d.Seek(0, 1)
+	if err != nil {
+		panic(fmt.Errorf("d.Seek(0, 1) error %s", err))
+	}
+	return off
+}
+
 // states computes the states of the operation codec.
 func (s *state) states() (state1, state2, posState uint32) {
 	state1 = s.state
-	posState = uint32(s.dict.head) & s.posBitMask
+	posState = uint32(dictOffset(s.dict)) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
@@ -111,7 +130,7 @@ func (s *state) states() (state1, state2, posState uint32) {
 func (s *state) litState() uint32 {
 	prevByte := s.dict.byteAt(1)
 	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
-	litState := ((uint32(s.dict.head)) & ((1 << lp) - 1) << lc) |
+	litState := ((uint32(dictOffset(s.dict)) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
 }
