@@ -28,6 +28,17 @@ func TestNewBuffer(t *testing.T) {
 	}
 }
 
+func TestNewBuffer_error(t *testing.T) {
+	b, err := newBuffer(-1)
+	if err != errCap {
+		t.Fatalf("newBuffer(%d) returned error %s; want %s",
+			-1, err, errCap)
+	}
+	if b != nil {
+		t.Fatalf("newBuffer(%d) returned non-nil buffer", -1)
+	}
+}
+
 func TestBuffer_Write(t *testing.T) {
 	b := mustNewBuffer(25)
 	p := []byte("0123456789")
