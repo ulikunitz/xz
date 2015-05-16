@@ -34,7 +34,10 @@ func newReadBuffer(capacity int64, dictsize int64) (r *readBuffer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	r = &readBuffer{buffer: b, dict: d, head: 0}
+	r = &readBuffer{buffer: b, dict: d}
+	if _, err = r.Seek(0, 0); err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
