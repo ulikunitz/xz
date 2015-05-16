@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// states defines the overall state count
+// states defines the overall State count
 const states = 12
 
 // eosDist represents the end of stream marker
@@ -17,8 +17,8 @@ type dictionary interface {
 	buffer() *buffer
 }
 
-// state maintains the full state of the operation encoding process.
-type state struct {
+// State maintains the full state of the operation encoding process.
+type State struct {
 	Properties  Properties
 	dict        dictionary
 	state       uint32
@@ -44,9 +44,9 @@ func initProbSlice(p []prob) {
 }
 
 // Reset sets all state information to the original values.
-func (s *state) Reset() {
+func (s *State) Reset() {
 	lc, lp, pb := s.Properties.LC(), s.Properties.LP(), s.Properties.PB()
-	*s = state{
+	*s = State{
 		Properties: s.Properties,
 		dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
@@ -63,15 +63,19 @@ func (s *state) Reset() {
 	s.distCodec.init()
 }
 
-// initState initialized a state variable.
-func initState(s *state, p Properties, dict *dict) {
+// initState initialized a State variable.
+func initState(s *State, p Properties, dict *dict) {
 	s.Properties = p
 	s.dict = dict
 	s.Reset()
 }
 
+func NewState(p Properties, dictsize int64, bufsize int64) {
+	panic("TODO")
+}
+
 // updateStateLiteral updates the state for a literal.
-func (s *state) updateStateLiteral() {
+func (s *State) updateStateLiteral() {
 	switch {
 	case s.state < 4:
 		s.state = 0
@@ -84,7 +88,7 @@ func (s *state) updateStateLiteral() {
 }
 
 // updateStateMatch updates the state for a match.
-func (s *state) updateStateMatch() {
+func (s *State) updateStateMatch() {
 	if s.state < 7 {
 		s.state = 7
 	} else {
@@ -93,7 +97,7 @@ func (s *state) updateStateMatch() {
 }
 
 // updateStateRep updates the state for a repetition.
-func (s *state) updateStateRep() {
+func (s *State) updateStateRep() {
 	if s.state < 7 {
 		s.state = 8
 	} else {
@@ -102,7 +106,7 @@ func (s *state) updateStateRep() {
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (s *state) updateStateShortRep() {
+func (s *State) updateStateShortRep() {
 	if s.state < 7 {
 		s.state = 9
 	} else {
@@ -120,7 +124,7 @@ func dictOffset(d dictionary) int64 {
 }
 
 // states computes the states of the operation codec.
-func (s *state) states() (state1, state2, posState uint32) {
+func (s *State) states() (state1, state2, posState uint32) {
 	state1 = s.state
 	posState = uint32(dictOffset(s.dict)) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
@@ -128,7 +132,7 @@ func (s *state) states() (state1, state2, posState uint32) {
 }
 
 // litState computes the literal state.
-func (s *state) litState() uint32 {
+func (s *State) litState() uint32 {
 	prevByte := s.dict.byteAt(1)
 	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
 	litState := ((uint32(dictOffset(s.dict)) & ((1 << lp) - 1)) << lc) |
