@@ -51,6 +51,7 @@ func TestReadBuffer_Seek(t *testing.T) {
 		{-1, 0, 0, errOffset},
 		{6, 0, 6, nil},
 		{7, 0, 6, errOffset},
+		{5, 3, 6, errWhence},
 	}
 	for _, c := range tests {
 		off, err := r.Seek(c.offset, c.whence)
