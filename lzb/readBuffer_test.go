@@ -1,6 +1,7 @@
 package lzb
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
@@ -108,5 +109,29 @@ func TestReadBuffer_Seek(t *testing.T) {
 			t.Errorf("r.Seek(%d, %d) returned offset %d; want %d",
 				c.offset, c.whence, off, c.off)
 		}
+	}
+}
+
+func TestReadBuffer_Read(t *testing.T) {
+	r := mustNewReadBuffer(10, 10)
+	p := []byte("abcdef")
+	n, err := r.Write(p)
+	if err != nil {
+		t.Fatalf("r.Write(%q) error %s", p, err)
+	}
+	if n != len(p) {
+		t.Fatalf("r.Write(%q) returned %d; want %d", p, n, len(p))
+	}
+	q := make([]byte, 10)
+	n, err = r.Read(q)
+	if err != nil {
+		t.Fatalf("r.Read error %s", err)
+	}
+	if n != len(p) {
+		t.Errorf("r.Read returned %d; want %d", n, len(p))
+	}
+	q = q[:n]
+	if !bytes.Equal(p, q) {
+		t.Errorf("r.Read read %q; want %q", p, q)
 	}
 }
