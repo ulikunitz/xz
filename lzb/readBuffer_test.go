@@ -20,6 +20,51 @@ func TestNewReadBuffer(t *testing.T) {
 	}
 }
 
+func TestNewReadBuffer_errors(t *testing.T) {
+	tests := []struct {
+		capacity, histsize int64
+		bufferNil          bool
+		isError            bool
+		err                error
+	}{
+		{-1, 10, true, true, errCap},
+		{10, 122, true, true, nil},
+	}
+	for _, c := range tests {
+		r, err := newReadBuffer(c.capacity, c.histsize)
+		if c.isError {
+			if err == nil {
+				t.Errorf("newReadBuffer(%d, %d) didn't "+
+					"return an error",
+					c.capacity, c.histsize)
+			}
+			if c.err != nil && err != c.err {
+				t.Errorf("newReadBuffer(%d, %d) returned "+
+					" error %s; want %s",
+					c.capacity, c.histsize, err, c.err)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("newReadBuffer(%d, %d) "+
+					" returned error %s; want nil",
+					c.capacity, c.histsize, err)
+			}
+
+		}
+		if c.bufferNil {
+			if r != nil {
+				t.Error("newReadBuffer returned non-nil " +
+					"buffer; nil buffer expected")
+			}
+		} else {
+			if r == nil {
+				t.Error("newReadBuffer return nil buffer; " +
+					"want nil buffer")
+			}
+		}
+	}
+}
+
 func mustNewReadBuffer(capacity, histsize int64) *readBuffer {
 	b, err := newReadBuffer(capacity, histsize)
 	if err != nil {
