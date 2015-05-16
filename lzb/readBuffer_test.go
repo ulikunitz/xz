@@ -135,3 +135,19 @@ func TestReadBuffer_Read(t *testing.T) {
 		t.Errorf("r.Read read %q; want %q", p, q)
 	}
 }
+
+func TestReadBuffer_WriteByte(t *testing.T) {
+	r := mustNewReadBuffer(10, 10)
+	var err error
+	var c byte
+	for i := 0; i < 10; i++ {
+		c = 'a' + byte(i)
+		if err = r.WriteByte(c); err != nil {
+			t.Fatalf("r.WriteByte('%c') error %s", c, err)
+		}
+	}
+	c++
+	if err = r.WriteByte(c); err == nil {
+		t.Fatalf("r.WriteByte('%c') error %s; want nil", c, err)
+	}
+}
