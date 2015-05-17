@@ -1,9 +1,6 @@
 package lzb
 
-import (
-	"fmt"
-	"io"
-)
+import "fmt"
 
 // states defines the overall State count
 const states = 12
@@ -12,7 +9,7 @@ const states = 12
 const eosDist = 1<<32 - 1
 
 type dictionary interface {
-	io.Seeker
+	seek(offset int64, whence int) (int64, error)
 	byteAt(dist int64) byte
 	buffer() *buffer
 }
@@ -111,7 +108,7 @@ func (s *State) updateStateShortRep() {
 
 // dictOffset returns the current offset of the dictionary
 func dictOffset(d dictionary) int64 {
-	off, err := d.Seek(0, 1)
+	off, err := d.seek(0, 1)
 	if err != nil {
 		panic(fmt.Errorf("d.Seek(0, 1) error %s", err))
 	}

@@ -101,7 +101,7 @@ func TestDict_Seek(t *testing.T) {
 		{9, 0, 8, errOffset},
 	}
 	for _, c := range tests {
-		off, err := d.Seek(c.offset, c.whence)
+		off, err := d.seek(c.offset, c.whence)
 		if err != c.err {
 			t.Errorf("d.Seek(%d, %d) error %s; want %s",
 				c.offset, c.whence, err, c.err)

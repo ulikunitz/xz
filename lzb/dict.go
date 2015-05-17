@@ -33,7 +33,7 @@ func (d *dict) byteAt(dist int64) byte {
 
 var errWhence = errors.New("unsupported whence value")
 
-func (d *dict) Seek(offset int64, whence int) (off int64, err error) {
+func (d *dict) seek(offset int64, whence int) (off int64, err error) {
 	switch whence {
 	case 0:
 		off = offset
