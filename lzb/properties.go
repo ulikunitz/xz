@@ -38,7 +38,7 @@ func (p Properties) LP() int {
 
 // PB returns the number of position bits.
 func (p Properties) PB() int {
-	return int(p) / 45
+	return (int(p) / 45) % 5
 }
 
 // VerifyProperties checks the argument for any errors.
