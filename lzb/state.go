@@ -63,15 +63,10 @@ func (s *State) Reset() {
 	s.distCodec.init()
 }
 
-// initState initialized a State variable.
-func initState(s *State, p Properties, dict *dict) {
-	s.Properties = p
-	s.dict = dict
+func NewState(p Properties, dict dictionary) *State {
+	s := &State{Properties: p, dict: dict}
 	s.Reset()
-}
-
-func NewState(p Properties, dictsize int64, bufsize int64) {
-	panic("TODO")
+	return s
 }
 
 // updateStateLiteral updates the state for a literal.
