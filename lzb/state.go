@@ -5,9 +5,6 @@ import "fmt"
 // states defines the overall State count
 const states = 12
 
-// eosDist represents the end of stream marker
-const eosDist = 1<<32 - 1
-
 type dictionary interface {
 	seek(offset int64, whence int) (int64, error)
 	byteAt(dist int64) byte

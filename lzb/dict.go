@@ -57,3 +57,30 @@ func (d *dict) seek(offset int64, whence int) (off int64, err error) {
 func (d *dict) buffer() *buffer {
 	return d.buf
 }
+
+// syncDict synchronizes buf.top with dict.head.
+type syncDict struct {
+	dict
+}
+
+func newSyncDict(buf *buffer, size int64) (d *syncDict, err error) {
+	var t *dict
+	t, err = newDict(buf, buf.top, size)
+	if err != nil {
+		return nil, err
+	}
+	return &syncDict{dict: *t}, nil
+}
+
+func (d *syncDict) writeRep(dist int64, n int) (written int, err error) {
+	off := d.head - dist
+	written, err = d.buf.writeRepAt(n, off)
+	d.head = d.buf.top
+	return
+}
+
+func (d *syncDict) writeByte(c byte) error {
+	err := d.buf.WriteByte(c)
+	d.head = d.buf.top
+	return err
+}

@@ -201,14 +201,18 @@ func (b *readAtBuffer) Write(p []byte) (n int, err error) {
 
 // ReadAt provides the ReaderAt interface.
 func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
-	if !(b.bottom <= off && off < b.top) {
+	if !(b.bottom <= off && off <= b.top) {
 		return 0, errOffset
 	}
 	end := off + int64(len(p))
 	if end > b.top {
 		end = b.top
 	}
-	return b.writeRangeTo(off, end, &readAtBuffer{p})
+	n, err = b.writeRangeTo(off, end, &readAtBuffer{p})
+	if err == errSpace {
+		err = nil
+	}
+	return
 }
 
 // equalBytes count the equal bytes at off1 and off2 until max is reached.
