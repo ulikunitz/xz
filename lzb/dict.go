@@ -58,6 +58,14 @@ func (d *dict) buffer() *buffer {
 	return d.buf
 }
 
+func (d *dict) start() int64 {
+	start := d.head - d.size
+	if start < d.buf.bottom {
+		start = d.buf.bottom
+	}
+	return start
+}
+
 // syncDict synchronizes buf.top with dict.head.
 type syncDict struct {
 	dict
@@ -83,4 +91,44 @@ func (d *syncDict) writeByte(c byte) error {
 	err := d.buf.WriteByte(c)
 	d.head = d.buf.top
 	return err
+}
+
+type hashDict struct {
+	dict
+	t4 hashTable
+}
+
+func newHashDict(buf *buffer, size int64) (d *hashDict, err error) {
+	t4, err := newHashTable(size, 4)
+	if err != nil {
+		return nil, err
+	}
+	var t *dict
+	t, err = newDict(buf, buf.top, size)
+	if err != nil {
+		return nil, err
+	}
+	return &hashDict{dict: *t, t4: *t4}, nil
+}
+
+// Move moves the head n bytes forward and record the new data in the
+// hash table.
+func (d *hashDict) move(n int) (moved int, err error) {
+	if n < 0 {
+		return 0, errors.New("argument n must be non-negative")
+	}
+	if !(d.buf.bottom <= d.head && d.head <= d.buf.top) {
+		panic("head out of range")
+	}
+	off := d.head + int64(n)
+	if off > d.buf.top {
+		off = d.buf.top
+	}
+	moved, err = d.buf.writeRangeTo(d.head, off, &d.t4)
+	d.head += int64(moved)
+	return
+}
+
+func (d *hashDict) sync() {
+	d.buf.writeLimit = d.start() + int64(d.buf.capacity())
 }

@@ -1,9 +1,9 @@
 package lzb
 
+import "fmt"
+
 // TODO
 //
-// - write hashDict
-// - write syncHashDict (sets WriterLimit)
 // - write seperate OpGenerator type that contains a hashDict
 //     + provide an interface for the OpGenerator (we will have multiple
 //       implementations)
@@ -11,10 +11,17 @@ package lzb
 //     + do only simple greedy at first
 // - write fills buffer until full + compression is started at the very
 //   end
-// - ops that hit buf.top will not be used all others will
+// - ops that hit buf.top will not be used all others will unless all
+//   data must be consumed
+
+type OpFinder interface {
+	findOps(s *State, all bool) ([]operation, error)
+	fmt.Stringer
+}
 
 type Writer struct {
-	State  *State
-	re     *rangeEncoder
-	closed bool
+	State    *State
+	OpFinder OpFinder
+	re       *rangeEncoder
+	closed   bool
 }
