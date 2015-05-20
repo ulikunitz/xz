@@ -7,9 +7,11 @@ import (
 )
 
 // Reader provides a basic LZMA reader. It doesn't support any header
-// but allows a reset keeping the state.
+// but allows a reset keeping the state. EOS will be set, if an
+// end-of-stream marker has been encountered.
 type Reader struct {
 	State  *State
+	EOS    bool
 	rd     *rangeDecoder
 	buf    *buffer
 	head   int64
@@ -17,13 +19,14 @@ type Reader struct {
 	closed bool
 }
 
+// Params represent the parameters for an LZMA Reader or Writer.
 type Params struct {
 	Properties Properties
 	BufferSize int64
 	DictSize   int64
 }
 
-func NewReader(rr io.Reader, params Params) (r *Reader, err error) {
+func NewReader(pr io.Reader, params Params) (r *Reader, err error) {
 	buf, err := newBuffer(params.BufferSize)
 	if err != nil {
 		return nil, err
@@ -33,16 +36,16 @@ func NewReader(rr io.Reader, params Params) (r *Reader, err error) {
 		return nil, err
 	}
 	state := NewState(params.Properties, dict)
-	return NewReaderState(rr, state)
+	return NewReaderState(pr, state)
 }
 
-func NewReaderState(rr io.Reader, state *State) (r *Reader, err error) {
+func NewReaderState(pr io.Reader, state *State) (r *Reader, err error) {
 	if _, ok := state.dict.(*syncDict); !ok {
 		return nil, errors.New(
 			"state must support a reader (no syncDict)")
 	}
 	r = &Reader{State: state, buf: state.dict.buffer()}
-	r.rd, err = newRangeDecoder(rr)
+	r.rd, err = newRangeDecoder(pr)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +175,7 @@ func (r *Reader) readOp() (op operation, err error) {
 			return nil, err
 		}
 		if r.State.rep[0] == eosDist {
+			r.EOS = true
 			if !r.rd.possiblyAtEnd() {
 				return nil, errUnexpectedEOS
 			}
