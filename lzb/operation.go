@@ -20,9 +20,6 @@ type match struct {
 	n int
 }
 
-// eosMatch may mark the end of an LZMA stream.
-var eosMatch = match{distance: maxDistance, n: MinLength}
-
 // Len returns the number of bytes matched.
 func (m match) Len() int {
 	return m.n
