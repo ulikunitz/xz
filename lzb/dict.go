@@ -1,6 +1,8 @@
 package lzb
 
-import "errors"
+import (
+	"errors"
+)
 
 type dict struct {
 	buf  *buffer

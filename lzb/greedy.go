@@ -20,7 +20,7 @@ var errNoMatch = errors.New("no match found")
 
 func bestMatch(d *hashDict, offsets []int64) (m match, err error) {
 	off := int64(-1)
-	length := 0
+	length := 1
 	for i := len(offsets) - 1; i >= 0; i-- {
 		n := d.buf.equalBytes(d.head, offsets[i], MaxLength)
 		if n >= length {

@@ -6,11 +6,6 @@ import (
 	"io"
 )
 
-// TODO
-//
-// - write fills buffer until full + compression is started at the very
-//   end
-
 type OpFinder interface {
 	findOps(s *State, all bool) ([]operation, error)
 	fmt.Stringer
@@ -230,10 +225,9 @@ func (w *Writer) Close() (err error) {
 		return err
 	}
 	if w.EOS {
-		if err = w.writeOp(eosMatch); err != nil {
+		if err = w.writeMatch(eosMatch); err != nil {
 			return err
 		}
-		// w.State.dict.(*hashDict).sync()
 	}
 	if err = w.re.Close(); err != nil {
 		return err
