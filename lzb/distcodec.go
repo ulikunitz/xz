@@ -40,7 +40,7 @@ func (dc *distCodec) init() {
 	dc.alignCodec = makeTreeReverseCodec(alignBits)
 }
 
-// Converts the value l to a supported lenState value.
+// lenState converts the value l to a supported lenState value.
 func lenState(l uint32) uint32 {
 	if l >= lenStates {
 		l = lenStates - 1

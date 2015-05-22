@@ -5,6 +5,8 @@ import (
 	"io"
 )
 
+// greedyFinder is an OpFinder that implements a simple greedy algorithm
+// to finding operations.
 type greedyFinder struct{}
 
 // Greedy provides a greedy operation finder.
@@ -18,6 +20,8 @@ func init() {
 // errNoMatch indicates that no match could be found
 var errNoMatch = errors.New("no match found")
 
+// bestMatch provides the longest match reachable over the list of
+// provided offsets.
 func bestMatch(d *hashDict, offsets []int64) (m match, err error) {
 	off := int64(-1)
 	length := 1
@@ -34,8 +38,11 @@ func bestMatch(d *hashDict, offsets []int64) (m match, err error) {
 	return match{distance: d.head - off, n: length}, nil
 }
 
+// errEmptyBuf indicates an empty buffer.
 var errEmptyBuf = errors.New("empty buffer")
 
+// potentialOffsets returns a list of offset positions where a match to
+// at the current dictionary head can be identified.
 func potentialOffsets(d *hashDict, p []byte) []int64 {
 	start := d.start()
 	offs := make([]int64, 0, 32)
@@ -54,6 +61,7 @@ func potentialOffsets(d *hashDict, p []byte) []int64 {
 	return offs
 }
 
+// finds a single operation at the current head of the hash dictionary.
 func findOp(d *hashDict) (op operation, err error) {
 	p := make([]byte, 4)
 	n, err := d.buf.ReadAt(p, d.head)
@@ -77,6 +85,11 @@ func findOp(d *hashDict) (op operation, err error) {
 	return m, nil
 }
 
+// findOps identifies a sequence of operations starting at the current
+// head of the dictionary stored in s. If all is set the whole data
+// buffer will be covered, if it is not set the last operation reaching
+// the head will not be output. This functionality has been included to
+// support the extension of the last operation if new data comes in.
 func (g greedyFinder) findOps(s *State, all bool) (ops []operation, err error) {
 	sd, ok := s.dict.(*hashDict)
 	if !ok {
@@ -99,4 +112,5 @@ func (g greedyFinder) findOps(s *State, all bool) (ops []operation, err error) {
 	return ops, nil
 }
 
+// String implements the string function for the greedyFinder.
 func (g greedyFinder) String() string { return "greedy finder" }

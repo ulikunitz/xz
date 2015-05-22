@@ -23,7 +23,7 @@ type lengthCodec struct {
 	high   treeCodec
 }
 
-// newLengthCodec() creates and initializes a new length codec.
+// init initializes a new length codec.
 func (lc *lengthCodec) init() {
 	for i := range lc.choice {
 		lc.choice[i] = probInit

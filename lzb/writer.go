@@ -6,6 +6,8 @@ import (
 	"io"
 )
 
+// Interface allowing the support of multiple operation finder
+// algorithms.
 type OpFinder interface {
 	findOps(s *State, all bool) ([]operation, error)
 	fmt.Stringer
@@ -22,6 +24,7 @@ type Writer struct {
 	closed   bool
 }
 
+// NewWriter creates a new writer instance.
 func NewWriter(pw io.Writer, p Params) (w *Writer, err error) {
 	buf, err := newBuffer(p.BufferSize + p.DictSize)
 	if err != nil {
@@ -36,6 +39,7 @@ func NewWriter(pw io.Writer, p Params) (w *Writer, err error) {
 	return NewWriterState(pw, state)
 }
 
+// NewWriterState creates a new writer using an existing state.
 func NewWriterState(pw io.Writer, state *State) (w *Writer, err error) {
 	if _, ok := state.dict.(*hashDict); !ok {
 		return nil, errors.New(
@@ -167,6 +171,8 @@ func (w *Writer) writeOp(op operation) error {
 	return w.discard(op)
 }
 
+// discard processes an operation after it has been written into the
+// compressed LZMA street by moving the dictionary head forward.
 func (w *Writer) discard(op operation) error {
 	k := op.Len()
 	n, err := w.State.dict.(*hashDict).move(k)
@@ -179,6 +185,8 @@ func (w *Writer) discard(op operation) error {
 	return nil
 }
 
+// compress does the actual compression. If all is set all data
+// available will be compressed.
 func (w *Writer) compress(all bool) error {
 	ops, err := w.OpFinder.findOps(w.State, all)
 	if err != nil {
@@ -193,8 +201,10 @@ func (w *Writer) compress(all bool) error {
 	return nil
 }
 
+// errWriterClosed indicates that a writer has been closed once before.
 var errWriterClosed = errors.New("writer is closed")
 
+// Write puts the provided data into the writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
 		return 0, errWriterClosed
@@ -214,6 +224,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return
 }
 
+// This operation will be encoded to indicate that the stream has ended.
 var eosMatch = match{distance: maxDistance, n: MinLength}
 
 func (w *Writer) Close() (err error) {

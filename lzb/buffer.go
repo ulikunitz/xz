@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// buffer provides a circular buffer. The type support the io.Writer
+// buffer provides a circular buffer. The type supports the io.Writer
 // interface and other functions required to implement a dictionary.
 //
 // The top offset tracks the position of the buffer in the byte stream

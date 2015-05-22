@@ -186,7 +186,7 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	return b, nil
 }
 
-// shiftLow() shifts the low value for 8 bit. The shifted byte is written into
+// shiftLow shifts the low value for 8 bit. The shifted byte is written into
 // the byte writer. The cache value is used to handle overflows.
 func (e *rangeEncoder) shiftLow() error {
 	if uint32(e.low) < 0xff000000 || (e.low>>32) != 0 {

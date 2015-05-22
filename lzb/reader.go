@@ -26,6 +26,8 @@ type Params struct {
 	DictSize   int64
 }
 
+// NewReader creates a new reader that allows the reading of a raw LZMA
+// stream from the pr reader.
 func NewReader(pr io.Reader, params Params) (r *Reader, err error) {
 	buf, err := newBuffer(params.BufferSize)
 	if err != nil {
@@ -39,6 +41,8 @@ func NewReader(pr io.Reader, params Params) (r *Reader, err error) {
 	return NewReaderState(pr, state)
 }
 
+// NewReaderState creates a new reader, whereby an existing state is
+// used.
 func NewReaderState(pr io.Reader, state *State) (r *Reader, err error) {
 	if _, ok := state.dict.(*syncDict); !ok {
 		return nil, errors.New(
@@ -55,6 +59,7 @@ func NewReaderState(pr io.Reader, state *State) (r *Reader, err error) {
 	return r, nil
 }
 
+// seek moves the reader head using the classic whence mechanism.
 func (r *Reader) seek(offset int64, whence int) (off int64, err error) {
 	switch whence {
 	case 0:
@@ -77,6 +82,7 @@ func (r *Reader) seek(offset int64, whence int) (off int64, err error) {
 	return off, nil
 }
 
+// readBuffer reads data from the buffer into the p slice.
 func (r *Reader) readBuffer(p []byte) (n int, err error) {
 	n, err = r.buf.ReadAt(p, r.head)
 	if _, serr := r.seek(int64(n), 1); serr != nil {
@@ -85,6 +91,7 @@ func (r *Reader) readBuffer(p []byte) (n int, err error) {
 	return
 }
 
+// Read reads uncompressed data from the raw LZMA data stream.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.eof {
 		return 0, io.EOF
@@ -233,6 +240,7 @@ func (r *Reader) readOp() (op operation, err error) {
 	return op, nil
 }
 
+// fillBuffer fills the buffer with data read from the LZMA stream.
 func (r *Reader) fillBuffer() error {
 	if r.closed {
 		return nil

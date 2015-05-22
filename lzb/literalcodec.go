@@ -111,6 +111,8 @@ const (
 	maxLP = 4
 )
 
+// minState and maxState define a range for the state values stored in
+// the State values.
 const (
 	minState = 0
 	maxState = 11

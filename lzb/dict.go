@@ -4,12 +4,21 @@ import (
 	"errors"
 )
 
+// dict represents a dictionary. A dictionary is described by its size
+// and the buffer storing the actual bytes. Multiple dictionaries
+// at different positions may share the same buffer.
 type dict struct {
-	buf  *buffer
+	buf *buffer
+	// position of the dictionary in the byte stream covered by
+	// buffer
 	head int64
+	// size of the dictionary
 	size int64
 }
 
+// newDict creates a new dictionary. The head must be a valid offset
+// mapping into the buffer. The dictionary size cannot exceed the buffer
+// size.
 func newDict(b *buffer, head int64, size int64) (d *dict, err error) {
 	switch {
 	case size <= 0:
@@ -22,6 +31,9 @@ func newDict(b *buffer, head int64, size int64) (d *dict, err error) {
 	return &dict{buf: b, head: head, size: size}, nil
 }
 
+// Returns the byte at the given distance. The distance must be positive
+// and cannot exceed the size of the dictionary. If the position at the
+// distance is not covered by the backing buffer zero will be returned.
 func (d *dict) byteAt(dist int64) byte {
 	if !(0 < dist && dist <= d.size) {
 		panic("dist out of range")
@@ -33,8 +45,15 @@ func (d *dict) byteAt(dist int64) byte {
 	return d.buf.data[d.buf.index(off)]
 }
 
+// errWhence marks an invalid whence value.
 var errWhence = errors.New("unsupported whence value")
 
+// seek sets the dictionary head to a specific value. The whence value
+// 0 takes the offset as absolute value. The whence value 1 interprets
+// the offset relative to the current position. An offset 0 in that case
+// will cause seek to provide the current head without changing its
+// value. The whence value 2 applies the offset relative to the end of
+// the buffer mapping the byte stream.
 func (d *dict) seek(offset int64, whence int) (off int64, err error) {
 	switch whence {
 	case 0:
@@ -56,10 +75,12 @@ func (d *dict) seek(offset int64, whence int) (off int64, err error) {
 	return
 }
 
+// buffer returns the backing buffer.
 func (d *dict) buffer() *buffer {
 	return d.buf
 }
 
+// start returns the start of the dictionary.
 func (d *dict) start() int64 {
 	start := d.head - d.size
 	if start < d.buf.bottom {
@@ -73,6 +94,7 @@ type syncDict struct {
 	dict
 }
 
+// newSyncDict creates a new synchronized dictionary.
 func newSyncDict(buf *buffer, size int64) (d *syncDict, err error) {
 	var t *dict
 	t, err = newDict(buf, buf.top, size)
@@ -82,6 +104,8 @@ func newSyncDict(buf *buffer, size int64) (d *syncDict, err error) {
 	return &syncDict{dict: *t}, nil
 }
 
+// writeRep writes a repetition to the top of the buffer and keeps the
+// head of the dictionary synchronous with the buffer.
 func (d *syncDict) writeRep(dist int64, n int) (written int, err error) {
 	off := d.head - dist
 	written, err = d.buf.writeRepAt(n, off)
@@ -89,17 +113,23 @@ func (d *syncDict) writeRep(dist int64, n int) (written int, err error) {
 	return
 }
 
+// writeByte writes a single byte to the top of the buffer and keeps the
+// dictionary head equal with the buffer top.
 func (d *syncDict) writeByte(c byte) error {
 	err := d.buf.WriteByte(c)
 	d.head = d.buf.top
 	return err
 }
 
+// hashDict combines the dictionary with a hash table of four-byte
+// sequences of the byte stream covered by the buffer. This type will
+// support the lzb.Writer.
 type hashDict struct {
 	dict
 	t4 hashTable
 }
 
+// newHashDict creates a new hashDict instance.
 func newHashDict(buf *buffer, size int64) (d *hashDict, err error) {
 	t4, err := newHashTable(size, 4)
 	if err != nil {
@@ -113,7 +143,7 @@ func newHashDict(buf *buffer, size int64) (d *hashDict, err error) {
 	return &hashDict{dict: *t, t4: *t4}, nil
 }
 
-// Move moves the head n bytes forward and record the new data in the
+// move advances the head n bytes forward and record the new data in the
 // hash table.
 func (d *hashDict) move(n int) (moved int, err error) {
 	if n < 0 {
@@ -131,6 +161,8 @@ func (d *hashDict) move(n int) (moved int, err error) {
 	return
 }
 
+// sync synchronizes the write limit of the backing buffer with the
+// current dictionary head.
 func (d *hashDict) sync() {
 	d.buf.writeLimit = d.start() + int64(d.buf.capacity())
 }

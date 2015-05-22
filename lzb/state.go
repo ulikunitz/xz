@@ -5,6 +5,8 @@ import "fmt"
 // states defines the overall State count
 const states = 12
 
+// Interface supporting different dictionary implementation.
+// Particularly syncDict and hashDict need to support this interface.
 type dictionary interface {
 	seek(offset int64, whence int) (int64, error)
 	byteAt(dist int64) byte
@@ -57,6 +59,8 @@ func (s *State) Reset() {
 	s.distCodec.init()
 }
 
+// NewState creates a new state using the provided dictionary
+// implementation.
 func NewState(p Properties, dict dictionary) *State {
 	s := &State{Properties: p, dict: dict}
 	s.Reset()
