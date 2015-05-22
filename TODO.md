@@ -15,22 +15,15 @@
 
 # Package xz
 
+- Implement the package using the LZMA2 support provided by LZMA2.
 - Provide user the capability to get uncompressed size before unpacking.
 
 # Subpackage lzma2
 
 ## LZMA2 support
 
-1. Create the package LZMA2 using lzbase
-    - work on the design
-
-2. Create the package LZMA using lzbase
-
-3. Minimize the interface of lzbase.
-    - Work partically on ReaderDict and WriterDict.
-        Both types have a lot functions that might not be required out
-        of lzbase.
-   
+1. Develop the package lzma using lzb.
+2. Develop the package lzma2 using lzb.
 
 ## Optimizations
 
@@ -43,6 +36,12 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-05-22
+
+The package lzb contains now the basic implementation for creating or
+reading LZMA byte streams. It allows the support for the implementation
+of the DAG-shortest-path algorithm for the compression function.
 
 ## 2015-04-23 
 
