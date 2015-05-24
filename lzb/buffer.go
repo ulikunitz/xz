@@ -20,7 +20,7 @@ type buffer struct {
 
 // maxWriteLimit provides the maximum value. Setting the writeLimit to
 // this value disables the writeLimit for all practical purposes.
-const maxWriteLimit = 1<<63 - 1
+const maxLimit = 1<<63 - 1
 
 // Errors returned by buffer methods.
 var (
@@ -51,7 +51,7 @@ func newBuffer(capacity int64) (b *buffer, err error) {
 	if err != nil {
 		return nil, errCap
 	}
-	b = &buffer{data: make([]byte, c), writeLimit: maxWriteLimit}
+	b = &buffer{data: make([]byte, c), writeLimit: maxLimit}
 	return b, nil
 }
 

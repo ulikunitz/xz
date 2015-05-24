@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// Interface allowing the support of multiple operation finder
+// OpFinder enables the support of multiple different OpFinder
 // algorithms.
 type OpFinder interface {
 	findOps(s *State, all bool) ([]operation, error)
@@ -230,6 +230,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 // This operation will be encoded to indicate that the stream has ended.
 var eosMatch = match{distance: maxDistance, n: MinLength}
 
+// Close closes the writer.
 func (w *Writer) Close() (err error) {
 	if w.closed {
 		return errWriterClosed

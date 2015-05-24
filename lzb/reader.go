@@ -15,6 +15,7 @@ type Reader struct {
 	rd     *rangeDecoder
 	buf    *buffer
 	head   int64
+	limit  int64
 	eof    bool
 	closed bool
 }
@@ -34,7 +35,17 @@ func NewReader(pr io.Reader, p Parameters) (r *Reader, err error) {
 		return nil, err
 	}
 	state := NewState(p.Properties(), dict)
-	return NewReaderState(pr, state)
+	r, err = NewReaderState(pr, state)
+	if err != nil {
+		return nil, err
+	}
+	if !p.SizeInHeader {
+		return r, nil
+	}
+	if err = r.setSize(p.Size); err != nil {
+		return nil, err
+	}
+	return
 }
 
 // NewReaderState creates a new reader, whereby an existing state is
@@ -44,7 +55,7 @@ func NewReaderState(pr io.Reader, state *State) (r *Reader, err error) {
 		return nil, errors.New(
 			"state must support a reader (no syncDict)")
 	}
-	r = &Reader{State: state, buf: state.dict.buffer()}
+	r = &Reader{State: state, buf: state.dict.buffer(), limit: maxLimit}
 	r.rd, err = newRangeDecoder(pr)
 	if err != nil {
 		return nil, err
@@ -73,9 +84,30 @@ func (r *Reader) seek(offset int64, whence int) (off int64, err error) {
 	if !(r.buf.bottom <= off && off <= r.buf.top) {
 		return r.head, errOffset
 	}
-	r.head = off
-	r.buf.writeLimit = off + int64(r.buf.capacity())
+	limit := off + int64(r.buf.capacity())
+	if limit > r.limit {
+		limit = r.limit
+	}
+	if limit < r.buf.top {
+		return r.head, errors.New("write limit out of range")
+	}
+	r.head, r.buf.writeLimit = off, limit
 	return off, nil
+}
+
+func (r *Reader) setSize(size int64) error {
+	if size < 0 {
+		return errors.New("size is negative")
+	}
+	limit := r.head + size
+	if limit < r.buf.top {
+		return errors.New("reader limit out of range")
+	}
+	r.limit = limit
+	if r.buf.writeLimit > limit {
+		r.buf.writeLimit = limit
+	}
+	return nil
 }
 
 // readBuffer reads data from the buffer into the p slice.
@@ -242,7 +274,11 @@ func (r *Reader) fillBuffer() error {
 		return nil
 	}
 	d := r.State.dict.(*syncDict)
-	for r.buf.top+MaxLength <= r.buf.writeLimit {
+	delta := int64(0)
+	if r.buf.writeLimit < r.limit {
+		delta = int64(MaxLength)
+	}
+	for r.buf.top+delta <= r.buf.writeLimit {
 		op, err := r.readOp()
 		if err != nil {
 			switch err {
@@ -258,6 +294,18 @@ func (r *Reader) fillBuffer() error {
 		}
 		if err = op.Apply(d); err != nil {
 			return err
+		}
+	}
+	if r.buf.top >= r.limit {
+		if r.buf.top > r.limit {
+			panic("r.limit ignored")
+		}
+		r.closed = true
+		if !r.rd.possiblyAtEnd() {
+			_, err := r.readOp()
+			if err != eos {
+				return err
+			}
 		}
 	}
 	return nil
