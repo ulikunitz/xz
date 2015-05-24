@@ -1,9 +1,8 @@
-package lzma
+package lzb
 
 import (
+	"errors"
 	"io"
-
-	"github.com/uli-go/xz/lzbase"
 )
 
 // Parameters contain all information required to decode or encode an LZMA
@@ -30,8 +29,8 @@ type Parameters struct {
 }
 
 // Properties returns LC, LP and PB as Properties value.
-func (p *Parameters) Properties() lzbase.Properties {
-	props, err := lzbase.NewProperties(p.LC, p.LP, p.PB)
+func (p *Parameters) Properties() Properties {
+	props, err := NewProperties(p.LC, p.LP, p.PB)
 	if err != nil {
 		panic(err)
 	}
@@ -39,61 +38,64 @@ func (p *Parameters) Properties() lzbase.Properties {
 }
 
 // SetProperties sets the LC, LP and PB fields.
-func (p *Parameters) SetProperties(props lzbase.Properties) {
+func (p *Parameters) SetProperties(props Properties) {
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 }
 
-// normalizeSize puts the size on a normalized size. If DictSize and BufferSize
-// are zero, then it is set to the value in Default. If both size values are
-// too small they will set to the minimum size possible. Note that a buffer
-// size less then zero will be ignored and will cause an error by
-// verifyParameters.
+// normalizeSize puts the size on a normalized size. If DictSize or BufferSize
+// are zero, then they values in Default are used. If both size values are
+// too small they will set to the minimum size possible. BufferSize will
+// at least have the same size as the DictSize.
 func normalizeSizes(p *Parameters) {
-	if p.DictSize == 0 {
-		p.DictSize = Default.DictSize
-	}
-	if p.DictSize < lzbase.MinDictSize {
-		p.DictSize = lzbase.MinDictSize
-	}
 	if p.BufferSize == 0 {
 		p.BufferSize = Default.BufferSize
 	}
-	if 0 <= p.BufferSize && p.BufferSize < lzbase.MinLength {
-		p.BufferSize = lzbase.MaxLength
+	if p.BufferSize < MaxLength {
+		p.BufferSize = MaxLength
+	}
+	if p.DictSize == 0 {
+		p.DictSize = Default.DictSize
+	}
+	if p.DictSize < MinDictSize {
+		p.DictSize = MinDictSize
+	}
+	if p.BufferSize < p.DictSize {
+		p.BufferSize = p.DictSize
 	}
 }
 
 // verifyParameters checks parameters for errors.
 func verifyParameters(p *Parameters) error {
 	if p == nil {
-		return newError("parameters must be non-nil")
+		return errors.New("parameters must be non-nil")
 	}
-	if err := lzbase.VerifyProperties(p.LC, p.LP, p.PB); err != nil {
+	if err := VerifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
-	if !(lzbase.MinDictSize <= p.DictSize &&
-		p.DictSize <= lzbase.MaxDictSize) {
-		return newError("DictSize out of range")
+	if !(MinDictSize <= p.DictSize &&
+		p.DictSize <= MaxDictSize) {
+		return errors.New("DictSize out of range")
 	}
 	hlen := int(p.DictSize)
 	if hlen < 0 {
-		return newError("DictSize cannot be converted into int")
+		return errors.New("DictSize cannot be converted into int")
 	}
 	if p.Size < 0 {
-		return newError("length must not be negative")
+		return errors.New("Size must not be negative")
 	}
-	if p.BufferSize <= 0 {
-		return newError("bufferSize must be positive")
+	if p.BufferSize < p.DictSize {
+		return errors.New(
+			"BufferSize must be equal or greater than DictSize")
 	}
 	return nil
 }
 
-// Default defines the parameters used by NewWriter.
+// Default defines standard parameters.
 var Default = Parameters{
 	LC:         3,
 	LP:         0,
 	PB:         2,
-	DictSize:   lzbase.MinDictSize,
+	DictSize:   MinDictSize,
 	BufferSize: 4096,
 }
 
@@ -153,7 +155,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 		return nil, err
 	}
 	p = new(Parameters)
-	props := lzbase.Properties(b[0])
+	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 	p.DictSize = int64(getUint32LE(b[1:]))
 	u := getUint64LE(b[5:])
@@ -164,7 +166,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	} else {
 		p.Size = int64(u)
 		if p.Size < 0 {
-			return nil, newError(
+			return nil, errors.New(
 				"unpack length in header not supported by" +
 					" int64")
 		}
@@ -184,12 +186,15 @@ func writeHeader(w io.Writer, p *Parameters) error {
 	}
 	b := make([]byte, 13)
 	b[0] = byte(p.Properties())
-	if p.DictSize > lzbase.MaxDictSize {
-		return newError("DictSize exceeds maximum value")
+	if p.DictSize > MaxDictSize {
+		return errors.New("DictSize exceeds maximum value")
 	}
 	putUint32LE(b[1:5], uint32(p.DictSize))
 	var l uint64
 	if p.SizeInHeader {
+		if p.Size < 0 {
+			return errors.New("Size is negative")
+		}
 		l = uint64(p.Size)
 	} else {
 		l = noHeaderLen

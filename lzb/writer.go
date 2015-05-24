@@ -25,7 +25,10 @@ type Writer struct {
 }
 
 // NewWriter creates a new writer instance.
-func NewWriter(pw io.Writer, p Params) (w *Writer, err error) {
+func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
+	if err = verifyParameters(&p); err != nil {
+		return
+	}
 	buf, err := newBuffer(p.BufferSize + p.DictSize)
 	if err != nil {
 		return nil, err
@@ -35,7 +38,7 @@ func NewWriter(pw io.Writer, p Params) (w *Writer, err error) {
 		return nil, err
 	}
 	d.sync()
-	state := NewState(p.Properties, d)
+	state := NewState(p.Properties(), d)
 	return NewWriterState(pw, state)
 }
 

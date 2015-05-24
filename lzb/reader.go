@@ -19,25 +19,21 @@ type Reader struct {
 	closed bool
 }
 
-// Params represent the parameters for an LZMA Reader or Writer.
-type Params struct {
-	Properties Properties
-	BufferSize int64
-	DictSize   int64
-}
-
 // NewReader creates a new reader that allows the reading of a raw LZMA
 // stream from the pr reader.
-func NewReader(pr io.Reader, params Params) (r *Reader, err error) {
-	buf, err := newBuffer(params.BufferSize)
+func NewReader(pr io.Reader, p Parameters) (r *Reader, err error) {
+	if err = verifyParameters(&p); err != nil {
+		return
+	}
+	buf, err := newBuffer(p.BufferSize)
 	if err != nil {
 		return nil, err
 	}
-	dict, err := newSyncDict(buf, params.DictSize)
+	dict, err := newSyncDict(buf, p.DictSize)
 	if err != nil {
 		return nil, err
 	}
-	state := NewState(params.Properties, dict)
+	state := NewState(p.Properties(), dict)
 	return NewReaderState(pr, state)
 }
 

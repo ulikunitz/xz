@@ -21,12 +21,10 @@ var testString = `LZMA decoder test example
 `
 
 func TestWriterCycle(t *testing.T) {
-	props, err := NewProperties(2, 0, 2)
-	if err != nil {
-		t.Fatalf("NewProperties(3, 0, 2) error %s", err)
-	}
-	params := Params{
-		Properties: props,
+	params := Parameters{
+		LC:         2,
+		LP:         0,
+		PB:         2,
 		BufferSize: 4096,
 		DictSize:   MinDictSize,
 	}

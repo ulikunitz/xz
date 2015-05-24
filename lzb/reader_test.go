@@ -19,8 +19,8 @@ func TestReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("io.Readfull error %s", err)
 	}
-	params := Params{Properties: Properties(p[0]),
-		DictSize: 0x800000}
+	params := Parameters{DictSize: 0x800000}
+	params.SetProperties(Properties(p[0]))
 	params.BufferSize = params.DictSize
 	r, err := NewReader(f, params)
 	if err != nil {
