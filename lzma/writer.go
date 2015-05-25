@@ -1,9 +1,10 @@
 package lzma
 
 import (
+	"errors"
 	"io"
 
-	"github.com/uli-go/xz/lzbase"
+	"github.com/uli-go/xz/lzb"
 )
 
 // Writer supports the LZMA compression of a file.
@@ -11,7 +12,7 @@ import (
 // Using an arithmetic coder it cannot support flushing. A writer must be
 // closed.
 type Writer struct {
-	lzbase.Writer
+	lzb.Writer
 	params *Parameters
 }
 
@@ -35,7 +36,7 @@ func NewWriter(w io.Writer) (lw *Writer, err error) {
 // flush it.
 func NewWriterP(w io.Writer, p Parameters) (lw *Writer, err error) {
 	if w == nil {
-		return nil, newError("writer argument w is nil")
+		return nil, errors.New("writer argument w is nil")
 	}
 	normalizeSizes(&p)
 	if err = verifyParameters(&p); err != nil {
@@ -47,20 +48,7 @@ func NewWriterP(w io.Writer, p Parameters) (lw *Writer, err error) {
 	if err = writeHeader(w, &p); err != nil {
 		return nil, err
 	}
-	dict, err := lzbase.NewWriterDict(p.DictSize, p.BufferSize)
-	if err != nil {
-		return nil, err
-	}
-	oc := lzbase.NewOpCodec(p.Properties(), dict)
-	lw = new(Writer)
-	if err = lzbase.InitWriter(&lw.Writer, w, oc,
-		lzbase.Parameters{
-			SizeInHeader: p.SizeInHeader,
-			Size:         p.Size,
-			EOS:          p.EOS}); err != nil {
-		return nil, err
-	}
-	return lw, nil
+	panic("TODO")
 }
 
 // Parametes returns a copy of the parameters for the writer.

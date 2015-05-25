@@ -8,19 +8,9 @@ import (
 	"log"
 	"os"
 	"testing"
-
-	"github.com/uli-go/xz/lzbase"
 )
 
 func TestWriterCycle(t *testing.T) {
-	wdebug, err := os.Create("writer.txt")
-	if err != nil {
-		t.Fatalf("OpenFile writer.txt error %s", err)
-	}
-	defer wdebug.Close()
-	lzbase.DebugOn(wdebug)
-	defer lzbase.DebugOff()
-
 	orig := readOrigFile(t)
 	buf := new(bytes.Buffer)
 	w, err := NewWriter(buf)
@@ -42,13 +32,6 @@ func TestWriterCycle(t *testing.T) {
 		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
 			len(orig))
 	}
-	rdebug, err := os.Create("reader.txt")
-	if err != nil {
-		t.Fatalf("OpenFile reader.txt error %s", err)
-	}
-	defer rdebug.Close()
-	lzbase.DebugOn(rdebug)
-	defer lzbase.DebugOff()
 	lr, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
