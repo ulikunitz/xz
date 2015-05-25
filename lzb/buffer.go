@@ -18,7 +18,7 @@ type buffer struct {
 	writeLimit int64
 }
 
-// maxWriteLimit provides the maximum value. Setting the writeLimit to
+// maxLimit provides the maximum value. Setting the writeLimit to
 // this value disables the writeLimit for all practical purposes.
 const maxLimit = 1<<63 - 1
 
@@ -32,8 +32,8 @@ var (
 	errInt64  = errors.New("int64 values not representable as int")
 )
 
-// toInt converts int64 to int. If the number is not representable as
-// int errInt64 is returned.
+// toInt converts an int64 value to an int value. If the number is not
+// representable as int, errInt64 is returned.
 func toInt(n int64) (int, error) {
 	k := int(n)
 	if int64(k) != n {
@@ -220,25 +220,32 @@ func (b *buffer) equalBytes(off1, off2 int64, max int) int {
 	if off1 < b.bottom || off2 < b.bottom || max <= 0 {
 		return 0
 	}
-	n := b.top - off1
-	if n < int64(max) {
-		if n <= 0 {
+	m := int64(max)
+	k := b.top - off1
+	if k < m {
+		if k <= 0 {
 			return 0
 		}
-		max = int(n)
+		m = k
 	}
-	n = b.top - off2
-	if n < int64(max) {
-		if n <= 0 {
+	k = b.top - off2
+	if k < m {
+		if k <= 0 {
 			return 0
 		}
-		max = int(n)
+		m = k
 	}
-	for k := 0; k < max; k++ {
-		i, j := b.index(off1+int64(k)), b.index(off2+int64(k))
+	for k = 0; k < m; k++ {
+		i, j := b.index(off1+k), b.index(off2+k)
 		if b.data[i] != b.data[j] {
-			return k
+			break
 		}
 	}
-	return max
+	return int(k)
+}
+
+func (b *buffer) reset() {
+	b.top = 0
+	b.bottom = 0
+	b.writeLimit = maxLimit
 }

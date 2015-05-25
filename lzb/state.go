@@ -1,16 +1,14 @@
 package lzb
 
-import "fmt"
-
 // states defines the overall State count
 const states = 12
 
 // Interface supporting different dictionary implementation.
 // Particularly syncDict and hashDict need to support this interface.
 type dictionary interface {
-	seek(offset int64, whence int) (int64, error)
+	offset() int64
 	byteAt(dist int64) byte
-	buffer() *buffer
+	reset()
 }
 
 // State maintains the full state of the operation encoding process.
@@ -107,19 +105,10 @@ func (s *State) updateStateShortRep() {
 	}
 }
 
-// dictOffset returns the current offset of the dictionary
-func dictOffset(d dictionary) int64 {
-	off, err := d.seek(0, 1)
-	if err != nil {
-		panic(fmt.Errorf("d.Seek(0, 1) error %s", err))
-	}
-	return off
-}
-
 // states computes the states of the operation codec.
 func (s *State) states() (state1, state2, posState uint32) {
 	state1 = s.state
-	posState = uint32(dictOffset(s.dict)) & s.posBitMask
+	posState = uint32(s.dict.offset()) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
@@ -128,7 +117,7 @@ func (s *State) states() (state1, state2, posState uint32) {
 func (s *State) litState() uint32 {
 	prevByte := s.dict.byteAt(1)
 	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
-	litState := ((uint32(dictOffset(s.dict)) & ((1 << lp) - 1)) << lc) |
+	litState := ((uint32(s.dict.offset()) & ((1 << lp) - 1)) << lc) |
 		(uint32(prevByte) >> (8 - lc))
 	return litState
 }

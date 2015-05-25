@@ -33,7 +33,7 @@ func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	d, err := newHashDict(buf, p.DictSize)
+	d, err := newHashDict(buf, buf.bottom, p.DictSize)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	w = &Writer{
 		state:    state,
 		eos:      !p.SizeInHeader || p.EOS,
-		buf:      state.dict.buffer(),
+		buf:      d.buf,
 		re:       newRangeEncoder(pw),
 		OpFinder: Greedy,
 	}

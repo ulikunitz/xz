@@ -14,7 +14,10 @@ type Reader struct {
 	eof     bool
 }
 
-var errUnexpectedEOS = errors.New("unexpected eos")
+var (
+	errUnexpectedEOS = errors.New("unexpected eos")
+	errWhence        = errors.New("wrong whence value")
+)
 
 // seek moves the reader head using the classic whence mechanism.
 func (r *Reader) seek(offset int64, whence int) (off int64, err error) {

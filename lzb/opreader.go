@@ -15,11 +15,8 @@ type opReader struct {
 }
 
 func newOpReader(r io.Reader, state *State) (or *opReader, err error) {
-	if _, ok := state.dict.(*syncDict); !ok {
-		return nil, errors.New(
-			"state must support a reader (no syncDict)")
-	}
-	or = &opReader{state: state, buf: state.dict.buffer()}
+	sd := state.dict.(*syncDict)
+	or = &opReader{state: state, buf: sd.buf}
 	if or.rd, err = newRangeDecoder(r); err != nil {
 		return nil, err
 	}

@@ -90,6 +90,11 @@ func (s *slot) putEntry(u uint32) {
 	s.b = uint8(b)
 }
 
+// resets puts the slot back into a pristine condition.
+func (s *slot) reset() {
+	s.a, s.b = 0, 0
+}
+
 // hashTable stores the hash table including the rolling hash method.
 type hashTable struct {
 	t []slot
@@ -142,6 +147,17 @@ func newHashTable(historySize int64, n int) (t *hashTable, err error) {
 		hr:   newRoller(n),
 	}
 	return t, nil
+}
+
+// reset puts hashTable back into a pristine condition.
+func (t *hashTable) reset() {
+	n := t.SliceLen()
+	for i := range t.t {
+		t.t[i].reset()
+	}
+	t.hoff = -int64(n)
+	t.wr = newRoller(n)
+	t.hr = newRoller(n)
 }
 
 // SliceLen returns the slice length.

@@ -48,7 +48,7 @@ func (l lit) Len() int {
 
 // Apply writes the literal byte into the dictionary.
 func (l lit) Apply(d *syncDict) error {
-	return d.writeByte(l.b)
+	return d.WriteByte(l.b)
 }
 
 // String returns a string representation for the literal.
