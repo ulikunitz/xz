@@ -33,7 +33,7 @@ func TestReader(t *testing.T) {
 		}
 		buf := &bytes.Buffer{}
 		if _, err = io.Copy(buf, r); err != nil {
-			t.Fatalf("Copy error %s", err)
+			t.Fatalf("[%d] Copy error %s", i, err)
 		}
 		if err = f.Close(); err != nil {
 			t.Fatalf("Close error %s", err)

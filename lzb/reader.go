@@ -6,53 +6,40 @@ import (
 	"io"
 )
 
+var errUnexpectedEOS = errors.New("unexpected eos")
+
 type Reader struct {
 	*opReader
+	eof     bool
+	buf     *buffer
 	head    int64
 	limited bool
 	limit   int64
-	eof     bool
 }
 
-var (
-	errUnexpectedEOS = errors.New("unexpected eos")
-	errWhence        = errors.New("wrong whence value")
-)
-
-// seek moves the reader head using the classic whence mechanism.
-func (r *Reader) seek(offset int64, whence int) (off int64, err error) {
-	switch whence {
-	case 0:
-		off = offset
-	case 1:
-		if offset == 0 {
-			return r.head, nil
-		}
-		off = r.head + offset
-	case 2:
-		off = r.buf.top + offset
-	default:
-		return r.head, errWhence
-	}
+func (r *Reader) move(n int64) (off int64, err error) {
+	off = r.head + n
 	if !(r.buf.bottom <= off && off <= r.buf.top) {
-		return r.head, errOffset
+		return r.head, errors.New("new offset out of range")
 	}
 	limit := off + int64(r.buf.capacity())
 	if r.limited && limit > r.limit {
 		limit = r.limit
 	}
 	if limit < r.buf.top {
-		return r.head, errors.New("write limit out of range")
+		return r.head, errors.New("limit out of range")
 	}
-	r.head, r.buf.writeLimit = off, limit
+	r.head = off
+	r.buf.writeLimit = limit
 	return off, nil
 }
 
 // readBuffer reads data from the buffer into the p slice.
 func (r *Reader) readBuffer(p []byte) (n int, err error) {
 	n, err = r.buf.ReadAt(p, r.head)
-	if _, serr := r.seek(int64(n), 1); serr != nil {
-		panic(fmt.Errorf("r.seek(%d, 1) error %s", int64(n), serr))
+	_, merr := r.move(int64(n))
+	if merr != nil {
+		panic(fmt.Errorf("r.move(%d) error %s", int64(n), merr))
 	}
 	if r.closed && r.head == r.buf.top {
 		r.eof = true
@@ -83,20 +70,33 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		err = r.fillBuffer()
 		if err != nil {
 			if err == eos {
-				if r.limited && r.limit != r.buf.top {
+				if r.limited && r.head != r.limit {
 					return n, errUnexpectedEOS
 				}
 			} else {
 				return n, err
 			}
 		}
-		if r.limited && r.limit == r.buf.top {
+		if r.limited && r.head == r.limit {
 			err = r.opReader.close()
 			if err != nil {
 				return n, err
 			}
 		}
 	}
+}
+
+func (r *Reader) setSize(size int64) error {
+	limit := r.head + size
+	if r.buf.top > limit {
+		return errors.New("limit out of range")
+	}
+	r.limited = true
+	r.limit = limit
+	if _, err := r.move(0); err != nil {
+		panic(err)
+	}
+	return nil
 }
 
 func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
@@ -116,17 +116,15 @@ func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err != nil {
 		return
 	}
-	r = &Reader{opReader: or}
+	r = &Reader{opReader: or, buf: buf, head: buf.bottom}
 	if p.SizeInHeader {
-		r.limited = true
-		r.limit = p.Size
-		if r.limit < 0 {
-			panic("limit negative")
+		if err = r.setSize(p.Size); err != nil {
+			return nil, err
 		}
-	}
-	_, err = r.seek(0, 0)
-	if err != nil {
-		return nil, err
+	} else {
+		if _, err = r.move(0); err != nil {
+			panic(err)
+		}
 	}
 	return r, nil
 }
