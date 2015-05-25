@@ -26,7 +26,7 @@ type Writer struct {
 
 // NewWriter creates a new writer instance.
 func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
-	if err = verifyParameters(&p); err != nil {
+	if err = p.Verify(); err != nil {
 		return
 	}
 	buf, err := newBuffer(p.BufferSize + p.DictSize)

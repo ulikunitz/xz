@@ -100,7 +100,7 @@ func (r *Reader) setSize(size int64) error {
 }
 
 func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
-	if err = verifyParameters(&p); err != nil {
+	if err = p.Verify(); err != nil {
 		return nil, err
 	}
 	buf, err := newBuffer(p.BufferSize)

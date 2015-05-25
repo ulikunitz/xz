@@ -56,13 +56,13 @@ func putUint64LE(b []byte, x uint64) {
 const noHeaderLen uint64 = 1<<64 - 1
 
 // readHeader reads the classic LZMA header.
-func readHeader(r io.Reader) (p *Parameters, err error) {
+func readHeader(r io.Reader) (p *lzb.Parameters, err error) {
 	b := make([]byte, 13)
 	_, err = io.ReadFull(r, b)
 	if err != nil {
 		return nil, err
 	}
-	p = new(Parameters)
+	p = new(lzb.Parameters)
 	props := lzb.Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 	p.DictSize = int64(getUint32LE(b[1:]))
@@ -82,14 +82,14 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 		p.SizeInHeader = true
 	}
 
-	normalizeSizes(p)
+	// TODO: normalizeSizes(p)
 	return p, nil
 }
 
 // writeHeader writes the header for classic LZMA files.
-func writeHeader(w io.Writer, p *Parameters) error {
+func writeHeader(w io.Writer, p *lzb.Parameters) error {
 	var err error
-	if err = verifyParameters(p); err != nil {
+	if err = p.Verify(); err != nil {
 		return err
 	}
 	b := make([]byte, 13)

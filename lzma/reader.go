@@ -9,7 +9,7 @@ import (
 // Reader supports the decoding of data in the classic LZMA format.
 type Reader struct {
 	io.Reader
-	Parameters
+	lzb.Parameters
 }
 
 // NewReader creates a new LZMA reader.
@@ -18,15 +18,10 @@ func NewReader(r io.Reader) (lr *Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = verifyParameters(p); err != nil {
+	if err = p.Verify(); err != nil {
 		return nil, err
 	}
-	lzbParams := lzb.Params{
-		Properties: p.Properties(),
-		DictSize:   p.DictSize,
-		BufferSize: p.BufferSize,
-	}
-	lzbR, err := lzb.NewReader(r, lzbParams)
+	lzbR, err := lzb.NewReader(r, *p)
 	if err != nil {
 		return nil, err
 	}

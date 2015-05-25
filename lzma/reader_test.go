@@ -22,7 +22,7 @@ func TestNewReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
 	}
-	params := l.Parameters()
+	params := l.Parameters
 	if params.LC != 3 {
 		t.Errorf("LC %d; want %d", params.LC, 3)
 	}
