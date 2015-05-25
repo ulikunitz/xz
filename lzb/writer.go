@@ -42,7 +42,7 @@ func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	w = &Writer{
 		state:    state,
 		eos:      !p.SizeInHeader || p.EOS,
-		buf:      d.buf,
+		buf:      buf,
 		re:       newRangeEncoder(pw),
 		OpFinder: Greedy,
 	}
