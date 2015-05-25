@@ -22,10 +22,8 @@
 
 ## LZMA2 support
 
-1. test limit field in reader.go
-2. check size for writer
-3. Develop the package lzma using lzb.
-4. Develop the package lzma2 using lzb.
+1. Develop the package lzma using lzb.
+2. Develop the package lzma2 using lzb.
 
 ## Optimizations
 
