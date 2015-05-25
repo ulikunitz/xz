@@ -183,7 +183,7 @@ func (or *opReader) fillBuffer() error {
 		}
 		or.pendingOp = nil
 	}
-	for or.buf.top <= or.buf.writeLimit {
+	for or.buf.top < or.buf.writeLimit {
 		op, err := or.readOp()
 		if err != nil {
 			switch err {

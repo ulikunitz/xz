@@ -113,13 +113,17 @@ func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err != nil {
 		return
 	}
-	r = &Reader{opReader: or, head: buf.bottom}
+	r = &Reader{opReader: or}
 	if p.SizeInHeader {
 		r.limited = true
-		r.limit = r.head + p.Size
-		if r.limit < r.head {
-			return nil, errors.New("limit out of range")
+		r.limit = p.Size
+		if r.limit < 0 {
+			panic("limit negative")
 		}
+	}
+	_, err = r.seek(0, 0)
+	if err != nil {
+		return nil, err
 	}
 	return r, nil
 }
