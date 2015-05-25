@@ -33,7 +33,6 @@ func TestWriterCycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWriter: error %s", err)
 	}
-	w.EOS = true
 	orig := []byte(testString)
 	n, err := w.Write(orig)
 	if err != nil {
