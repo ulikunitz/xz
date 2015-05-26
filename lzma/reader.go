@@ -6,11 +6,6 @@ import (
 	"github.com/uli-go/xz/lzb"
 )
 
-// Reader supports the decoding of data in the classic LZMA format.
-type Reader struct {
-	io.Reader
-}
-
 // NewReader creates a new LZMA reader.
 func NewReader(r io.Reader) (lr io.Reader, err error) {
 	p, err := readHeader(r)
