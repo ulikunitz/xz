@@ -1,16 +1,13 @@
 package lzma
 
 import (
-	"bufio"
 	"bytes"
-	"io"
 	"io/ioutil"
-	"log"
-	"os"
 	"testing"
 )
 
 func TestWriterCycle(t *testing.T) {
+	t.Skip("TODO")
 	orig := readOrigFile(t)
 	buf := new(bytes.Buffer)
 	w, err := NewWriter(buf)
@@ -50,6 +47,7 @@ func TestWriterCycle(t *testing.T) {
 	}
 }
 
+/* TODO
 // The example uses the buffered reader and writer from package bufio.
 func Example_writer() {
 	pr, pw := io.Pipe()
@@ -82,3 +80,4 @@ func Example_writer() {
 	// Output:
 	// The quick brown fox jumps over the lazy dog.
 }
+*/
