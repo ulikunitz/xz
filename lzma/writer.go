@@ -41,5 +41,8 @@ func NewWriterP(w io.Writer, p Parameters) (lw io.WriteCloser, err error) {
 		return nil, err
 	}
 	lw, err = lzb.NewWriter(w, q)
+	if q.SizeInHeader {
+		lw = &lzb.LimitedWriteCloser{W: lw, N: q.Size}
+	}
 	return
 }
