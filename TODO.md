@@ -2,10 +2,15 @@
 
 # Release v0.3
 
-1. Working LZMA2 implementation
-2. Support by lzmago tool
-3. Improve documentation
-4. Create Release Notes as markdown file.
+1. Working xz implementation
+2. Support by xzgo tool
+3. Check all external packages for license terms
+4. Include all foreign licenses in the xzgo tool. Use go generate for
+   this.
+5. Add Copyright to all source code files including the markdown files.
+   Write a go tool to do it and publish it.
+5. Improve documentation
+6. Create Release Notes as markdown file.
 
 # Release 1.0
 
@@ -36,6 +41,14 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-05-26
+
+Checked the license of ogier/pflag. The binary lzmago binary should
+include the license terms for the pflag library.
+
+I added the endorsement clause as used by Google for the Go sources the
+LICENSE file.
 
 ## 2015-05-22
 
