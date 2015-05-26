@@ -13,25 +13,14 @@ import (
 )
 
 func TestNewReader(t *testing.T) {
-	t.Skip("TODO")
 	f, err := os.Open("examples/a.lzma")
 	if err != nil {
 		t.Fatalf("open examples/a.lzma: %s", err)
 	}
 	defer f.Close()
-	l, err := NewReader(bufio.NewReader(f))
+	_, err = NewReader(bufio.NewReader(f))
 	if err != nil {
 		t.Fatalf("NewReader: %s", err)
-	}
-	params := l.Parameters
-	if params.LC != 3 {
-		t.Errorf("LC %d; want %d", params.LC, 3)
-	}
-	if params.LP != 0 {
-		t.Errorf("LP %d; want %d", params.LP, 0)
-	}
-	if params.PB != 2 {
-		t.Errorf("PB %d; want %d", params.PB, 2)
 	}
 }
 
@@ -79,7 +68,6 @@ func testDecodeFile(t *testing.T, filename string, orig []byte) {
 }
 
 func TestReaderSimple(t *testing.T) {
-	t.Skip("TODO")
 	// DebugOn(os.Stderr)
 	// defer DebugOff()
 
@@ -87,7 +75,6 @@ func TestReaderSimple(t *testing.T) {
 }
 
 func TestReaderAll(t *testing.T) {
-	t.Skip("TODO")
 	dirname := "examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
@@ -121,7 +108,6 @@ func TestReaderAll(t *testing.T) {
 	}
 }
 
-/* TODO
 //
 func Example_reader() {
 	f, err := os.Open("fox.lzma")
@@ -143,7 +129,6 @@ func Example_reader() {
 	// Output:
 	// The quick brown fox jumps over the lazy dog.
 }
-*/
 
 type wrapTest struct {
 	name string
@@ -181,7 +166,6 @@ func (w *wrapTest) testFile(t *testing.T, filename string, orig []byte) {
 }
 
 func TestReaderWrap(t *testing.T) {
-	t.Skip("TODO")
 	tests := [...]wrapTest{
 		{"DataErrReader", iotest.DataErrReader},
 		{"HalfReader", iotest.HalfReader},
@@ -195,7 +179,6 @@ func TestReaderWrap(t *testing.T) {
 }
 
 func TestReaderBadFiles(t *testing.T) {
-	t.Skip("TODO")
 	dirname := "examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
