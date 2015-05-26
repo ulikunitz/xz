@@ -25,10 +25,9 @@ func newOpReader(r io.Reader, state *State) (or *opReader, err error) {
 
 // Errors produced by readOp and fillBuffer
 var (
-	eos              = errors.New("end of stream")
-	errClosed        = errors.New("stream is closed")
-	errDataAfterEOS  = errors.New("data after end of stream")
-	errUnexpectedEOF = errors.New("unexpected end of compressed stream")
+	eos             = errors.New("end of stream")
+	errClosed       = errors.New("stream is closed")
+	errDataAfterEOS = errors.New("data after end of stream")
 )
 
 // decodeLiteral reads a literal.
@@ -192,7 +191,7 @@ func (or *opReader) fillBuffer() error {
 				return eos
 			case io.EOF:
 				or.closed = true
-				return errUnexpectedEOF
+				return io.ErrUnexpectedEOF
 			default:
 				return err
 			}
