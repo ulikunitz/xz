@@ -34,7 +34,7 @@ func (lw *LimitedWriteCloser) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (lw *LimitedWriteCloser) Close(p []byte) error {
+func (lw *LimitedWriteCloser) Close() error {
 	if lw.Closed {
 		return errClosed
 	}
