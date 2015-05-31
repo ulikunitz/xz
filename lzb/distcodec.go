@@ -27,6 +27,19 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
+func distBits(dist uint32) int {
+	if dist < startPosModel {
+		return 6
+	}
+	// slot s > 3, dist d
+	// s = 2(bits(d)-1) + bit(d, bits(d)-2)
+	// s>>1 = bits(d)-1
+	// bits(d) = 32-nlz32(d)
+	// s>>1=31-nlz32(d)
+	// n = 5 + (s>>1) = 36 - nlz32(d)
+	return 36 - NLZ32(dist)
+}
+
 // newDistCodec creates a new distance codec.
 func (dc *distCodec) init() {
 	for i := range dc.posSlotCodecs {

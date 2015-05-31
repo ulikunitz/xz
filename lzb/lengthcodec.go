@@ -37,6 +37,17 @@ func (lc *lengthCodec) init() {
 	lc.high = makeTreeCodec(8)
 }
 
+func lBits(l uint32) int {
+	switch {
+	case l < 8:
+		return 4
+	case l < 16:
+		return 5
+	default:
+		return 10
+	}
+}
+
 // Encode encodes the length offset. The length offset l can be compute by
 // subtracting MinLength (2) from the actual length.
 //

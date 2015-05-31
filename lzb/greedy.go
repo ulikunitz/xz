@@ -17,25 +17,48 @@ func init() {
 	Greedy = greedyFinder{}
 }
 
+type miniState struct {
+	d hashDict
+	r reps
+}
+
+func (ms *miniState) applyOp(op operation) {
+	if _, err := ms.d.move(op.Len()); err != nil {
+		panic(err)
+	}
+	ms.r.addOp(op)
+}
+
 // errNoMatch indicates that no match could be found
 var errNoMatch = errors.New("no match found")
 
+func weight(n, bits int) int {
+	return (n << 20) / bits
+}
+
 // bestMatch provides the longest match reachable over the list of
 // provided offsets.
-func bestMatch(d *hashDict, offsets []int64) (m match, err error) {
-	off := int64(-1)
-	length := 1
-	for i := len(offsets) - 1; i >= 0; i-- {
-		n := d.buf.equalBytes(d.head, offsets[i], MaxLength)
-		if n >= length {
-			off, length = offsets[i], n
+func bestOp(ms *miniState, litop lit, offsets []int64) operation {
+	op := operation(litop)
+	w := weight(1, ms.r.opBits(op))
+	prev := ms.d.head - 1
+	for _, off := range offsets {
+		n := ms.d.buf.equalBytes(ms.d.head, off, MaxLength)
+		if n == 0 {
+			continue
+		}
+		dist := uint32(prev - off)
+		if n == 1 && dist != ms.r[0] {
+			continue
+		}
+		m := match{distance: int64(dist) + 1, n: n}
+		v := weight(m.n, ms.r.opBits(m))
+		if v > w {
+			w = v
+			op = m
 		}
 	}
-	if off < 0 || length == 1 {
-		err = errNoMatch
-		return
-	}
-	return match{distance: d.head - off, n: length}, nil
+	return op
 }
 
 // errEmptyBuf indicates an empty buffer.
@@ -43,28 +66,35 @@ var errEmptyBuf = errors.New("empty buffer")
 
 // potentialOffsets returns a list of offset positions where a match to
 // at the current dictionary head can be identified.
-func potentialOffsets(d *hashDict, p []byte) []int64 {
-	start := d.start()
+func potentialOffsets(ms *miniState, p []byte) []int64 {
+	prev, start := ms.d.head-1, ms.d.start()
 	offs := make([]int64, 0, 32)
-	// add potential offsets with highest priority at the top
-	for i := 1; i < 11; i++ {
-		// distance 1 to 10
-		off := d.head - int64(i)
-		if start <= off {
+	var off int64
+	// add repititions
+	for _, dist := range ms.r {
+		off = prev - int64(dist)
+		if off >= start {
 			offs = append(offs, off)
 		}
 	}
+	off = prev - 9
+	if off < start {
+		off = start
+	}
+	for ; off <= prev; off++ {
+		offs = append(offs, off)
+	}
 	if len(p) == 4 {
 		// distances from the hash table
-		offs = append(offs, d.t4.Offsets(p)...)
+		offs = append(offs, ms.d.t4.Offsets(p)...)
 	}
 	return offs
 }
 
 // finds a single operation at the current head of the hash dictionary.
-func findOp(d *hashDict) (op operation, err error) {
+func findOp(ms *miniState) (op operation, err error) {
 	p := make([]byte, 4)
-	n, err := d.buf.ReadAt(p, d.head)
+	n, err := ms.d.buf.ReadAt(p, ms.d.head)
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
@@ -74,15 +104,9 @@ func findOp(d *hashDict) (op operation, err error) {
 		}
 		return nil, errEmptyBuf
 	}
-	offs := potentialOffsets(d, p[:n])
-	m, err := bestMatch(d, offs)
-	if err == errNoMatch {
-		return lit{b: p[0]}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	offs := potentialOffsets(ms, p[:n])
+	op = bestOp(ms, lit{p[0]}, offs)
+	return op, nil
 }
 
 // findOps identifies a sequence of operations starting at the current
@@ -95,15 +119,13 @@ func (g greedyFinder) findOps(s *State, all bool) (ops []operation, err error) {
 	if !ok {
 		panic("state doesn't contain hashDict")
 	}
-	d := *sd
-	for d.head < d.buf.top {
-		op, err := findOp(&d)
+	ms := miniState{d: *sd, r: reps(s.rep)}
+	for ms.d.head < ms.d.buf.top {
+		op, err := findOp(&ms)
 		if err != nil {
 			return nil, err
 		}
-		if _, err = d.move(op.Len()); err != nil {
-			return nil, err
-		}
+		ms.applyOp(op)
 		ops = append(ops, op)
 	}
 	if !all && len(ops) > 0 {

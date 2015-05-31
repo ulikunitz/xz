@@ -94,6 +94,6 @@ var Default = Parameters{
 	LC:         3,
 	LP:         0,
 	PB:         2,
-	DictSize:   MinDictSize,
-	BufferSize: 4096,
+	DictSize:   8 * 1024 * 1024,
+	BufferSize: 8192,
 }

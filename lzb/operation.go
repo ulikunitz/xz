@@ -1,6 +1,7 @@
 package lzb
 
 import (
+	"errors"
 	"fmt"
 	"unicode"
 )
@@ -18,6 +19,29 @@ type match struct {
 	distance int64
 	// length
 	n int
+}
+
+var (
+	errDistRange = errors.New("distance out of range")
+	errLenRange  = errors.New("length out of range")
+)
+
+func (m match) verify() error {
+	if !(minDistance <= m.distance && m.distance <= maxDistance) {
+		return errDistRange
+	}
+	if !(1 <= m.n && m.n <= MaxLength) {
+		return errLenRange
+	}
+	return nil
+}
+
+func (m match) l() uint32 {
+	return uint32(m.n - MinLength)
+}
+
+func (m match) dist() uint32 {
+	return uint32(m.distance - minDistance)
 }
 
 // Len returns the number of bytes matched.

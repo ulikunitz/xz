@@ -79,19 +79,19 @@ func iverson(ok bool) uint32 {
 func (w *Writer) writeMatch(m match) error {
 	var err error
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		return errors.New("distance out of range")
+		panic(errDistRange)
 	}
 	dist := uint32(m.distance - minDistance)
 	if !(MinLength <= m.n && m.n <= MaxLength) &&
 		!(dist == w.state.rep[0] && m.n == 1) {
-		return errors.New("length out of range")
+		panic(errLenRange)
 	}
 	state, state2, posState := w.state.states()
 	if err = w.state.isMatch[state2].Encode(w.re, 1); err != nil {
 		return err
 	}
-	var g int
-	for g = 0; g < 4; g++ {
+	g := 0
+	for ; g < 4; g++ {
 		if w.state.rep[g] == dist {
 			break
 		}
@@ -103,8 +103,8 @@ func (w *Writer) writeMatch(m match) error {
 	n := uint32(m.n - MinLength)
 	if b == 0 {
 		// simple match
-		w.state.rep[3], w.state.rep[2], w.state.rep[1], w.state.rep[0] = w.state.rep[2],
-			w.state.rep[1], w.state.rep[0], dist
+		w.state.rep[3], w.state.rep[2], w.state.rep[1], w.state.rep[0] =
+			w.state.rep[2], w.state.rep[1], w.state.rep[0], dist
 		w.state.updateStateMatch()
 		if err = w.state.lenCodec.Encode(w.re, n, posState); err != nil {
 			return err
@@ -163,7 +163,8 @@ func (w *Writer) writeOp(op operation) error {
 	if err != nil {
 		return err
 	}
-	return w.discard(op)
+	err = w.discard(op)
+	return err
 }
 
 // discard processes an operation after it has been written into the
@@ -185,7 +186,7 @@ func (w *Writer) discard(op operation) error {
 func (w *Writer) compress(all bool) error {
 	ops, err := w.OpFinder.findOps(w.state, all)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	for _, op := range ops {
 		if err = w.writeOp(op); err != nil {
