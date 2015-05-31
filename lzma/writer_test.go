@@ -6,8 +6,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/uli-go/xz/rndtxt"
 )
 
 func TestWriterCycle(t *testing.T) {
@@ -47,6 +50,54 @@ func TestWriterCycle(t *testing.T) {
 	}
 	if !bytes.Equal(orig, decoded) {
 		t.Fatalf("decoded file differs from original")
+	}
+}
+
+func TestWriterLongData(t *testing.T) {
+	const (
+		seed = 49
+		size = 82237
+	)
+	r := io.LimitReader(rndtxt.NewReader(rand.NewSource(seed)), size)
+	txt, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s", err)
+	}
+	if len(txt) != size {
+		t.Fatalf("ReadAll read %d bytes; want %d", len(txt), size)
+	}
+	buf := &bytes.Buffer{}
+	params := Default
+	params.DictSize = 0x4000
+	w, err := NewWriterP(buf, params)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	n, err := w.Write(txt)
+	if err != nil {
+		t.Fatalf("w.Write error %s", err)
+	}
+	if n != len(txt) {
+		t.Fatalf("w.Write wrote %d bytes; want %d", n, size)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	t.Logf("compressed length %d", buf.Len())
+	lr, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	txtRead, err := ioutil.ReadAll(lr)
+	if err != nil {
+		t.Fatalf("ReadAll(lr) error %s", err)
+	}
+	if len(txtRead) != size {
+		t.Fatalf("ReadAll(lr) returned %d bytes; want %d",
+			len(txtRead), size)
+	}
+	if !bytes.Equal(txtRead, txt) {
+		t.Fatal("ReadAll(lr) returned txt differs from origin")
 	}
 }
 
