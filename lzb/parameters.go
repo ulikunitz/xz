@@ -7,7 +7,8 @@ import (
 // Parameters contain all information required to decode or encode an LZMA
 // stream.
 //
-// The DictSize will be limited by MaxInt32 on 32-bit platforms.
+// The sum of DictSize and ExtraBufSize must be less or equal MaxInt32 on
+// 32-bit platforms.
 type Parameters struct {
 	// number of literal context bits
 	LC int
@@ -23,8 +24,8 @@ type Parameters struct {
 	SizeInHeader bool
 	// end-of-stream marker requested
 	EOS bool
-	// buffer size
-	BufferSize int64
+	// additional buffer size on top of dictionary size
+	ExtraBufSize int64
 }
 
 // Properties returns LC, LP and PB as Properties value.
@@ -41,26 +42,35 @@ func (p *Parameters) SetProperties(props Properties) {
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 }
 
-// NormalizeSize sets the sizes to normal values. If DictSize or BufferSize
-// are zero, then they values in Default are used. If both size values are
-// too small they will set to the minimum size possible. BufferSize will
-// at least have the same size as the DictSize.
-func (p *Parameters) NormalizeSizes() {
-	if p.BufferSize == 0 {
-		p.BufferSize = Default.BufferSize
-	}
-	if p.BufferSize < MaxLength {
-		p.BufferSize = MaxLength
-	}
+func (p *Parameters) normalizeDictSize() {
 	if p.DictSize == 0 {
 		p.DictSize = Default.DictSize
 	}
 	if p.DictSize < MinDictSize {
 		p.DictSize = MinDictSize
 	}
-	if p.BufferSize < p.DictSize {
-		p.BufferSize = p.DictSize
+}
+
+func (p *Parameters) normalizeReaderExtraBufSize() {
+	if p.ExtraBufSize < 0 {
+		p.ExtraBufSize = 0
 	}
+}
+
+func (p *Parameters) normalizeWriterExtraBufSize() {
+	if p.ExtraBufSize <= 0 {
+		p.ExtraBufSize = 4096
+	}
+}
+
+func (p *Parameters) NormalizeReaderSizes() {
+	p.normalizeDictSize()
+	p.normalizeReaderExtraBufSize()
+}
+
+func (p *Parameters) NormalizeWriterSizes() {
+	p.normalizeDictSize()
+	p.normalizeWriterExtraBufSize()
 }
 
 // Verify checks parameters for errors.
@@ -71,29 +81,32 @@ func (p *Parameters) Verify() error {
 	if err := VerifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
-	if !(MinDictSize <= p.DictSize &&
-		p.DictSize <= MaxDictSize) {
+	if !(MinDictSize <= p.DictSize && p.DictSize <= MaxDictSize) {
 		return errors.New("DictSize out of range")
 	}
-	hlen := int(p.DictSize)
-	if hlen < 0 {
-		return errors.New("DictSize cannot be converted into int")
+	if p.DictSize != int64(int(p.DictSize)) {
+		return errors.New("DictSize too large for int")
 	}
 	if p.Size < 0 {
 		return errors.New("Size must not be negative")
 	}
-	if p.BufferSize < p.DictSize {
-		return errors.New(
-			"BufferSize must be equal or greater than DictSize")
+	if p.ExtraBufSize < 0 {
+		return errors.New("ExtraBufSize must not be negative")
+	}
+	bufSize := p.DictSize + p.ExtraBufSize
+	if bufSize != int64(int(bufSize)) {
+		return errors.New("buffer size too large for int")
 	}
 	return nil
 }
 
 // Default defines standard parameters.
+//
+// Use normalizeWriterExtraBufSize to set extra buf size to a reasonable
+// value.
 var Default = Parameters{
-	LC:         3,
-	LP:         0,
-	PB:         2,
-	DictSize:   8 * 1024 * 1024,
-	BufferSize: 8192,
+	LC:       3,
+	LP:       0,
+	PB:       2,
+	DictSize: 8 * 1024 * 1024,
 }

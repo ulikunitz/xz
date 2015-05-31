@@ -103,7 +103,7 @@ func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err
 	}
-	buf, err := newBuffer(p.BufferSize)
+	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
 	if err != nil {
 		return
 	}

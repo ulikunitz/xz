@@ -22,12 +22,12 @@ var testString = `LZMA decoder test example
 
 func TestWriterCycle(t *testing.T) {
 	params := Parameters{
-		LC:         2,
-		LP:         0,
-		PB:         2,
-		BufferSize: 4096,
-		DictSize:   MinDictSize,
+		LC:       2,
+		LP:       0,
+		PB:       2,
+		DictSize: MinDictSize,
 	}
+	params.NormalizeWriterSizes()
 	buf := new(bytes.Buffer)
 	w, err := NewWriter(buf, params)
 	if err != nil {
@@ -49,6 +49,7 @@ func TestWriterCycle(t *testing.T) {
 		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
 			len(orig))
 	}
+	params.ExtraBufSize = 0
 	r, err := NewReader(buf, params)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)

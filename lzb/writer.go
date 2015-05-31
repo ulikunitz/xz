@@ -29,7 +29,7 @@ func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return
 	}
-	buf, err := newBuffer(p.BufferSize + p.DictSize)
+	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
 	if err != nil {
 		return nil, err
 	}

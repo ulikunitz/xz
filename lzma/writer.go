@@ -30,7 +30,7 @@ func NewWriterP(w io.Writer, p Parameters) (lw io.WriteCloser, err error) {
 		return nil, errors.New("writer argument w is nil")
 	}
 	q := lzbParameters(&p)
-	q.NormalizeSizes()
+	q.NormalizeWriterSizes()
 	if err = q.Verify(); err != nil {
 		return nil, err
 	}

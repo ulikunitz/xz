@@ -12,10 +12,7 @@ func NewReader(r io.Reader) (lr io.Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
-	p.NormalizeSizes()
-	if err = p.Verify(); err != nil {
-		return nil, err
-	}
+	p.NormalizeReaderSizes()
 	lr, err = lzb.NewReader(r, *p)
 	return
 }

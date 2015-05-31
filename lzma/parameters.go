@@ -22,17 +22,16 @@ type Parameters struct {
 	SizeInHeader bool
 	// end-of-stream marker requested
 	EOS bool
-	// buffer size
-	BufferSize int64
+	// extra buffer size on top of dictionary size
+	ExtraBufSize int64
 }
 
 // Default defines standard parameters.
 var Default = Parameters{
-	LC:         3,
-	LP:         0,
-	PB:         2,
-	DictSize:   8 * 1024 * 1024,
-	BufferSize: 4096,
+	LC:       3,
+	LP:       0,
+	PB:       2,
+	DictSize: 8 * 1024 * 1024,
 }
 
 // lzbParamertes converts Parameters in the identical lzb.Parameters.
@@ -45,6 +44,6 @@ func lzbParameters(p *Parameters) lzb.Parameters {
 		Size:         p.Size,
 		SizeInHeader: p.SizeInHeader,
 		EOS:          p.EOS,
-		BufferSize:   p.BufferSize,
+		ExtraBufSize: p.ExtraBufSize,
 	}
 }

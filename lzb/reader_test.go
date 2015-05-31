@@ -22,7 +22,6 @@ func TestReader(t *testing.T) {
 		}
 		params := Parameters{DictSize: 0x800000}
 		params.SetProperties(Properties(p[0]))
-		params.BufferSize = params.DictSize
 		if i == 1 {
 			params.SizeInHeader = true
 			params.Size = int64(len(want))
