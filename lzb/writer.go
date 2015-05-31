@@ -9,7 +9,7 @@ import (
 // OpFinder enables the support of multiple different OpFinder
 // algorithms.
 type OpFinder interface {
-	findOps(s *State, all bool) ([]operation, error)
+	findOps(s *State, all bool) []operation
 	fmt.Stringer
 }
 
@@ -184,12 +184,9 @@ func (w *Writer) discard(op operation) error {
 // compress does the actual compression. If all is set all data
 // available will be compressed.
 func (w *Writer) compress(all bool) error {
-	ops, err := w.OpFinder.findOps(w.state, all)
-	if err != nil {
-		panic(err)
-	}
+	ops := w.OpFinder.findOps(w.state, all)
 	for _, op := range ops {
-		if err = w.writeOp(op); err != nil {
+		if err := w.writeOp(op); err != nil {
 			return err
 		}
 	}

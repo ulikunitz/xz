@@ -92,21 +92,21 @@ func potentialOffsets(ms *miniState, p []byte) []int64 {
 }
 
 // finds a single operation at the current head of the hash dictionary.
-func findOp(ms *miniState) (op operation, err error) {
+func findOp(ms *miniState) operation {
 	p := make([]byte, 4)
 	n, err := ms.d.buf.ReadAt(p, ms.d.head)
 	if err != nil && err != io.EOF {
-		return nil, err
+		panic(err)
 	}
 	if n <= 0 {
 		if n < 0 {
 			panic("ReadAt returned negative n")
 		}
-		return nil, errEmptyBuf
+		panic(errEmptyBuf)
 	}
 	offs := potentialOffsets(ms, p[:n])
-	op = bestOp(ms, lit{p[0]}, offs)
-	return op, nil
+	op := bestOp(ms, lit{p[0]}, offs)
+	return op
 }
 
 // findOps identifies a sequence of operations starting at the current
@@ -114,24 +114,22 @@ func findOp(ms *miniState) (op operation, err error) {
 // buffer will be covered, if it is not set the last operation reaching
 // the head will not be output. This functionality has been included to
 // support the extension of the last operation if new data comes in.
-func (g greedyFinder) findOps(s *State, all bool) (ops []operation, err error) {
+func (g greedyFinder) findOps(s *State, all bool) []operation {
 	sd, ok := s.dict.(*hashDict)
 	if !ok {
 		panic("state doesn't contain hashDict")
 	}
 	ms := miniState{d: *sd, r: reps(s.rep)}
+	ops := make([]operation, 0, 256)
 	for ms.d.head < ms.d.buf.top {
-		op, err := findOp(&ms)
-		if err != nil {
-			return nil, err
-		}
+		op := findOp(&ms)
 		ms.applyOp(op)
 		ops = append(ops, op)
 	}
 	if !all && len(ops) > 0 {
 		ops = ops[:len(ops)-1]
 	}
-	return ops, nil
+	return ops
 }
 
 // String implements the string function for the greedyFinder.
