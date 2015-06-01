@@ -38,6 +38,9 @@
 ## LZMA2 support
 
 1. Support Size parameter by Writer. (No Interface implementation.)
+    - add field limited and n of the remaining data to Writer
+    - modify write and close to support those fields using
+      limitedWriteCloser as example
 2. Develop the package lzma2 using lzma streams.
 
 ## Optimizations
