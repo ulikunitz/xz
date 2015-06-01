@@ -16,9 +16,10 @@ type OpFinder interface {
 // Writer produces an LZMA stream. EOS requests Close to write an
 // end-of-stream marker.
 type Writer struct {
+	OpFinder OpFinder
+	Params   Parameters
 	state    *State
 	eos      bool
-	OpFinder OpFinder
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
@@ -40,11 +41,12 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	d.sync()
 	state := NewState(p.Properties(), d)
 	w = &Writer{
+		Params:   p,
+		OpFinder: Greedy,
 		state:    state,
 		eos:      !p.SizeInHeader || p.EOS,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
-		OpFinder: Greedy,
 	}
 	return w, nil
 }
