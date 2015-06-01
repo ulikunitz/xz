@@ -9,12 +9,14 @@ import (
 var errUnexpectedEOS = errors.New("unexpected eos")
 
 type Reader struct {
+	Params Parameters
 	*opReader
 	eof     bool
 	buf     *buffer
 	head    int64
 	limited bool
-	limit   int64
+	// limit marks the expected size of the decompressed byte stream
+	limit int64
 }
 
 func (r *Reader) move(n int64) (off int64, err error) {
@@ -88,7 +90,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 func (r *Reader) setSize(size int64) error {
 	limit := r.head + size
-	if r.buf.top > limit {
+	if limit < r.buf.top {
 		return errors.New("limit out of range")
 	}
 	r.limited = true
@@ -116,7 +118,7 @@ func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err != nil {
 		return
 	}
-	r = &Reader{opReader: or, buf: buf, head: buf.bottom}
+	r = &Reader{Params: p, opReader: or, buf: buf, head: buf.bottom}
 	if p.SizeInHeader {
 		if err = r.setSize(p.Size); err != nil {
 			return nil, err
