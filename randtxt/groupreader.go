@@ -6,6 +6,8 @@ import (
 	"unicode"
 )
 
+// GroupReader groups the incoming text in groups of 5, whereby the
+// number of groups per line can be controlled.
 type GroupReader struct {
 	R             io.ByteReader
 	GroupsPerLine int
@@ -13,18 +15,23 @@ type GroupReader struct {
 	eof           bool
 }
 
+// NewGroupReader creates a new group reader.
 func NewGroupReader(r io.Reader) *GroupReader {
 	return &GroupReader{R: bufio.NewReader(r)}
 }
 
+// Read formats the data provided by the internal reader in groups of 5
+// characters. If GroupsPerLine hasn't been set 8 groups per line will
+// be produced.
 func (r *GroupReader) Read(p []byte) (n int, err error) {
 	if r.eof {
 		return 0, io.EOF
 	}
-	if r.GroupsPerLine < 1 {
-		r.GroupsPerLine = 8
+	groupsPerLine := r.GroupsPerLine
+	if groupsPerLine < 1 {
+		groupsPerLine = 8
 	}
-	lineLen := int64(r.GroupsPerLine * 6)
+	lineLen := int64(groupsPerLine * 6)
 	var c byte
 	for i := range p {
 		switch {
