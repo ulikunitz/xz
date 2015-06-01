@@ -2,8 +2,18 @@
 
 # Release v0.3
 
-1. Working xz implementation
-2. Support by xzgo tool
+1. Simple xzgo allowing decompression of xz encoded files and
+   compression with default parameters.
+2. Support by xzgo tool. Links for the classic tools should work.
+    - xz
+    - xzcat
+    - unxz
+    - lzma
+    - lzmacat
+    - unlzma
+3. Execute test suite on:
+    - x86 (Linux)
+    - amd64 (Linux, Windows)
 3. Check all external packages for license terms
 4. Include all foreign licenses in the xzgo tool. Use go generate for
    this.
@@ -27,8 +37,8 @@
 
 ## LZMA2 support
 
-1. Develop the package lzma using lzb.
-2. Develop the package lzma2 using lzb.
+1. Support Size parameter by Writer. (No Interface implementation.)
+2. Develop the package lzma2 using lzma streams.
 
 ## Optimizations
 
@@ -36,11 +46,24 @@
 
 # lzmago binary
 
+1. It seems that the main functionality of a compression tool is
+   independent of the actual compression used. So abstract from it and
+   implement functionality only once.
 1. Put the functions in the xz/pack package to prevent reinventing the
    wheel. Those commands can then be used for optimization.
 2. Add -c  flag
 
 # Log
+
+## 2015-06-01
+
+By computing the bit length of the LZMA operations I was able to
+improve the greedy algorithm implementation. By using an 8 MByte buffer
+the compression rate was not as good as for xz but already better then
+gzip default. 
+
+Compression is currently slow, but this is something we will be able to
+improve over time.
 
 ## 2015-05-26
 
