@@ -16,7 +16,7 @@ const (
 	posSlotBits = 6
 	// number of align bits
 	alignBits = 4
-	// maximum positon slot
+	// maximum position slot
 	maxPosSlot = 63
 )
 
@@ -109,7 +109,7 @@ func (dc *distCodec) Decode(d *rangeDecoder, l uint32) (dist uint32, err error) 
 		return posSlot, nil
 	}
 
-	// posSlot are using the individial models
+	// posSlot uses the individual models
 	bits := (posSlot >> 1) - 1
 	dist = (2 | (posSlot & 1)) << bits
 	var u uint32

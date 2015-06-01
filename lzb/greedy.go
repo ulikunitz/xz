@@ -70,7 +70,7 @@ func potentialOffsets(ms *miniState, p []byte) []int64 {
 	prev, start := ms.d.head-1, ms.d.start()
 	offs := make([]int64, 0, 32)
 	var off int64
-	// add repititions
+	// add repetitions
 	for _, dist := range ms.r {
 		off = prev - int64(dist)
 		if off >= start {
