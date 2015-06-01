@@ -24,7 +24,7 @@ type Writer struct {
 	closed   bool
 }
 
-// NewWriter creates a new writer instance.
+// NewStreamWriter creates a new writer instance.
 func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return
