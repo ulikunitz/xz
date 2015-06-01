@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 // Constants used by the distance codec.
 const (
@@ -37,7 +37,7 @@ func distBits(dist uint32) int {
 	// bits(d) = 32-nlz32(d)
 	// s>>1=31-nlz32(d)
 	// n = 5 + (s>>1) = 36 - nlz32(d)
-	return 36 - NLZ32(dist)
+	return 36 - nlz32(dist)
 }
 
 // newDistCodec creates a new distance codec.
@@ -72,7 +72,7 @@ func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) 
 	if dist < startPosModel {
 		posSlot = dist
 	} else {
-		bits = uint32(30 - NLZ32(dist))
+		bits = uint32(30 - nlz32(dist))
 		posSlot = startPosModel - 2 + (bits << 1)
 		posSlot += (dist >> uint(bits)) & 1
 	}

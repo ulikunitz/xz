@@ -69,7 +69,7 @@ func TestWriterLongData(t *testing.T) {
 	buf := &bytes.Buffer{}
 	params := Default
 	params.DictSize = 0x4000
-	w, err := NewWriterP(buf, params)
+	w, err := NewWriterParams(buf, params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}

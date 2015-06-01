@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 // states defines the overall State count
 const states = 12

@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"fmt"

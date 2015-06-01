@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"errors"
@@ -25,7 +25,7 @@ type Writer struct {
 }
 
 // NewWriter creates a new writer instance.
-func NewWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
+func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return
 	}

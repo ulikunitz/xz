@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 // literalCodec supports the encoding of literal. It provides 768 probability
 // values per literal state. The upper 512 probabilities are used with the

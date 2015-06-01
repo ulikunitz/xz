@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"errors"
@@ -99,7 +99,7 @@ func (r *Reader) setSize(size int64) error {
 	return nil
 }
 
-func NewReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
+func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err
 	}

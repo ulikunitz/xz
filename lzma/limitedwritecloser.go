@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-type LimitedWriteCloser struct {
+type limitedWriteCloser struct {
 	W      io.WriteCloser
 	N      int64
 	Closed bool
@@ -16,7 +16,7 @@ const minInt64 = -1 << 63
 
 var errEarlyClose = errors.New("close called before limit reached")
 
-func (lw *LimitedWriteCloser) Write(p []byte) (n int, err error) {
+func (lw *limitedWriteCloser) Write(p []byte) (n int, err error) {
 	if lw.Closed {
 		return 0, errClosed
 	}
@@ -34,7 +34,7 @@ func (lw *LimitedWriteCloser) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-func (lw *LimitedWriteCloser) Close() error {
+func (lw *limitedWriteCloser) Close() error {
 	if lw.Closed {
 		return errClosed
 	}

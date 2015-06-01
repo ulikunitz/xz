@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"bytes"
@@ -20,16 +20,16 @@ var testString = `LZMA decoder test example
 =========================
 `
 
-func TestWriterCycle(t *testing.T) {
+func TestStreamWriterCycle(t *testing.T) {
 	params := Parameters{
 		LC:       2,
 		LP:       0,
 		PB:       2,
 		DictSize: MinDictSize,
 	}
-	params.NormalizeWriterSizes()
+	params.normalizeWriterSizes()
 	buf := new(bytes.Buffer)
-	w, err := NewWriter(buf, params)
+	w, err := NewStreamWriter(buf, params)
 	if err != nil {
 		t.Fatalf("NewWriter: error %s", err)
 	}
@@ -50,7 +50,7 @@ func TestWriterCycle(t *testing.T) {
 			len(orig))
 	}
 	params.ExtraBufSize = 0
-	r, err := NewReader(buf, params)
+	r, err := NewStreamReader(buf, params)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}

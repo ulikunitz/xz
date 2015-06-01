@@ -3,8 +3,6 @@ package lzma
 import (
 	"errors"
 	"io"
-
-	"github.com/uli-go/xz/lzb"
 )
 
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
@@ -14,35 +12,34 @@ import (
 //
 // For high performance use a buffered writer. But be aware that Close will not
 // flush it.
-func NewWriter(w io.Writer) (lw io.WriteCloser, err error) {
-	return NewWriterP(w, Default)
+func NewWriter(lzma io.Writer) (w io.WriteCloser, err error) {
+	return NewWriterParams(lzma, Default)
 }
 
-// NewWriterP creates a new writer with the given Parameters. It writes the
+// NewWriterParams
 // LZMA header.
 //
 // Don't forget to call Close() for the writer after all data has been written.
 //
 // For high performance use a buffered writer. But be aware that Close will not
 // flush it.
-func NewWriterP(w io.Writer, p Parameters) (lw io.WriteCloser, err error) {
-	if w == nil {
+func NewWriterParams(lzma io.Writer, p Parameters) (w io.WriteCloser, err error) {
+	if lzma == nil {
 		return nil, errors.New("writer argument w is nil")
 	}
-	q := lzbParameters(&p)
-	q.NormalizeWriterSizes()
-	if err = q.Verify(); err != nil {
+	p.normalizeWriterSizes()
+	if err = p.Verify(); err != nil {
 		return nil, err
 	}
-	if !q.SizeInHeader {
-		q.EOS = true
+	if !p.SizeInHeader {
+		p.EOS = true
 	}
-	if err = writeHeader(w, &q); err != nil {
+	if err = writeHeader(lzma, &p); err != nil {
 		return nil, err
 	}
-	lw, err = lzb.NewWriter(w, q)
-	if q.SizeInHeader {
-		lw = &lzb.LimitedWriteCloser{W: lw, N: q.Size}
+	w, err = NewStreamWriter(lzma, p)
+	if p.SizeInHeader {
+		w = &limitedWriteCloser{W: w, N: p.Size}
 	}
 	return
 }

@@ -3,8 +3,6 @@ package lzma
 import (
 	"errors"
 	"io"
-
-	"github.com/uli-go/xz/lzb"
 )
 
 // getUint32LE reads an uint32 integer from a byte slize
@@ -56,14 +54,14 @@ func putUint64LE(b []byte, x uint64) {
 const noHeaderLen uint64 = 1<<64 - 1
 
 // readHeader reads the classic LZMA header.
-func readHeader(r io.Reader) (p *lzb.Parameters, err error) {
+func readHeader(r io.Reader) (p *Parameters, err error) {
 	b := make([]byte, 13)
 	_, err = io.ReadFull(r, b)
 	if err != nil {
 		return nil, err
 	}
-	p = new(lzb.Parameters)
-	props := lzb.Properties(b[0])
+	p = new(Parameters)
+	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 	p.DictSize = int64(getUint32LE(b[1:]))
 	u := getUint64LE(b[5:])
@@ -87,14 +85,14 @@ func readHeader(r io.Reader) (p *lzb.Parameters, err error) {
 }
 
 // writeHeader writes the header for classic LZMA files.
-func writeHeader(w io.Writer, p *lzb.Parameters) error {
+func writeHeader(w io.Writer, p *Parameters) error {
 	var err error
 	if err = p.Verify(); err != nil {
 		return err
 	}
 	b := make([]byte, 13)
 	b[0] = byte(p.Properties())
-	if p.DictSize > lzb.MaxDictSize {
+	if p.DictSize > MaxDictSize {
 		return errors.New("DictSize exceeds maximum value")
 	}
 	putUint32LE(b[1:5], uint32(p.DictSize))

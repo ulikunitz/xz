@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 // movebits defines the number of bits used for the updates of probability
 // values.

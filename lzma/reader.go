@@ -2,17 +2,15 @@ package lzma
 
 import (
 	"io"
-
-	"github.com/uli-go/xz/lzb"
 )
 
 // NewReader creates a new LZMA reader.
-func NewReader(r io.Reader) (lr io.Reader, err error) {
-	p, err := readHeader(r)
+func NewReader(lzma io.Reader) (r *Reader, err error) {
+	p, err := readHeader(lzma)
 	if err != nil {
 		return nil, err
 	}
-	p.NormalizeReaderSizes()
-	lr, err = lzb.NewReader(r, *p)
+	p.normalizeReaderSizes()
+	r, err = NewStreamReader(lzma, *p)
 	return
 }

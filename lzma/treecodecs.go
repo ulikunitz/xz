@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 // treeCodec encodes or decodes values with a fixed bit size. It is using a
 // tree of probability value. The root of the tree is the most-significant bit.

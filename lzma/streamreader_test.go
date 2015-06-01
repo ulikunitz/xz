@@ -1,4 +1,4 @@
-package lzb
+package lzma
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestReader(t *testing.T) {
+func TestStreamReader(t *testing.T) {
 	filename := "fox.lzma"
 	want := "The quick brown fox jumps over the lazy dog.\n"
 	for i := 0; i < 2; i++ {
@@ -26,7 +26,7 @@ func TestReader(t *testing.T) {
 			params.SizeInHeader = true
 			params.Size = int64(len(want))
 		}
-		r, err := NewReader(f, params)
+		r, err := NewStreamReader(f, params)
 		if err != nil {
 			t.Fatalf("NewReader error %s", err)
 		}
