@@ -1,4 +1,4 @@
-package rndtxt
+package randtxt
 
 import (
 	"math"

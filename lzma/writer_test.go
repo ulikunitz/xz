@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/uli-go/xz/rndtxt"
+	"github.com/uli-go/xz/randtxt"
 )
 
 func TestWriterCycle(t *testing.T) {
@@ -58,7 +58,7 @@ func TestWriterLongData(t *testing.T) {
 		seed = 49
 		size = 82237
 	)
-	r := io.LimitReader(rndtxt.NewReader(rand.NewSource(seed)), size)
+	r := io.LimitReader(randtxt.NewReader(rand.NewSource(seed)), size)
 	txt, err := ioutil.ReadAll(r)
 	if err != nil {
 		t.Fatalf("ReadAll error %s", err)

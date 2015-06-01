@@ -1,4 +1,4 @@
-package rndtxt
+package randtxt
 
 var englm3 = ngrams{
 	{"AAA", -2.012237880410764e+01, -8.489658213678448e+00},
