@@ -29,12 +29,12 @@ func (r *GroupReader) Read(p []byte) (n int, err error) {
 	for i := range p {
 		switch {
 		case r.off%lineLen == lineLen-1:
-			if i+1 == len(p) {
+			if i+1 == len(p) && len(p) > 1 {
 				return i, nil
 			}
 			c = '\n'
 		case r.off%6 == 5:
-			if i+1 == len(p) {
+			if i+1 == len(p) && len(p) > 1 {
 				return i, nil
 			}
 			c = ' '
