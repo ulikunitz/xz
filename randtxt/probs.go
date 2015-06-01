@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-// ngrap stores an entry from the language model.
+// ngram stores an entry from the language model.
 type ngram struct {
 	s   string
 	lgP float64
@@ -55,7 +55,7 @@ func (s probs) SearchNgram(g string) int {
 	return sort.Search(len(s), func(k int) bool { return s[k].s >= g })
 }
 
-// SearchProb searchs ngrams for a specific probability or where it
+// SearchProb searches ngrams for a specific probability or where it
 // would be inserted.
 func (s probs) SearchProb(p float64) int {
 	return sort.Search(len(s), func(k int) bool { return s[k].p >= p })
@@ -153,14 +153,14 @@ var (
 	cmap comap = comapOfLM(englm3)
 )
 
-// Reader generetes a stream of text of uppercase latters with trigrams
+// Reader generates a stream of text of uppercase letters with trigrams
 // distributed according to a language model of the English language.
 type Reader struct {
 	rnd *rand.Rand
 	g3  string
 }
 
-// NewReader creates a new reader. src must create a uniformly
+// NewReader creates a new reader. The argument src must create a uniformly
 // distributed stream of random values.
 func NewReader(src rand.Source) *Reader {
 	rnd := rand.New(src)
