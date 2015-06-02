@@ -22,8 +22,8 @@ type Writer struct {
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
-	// n stores the remaining bytes
-	n int64
+	// N counts the bytes written
+	N int64
 }
 
 // NewStreamWriter creates a new writer instance.
@@ -50,9 +50,6 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		state:    state,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
-	}
-	if p.SizeInHeader {
-		w.n = p.Size
 	}
 	return w, nil
 }
@@ -211,11 +208,12 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, errWriterClosed
 	}
 	if w.Params.SizeInHeader {
-		if w.n <= 0 {
+		r := w.Params.Size - w.N
+		if r <= 0 {
 			return 0, errLimit
 		}
-		if int64(len(p)) > w.n {
-			p = p[0:w.n]
+		if int64(len(p)) > r {
+			p = p[0:r]
 			err = errLimit
 		}
 	}
@@ -232,7 +230,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 			break
 		}
 	}
-	w.n -= int64(n)
+	w.N += int64(n)
 	return n, err
 }
 
@@ -247,10 +245,11 @@ func (w *Writer) Close() (err error) {
 		return errWriterClosed
 	}
 	if w.Params.SizeInHeader {
-		if w.n < 0 {
-			panic(fmt.Errorf("w.n has unexpected value %d", w.n))
+		if w.N > w.Params.Size {
+			panic(fmt.Errorf("w.N=%d larger than requested size %d",
+				w.N, w.Params.Size))
 		}
-		if w.n > 0 {
+		if w.N < w.Params.Size {
 			return errEarlyClose
 		}
 	}
