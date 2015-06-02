@@ -23,6 +23,8 @@ type Writer struct {
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
+	limited  bool
+	n        int64
 }
 
 // NewStreamWriter creates a new writer instance.
@@ -47,6 +49,8 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		eos:      !p.SizeInHeader || p.EOS,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
+		limited:  p.SizeInHeader,
+		n:        p.Size,
 	}
 	return w, nil
 }
@@ -204,30 +208,48 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
 		return 0, errWriterClosed
 	}
-	for len(p) > 0 {
-		var k int
-		k, err = w.buf.Write(p)
-		n += k
-		if err != errLimit {
-			return
+	if w.limited {
+		if w.n <= 0 {
+			return 0, errLimit
 		}
-		p = p[k:]
-		if err = w.compress(false); err != nil {
-			return
+		if int64(len(p)) > w.n {
+			p = p[0:w.n]
+			err = errLimit
 		}
 	}
-	return
+	for len(p) > 0 {
+		k, werr := w.buf.Write(p)
+		n += k
+		if werr != errLimit {
+			return n, werr
+		}
+		p = p[k:]
+		if werr = w.compress(false); werr != nil {
+			return n, werr
+		}
+	}
+	return n, err
 }
 
 // This operation will be encoded to indicate that the stream has ended.
 var eosMatch = match{distance: maxDistance, n: MinLength}
+
+var errEarlyClose = errors.New("writer closed with bytes remaining")
 
 // Close closes the writer.
 func (w *Writer) Close() (err error) {
 	if w.closed {
 		return errWriterClosed
 	}
-	w.closed = true
+	if w.limited {
+		if w.n < 0 {
+			panic(fmt.Errorf("w.n has unexpected negative value %d",
+				w.n))
+		}
+		if w.n > 0 {
+			return errEarlyClose
+		}
+	}
 	if err = w.compress(true); err != nil {
 		return err
 	}
@@ -239,5 +261,6 @@ func (w *Writer) Close() (err error) {
 	if err = w.re.Close(); err != nil {
 		return err
 	}
+	w.closed = true
 	return nil
 }

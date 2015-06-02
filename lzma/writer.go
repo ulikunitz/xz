@@ -12,18 +12,18 @@ import (
 //
 // For high performance use a buffered writer. But be aware that Close will not
 // flush it.
-func NewWriter(lzma io.Writer) (w io.WriteCloser, err error) {
+func NewWriter(lzma io.Writer) (w *Writer, err error) {
 	return NewWriterParams(lzma, Default)
 }
 
-// NewWriterParams
-// LZMA header.
+// NewWriterParams creates a new writer using the provided parameters.
+// The function writer the LZMA header.
 //
 // Don't forget to call Close() for the writer after all data has been written.
 //
 // For high performance use a buffered writer. But be aware that Close will not
 // flush it.
-func NewWriterParams(lzma io.Writer, p Parameters) (w io.WriteCloser, err error) {
+func NewWriterParams(lzma io.Writer, p Parameters) (w *Writer, err error) {
 	if lzma == nil {
 		return nil, errors.New("writer argument w is nil")
 	}
@@ -38,8 +38,5 @@ func NewWriterParams(lzma io.Writer, p Parameters) (w io.WriteCloser, err error)
 		return nil, err
 	}
 	w, err = NewStreamWriter(lzma, p)
-	if p.SizeInHeader {
-		w = &limitedWriteCloser{W: w, N: p.Size}
-	}
 	return
 }
