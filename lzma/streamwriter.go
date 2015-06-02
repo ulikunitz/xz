@@ -19,7 +19,6 @@ type Writer struct {
 	OpFinder OpFinder
 	Params   Parameters
 	state    *State
-	eos      bool
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
@@ -32,6 +31,9 @@ type Writer struct {
 func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return
+	}
+	if !p.SizeInHeader {
+		p.EOS = true
 	}
 	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
 	if err != nil {
@@ -47,7 +49,6 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		Params:   p,
 		OpFinder: Greedy,
 		state:    state,
-		eos:      !p.SizeInHeader || p.EOS,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
 	}
@@ -258,7 +259,7 @@ func (w *Writer) Close() (err error) {
 	if err = w.compress(true); err != nil {
 		return err
 	}
-	if w.eos {
+	if w.Params.EOS {
 		if err = w.writeMatch(eosMatch); err != nil {
 			return err
 		}
