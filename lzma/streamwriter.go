@@ -24,7 +24,9 @@ type Writer struct {
 	buf      *buffer
 	closed   bool
 	limited  bool
-	n        int64
+	// n stores the bytes written or the counts of bytes remaining
+	// as a negative number
+	n int64
 }
 
 // NewStreamWriter creates a new writer instance.
@@ -49,8 +51,10 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		eos:      !p.SizeInHeader || p.EOS,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
-		limited:  p.SizeInHeader,
-		n:        p.Size,
+	}
+	if p.SizeInHeader {
+		w.limited = true
+		w.n = -p.Size
 	}
 	return w, nil
 }
@@ -209,25 +213,28 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, errWriterClosed
 	}
 	if w.limited {
-		if w.n <= 0 {
+		if w.n >= 0 {
 			return 0, errLimit
 		}
-		if int64(len(p)) > w.n {
-			p = p[0:w.n]
+		if int64(len(p)) > -w.n {
+			p = p[0:-w.n]
 			err = errLimit
 		}
 	}
 	for len(p) > 0 {
 		k, werr := w.buf.Write(p)
 		n += k
-		if werr != errLimit {
-			return n, werr
+		if werr != nil && werr != errLimit {
+			err = werr
+			break
 		}
 		p = p[k:]
 		if werr = w.compress(false); werr != nil {
-			return n, werr
+			err = werr
+			break
 		}
 	}
+	w.n += int64(n)
 	return n, err
 }
 
@@ -242,11 +249,10 @@ func (w *Writer) Close() (err error) {
 		return errWriterClosed
 	}
 	if w.limited {
-		if w.n < 0 {
-			panic(fmt.Errorf("w.n has unexpected negative value %d",
-				w.n))
-		}
 		if w.n > 0 {
+			panic(fmt.Errorf("w.n has unexpected alue %d", w.n))
+		}
+		if w.n < 0 {
 			return errEarlyClose
 		}
 	}
