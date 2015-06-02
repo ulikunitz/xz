@@ -133,3 +133,53 @@ func Example_writer() {
 	// Output:
 	// The quick brown fox jumps over the lazy dog.
 }
+
+func TestWriter_Size(t *testing.T) {
+	p := Default
+	p.SizeInHeader = true
+	p.Size = 10
+	p.EOS = true
+	buf := new(bytes.Buffer)
+	w, err := NewWriterParams(buf, p)
+	if err != nil {
+		t.Fatalf("NewWriterParams errors %s", err)
+	}
+	q := []byte{'a'}
+	for i := 0; i < 9; i++ {
+		n, err := w.Write(q)
+		if err != nil {
+			t.Fatalf("w.Write error %s", err)
+		}
+		if n != 1 {
+			t.Fatalf("w.Write returned %d; want %d", n, 1)
+		}
+		q[0]++
+	}
+	if err = w.Close(); err != errEarlyClose {
+		t.Fatalf("w.Close unexpected error %s", err)
+	}
+	n, err := w.Write(q)
+	if err != nil {
+		t.Fatalf("w.Write error %s", err)
+	}
+	if n != 1 {
+		t.Fatalf("w.Write returned %d; want %d", n, 1)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	t.Logf("packed size %d", buf.Len())
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s", err)
+	}
+	s := string(b)
+	want := "abcdefghij"
+	if s != want {
+		t.Fatalf("read %q, want %q", s, want)
+	}
+}
