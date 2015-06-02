@@ -24,8 +24,7 @@ type Writer struct {
 	buf      *buffer
 	closed   bool
 	limited  bool
-	// n stores the bytes written or the counts of bytes remaining
-	// as a negative number
+	// N stores the remaining bytes; negative numbers will appear
 	n int64
 }
 
@@ -54,7 +53,7 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	}
 	if p.SizeInHeader {
 		w.limited = true
-		w.n = -p.Size
+		w.n = p.Size
 	}
 	return w, nil
 }
@@ -213,11 +212,11 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, errWriterClosed
 	}
 	if w.limited {
-		if w.n >= 0 {
+		if w.n <= 0 {
 			return 0, errLimit
 		}
-		if int64(len(p)) > -w.n {
-			p = p[0:-w.n]
+		if int64(len(p)) > w.n {
+			p = p[0:w.n]
 			err = errLimit
 		}
 	}
@@ -234,7 +233,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 			break
 		}
 	}
-	w.n += int64(n)
+	w.n -= int64(n)
 	return n, err
 }
 
@@ -249,10 +248,10 @@ func (w *Writer) Close() (err error) {
 		return errWriterClosed
 	}
 	if w.limited {
-		if w.n > 0 {
-			panic(fmt.Errorf("w.n has unexpected alue %d", w.n))
-		}
 		if w.n < 0 {
+			panic(fmt.Errorf("w.n has unexpected value %d", w.n))
+		}
+		if w.n > 0 {
 			return errEarlyClose
 		}
 	}
