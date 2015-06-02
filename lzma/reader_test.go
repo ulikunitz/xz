@@ -269,7 +269,6 @@ func newCodeReader(r io.Reader) *io.PipeReader {
 }
 
 func TestReaderErrAgain(t *testing.T) {
-	t.Skip("TODO")
 	lengths := []int64{0, 128, 1024, 4095, 4096, 4097, 8191, 8192, 8193}
 	buf := make([]byte, 128)
 	const c = 'A'

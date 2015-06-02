@@ -1,8 +1,11 @@
 package lzma
 
-import (
-	"io"
-)
+import "io"
+
+type Reader struct {
+	Params Parameters
+	StreamReader
+}
 
 // NewReader creates a new LZMA reader.
 func NewReader(lzma io.Reader) (r *Reader, err error) {
@@ -11,6 +14,13 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 		return nil, err
 	}
 	p.normalizeReaderSizes()
-	r, err = NewStreamReader(lzma, *p)
-	return
+	sr, err := NewStreamReader(lzma, *p)
+	if err != nil {
+		return nil, err
+	}
+	r = &Reader{
+		Params:       *p,
+		StreamReader: *sr,
+	}
+	return r, nil
 }
