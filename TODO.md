@@ -2,8 +2,22 @@
 
 # Release v0.3
 
-1. Simple xzgo allowing decompression of xz encoded files and
-   compression with default parameters.
+1. Simple lzmago supporting all the features of lzma. Links to
+    lzma, unlzma and lzmacat are supported.
+2. Execute test suite on:
+    - x86 (Linux)
+    - amd64 (Linux, Windows)
+4. Check all external packages for license terms
+5. Include all foreign licenses in the lzmago tool. Use go generate for
+   this.
+6. Add Copyright to all source code files including the markdown files.
+   Write a go tool to do it and publish it.
+7. Improve documentation
+8. Create Release Notes as markdown file.
+
+# Release 1.0
+
+1. Full functioning xzgo
 2. Support by xzgo tool. Links for the classic tools should work.
     - xz
     - xzcat
@@ -11,22 +25,10 @@
     - lzma
     - lzmacat
     - unlzma
-3. Execute test suite on:
-    - x86 (Linux)
-    - amd64 (Linux, Windows)
-3. Check all external packages for license terms
-4. Include all foreign licenses in the xzgo tool. Use go generate for
-   this.
-5. Add Copyright to all source code files including the markdown files.
-   Write a go tool to do it and publish it.
-5. Improve documentation
-6. Create Release Notes as markdown file.
-
-# Release 1.0
-
-1. Create Release Notes
-1. Add godoc URL to README.md (godoc.org)
-2. Resolve all issues.
+3. Provide a manual page
+4. Create Release Notes
+5. Add godoc URL to README.md (godoc.org)
+6. Resolve all issues.
 
 # Package xz
 
