@@ -5,9 +5,16 @@ import (
 	"io"
 )
 
-var errUnexpectedEOS = errors.New("unexpected eos")
+// Errors produced by readOp and fillBuffer
+var (
+	eos              = errors.New("end of stream")
+	errClosed        = errors.New("stream is closed")
+	errDataAfterEOS  = errors.New("data after end of stream")
+	errUnexpectedEOS = errors.New("unexpected eos")
+)
 
-type StreamReader struct {
+type Reader struct {
+	Params    Parameters
 	state     *State
 	rd        *rangeDecoder
 	pendingOp operation
@@ -19,15 +26,36 @@ type StreamReader struct {
 	closed bool
 }
 
-// Errors produced by readOp and fillBuffer
-var (
-	eos             = errors.New("end of stream")
-	errClosed       = errors.New("stream is closed")
-	errDataAfterEOS = errors.New("data after end of stream")
-)
+func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
+	if err = p.Verify(); err != nil {
+		return nil, err
+	}
+	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
+	if err != nil {
+		return
+	}
+	dict, err := newSyncDict(buf, p.DictSize)
+	if err != nil {
+		return
+	}
+	state := NewState(p.Properties(), dict)
+	rd, err := newRangeDecoder(lzma)
+	if err != nil {
+		return
+	}
+	r = &Reader{Params: p, state: state, rd: rd, buf: buf, head: buf.bottom}
+	if p.SizeInHeader {
+		if err = r.setSize(p.Size); err != nil {
+			return nil, err
+		}
+	} else {
+		r.move(0)
+	}
+	return r, nil
+}
 
 // decodeLiteral reads a literal.
-func (r *StreamReader) decodeLiteral() (op operation, err error) {
+func (r *Reader) decodeLiteral() (op operation, err error) {
 	litState := r.state.litState()
 	match := r.state.dict.byteAt(int64(r.state.rep[0]) + 1)
 	s, err := r.state.litCodec.Decode(r.rd, r.state.state, match, litState)
@@ -40,7 +68,7 @@ func (r *StreamReader) decodeLiteral() (op operation, err error) {
 // readOp decodes the next operation from the compressed stream. It returns the
 // operation. If an explicit end of stream marker is identified the eos error is
 // returned.
-func (r *StreamReader) readOp() (op operation, err error) {
+func (r *Reader) readOp() (op operation, err error) {
 	// Value of the end of stream (EOS) marker
 	const eosDist = 1<<32 - 1
 
@@ -134,7 +162,7 @@ func (r *StreamReader) readOp() (op operation, err error) {
 	return op, nil
 }
 
-func (r *StreamReader) close() error {
+func (r *Reader) close() error {
 	if r.closed {
 		return errClosed
 	}
@@ -157,7 +185,7 @@ func (r *StreamReader) close() error {
 	return nil
 }
 
-func (r *StreamReader) outsideLimits(op operation) (outside bool, err error) {
+func (r *Reader) outsideLimits(op operation) (outside bool, err error) {
 	off := r.buf.top + int64(op.Len())
 	if off > r.buf.writeLimit {
 		if r.limited && off > r.limit {
@@ -169,7 +197,7 @@ func (r *StreamReader) outsideLimits(op operation) (outside bool, err error) {
 }
 
 // fillBuffer fills the buffer with data read from the LZMA stream.
-func (r *StreamReader) fillBuffer() error {
+func (r *Reader) fillBuffer() error {
 	if r.closed {
 		return nil
 	}
@@ -212,7 +240,7 @@ func (r *StreamReader) fillBuffer() error {
 	return nil
 }
 
-func (r *StreamReader) move(n int) {
+func (r *Reader) move(n int) {
 	off := r.head + int64(n)
 	if !(r.buf.bottom <= off && off <= r.buf.top) {
 		panic("new offset out of range")
@@ -228,12 +256,12 @@ func (r *StreamReader) move(n int) {
 	r.buf.writeLimit = limit
 }
 
-func (r *StreamReader) eof() bool {
+func (r *Reader) eof() bool {
 	return r.closed && r.head == r.buf.top
 }
 
 // readBuffer reads data from the buffer into the p slice.
-func (r *StreamReader) readBuffer(p []byte) (n int, err error) {
+func (r *Reader) readBuffer(p []byte) (n int, err error) {
 	n, err = r.buf.ReadAt(p, r.head)
 	r.move(n)
 	if r.eof() {
@@ -243,7 +271,7 @@ func (r *StreamReader) readBuffer(p []byte) (n int, err error) {
 }
 
 // Read reads uncompressed data from the raw LZMA data stream.
-func (r *StreamReader) Read(p []byte) (n int, err error) {
+func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.eof() {
 		return 0, io.EOF
 	}
@@ -280,7 +308,7 @@ func (r *StreamReader) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (r *StreamReader) setSize(size int64) error {
+func (r *Reader) setSize(size int64) error {
 	limit := r.head + size
 	if limit < r.buf.top {
 		return errors.New("limit out of range")
@@ -291,46 +319,18 @@ func (r *StreamReader) setSize(size int64) error {
 	return nil
 }
 
-func NewStreamReader(lzma io.Reader, p Parameters) (r *StreamReader, err error) {
-	if err = p.Verify(); err != nil {
-		return nil, err
-	}
-	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
-	if err != nil {
-		return
-	}
-	dict, err := newSyncDict(buf, p.DictSize)
-	if err != nil {
-		return
-	}
-	state := NewState(p.Properties(), dict)
-	rd, err := newRangeDecoder(lzma)
-	if err != nil {
-		return
-	}
-	r = &StreamReader{state: state, rd: rd, buf: buf, head: buf.bottom}
-	if p.SizeInHeader {
-		if err = r.setSize(p.Size); err != nil {
-			return nil, err
-		}
-	} else {
-		r.move(0)
-	}
-	return r, nil
-}
-
-func (r *StreamReader) Restart(lzma io.Reader) {
+func (r *Reader) Restart(lzma io.Reader) {
 	panic("TODO")
 }
 
-func (r *StreamReader) ResetState() {
+func (r *Reader) ResetState() {
 	panic("TODO")
 }
 
-func (r *StreamReader) ResetProperties(p Properties) {
+func (r *Reader) ResetProperties(p Properties) {
 	panic("TODO")
 }
 
-func (r *StreamReader) ResetDictionary(p Properties) {
+func (r *Reader) ResetDictionary(p Properties) {
 	panic("TODO")
 }
