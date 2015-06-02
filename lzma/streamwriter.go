@@ -22,8 +22,7 @@ type Writer struct {
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
-	limited  bool
-	// N stores the remaining bytes; negative numbers will appear
+	// n stores the remaining bytes
 	n int64
 }
 
@@ -53,7 +52,6 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		re:       newRangeEncoder(pw),
 	}
 	if p.SizeInHeader {
-		w.limited = true
 		w.n = p.Size
 	}
 	return w, nil
@@ -212,7 +210,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
 		return 0, errWriterClosed
 	}
-	if w.limited {
+	if w.Params.SizeInHeader {
 		if w.n <= 0 {
 			return 0, errLimit
 		}
@@ -248,7 +246,7 @@ func (w *Writer) Close() (err error) {
 	if w.closed {
 		return errWriterClosed
 	}
-	if w.limited {
+	if w.Params.SizeInHeader {
 		if w.n < 0 {
 			panic(fmt.Errorf("w.n has unexpected value %d", w.n))
 		}
