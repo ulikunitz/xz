@@ -20,7 +20,6 @@ type Reader struct {
 	pendingOp operation
 	buf       *buffer
 	head      int64
-	limited   bool
 	// limit marks the expected size of the decompressed byte stream
 	limit  int64
 	closed bool
@@ -45,12 +44,12 @@ func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	}
 	r = &Reader{Params: p, state: state, rd: rd, buf: buf, head: buf.bottom}
 	if p.SizeInHeader {
-		if err = r.setSize(p.Size); err != nil {
-			return nil, err
+		r.limit = r.head + p.Size
+		if r.limit < r.buf.top {
+			return nil, errors.New("limit out of range")
 		}
-	} else {
-		r.move(0)
 	}
+	r.move(0)
 	return r, nil
 }
 
@@ -188,7 +187,7 @@ func (r *Reader) close() error {
 func (r *Reader) outsideLimits(op operation) (outside bool, err error) {
 	off := r.buf.top + int64(op.Len())
 	if off > r.buf.writeLimit {
-		if r.limited && off > r.limit {
+		if r.Params.SizeInHeader && off > r.limit {
 			return true, errLimit
 		}
 		return true, nil
@@ -246,7 +245,7 @@ func (r *Reader) move(n int) {
 		panic("new offset out of range")
 	}
 	limit := off + int64(r.buf.capacity())
-	if r.limited && limit > r.limit {
+	if r.Params.SizeInHeader && limit > r.limit {
 		limit = r.limit
 	}
 	if limit < r.buf.top {
@@ -292,14 +291,14 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		err = r.fillBuffer()
 		if err != nil {
 			if err == eos {
-				if r.limited && r.buf.top != r.limit {
+				if r.Params.SizeInHeader && r.buf.top != r.limit {
 					return n, errUnexpectedEOS
 				}
 			} else {
 				return n, err
 			}
 		}
-		if r.limited && r.buf.top == r.limit {
+		if r.Params.SizeInHeader && r.buf.top == r.limit {
 			err = r.close()
 			if err != nil {
 				return n, err
@@ -309,13 +308,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 }
 
 func (r *Reader) setSize(size int64) error {
-	limit := r.head + size
-	if limit < r.buf.top {
-		return errors.New("limit out of range")
-	}
-	r.limited = true
-	r.limit = limit
-	r.move(0)
 	return nil
 }
 
