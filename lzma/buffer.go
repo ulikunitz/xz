@@ -163,6 +163,9 @@ func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
 	}
 
 	start, end := off, off+int64(n)
+	if end > b.writeLimit {
+		return 0, errLimit
+	}
 	for off < end {
 		var next int64
 		if b.top < end {

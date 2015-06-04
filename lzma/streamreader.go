@@ -14,15 +14,33 @@ var (
 )
 
 type Reader struct {
-	Params    Parameters
-	state     *State
-	rd        *rangeDecoder
-	pendingOp operation
-	buf       *buffer
-	head      int64
+	Params Parameters
+	state  *State
+	rd     *rangeDecoder
+	buf    *buffer
+	// head indicates the reading head
+	head int64
 	// limit marks the expected size of the decompressed byte stream
-	limit  int64
+	limit int64
+	// closed marks readers where no more data will be written into
+	// the buffer or dictionary
 	closed bool
+}
+
+func (r *Reader) move(n int) {
+	off := r.head + int64(n)
+	if !(r.buf.bottom <= off && off <= r.buf.top) {
+		panic("new offset out of range")
+	}
+	limit := off + int64(r.buf.capacity())
+	if r.Params.SizeInHeader && limit > r.limit {
+		limit = r.limit
+	}
+	if limit < r.buf.top {
+		panic("limit out of range")
+	}
+	r.head = off
+	r.buf.writeLimit = limit
 }
 
 func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
@@ -107,6 +125,9 @@ func (r *Reader) readOp() (op operation, err error) {
 			return nil, err
 		}
 		if r.state.rep[0] == eosDist {
+			if !r.rd.possiblyAtEnd() {
+				return nil, errDataAfterEOS
+			}
 			return nil, eos
 		}
 		op = match{n: int(n) + MinLength,
@@ -161,98 +182,61 @@ func (r *Reader) readOp() (op operation, err error) {
 	return op, nil
 }
 
-func (r *Reader) close() error {
-	if r.closed {
-		return errClosed
-	}
-	if r.pendingOp != nil {
-		return errDataAfterEOS
-	}
-	if !r.rd.possiblyAtEnd() {
-		_, err := r.readOp()
-		if err != eos {
-			if err != nil {
-				return err
-			}
-			return errDataAfterEOS
-		}
-		if !r.rd.possiblyAtEnd() {
-			return errDataAfterEOS
-		}
-	}
-	r.closed = true
-	return nil
-}
-
-func (r *Reader) outsideLimits(op operation) (outside bool, err error) {
-	off := r.buf.top + int64(op.Len())
-	if off > r.buf.writeLimit {
-		if r.Params.SizeInHeader && off > r.limit {
-			return true, errLimit
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
 // fillBuffer fills the buffer with data read from the LZMA stream.
-func (r *Reader) fillBuffer() error {
+func (r *Reader) fillBuffer() (n int, err error) {
 	if r.closed {
-		return nil
+		return 0, nil
 	}
 	d := r.state.dict.(*syncDict)
-	if r.pendingOp != nil {
-		op := r.pendingOp
-		if outside, err := r.outsideLimits(op); outside || err != nil {
-			return err
+	for {
+		off := r.buf.top + MaxLength
+		if r.Params.SizeInHeader && off > r.limit {
+			off = r.limit
 		}
-		if err := op.Apply(d); err != nil {
-			return err
+		if off > r.buf.writeLimit {
+			return n, nil
 		}
-		r.pendingOp = nil
-	}
-	for r.buf.top < r.buf.writeLimit {
 		op, err := r.readOp()
-		if err != nil {
-			switch err {
-			case eos:
-				r.closed = true
-				if !r.rd.possiblyAtEnd() {
-					return errDataAfterEOS
-				}
-				return eos
-			case io.EOF:
-				r.closed = true
-				return io.ErrUnexpectedEOF
-			default:
-				return err
+		switch err {
+		case nil:
+			break
+		case eos:
+			r.closed = true
+			if r.Params.SizeInHeader && r.buf.top != r.limit {
+				return n, errUnexpectedEOS
 			}
-		}
-		if outside, err := r.outsideLimits(op); outside || err != nil {
-			r.pendingOp = op
-			return err
+			return n, nil
+		case io.EOF:
+			r.closed = true
+			return n, io.ErrUnexpectedEOF
+		default:
+			return n, err
 		}
 		if err = op.Apply(d); err != nil {
-			return err
+			return n, err
+		}
+		n += op.Len()
+		if r.Params.SizeInHeader && r.buf.top >= r.limit {
+			if r.buf.top > r.limit {
+				panic("r.buf.top must not exceed r.limit here")
+			}
+			r.closed = true
+			if !r.rd.possiblyAtEnd() {
+				switch _, err = r.readOp(); err {
+				case eos:
+					if !r.rd.possiblyAtEnd() {
+						return n, errDataAfterEOS
+					}
+					return n, nil
+				case nil:
+					return n, errDataAfterEOS
+				default:
+					return n, err
+				}
+			}
+			return n, nil
 		}
 	}
-	return nil
-}
-
-func (r *Reader) move(n int) {
-	off := r.head + int64(n)
-	if !(r.buf.bottom <= off && off <= r.buf.top) {
-		panic("new offset out of range")
-	}
-	limit := off + int64(r.buf.capacity())
-	if r.Params.SizeInHeader && limit > r.limit {
-		limit = r.limit
-	}
-	if limit < r.buf.top {
-		panic("limit out of range")
-	}
-	r.head = off
-	r.buf.writeLimit = limit
 }
 
 func (r *Reader) eof() bool {
@@ -282,33 +266,17 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		k, err = r.readBuffer(p)
 		n += k
 		if err != nil {
-			return
+			return n, err
 		}
 		if k >= len(p) {
-			return
+			return n, nil
 		}
 		p = p[k:]
-		err = r.fillBuffer()
+		_, err = r.fillBuffer()
 		if err != nil {
-			if err == eos {
-				if r.Params.SizeInHeader && r.buf.top != r.limit {
-					return n, errUnexpectedEOS
-				}
-			} else {
-				return n, err
-			}
-		}
-		if r.Params.SizeInHeader && r.buf.top == r.limit {
-			err = r.close()
-			if err != nil {
-				return n, err
-			}
+			return n, err
 		}
 	}
-}
-
-func (r *Reader) setSize(size int64) error {
-	return nil
 }
 
 func (r *Reader) Restart(lzma io.Reader) {
