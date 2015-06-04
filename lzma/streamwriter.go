@@ -220,14 +220,14 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	for len(p) > 0 {
 		k, werr := w.buf.Write(p)
 		n += k
-		if werr != nil && werr != errLimit {
-			err = werr
-			break
-		}
 		p = p[k:]
-		if werr = w.compress(false); werr != nil {
-			err = werr
-			break
+		if werr != nil {
+			if werr != errLimit {
+				return n, werr
+			}
+			if werr = w.compress(false); werr != nil {
+				return n, werr
+			}
 		}
 	}
 	return n, err
@@ -241,11 +241,7 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 		if w.Params.SizeInHeader && w.start+w.Params.Size <= w.buf.top {
 			return 0, errLimit
 		}
-		var (
-			p []byte
-			k int
-		)
-		p, err = w.buf.writeSlice(w.buf.writeLimit)
+		p, err := w.buf.writeSlice(w.buf.writeLimit)
 		if err != nil {
 			if err != errAgain {
 				return n, err
@@ -255,12 +251,9 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 			}
 			continue
 		}
-		k, err = r.Read(p)
+		k, err := r.Read(p)
 		n += int64(k)
 		w.buf.top += int64(k)
-		if cerr := w.compress(false); cerr != nil {
-			return n, cerr
-		}
 		if err != nil {
 			if err != io.EOF {
 				return n, err
