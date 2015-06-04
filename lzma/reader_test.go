@@ -306,3 +306,32 @@ func TestReaderErrAgain(t *testing.T) {
 		}
 	}
 }
+
+func TestReader_WriteTo(t *testing.T) {
+	orig := readOrigFile(t)
+	pathname := filepath.Join(dirname, "a.lzma")
+	f, err := os.Open(pathname)
+	if err != nil {
+		t.Fatalf("Open(%q): %s", pathname, err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			t.Fatalf("f.Close() error %s", err)
+		}
+	}()
+	l, err := NewReader(bufio.NewReader(f))
+	if err != nil {
+		t.Fatalf("NewReader: %s", err)
+	}
+	buf := new(bytes.Buffer)
+	n, err := l.WriteTo(buf)
+	if err != nil {
+		t.Fatalf("l.WriteTo error %s", err)
+	}
+	if n != int64(len(orig)) {
+		t.Fatalf("l.WriteTo read %d bytes; want %d", n, len(orig))
+	}
+	if !bytes.Equal(buf.Bytes(), orig) {
+		t.Fatalf("l.WriteTo wrote wrong bytes")
+	}
+}

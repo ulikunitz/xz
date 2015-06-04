@@ -277,6 +277,27 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 }
 
+func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
+	if r.eof() {
+		return 0, nil
+	}
+	for {
+		var k int
+		k, err = r.buf.writeRangeTo(r.head, r.buf.top, w)
+		n += int64(k)
+		if err != nil {
+			return
+		}
+		r.move(k)
+		if r.eof() {
+			return n, nil
+		}
+		if err = r.fillBuffer(); err != nil {
+			return n, err
+		}
+	}
+}
+
 func (r *Reader) Restart(lzma io.Reader) {
 	panic("TODO")
 }
