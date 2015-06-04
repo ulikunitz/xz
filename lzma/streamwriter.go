@@ -22,8 +22,7 @@ type Writer struct {
 	re       *rangeEncoder
 	buf      *buffer
 	closed   bool
-	// N counts the bytes written
-	N int64
+	start    int64
 }
 
 // NewStreamWriter creates a new writer instance.
@@ -50,6 +49,7 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 		state:    state,
 		buf:      buf,
 		re:       newRangeEncoder(pw),
+		start:    buf.top,
 	}
 	return w, nil
 }
@@ -208,7 +208,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, errWriterClosed
 	}
 	if w.Params.SizeInHeader {
-		r := w.Params.Size - w.N
+		r := w.start + w.Params.Size - w.buf.top
 		if r <= 0 {
 			return 0, errLimit
 		}
@@ -230,7 +230,6 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 			break
 		}
 	}
-	w.N += int64(n)
 	return n, err
 }
 
@@ -239,17 +238,20 @@ var eosMatch = match{distance: maxDistance, n: MinLength}
 
 var errEarlyClose = errors.New("writer closed with bytes remaining")
 
+func (w *Writer) Size() int64 { return w.buf.top - w.start }
+
 // Close closes the writer.
 func (w *Writer) Close() (err error) {
 	if w.closed {
 		return errWriterClosed
 	}
 	if w.Params.SizeInHeader {
-		if w.N > w.Params.Size {
+		n := w.Size()
+		if n > w.Params.Size {
 			panic(fmt.Errorf("w.N=%d larger than requested size %d",
-				w.N, w.Params.Size))
+				n, w.Params.Size))
 		}
-		if w.N < w.Params.Size {
+		if n < w.Params.Size {
 			return errEarlyClose
 		}
 	}
