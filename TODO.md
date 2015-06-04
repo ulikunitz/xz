@@ -39,11 +39,10 @@
 
 ## LZMA2 support
 
-1. Support Size parameter by Writer. (No Interface implementation.)
-    - add field limited and n of the remaining data to Writer
-    - modify write and close to support those fields using
-      limitedWriteCloser as example
-2. Develop the package lzma2 using lzma streams.
+1. Improve error handling 
+2. Test lzma for MaxInt64 overflows
+3. Document lzma
+4. Develop the package lzma2 using lzma streams.
 
 ## Optimizations
 
