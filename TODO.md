@@ -39,8 +39,9 @@
 
 ## LZMA2 support
 
-1. Improve error handling 
-2. Test lzma for MaxInt64 overflows
+1. Test lzma for MaxInt64 overflows
+2. Header Reader and Writer should use Go standard interfaces
+   BinaryMarshaller and BinaryUnmarshaller
 3. Document lzma
 4. Develop the package lzma2 using lzma streams.
 
@@ -58,6 +59,14 @@
 2. Add -c  flag
 
 # Log
+
+## 2015-06-04
+
+It has been a productive day. I improved the interface of lzma.Reader
+and lzma.Writer and fixed the error handling.
+
+
+
 
 ## 2015-06-01
 
