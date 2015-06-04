@@ -152,6 +152,17 @@ func (b *buffer) writeRangeTo(off, end int64, w io.Writer) (written int, err err
 	return int(off - start), err
 }
 
+func (b *buffer) readByteAt(off int64) (c byte, err error) {
+	if !(b.bottom <= off && off < b.top) {
+		if off == b.top {
+			return 0, errAgain
+		}
+		return 0, errOffset
+	}
+	c = b.data[b.index(off)]
+	return c, nil
+}
+
 // writeRepAt writes a repetition into the buffer. Obviously the method is
 // used to handle matches during decoding the LZMA stream.
 func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {

@@ -277,6 +277,37 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 }
 
+func (r *Reader) _readByte() (c byte, err error) {
+	c, err = r.buf.readByteAt(r.head)
+	switch err {
+	case nil:
+		r.move(1)
+		return c, nil
+	case errAgain:
+		if r.closed {
+			return 0, io.EOF
+		}
+		return 0, errAgain
+	default:
+		return 0, err
+	}
+}
+
+func (r *Reader) ReadByte() (c byte, err error) {
+	c, err = r._readByte()
+	if err == nil || err != errAgain {
+		return
+	}
+	if err = r.fillBuffer(); err != nil {
+		return 0, err
+	}
+	c, err = r._readByte()
+	if err == nil || err != errAgain {
+		return
+	}
+	panic("couldn't read data")
+}
+
 func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 	if r.eof() {
 		return 0, nil
