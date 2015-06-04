@@ -183,9 +183,9 @@ func (r *Reader) readOp() (op operation, err error) {
 }
 
 // fillBuffer fills the buffer with data read from the LZMA stream.
-func (r *Reader) fillBuffer() (n int, err error) {
+func (r *Reader) fillBuffer() error {
 	if r.closed {
-		return 0, nil
+		return nil
 	}
 	d := r.state.dict.(*syncDict)
 	for {
@@ -194,7 +194,7 @@ func (r *Reader) fillBuffer() (n int, err error) {
 			off = r.limit
 		}
 		if off > r.buf.writeLimit {
-			return n, nil
+			return nil
 		}
 		op, err := r.readOp()
 		switch err {
@@ -203,19 +203,18 @@ func (r *Reader) fillBuffer() (n int, err error) {
 		case eos:
 			r.closed = true
 			if r.Params.SizeInHeader && r.buf.top != r.limit {
-				return n, errUnexpectedEOS
+				return errUnexpectedEOS
 			}
-			return n, nil
+			return nil
 		case io.EOF:
 			r.closed = true
-			return n, io.ErrUnexpectedEOF
+			return io.ErrUnexpectedEOF
 		default:
-			return n, err
+			return err
 		}
 		if err = op.Apply(d); err != nil {
-			return n, err
+			return err
 		}
-		n += op.Len()
 		if r.Params.SizeInHeader && r.buf.top >= r.limit {
 			if r.buf.top > r.limit {
 				panic("r.buf.top must not exceed r.limit here")
@@ -225,16 +224,16 @@ func (r *Reader) fillBuffer() (n int, err error) {
 				switch _, err = r.readOp(); err {
 				case eos:
 					if !r.rd.possiblyAtEnd() {
-						return n, errDataAfterEOS
+						return errDataAfterEOS
 					}
-					return n, nil
+					return nil
 				case nil:
-					return n, errDataAfterEOS
+					return errDataAfterEOS
 				default:
-					return n, err
+					return err
 				}
 			}
-			return n, nil
+			return nil
 		}
 	}
 }
@@ -272,8 +271,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			return n, nil
 		}
 		p = p[k:]
-		_, err = r.fillBuffer()
-		if err != nil {
+		if err = r.fillBuffer(); err != nil {
 			return n, err
 		}
 	}
