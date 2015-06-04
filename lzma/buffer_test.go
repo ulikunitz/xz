@@ -30,9 +30,8 @@ func TestNewBuffer(t *testing.T) {
 
 func TestNewBuffer_error(t *testing.T) {
 	b, err := newBuffer(-1)
-	if err != errCap {
-		t.Fatalf("newBuffer(%d) returned error %s; want %s",
-			-1, err, errCap)
+	if rerr, ok := err.(rangeError); ok && rerr.Name == "capacity" {
+		t.Fatalf("newBuffer(%d) returned error %s", -1, err)
 	}
 	if b != nil {
 		t.Fatalf("newBuffer(%d) returned non-nil buffer", -1)
@@ -121,8 +120,8 @@ func TestBuffer_Write_limit(t *testing.T) {
 	b.writeLimit = 9
 	p := []byte("0123456789")
 	n, err := b.Write(p)
-	if err != errLimit {
-		t.Fatalf("b.Write error %s; want %s", err, errLimit)
+	if err != errWriteLimit {
+		t.Fatalf("b.Write error %s; want %s", err, errWriteLimit)
 	}
 	if n != 9 {
 		t.Fatalf("n after b.Write %d; want %d", n, 9)
@@ -153,9 +152,9 @@ func TestBuffer_WriteByte(t *testing.T) {
 	if b.top != 2 {
 		t.Fatalf("after WriteByte b.top is %d; want %d", b.top, 1)
 	}
-	if err = b.WriteByte(1); err != errLimit {
+	if err = b.WriteByte(1); err != errWriteLimit {
 		t.Fatalf("b.WriteByte over limit error %#v; expected %#v",
-			err, errLimit)
+			err, errWriteLimit)
 	}
 }
 
@@ -190,8 +189,9 @@ func TestBuffer_writeRepAt(t *testing.T) {
 	}
 	t.Logf("b.writeLimit %d", b.writeLimit)
 	n, err = b.writeRepAt(3, 0)
-	if err != errLimit {
-		t.Fatalf("b.writeRepAt returned error %v; want %v", err, errLimit)
+	if err != errWriteLimit {
+		t.Fatalf("b.writeRepAt returned error %v; want %v", err,
+			errWriteLimit)
 	}
 	if n != 2 {
 		t.Fatalf("b.writeRepAt returned %d; want %d", n, 2)
@@ -222,15 +222,15 @@ func TestBuffer_writeRepAt_errors(t *testing.T) {
 		t.Fatalf("Write error %s", err)
 	}
 	n, err := b.writeRepAt(-2, 4)
-	if err != errNegLen {
-		t.Fatalf("writeRepAt error %s; want %s", err, errNegLen)
+	if _, ok := err.(negError); !ok {
+		t.Fatalf("writeRepAt returns wrong error")
 	}
 	if n != 0 {
 		t.Fatalf("writeRepAt returned %d; want %d", n, 0)
 	}
 	n, err = b.writeRepAt(1, 7)
-	if err != errOffset {
-		t.Fatalf("writeRepAt error %s; want %s", err, errOffset)
+	if rerr, ok := err.(rangeError); !ok || rerr.Name != "off" {
+		t.Fatalf("writeRepAt error %s", err)
 	}
 }
 
@@ -332,8 +332,8 @@ func TestBuffer_ReadAt_error(t *testing.T) {
 	}
 	p := make([]byte, 10)
 	n, err := b.ReadAt(p, b.top+1)
-	if err != errOffset {
-		t.Fatalf("b.ReadAt returned error %v; want %v", err, errOffset)
+	if _, ok := err.(rangeError); !ok {
+		t.Fatalf("b.ReadAt returned error %v; want rangeError", err)
 	}
 	if n != 0 {
 		t.Fatalf("b.ReadAt returned %d; want %d", n, 0)

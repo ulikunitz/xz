@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"fmt"
 	"unicode"
 )
@@ -21,17 +20,12 @@ type match struct {
 	n int
 }
 
-var (
-	errDistRange = errors.New("distance out of range")
-	errLenRange  = errors.New("length out of range")
-)
-
 func (m match) verify() error {
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		return errDistRange
+		return rangeError{"distance", m.distance}
 	}
 	if !(1 <= m.n && m.n <= MaxLength) {
-		return errLenRange
+		return rangeError{"n", m.n}
 	}
 	return nil
 }

@@ -1,7 +1,5 @@
 package lzma
 
-import "errors"
-
 // Maximum and minimum values for individual parameters.
 const (
 	MinLC       = 0
@@ -44,13 +42,13 @@ func (p Properties) PB() int {
 // verifyProperties checks the argument for any errors.
 func verifyProperties(lc, lp, pb int) error {
 	if !(MinLC <= lc && lc <= MaxLC) {
-		return errors.New("lc out of range")
+		return rangeError{"lc", lc}
 	}
 	if !(MinLP <= lp && lp <= MaxLC) {
-		return errors.New("lp out of range")
+		return rangeError{"lp", lp}
 	}
 	if !(MinPB <= pb && pb <= MaxPB) {
-		return errors.New("pb out of range")
+		return rangeError{"pb", pb}
 	}
 	return nil
 }

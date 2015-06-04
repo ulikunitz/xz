@@ -1,9 +1,6 @@
 package lzma
 
-import (
-	"errors"
-	"io"
-)
+import "io"
 
 // NewWriter creates a new writer. It writes the LZMA header. It will use the
 // Default Parameters.
@@ -24,9 +21,6 @@ func NewWriter(lzma io.Writer) (w *Writer, err error) {
 // For high performance use a buffered writer. But be aware that Close will not
 // flush it.
 func NewWriterParams(lzma io.Writer, p Parameters) (w *Writer, err error) {
-	if lzma == nil {
-		return nil, errors.New("writer argument w is nil")
-	}
 	p.normalizeWriterSizes()
 	if err = p.Verify(); err != nil {
 		return nil, err

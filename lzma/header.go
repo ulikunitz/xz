@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -93,13 +94,13 @@ func writeHeader(w io.Writer, p *Parameters) error {
 	b := make([]byte, 13)
 	b[0] = byte(p.Properties())
 	if p.DictSize > MaxDictSize {
-		return errors.New("DictSize exceeds maximum value")
+		return lzmaError{fmt.Sprintf("DictSize %d exceeds maximum value", p.DictSize)}
 	}
 	putUint32LE(b[1:5], uint32(p.DictSize))
 	var l uint64
 	if p.SizeInHeader {
 		if p.Size < 0 {
-			return errors.New("Size is negative")
+			return negError{"p.Size", p.Size}
 		}
 		l = uint64(p.Size)
 	} else {

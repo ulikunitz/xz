@@ -1,7 +1,7 @@
 package lzma
 
 import (
-	"errors"
+	"fmt"
 	"io"
 )
 
@@ -22,16 +22,6 @@ type buffer struct {
 // this value disables the writeLimit for all practical purposes.
 const maxLimit = 1<<63 - 1
 
-// Errors returned by buffer methods.
-var (
-	errOffset = errors.New("offset outside buffer range")
-	errAgain  = errors.New("buffer overflow; repeat")
-	errNegLen = errors.New("length is negative")
-	errLimit  = errors.New("write limit reached")
-	errCap    = errors.New("capacity out of range")
-	errInt64  = errors.New("int64 values not representable as int")
-)
-
 // toInt converts an int64 value to an int value. If the number is not
 // representable as int, errInt64 is returned.
 func toInt(n int64) (int, error) {
@@ -45,17 +35,18 @@ func toInt(n int64) (int, error) {
 // newBuffer creates a new buffer.
 func newBuffer(capacity int64) (b *buffer, err error) {
 	if capacity < 0 {
-		return nil, errCap
+		return nil, negError{"capacity", capacity}
 	}
 	c, err := toInt(capacity)
 	if err != nil {
-		return nil, errCap
+		return nil, lzmaError{fmt.Sprintf(
+			"capacity %d cannot be represented as int", capacity)}
 	}
 	b = &buffer{data: make([]byte, c), writeLimit: maxLimit}
 	return b, nil
 }
 
-// capacity returns the maximum capacity of the buffer.
+// capacity returns the max)imum capacity of the buffer.
 func (b *buffer) capacity() int {
 	return len(b.data)
 }
@@ -84,7 +75,7 @@ func (b *buffer) setTop(off int64) {
 // index converts a byte stream offset into an index of the data field.
 func (b *buffer) index(off int64) int {
 	if off < 0 {
-		panic("negative offset?")
+		panic(negError{"off", off})
 	}
 	return int(off % int64(len(b.data)))
 }
@@ -100,7 +91,7 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	if off+int64(len(p)) > b.writeLimit {
 		m = int(b.writeLimit - off)
 		p = p[:m]
-		err = errLimit
+		err = errWriteLimit
 	}
 	m = len(p) - len(b.data)
 	if m > 0 {
@@ -121,7 +112,7 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 // the io.ByteWriter interface.
 func (b *buffer) WriteByte(c byte) error {
 	if b.top >= b.writeLimit {
-		return errLimit
+		return errWriteLimit
 	}
 	b.data[b.index(b.top)] = c
 	b.setTop(b.top + 1)
@@ -131,12 +122,12 @@ func (b *buffer) WriteByte(c byte) error {
 func (b *buffer) writeSlice(end int64) (p []byte, err error) {
 	if end <= b.top {
 		if end < b.top {
-			return nil, errors.New("end less than top")
+			return nil, lzmaError{fmt.Sprintf("end=%d less than top=%d", end, b.top)}
 		}
 		return nil, errAgain
 	}
 	if end > b.writeLimit {
-		return nil, errLimit
+		return nil, errWriteLimit
 	}
 	s, e := b.index(b.top), b.index(end)
 	if s < e {
@@ -176,7 +167,7 @@ func (b *buffer) readByteAt(off int64) (c byte, err error) {
 		if off == b.top {
 			return 0, errAgain
 		}
-		return 0, errOffset
+		return 0, rangeError{"offset", off}
 	}
 	c = b.data[b.index(off)]
 	return c, nil
@@ -186,15 +177,15 @@ func (b *buffer) readByteAt(off int64) (c byte, err error) {
 // used to handle matches during decoding the LZMA stream.
 func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
 	if n < 0 {
-		return 0, errNegLen
+		return 0, negError{"n", n}
 	}
 	if !(b.bottom <= off && off < b.top) {
-		return 0, errOffset
+		return 0, rangeError{"off", off}
 	}
 
 	start, end := off, off+int64(n)
 	if end > b.writeLimit {
-		return 0, errLimit
+		return 0, errWriteLimit
 	}
 	for off < end {
 		var next int64
@@ -219,9 +210,6 @@ type readAtBuffer struct {
 	p []byte
 }
 
-// errSpace indicates insufficient space in the readAtBuffer.
-var errSpace = errors.New("out of buffer space")
-
 // Write satisfies the Writer interface for readAtBuffer.
 func (b *readAtBuffer) Write(p []byte) (n int, err error) {
 	n = copy(b.p, p)
@@ -235,7 +223,7 @@ func (b *readAtBuffer) Write(p []byte) (n int, err error) {
 // ReadAt provides the ReaderAt interface.
 func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	if !(b.bottom <= off && off <= b.top) {
-		return 0, errOffset
+		return 0, rangeError{"off", off}
 	}
 	end := off + int64(len(p))
 	if end > b.top {

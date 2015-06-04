@@ -1,7 +1,5 @@
 package lzma
 
-import "errors"
-
 type hashDict struct {
 	buf  *buffer
 	head int64
@@ -11,10 +9,10 @@ type hashDict struct {
 
 func newHashDict(buf *buffer, head int64, size int64) (hd *hashDict, err error) {
 	if !(buf.bottom <= head && head <= buf.top) {
-		return nil, errors.New("head out of range")
+		return nil, rangeError{"head", head}
 	}
 	if !(MinDictSize <= size && size <= int64(buf.capacity())) {
-		return nil, errors.New("size out of range")
+		return nil, rangeError{"size", size}
 	}
 	t4, err := newHashTable(size, 4)
 	if err != nil {
@@ -49,7 +47,7 @@ func (hd *hashDict) reset() {
 // hash table.
 func (hd *hashDict) move(n int) (moved int, err error) {
 	if n < 0 {
-		return 0, errors.New("argument n must be non-negative")
+		return 0, negError{"n", n}
 	}
 	if !(hd.buf.bottom <= hd.head && hd.head <= hd.buf.top) {
 		panic("head out of range")

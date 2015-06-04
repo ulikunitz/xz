@@ -1,7 +1,5 @@
 package lzma
 
-import "errors"
-
 type reps [4]uint32
 
 func (r reps) index(dist uint32) int {
@@ -37,8 +35,6 @@ func (r *reps) addMatch(m match) {
 	}
 }
 
-var errOptype = errors.New("unsupported operation type")
-
 func (r *reps) addOp(op operation) {
 	switch o := op.(type) {
 	case lit:
@@ -70,7 +66,7 @@ func (r reps) optype(op operation) (t int, err error) {
 		g := r.index(dist)
 		if m.n == 1 {
 			if g != 0 {
-				return tUnknown, errLenRange
+				return tUnknown, rangeError{"match length", m.n}
 			}
 			return tShortRep, nil
 		}

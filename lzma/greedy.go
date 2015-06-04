@@ -1,9 +1,6 @@
 package lzma
 
-import (
-	"errors"
-	"io"
-)
+import "io"
 
 // greedyFinder is an OpFinder that implements a simple greedy algorithm
 // to finding operations.
@@ -28,9 +25,6 @@ func (ms *miniState) applyOp(op operation) {
 	}
 	ms.r.addOp(op)
 }
-
-// errNoMatch indicates that no match could be found
-var errNoMatch = errors.New("no match found")
 
 func weight(n, bits int) int {
 	return (n << 20) / bits
@@ -60,9 +54,6 @@ func bestOp(ms *miniState, litop lit, offsets []int64) operation {
 	}
 	return op
 }
-
-// errEmptyBuf indicates an empty buffer.
-var errEmptyBuf = errors.New("empty buffer")
 
 // potentialOffsets returns a list of offset positions where a match to
 // at the current dictionary head can be identified.

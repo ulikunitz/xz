@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"fmt"
 	"io"
 )
@@ -84,12 +83,12 @@ func iverson(ok bool) uint32 {
 func (w *Writer) writeMatch(m match) error {
 	var err error
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		panic(errDistRange)
+		panic(rangeError{"match distance", m.distance})
 	}
 	dist := uint32(m.distance - minDistance)
 	if !(MinLength <= m.n && m.n <= MaxLength) &&
 		!(dist == w.state.rep[0] && m.n == 1) {
-		panic(errLenRange)
+		panic(rangeError{"match length", m.n})
 	}
 	state, state2, posState := w.state.states()
 	if err = w.state.isMatch[state2].Encode(w.re, 1); err != nil {
@@ -199,9 +198,6 @@ func (w *Writer) compress(all bool) error {
 	return nil
 }
 
-// errWriterClosed indicates that a writer has been closed once before.
-var errWriterClosed = errors.New("writer is closed")
-
 // Write puts the provided data into the writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
@@ -210,11 +206,11 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.Params.SizeInHeader {
 		r := w.start + w.Params.Size - w.buf.top
 		if r <= 0 {
-			return 0, errLimit
+			return 0, errWriteLimit
 		}
 		if int64(len(p)) > r {
 			p = p[0:r]
-			err = errLimit
+			err = errWriteLimit
 		}
 	}
 	for len(p) > 0 {
@@ -222,7 +218,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		n += k
 		p = p[k:]
 		if werr != nil {
-			if werr != errLimit {
+			if werr != errWriteLimit {
 				return n, werr
 			}
 			if werr = w.compress(false); werr != nil {
@@ -239,7 +235,7 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 	for {
 		if w.Params.SizeInHeader && w.start+w.Params.Size <= w.buf.top {
-			return 0, errLimit
+			return 0, errWriteLimit
 		}
 		p, err := w.buf.writeSlice(w.buf.writeLimit)
 		if err != nil {
@@ -268,7 +264,7 @@ func (w *Writer) WriteByte(c byte) error {
 		return errWriterClosed
 	}
 	if w.Params.SizeInHeader && w.start+w.Params.Size <= w.buf.top {
-		return errLimit
+		return errWriteLimit
 	}
 	var err error
 	if err = w.buf.WriteByte(c); err == nil {
@@ -285,8 +281,6 @@ func (w *Writer) WriteByte(c byte) error {
 
 // This operation will be encoded to indicate that the stream has ended.
 var eosMatch = match{distance: maxDistance, n: MinLength}
-
-var errEarlyClose = errors.New("writer closed with bytes remaining")
 
 func (w *Writer) Size() int64 { return w.buf.top - w.start }
 

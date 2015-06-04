@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"errors"
 	"io"
 )
 
@@ -200,7 +199,7 @@ func (e *rangeEncoder) shiftLow() error {
 			e.cacheSize--
 			if e.cacheSize <= 0 {
 				if e.cacheSize < 0 {
-					return errors.New("negative e.cacheSize")
+					return negError{"cacheSize", e.cacheSize}
 				}
 				break
 			}
@@ -239,7 +238,7 @@ func (d *rangeDecoder) init() error {
 		return err
 	}
 	if b != 0 {
-		return errors.New("first byte not zero")
+		return lzmaError{"first byte not zero"}
 	}
 
 	for i := 0; i < 4; i++ {
@@ -249,7 +248,7 @@ func (d *rangeDecoder) init() error {
 	}
 
 	if d.code >= d.nrange {
-		return errors.New("newRangeDecoder: d.code >= d.nrange")
+		return lzmaError{"newRangeDecoder: d.code >= d.nrange"}
 	}
 
 	return nil

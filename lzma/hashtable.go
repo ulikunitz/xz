@@ -1,7 +1,7 @@
 package lzma
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/uli-go/xz/hash"
 )
@@ -124,18 +124,18 @@ func hashTableExponent(n uint32) int {
 // newHashTable creates a new hash table for n-byte sequences.
 func newHashTable(historySize int64, n int) (t *hashTable, err error) {
 	if historySize < 1 {
-		return nil, errors.New("history length must be at least one byte")
+		return nil, lzmaError{fmt.Sprintf("historySize (%d) must be larger than one", historySize)}
 	}
 	if historySize > MaxDictSize {
-		return nil, errors.New("history length must be less than 2^32")
+		return nil, lzmaError{fmt.Sprintf("historySize (%d) must be less than 2^32", historySize)}
 	}
 	exp := hashTableExponent(uint32(historySize))
 	if !(1 <= n && n <= 4) {
-		return nil, errors.New("argument n out of range")
+		return nil, lzmaError{"argument n out of range"}
 	}
 	slotLen := int(1) << uint(exp)
 	if slotLen <= 0 {
-		return nil, errors.New("exponent is too large")
+		return nil, lzmaError{"exponent is too large"}
 	}
 	t = &hashTable{
 		t:    make([]slot, slotLen),

@@ -1,16 +1,7 @@
 package lzma
 
 import (
-	"errors"
 	"io"
-)
-
-// Errors produced by readOp and fillBuffer
-var (
-	eos              = errors.New("end of stream")
-	errClosed        = errors.New("stream is closed")
-	errDataAfterEOS  = errors.New("data after end of stream")
-	errUnexpectedEOS = errors.New("unexpected eos")
 )
 
 type Reader struct {
@@ -73,7 +64,7 @@ func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if p.SizeInHeader {
 		r.limit = r.head + p.Size
 		if r.limit < r.buf.top {
-			return nil, errors.New("limit out of range")
+			return nil, errReadLimit
 		}
 	}
 	r.move(0)

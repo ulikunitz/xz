@@ -1,7 +1,5 @@
 package lzma
 
-import "errors"
-
 type syncDict struct {
 	buf  *buffer
 	size int64
@@ -43,7 +41,7 @@ func (sd *syncDict) WriteByte(c byte) error {
 
 func newSyncDict(buf *buffer, size int64) (sd *syncDict, err error) {
 	if !(MinDictSize <= size && size <= int64(buf.capacity())) {
-		return nil, errors.New("size out of range")
+		return nil, rangeError{"size", size}
 	}
 	sd = &syncDict{buf: buf, size: size}
 	return sd, nil

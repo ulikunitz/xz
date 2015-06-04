@@ -1,8 +1,6 @@
 package lzma
 
-import (
-	"errors"
-)
+import "fmt"
 
 // Parameters contain all information required to decode or encode an LZMA
 // stream.
@@ -76,26 +74,26 @@ func (p *Parameters) normalizeWriterSizes() {
 // Verify checks parameters for errors.
 func (p *Parameters) Verify() error {
 	if p == nil {
-		return errors.New("parameters must be non-nil")
+		return lzmaError{"parameters must be non-nil"}
 	}
 	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
 	if !(MinDictSize <= p.DictSize && p.DictSize <= MaxDictSize) {
-		return errors.New("DictSize out of range")
+		return rangeError{"DictSize", p.DictSize}
 	}
 	if p.DictSize != int64(int(p.DictSize)) {
-		return errors.New("DictSize too large for int")
+		return lzmaError{fmt.Sprintf("DictSize %d too large for int", p.DictSize)}
 	}
 	if p.Size < 0 {
-		return errors.New("Size must not be negative")
+		return negError{"Size", p.Size}
 	}
 	if p.ExtraBufSize < 0 {
-		return errors.New("ExtraBufSize must not be negative")
+		return negError{"ExtraBufSize", p.ExtraBufSize}
 	}
 	bufSize := p.DictSize + p.ExtraBufSize
 	if bufSize != int64(int(bufSize)) {
-		return errors.New("buffer size too large for int")
+		return lzmaError{"buffer size too large for int"}
 	}
 	return nil
 }
