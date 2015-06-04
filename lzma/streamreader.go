@@ -20,6 +20,8 @@ type Reader struct {
 	buf    *buffer
 	// head indicates the reading head
 	head int64
+	// start marks the offset at the start of the stream
+	start int64
 	// limit marks the expected size of the decompressed byte stream
 	limit int64
 	// closed marks readers where no more data will be written into
@@ -60,7 +62,14 @@ func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err != nil {
 		return
 	}
-	r = &Reader{Params: p, state: state, rd: rd, buf: buf, head: buf.bottom}
+	r = &Reader{
+		Params: p,
+		state:  state,
+		rd:     rd,
+		buf:    buf,
+		head:   buf.bottom,
+		start:  buf.bottom,
+	}
 	if p.SizeInHeader {
 		r.limit = r.head + p.Size
 		if r.limit < r.buf.top {
@@ -327,6 +336,10 @@ func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 			return n, err
 		}
 	}
+}
+
+func (r *Reader) Size() int64 {
+	return r.head - r.start
 }
 
 func (r *Reader) Restart(lzma io.Reader) {

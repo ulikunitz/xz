@@ -370,3 +370,34 @@ func TestReader_ReadByte(t *testing.T) {
 		t.Fatalf("decoded bytes and original bytes differ")
 	}
 }
+
+func TestReader_Size(t *testing.T) {
+	pathname := filepath.Join(dirname, "a.lzma")
+	f, err := os.Open(pathname)
+	if err != nil {
+		t.Fatalf("Open(%q): %s", pathname, err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			t.Fatalf("f.Close() error %s", err)
+		}
+	}()
+	l, err := NewReader(bufio.NewReader(f))
+	if err != nil {
+		t.Fatalf("NewReader: %s", err)
+	}
+	b := make([]byte, 0, 128)
+	for l.Size() < 4 {
+		c, err := l.ReadByte()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("l.ReadByte error %s", err)
+		}
+		b = append(b, c)
+	}
+	if len(b) != 4 {
+		t.Fatalf("read %d bytes; want %d", len(b), 4)
+	}
+}
