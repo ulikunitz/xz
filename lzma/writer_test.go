@@ -183,3 +183,35 @@ func TestWriter_Size(t *testing.T) {
 		t.Fatalf("read %q, want %q", s, want)
 	}
 }
+
+func TestWriter_WriteByte(t *testing.T) {
+	p := Default
+	p.SizeInHeader = true
+	p.Size = 3
+	buf := new(bytes.Buffer)
+	w, err := NewWriterParams(buf, p)
+	if err != nil {
+		t.Fatalf("NewWriterP error %s", err)
+	}
+	for i := int64(0); i < p.Size; i++ {
+		if err = w.WriteByte('a' + byte(i)); err != nil {
+			t.Fatalf("w.WriteByte error %s", err)
+		}
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out := new(bytes.Buffer)
+	if _, err := io.Copy(out, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+	s := out.String()
+	want := "abc"
+	if s != want {
+		t.Fatalf("got %q; want %q", s, want)
+	}
+}

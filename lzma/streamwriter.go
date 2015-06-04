@@ -233,6 +233,26 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+func (w *Writer) WriteByte(c byte) error {
+	if w.closed {
+		return errWriterClosed
+	}
+	if w.Params.SizeInHeader && w.start+w.Params.Size <= w.buf.top {
+		return errLimit
+	}
+	var err error
+	if err = w.buf.WriteByte(c); err == nil {
+		return nil
+	}
+	if err = w.compress(false); err != nil {
+		return err
+	}
+	if err = w.buf.WriteByte(c); err != nil {
+		panic("no space for write")
+	}
+	return nil
+}
+
 // This operation will be encoded to indicate that the stream has ended.
 var eosMatch = match{distance: maxDistance, n: MinLength}
 
