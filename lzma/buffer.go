@@ -128,6 +128,25 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
+func (b *buffer) writeSlice(end int64) (p []byte, err error) {
+	if end <= b.top {
+		if end < b.top {
+			return nil, errors.New("end less than top")
+		}
+		return nil, errAgain
+	}
+	if end > b.writeLimit {
+		return nil, errLimit
+	}
+	s, e := b.index(b.top), b.index(end)
+	if s < e {
+		p = b.data[s:e]
+	} else {
+		p = b.data[s:]
+	}
+	return p, nil
+}
+
 // writeRangeTo is a helper function that writes all data between off
 // and end to the writer. The function doesn't check the arguments.
 func (b *buffer) writeRangeTo(off, end int64, w io.Writer) (written int, err error) {

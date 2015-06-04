@@ -233,6 +233,43 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
+	if w.closed {
+		return 0, errWriterClosed
+	}
+	for {
+		if w.Params.SizeInHeader && w.start+w.Params.Size <= w.buf.top {
+			return 0, errLimit
+		}
+		var (
+			p []byte
+			k int
+		)
+		p, err = w.buf.writeSlice(w.buf.writeLimit)
+		if err != nil {
+			if err != errAgain {
+				return n, err
+			}
+			if err = w.compress(false); err != nil {
+				return n, err
+			}
+			continue
+		}
+		k, err = r.Read(p)
+		n += int64(k)
+		w.buf.top += int64(k)
+		if cerr := w.compress(false); cerr != nil {
+			return n, cerr
+		}
+		if err != nil {
+			if err != io.EOF {
+				return n, err
+			}
+			return n, nil
+		}
+	}
+}
+
 func (w *Writer) WriteByte(c byte) error {
 	if w.closed {
 		return errWriterClosed
