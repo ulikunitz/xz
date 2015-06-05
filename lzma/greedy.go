@@ -14,11 +14,13 @@ func init() {
 	Greedy = greedyFinder{}
 }
 
+// miniState represents a minimal state to be used by optimizer.
 type miniState struct {
 	d hashDict
 	r reps
 }
 
+// applyOp applies the LZMA operation to the miniState.
 func (ms *miniState) applyOp(op operation) {
 	if _, err := ms.d.move(op.Len()); err != nil {
 		panic(err)
@@ -26,6 +28,8 @@ func (ms *miniState) applyOp(op operation) {
 	ms.r.addOp(op)
 }
 
+// weight provides a function to compute the weight of an operation with
+// length n that can be encoded with the given number of bits.
 func weight(n, bits int) int {
 	return (n << 20) / bits
 }
@@ -82,7 +86,7 @@ func potentialOffsets(ms *miniState, p []byte) []int64 {
 	return offs
 }
 
-// finds a single operation at the current head of the hash dictionary.
+// findOp finds a single operation at the current head of the hash dictionary.
 func findOp(ms *miniState) operation {
 	p := make([]byte, 4)
 	n, err := ms.d.buf.ReadAt(p, ms.d.head)

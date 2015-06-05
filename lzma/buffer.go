@@ -11,6 +11,8 @@ import (
 // The top offset tracks the position of the buffer in the byte stream
 // covered. The bottom offset marks the bottom of the buffer. The
 // writeLimit marks the limit for additional writes.
+//
+// Change top only with the setTop function.
 type buffer struct {
 	data       []byte
 	bottom     int64 // bottom == max(top - len(data), 0)
@@ -120,6 +122,9 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
+// writeSlice returns a slice from the buffer for direct writing of
+// data. Note that depending of top in the ring buffer the array p might
+// be smaller then end-buf.top.
 func (b *buffer) writeSlice(end int64) (p []byte, err error) {
 	if end <= b.top {
 		if end < b.top {
@@ -163,6 +168,9 @@ func (b *buffer) writeRangeTo(off, end int64, w io.Writer) (written int, err err
 	return int(off - start), err
 }
 
+// readByteAt returns the byte at the given offset. If off is not in the
+// range [b.bottom, b.top) a rangeError is returned unless off equals
+// b.top. In that case errAgain is returned.
 func (b *buffer) readByteAt(off int64) (c byte, err error) {
 	if !(b.bottom <= off && off < b.top) {
 		if off == b.top {
@@ -266,6 +274,7 @@ func (b *buffer) equalBytes(off1, off2 int64, max int) int {
 	return int(k)
 }
 
+// resets the buffer to its original values.
 func (b *buffer) reset() {
 	b.top = 0
 	b.bottom = 0

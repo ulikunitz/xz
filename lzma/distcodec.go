@@ -29,6 +29,7 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
+// distBits returns the number of bits required to encode dist.
 func distBits(dist uint32) int {
 	if dist < startPosModel {
 		return 6
