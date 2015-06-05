@@ -2,10 +2,9 @@ package lzma
 
 import (
 	"io"
-
-	"github.com/uli-go/xz/basics/i64"
 )
 
+// Reader decompresses an LZMA stream.
 type Reader struct {
 	Params Parameters
 	state  *State
@@ -22,19 +21,13 @@ type Reader struct {
 	closed bool
 }
 
+// move moves the reader head forward by n bytes.
 func (r *Reader) move(n int) {
-	off, overflow := i64.Add(r.head, int64(n))
-	if overflow {
-		panic(errInt64Overflow)
-	}
+	off := add(r.head, int64(n))
 	if !(r.buf.bottom <= off && off <= r.buf.top) {
 		panic("new offset out of range")
 	}
-	var limit int64
-	limit, overflow = i64.Add(off, int64(r.buf.capacity()))
-	if overflow {
-		panic(errInt64Overflow)
-	}
+	limit := add(off, int64(r.buf.capacity()))
 	if r.Params.SizeInHeader && limit > r.limit {
 		limit = r.limit
 	}
@@ -45,6 +38,8 @@ func (r *Reader) move(n int) {
 	r.buf.writeLimit = limit
 }
 
+// NewStreamReader creates a new reader object using the given
+// parameters.
 func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err
@@ -247,6 +242,7 @@ func (r *Reader) fillBuffer() error {
 	}
 }
 
+// Checks the reader for the EOF file condition.
 func (r *Reader) eof() bool {
 	return r.closed && r.head == r.buf.top
 }
@@ -286,6 +282,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 }
 
+// _readByte is a helper function for ReadByte.
 func (r *Reader) _readByte() (c byte, err error) {
 	c, err = r.buf.readByteAt(r.head)
 	switch err {
@@ -302,6 +299,7 @@ func (r *Reader) _readByte() (c byte, err error) {
 	}
 }
 
+// ReadByte supports reading a single byte from the reader.
 func (r *Reader) ReadByte() (c byte, err error) {
 	c, err = r._readByte()
 	if err == nil || err != errAgain {
@@ -317,6 +315,7 @@ func (r *Reader) ReadByte() (c byte, err error) {
 	panic("couldn't read data")
 }
 
+// WriteTo writes all the remaining data to the given writer.
 func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 	if r.eof() {
 		return 0, nil
@@ -338,6 +337,7 @@ func (r *Reader) WriteTo(w io.Writer) (n int64, err error) {
 	}
 }
 
+// Size returns the current size of the data read from the reader.
 func (r *Reader) Size() int64 {
 	return r.head - r.start
 }

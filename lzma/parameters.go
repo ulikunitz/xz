@@ -40,6 +40,9 @@ func (p *Parameters) SetProperties(props Properties) {
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
 }
 
+// normalizeDictSize provides a correct value for the dictionary size.
+// If the dictionary size is 0 the default value is used. Values less
+// then the minimum dictionary size are corrected.
 func (p *Parameters) normalizeDictSize() {
 	if p.DictSize == 0 {
 		p.DictSize = Default.DictSize
@@ -49,12 +52,18 @@ func (p *Parameters) normalizeDictSize() {
 	}
 }
 
+// normalizeReaderExtraBufSize provides a correct value for the extra
+// buffer size for the LZMA reader. The ExtraBufSize is set to 0 if
+// negative.
 func (p *Parameters) normalizeReaderExtraBufSize() {
 	if p.ExtraBufSize < 0 {
 		p.ExtraBufSize = 0
 	}
 }
 
+// normalizeWriterExtraBufSize provides a correct value for the extra
+// buffer size for an LZMA writer. It is set to 4096 if the extra buffer
+// size is less then zero.
 func (p *Parameters) normalizeWriterExtraBufSize() {
 	if p.ExtraBufSize <= 0 {
 		p.ExtraBufSize = 4096

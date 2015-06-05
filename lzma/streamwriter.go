@@ -229,6 +229,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// ReadFrom reads all data from the given reader and compresses it.
 func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 	if w.closed {
 		return 0, errWriterClosed
@@ -259,6 +260,7 @@ func (w *Writer) ReadFrom(r io.Reader) (n int64, err error) {
 	}
 }
 
+// WriteByte supports the writing of a single byte.
 func (w *Writer) WriteByte(c byte) error {
 	if w.closed {
 		return errWriterClosed

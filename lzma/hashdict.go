@@ -1,5 +1,7 @@
 package lzma
 
+// The type hashDict provides a dictionary with a hash table of all
+// 4-byte strings in the dictionary.
 type hashDict struct {
 	buf  *buffer
 	head int64
@@ -7,6 +9,7 @@ type hashDict struct {
 	t4   *hashTable
 }
 
+// newhashDict creates a new hash dictionary.
 func newHashDict(buf *buffer, head int64, size int64) (hd *hashDict, err error) {
 	if !(buf.bottom <= head && head <= buf.top) {
 		return nil, rangeError{"head", head}
@@ -22,10 +25,13 @@ func newHashDict(buf *buffer, head int64, size int64) (hd *hashDict, err error) 
 	return hd, nil
 }
 
+// offset returns the current offset of the head of the dictionary.
 func (hd *hashDict) offset() int64 {
 	return hd.head
 }
 
+// byteAt returns the byte at the distance. The method returns a zero
+// byte if the distance exceeds the current length of the dictionary.
 func (hd *hashDict) byteAt(dist int64) byte {
 	if !(0 < dist && dist <= hd.size) {
 		panic("dist out of range")
@@ -37,6 +43,7 @@ func (hd *hashDict) byteAt(dist int64) byte {
 	return hd.buf.data[hd.buf.index(off)]
 }
 
+// resets set the hash dictionary back to an empty status.
 func (hd *hashDict) reset() {
 	hd.buf.reset()
 	hd.head = 0

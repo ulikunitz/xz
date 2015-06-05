@@ -35,6 +35,8 @@ func (lc *lengthCodec) init() {
 	lc.high = makeTreeCodec(8)
 }
 
+// lBits gives the number of bits used for the encoding of the l value
+// provided to the range encoder.
 func lBits(l uint32) int {
 	switch {
 	case l < 8:

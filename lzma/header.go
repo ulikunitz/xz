@@ -94,7 +94,8 @@ func writeHeader(w io.Writer, p *Parameters) error {
 	b := make([]byte, 13)
 	b[0] = byte(p.Properties())
 	if p.DictSize > MaxDictSize {
-		return lzmaError{fmt.Sprintf("DictSize %d exceeds maximum value", p.DictSize)}
+		return lzmaError{fmt.Sprintf(
+			"DictSize %d exceeds maximum value", p.DictSize)}
 	}
 	putUint32LE(b[1:5], uint32(p.DictSize))
 	var l uint64

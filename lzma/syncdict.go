@@ -1,14 +1,19 @@
 package lzma
 
+// syncDict provides a dictionary that is always synchronized with the
+// top of the buffer.
 type syncDict struct {
 	buf  *buffer
 	size int64
 }
 
+// offset returns the current head of the dictionary, which is the top
+// of the buffer.
 func (sd *syncDict) offset() int64 {
 	return sd.buf.top
 }
 
+// byteAt returns the the byte at the given distance.
 func (sd *syncDict) byteAt(dist int64) byte {
 	if !(0 < dist && dist <= sd.size) {
 		panic("dist out of range")
@@ -20,6 +25,7 @@ func (sd *syncDict) byteAt(dist int64) byte {
 	return sd.buf.data[sd.buf.index(off)]
 }
 
+// reset resets the dictionary and the buffer.
 func (sd *syncDict) reset() {
 	sd.buf.reset()
 }
@@ -35,10 +41,12 @@ func (sd *syncDict) writeRep(dist int64, n int) (written int, err error) {
 	return
 }
 
+// WriteByte writes a single byte into the buffer.
 func (sd *syncDict) WriteByte(c byte) error {
 	return sd.buf.WriteByte(c)
 }
 
+// newSyncDict creates a sync dictionary.
 func newSyncDict(buf *buffer, size int64) (sd *syncDict, err error) {
 	if !(MinDictSize <= size && size <= int64(buf.capacity())) {
 		return nil, rangeError{"size", size}

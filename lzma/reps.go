@@ -1,7 +1,10 @@
 package lzma
 
+// reps represents the repetion table in the LZMA state.
 type reps [4]uint32
 
+// index maps the given dist value to the correct index into the reps
+// table. If the dist will not be found 4 is returned.
 func (r reps) index(dist uint32) int {
 	if dist == r[0] {
 		return 0
@@ -18,6 +21,7 @@ func (r reps) index(dist uint32) int {
 	return 4
 }
 
+// addMatch adds the dist value for the match to the reps table.
 func (r *reps) addMatch(m match) {
 	dist := m.dist()
 	g := r.index(dist)
@@ -35,6 +39,7 @@ func (r *reps) addMatch(m match) {
 	}
 }
 
+// addOp applies the given operation to the reps variable.
 func (r *reps) addOp(op operation) {
 	switch o := op.(type) {
 	case lit:
@@ -46,6 +51,8 @@ func (r *reps) addOp(op operation) {
 	}
 }
 
+// Operation type codes provide information about the specific type of
+// an operation.
 const (
 	tUnknown = iota
 	tLit
@@ -57,6 +64,8 @@ const (
 	tMatch
 )
 
+// optype computes the operation type code for a specific operation.
+// Note that this is dependent on the status of the reps table.
 func (r reps) optype(op operation) (t int, err error) {
 	switch m := op.(type) {
 	case lit:
@@ -76,6 +85,8 @@ func (r reps) optype(op operation) (t int, err error) {
 	}
 }
 
+// opBits provides the length of the bits required to be provided to the
+// rangeEncoder.
 func (r reps) opBits(op operation) int {
 	t, err := r.optype(op)
 	if err != nil {

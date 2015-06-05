@@ -20,6 +20,8 @@ type match struct {
 	n int
 }
 
+// verify checks whether the match is valid. If that is not the case an
+// error is returned.
 func (m match) verify() error {
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
 		return rangeError{"distance", m.distance}
@@ -30,10 +32,14 @@ func (m match) verify() error {
 	return nil
 }
 
+// l return the l-value for the match, which is the difference of length
+// n and 2.
 func (m match) l() uint32 {
 	return uint32(m.n - MinLength)
 }
 
+// dist returns the dist value for the match, which is one less of the
+// distance stored in the match.
 func (m match) dist() uint32 {
 	return uint32(m.distance - minDistance)
 }

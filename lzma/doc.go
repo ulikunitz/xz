@@ -1,4 +1,4 @@
-// Package lzma provides a reader and a writer for LZMA streams. 
+// Package lzma provides a reader and a writer for LZMA streams.
 //
 // The NewReader function reads the classic LZMA header. NewWriter and
 // NewWriterParam generate the header. To read and write LZMA streams
