@@ -88,7 +88,8 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	}
 	var m int
 	off := b.top
-	if off+int64(len(p)) > b.writeLimit {
+	end := add(off, int64(len(p)))
+	if end > b.writeLimit {
 		m = int(b.writeLimit - off)
 		p = p[:m]
 		err = errWriteLimit
@@ -183,7 +184,7 @@ func (b *buffer) writeRepAt(n int, off int64) (written int, err error) {
 		return 0, rangeError{"off", off}
 	}
 
-	start, end := off, off+int64(n)
+	start, end := off, add(off, int64(n))
 	if end > b.writeLimit {
 		return 0, errWriteLimit
 	}
@@ -225,7 +226,7 @@ func (b *buffer) ReadAt(p []byte, off int64) (n int, err error) {
 	if !(b.bottom <= off && off <= b.top) {
 		return 0, rangeError{"off", off}
 	}
-	end := off + int64(len(p))
+	end := add(off, int64(len(p)))
 	if end > b.top {
 		end = b.top
 	}

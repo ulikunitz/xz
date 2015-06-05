@@ -204,7 +204,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		return 0, errWriterClosed
 	}
 	if w.Params.SizeInHeader {
-		r := w.start + w.Params.Size - w.buf.top
+		r := (w.start - w.buf.top) + w.Params.Size
 		if r <= 0 {
 			return 0, errWriteLimit
 		}

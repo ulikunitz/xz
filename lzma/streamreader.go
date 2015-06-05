@@ -2,6 +2,8 @@ package lzma
 
 import (
 	"io"
+
+	"github.com/uli-go/xz/basics/i64"
 )
 
 type Reader struct {
@@ -21,11 +23,18 @@ type Reader struct {
 }
 
 func (r *Reader) move(n int) {
-	off := r.head + int64(n)
+	off, overflow := i64.Add(r.head, int64(n))
+	if overflow {
+		panic(errInt64Overflow)
+	}
 	if !(r.buf.bottom <= off && off <= r.buf.top) {
 		panic("new offset out of range")
 	}
-	limit := off + int64(r.buf.capacity())
+	var limit int64
+	limit, overflow = i64.Add(off, int64(r.buf.capacity()))
+	if overflow {
+		panic(errInt64Overflow)
+	}
 	if r.Params.SizeInHeader && limit > r.limit {
 		limit = r.limit
 	}
@@ -62,7 +71,7 @@ func NewStreamReader(lzma io.Reader, p Parameters) (r *Reader, err error) {
 		start:  buf.bottom,
 	}
 	if p.SizeInHeader {
-		r.limit = r.head + p.Size
+		r.limit = add(r.head, p.Size)
 		if r.limit < r.buf.top {
 			return nil, errReadLimit
 		}
@@ -189,7 +198,7 @@ func (r *Reader) fillBuffer() error {
 	}
 	d := r.state.dict.(*syncDict)
 	for {
-		off := r.buf.top + MaxLength
+		off := add(r.buf.top, MaxLength)
 		if r.Params.SizeInHeader && off > r.limit {
 			off = r.limit
 		}

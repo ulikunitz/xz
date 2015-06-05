@@ -52,5 +52,6 @@ var (
 	errReadLimit     = limitError{"read"}
 	errWriteLimit    = limitError{"write"}
 	errInt64         = lzmaError{"int64 values not representable as int"}
+	errInt64Overflow = lzmaError{"int64 overflow detected"}
 	errSpace         = lzmaError{"out of buffer space"}
 )

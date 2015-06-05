@@ -52,7 +52,7 @@ func (hd *hashDict) move(n int) (moved int, err error) {
 	if !(hd.buf.bottom <= hd.head && hd.head <= hd.buf.top) {
 		panic("head out of range")
 	}
-	off := hd.head + int64(n)
+	off := add(hd.head, int64(n))
 	if off > hd.buf.top {
 		off = hd.buf.top
 	}
@@ -73,5 +73,5 @@ func (hd *hashDict) start() int64 {
 // sync synchronizes the write limit of the backing buffer with the
 // current dictionary head.
 func (hd *hashDict) sync() {
-	hd.buf.writeLimit = hd.start() + int64(hd.buf.capacity())
+	hd.buf.writeLimit = add(hd.start(), int64(hd.buf.capacity()))
 }
