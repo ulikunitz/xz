@@ -3,6 +3,7 @@ package lzma
 import (
 	"fmt"
 
+	"github.com/uli-go/xz/basics/u32"
 	"github.com/uli-go/xz/hash"
 )
 
@@ -111,7 +112,7 @@ type hashTable struct {
 
 // hashTableExponent derives the hash table exponent from the history length.
 func hashTableExponent(n uint32) int {
-	e := 30 - nlz32(n)
+	e := 30 - u32.NLZ(n)
 	switch {
 	case e < minTableExponent:
 		e = minTableExponent
