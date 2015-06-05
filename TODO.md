@@ -14,6 +14,7 @@
    Write a go tool to do it and publish it.
 7. Improve documentation
 8. Create Release Notes as markdown file.
+9. Check that package is indeed go-gettable.
 
 # Release 1.0
 
@@ -22,9 +23,6 @@
     - xz
     - xzcat
     - unxz
-    - lzma
-    - lzmacat
-    - unlzma
 3. Provide a manual page
 4. Create Release Notes
 5. Add godoc URL to README.md (godoc.org)
@@ -39,11 +37,10 @@
 
 ## LZMA2 support
 
-1. Test lzma for MaxInt64 overflows
-2. Header Reader and Writer should use Go standard interfaces
+1. Header Reader and Writer should use Go standard interfaces
    BinaryMarshaller and BinaryUnmarshaller
-3. Document lzma
-4. Develop the package lzma2 using lzma streams.
+2. Document lzma
+3. Develop the package lzma2 using lzma streams.
 
 ## Optimizations
 
@@ -60,13 +57,18 @@
 
 # Log
 
+## 2014-06-05
+
+The overflow issue was interesting to research, however Henry S. Warren
+Jr. Hacker's Delight book was very helpful as usual and had the issue
+explained perfectly. Fefe's information on his website was based on the
+C FAQ and quite bad, because it didn't address the issue of -MININT ==
+MININT.
+
 ## 2015-06-04
 
 It has been a productive day. I improved the interface of lzma.Reader
 and lzma.Writer and fixed the error handling.
-
-
-
 
 ## 2015-06-01
 
