@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -9,144 +9,95 @@ import (
 	"path/filepath"
 
 	"github.com/ogier/pflag"
-	"github.com/uli-go/xz/lzma"
 )
 
 const (
-	cmdName = "lzmago"
-	lzmaExt = ".lzma"
+	lzmaExt  = ".lzma"
+	usageStr = `Usage: lzmago [OPTION]... [FILE]...
+Compress or uncompress FILEs in the .lzma format (by default, compress FILES
+in place).
+
+  -c, --stdout      write to standard output and don't delete input files
+  -d, --decompress  force decompression
+  -f, --force       force overwrite of output file and compress links
+  -h, --help        give this help
+  -k, --keep        keep (don't delete) input files
+  -L, --license     display software license
+  -q, --quiet       suppress all warnings
+  -v, --verbose     verbose mode
+  -V, --version     display version string
+  -z, --compress    force compression
+  -0 ... -9         compression preset; default is 6
+
+With no file, or when FILE is -, read standard input.
+
+Report bugs using <https://github.com/uli-go/xz/issues>.
+`
 )
 
-var (
-	uncompress = pflag.BoolP("decompress", "d", false, "decompresses files")
-)
+type V int
 
-func compressedName(name string) (string, error) {
-	if filepath.Ext(name) == lzmaExt {
-		return "", fmt.Errorf(
-			"%s already has %s extension -- unchanged",
-			name, lzmaExt)
+const defaultSpeed V = 6
+
+func (v *V) filterArg(arg string) string {
+	if len(arg) < 2 || arg[0] != '-' || arg[1] == '-' {
+		return arg
 	}
-	return name + lzmaExt, nil
+	buf := new(bytes.Buffer)
+	buf.Grow(len(arg))
+	for _, c := range arg {
+		if '0' <= c && c <= '9' {
+			*v = V(c - '0')
+			continue
+		}
+		buf.WriteRune(c)
+	}
+	return buf.String()
 }
 
-func cleanup(r, w *os.File, ferr error) error {
-	var cerr error
-	if r != nil {
-		if err := r.Close(); err != nil {
-			cerr = err
+func (v *V) filter() {
+	args := make([]string, 1, len(os.Args))
+	args[0] = os.Args[0]
+	for i, arg := range os.Args[1:] {
+		if arg == "--" {
+			args = append(args, os.Args[1+i:]...)
+			break
+
 		}
-		if ferr == nil {
-			err := os.Remove(r.Name())
-			if cerr == nil && err != nil {
-				cerr = err
-			}
-		}
-	}
-	if w != nil {
-		if err := w.Close(); cerr == nil && err != nil {
-			cerr = err
-		}
-		if ferr != nil {
-			err := os.Remove(w.Name())
-			if cerr == nil && err != nil {
-				cerr = err
-			}
+		n := v.filterArg(arg)
+		if n != "-" {
+			args = append(args, v.filterArg(arg))
 		}
 	}
-	if ferr == nil && cerr != nil {
-		ferr = cerr
-	}
-	return ferr
+	os.Args = args
 }
 
-func compressFile(name string) (err error) {
-	var r, w *os.File
-	defer func() {
-		err = cleanup(r, w, err)
-	}()
-	compName, err := compressedName(name)
-	if err != nil {
-		return
-	}
-	r, err = os.Open(name)
-	if err != nil {
-		return
-	}
-	w, err = os.Create(compName)
-	if err != nil {
-		return
-	}
-	bw := bufio.NewWriter(w)
-	lw, err := lzma.NewWriter(bw)
-	if err != nil {
-		return
-	}
-	if _, err = io.Copy(lw, r); err != nil {
-		return
-	}
-	if err = lw.Close(); err != nil {
-		return
-	}
-	err = bw.Flush()
-	return
-}
-
-func uncompressedName(name string) (uname string, err error) {
-	ext := filepath.Ext(name)
-	if ext != lzmaExt {
-		return "", fmt.Errorf(
-			"%s: file extension %s unknown -- ignored", name, ext)
-	}
-	return name[:len(name)-len(ext)], nil
-}
-
-func uncompressFile(name string) (err error) {
-	var r, w *os.File
-	defer func() {
-		err = cleanup(r, w, err)
-	}()
-	uname, err := uncompressedName(name)
-	if err != nil {
-		return
-	}
-	r, err = os.Open(name)
-	if err != nil {
-		return
-	}
-	lr, err := lzma.NewReader(bufio.NewReader(r))
-	if err != nil {
-		return
-	}
-	w, err = os.Create(uname)
-	if err != nil {
-		return
-	}
-	_, err = io.Copy(w, lr)
-	return
+func usage(w io.Writer) {
+	fmt.Fprint(w, usageStr)
 }
 
 func main() {
+	// initialization
+	cmdName := filepath.Base(os.Args[0])
+	pflag.CommandLine = pflag.NewFlagSet(cmdName, pflag.ExitOnError)
+	pflag.SetInterspersed(true)
+	pflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	log.SetPrefix(fmt.Sprintf("%s: ", cmdName))
 	log.SetFlags(0)
+
+	var (
+		help  = pflag.BoolP("help", "h", false, "")
+		speed = defaultSpeed
+	)
+
+	speed.filter()
+	log.Printf("filtered args %v", os.Args)
 	pflag.Parse()
-	if len(pflag.Args()) == 0 {
-		log.Print("For help use option -h")
+
+	if *help {
+		usage(os.Stdout)
 		os.Exit(0)
 	}
-	if *uncompress {
-		// uncompress files
-		for _, name := range pflag.Args() {
-			if err := uncompressFile(name); err != nil {
-				log.Fatal(err)
-			}
-		}
-	} else {
-		// compress files
-		for _, name := range pflag.Args() {
-			if err := compressFile(name); err != nil {
-				log.Fatal(err)
-			}
-		}
-	}
+
+	log.Printf("speed %d", speed)
 }
