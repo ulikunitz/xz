@@ -64,9 +64,9 @@ func (v *V) filter() {
 			break
 
 		}
-		n := v.filterArg(arg)
-		if n != "-" {
-			args = append(args, v.filterArg(arg))
+		arg = v.filterArg(arg)
+		if arg != "-" {
+			args = append(args, arg)
 		}
 	}
 	os.Args = args
