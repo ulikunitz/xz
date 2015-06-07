@@ -4,6 +4,7 @@
 
 1. Simple lzmago supporting all the features of lzma. Links to
     lzma, unlzma and lzmacat are supported.
+        - find configuration for speed integers in xz source code
 2. Execute test suite on:
     - x86 (Linux)
     - amd64 (Linux, Windows)
