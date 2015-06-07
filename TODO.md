@@ -37,10 +37,7 @@
 
 ## LZMA2 support
 
-1. Header Reader and Writer should use Go standard interfaces
-   BinaryMarshaller and BinaryUnmarshaller
-2. Document lzma
-3. Develop the package lzma2 using lzma streams.
+1. Develop the package lzma2 using lzma streams.
 
 ## Optimizations
 
