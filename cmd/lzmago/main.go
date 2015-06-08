@@ -1,5 +1,7 @@
 package main
 
+//go:generate gocat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE pflagLicense:github.com/ogier/pflag/LICENSE
+
 import (
 	"bytes"
 	"fmt"
@@ -7,6 +9,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 
 	"github.com/ogier/pflag"
 )
@@ -76,20 +80,53 @@ func usage(w io.Writer) {
 	fmt.Fprint(w, usageStr)
 }
 
+func licenses(w io.Writer) {
+	out := `
+github.com/uli-go/xz -- xz for Go 
+=================================
+
+{{.xz}}
+
+pflag -- Posix flag package
+===========================
+
+{{.pflag}}
+`
+	out = strings.TrimLeft(out, " \n")
+	tmpl, err := template.New("licenses").Parse(out)
+	if err != nil {
+		log.Panicf("error %s parsing licenses template", err)
+	}
+	lmap := map[string]string{
+		"xz":    strings.TrimSpace(xzLicense),
+		"pflag": strings.TrimSpace(pflagLicense),
+	}
+	if err = tmpl.Execute(w, lmap); err != nil {
+		log.Fatalf("error %s writing licenses template", err)
+	}
+}
+
 func main() {
-	// initialization
+	// setup logger
 	cmdName := filepath.Base(os.Args[0])
-	pflag.CommandLine = pflag.NewFlagSet(cmdName, pflag.ExitOnError)
-	pflag.SetInterspersed(true)
-	pflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	log.SetPrefix(fmt.Sprintf("%s: ", cmdName))
 	log.SetFlags(0)
 
+	// initialize flags
+	pflag.CommandLine = pflag.NewFlagSet(cmdName, pflag.ExitOnError)
+	pflag.SetInterspersed(true)
+	pflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	var (
-		help   = pflag.BoolP("help", "h", false, "")
-		preset = defaultPreset
+		help       = pflag.BoolP("help", "h", false, "")
+		stdout     = pflag.BoolP("stdout", "c", false, "")
+		decompress = pflag.BoolP("decompress", "d", false, "")
+		force      = pflag.BoolP("force", "f", false, "")
+		keep       = pflag.BoolP("keep", "k", false, "")
+		license    = pflag.BoolP("license", "L", false, "")
+		preset     = defaultPreset
 	)
 
+	// process arguments
 	preset.filter()
 	log.Printf("filtered args %v", os.Args)
 	pflag.Parse()
@@ -98,6 +135,15 @@ func main() {
 		usage(os.Stdout)
 		os.Exit(0)
 	}
+	if *license {
+		licenses(os.Stdout)
+		os.Exit(0)
+	}
 
+	log.Printf("decompress %t", *decompress)
+	log.Printf("force %t", *force)
+	log.Printf("keep %t", *keep)
+	log.Printf("keep %t", *keep)
 	log.Printf("preset %d", preset)
+	log.Printf("stdout %t", *stdout)
 }
