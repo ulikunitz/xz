@@ -131,6 +131,10 @@ func main() {
 	log.Printf("filtered args %v", os.Args)
 	pflag.Parse()
 
+	if pflag.NArg() == 0 {
+		log.Fatal("for help, type lzmago -h")
+	}
+
 	if *help {
 		usage(os.Stdout)
 		os.Exit(0)
