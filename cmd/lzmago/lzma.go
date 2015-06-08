@@ -1,15 +1,9 @@
 package main
 
-// translating preset config into lzma params
-// default preset 6
-// dict_pow2 18, 20, 21, 22, 22, 23, 23, 24, 25, 26
-// LC-LP-PB: 3,0,2
-// see tukaani xz implementation lzma_encoder_presets
-// preset <= 3 0: HC3 1: HC4
-// nice_len: 128 : 273
-// depths: 4, 8, 24, 48 
-// MODE_FAST
-// preset > 3: BT4
-// nice_len: 4: 16 5: 32 sonst 64
-// depth 0
-// MODE_NORMAL
+// I cannot use the preset config from the Tukaani project directly,
+// because I don't have two algorithm modes and can't support parameters
+// like nice_len or depth. So at this point in time I stay with the
+// dictionary sizes the default combination of (LC,LP,LB) = (3,0,2).
+// The default preset is 6.
+// Following list provides exponents of two for the dictionary sizes:
+// 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
