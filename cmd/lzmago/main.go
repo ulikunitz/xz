@@ -35,11 +35,11 @@ Report bugs using <https://github.com/uli-go/xz/issues>.
 `
 )
 
-type V int
+type Preset int
 
-const defaultSpeed V = 6
+const defaultPreset Preset = 6
 
-func (v *V) filterArg(arg string) string {
+func (p *Preset) filterArg(arg string) string {
 	if len(arg) < 2 || arg[0] != '-' || arg[1] == '-' {
 		return arg
 	}
@@ -47,7 +47,7 @@ func (v *V) filterArg(arg string) string {
 	buf.Grow(len(arg))
 	for _, c := range arg {
 		if '0' <= c && c <= '9' {
-			*v = V(c - '0')
+			*p = Preset(c - '0')
 			continue
 		}
 		buf.WriteRune(c)
@@ -55,7 +55,7 @@ func (v *V) filterArg(arg string) string {
 	return buf.String()
 }
 
-func (v *V) filter() {
+func (p *Preset) filter() {
 	args := make([]string, 1, len(os.Args))
 	args[0] = os.Args[0]
 	for i, arg := range os.Args[1:] {
@@ -64,7 +64,7 @@ func (v *V) filter() {
 			break
 
 		}
-		arg = v.filterArg(arg)
+		arg = p.filterArg(arg)
 		if arg != "-" {
 			args = append(args, arg)
 		}
@@ -86,11 +86,11 @@ func main() {
 	log.SetFlags(0)
 
 	var (
-		help  = pflag.BoolP("help", "h", false, "")
-		speed = defaultSpeed
+		help   = pflag.BoolP("help", "h", false, "")
+		preset = defaultPreset
 	)
 
-	speed.filter()
+	preset.filter()
 	log.Printf("filtered args %v", os.Args)
 	pflag.Parse()
 
@@ -99,5 +99,5 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Printf("speed %d", speed)
+	log.Printf("preset %d", preset)
 }
