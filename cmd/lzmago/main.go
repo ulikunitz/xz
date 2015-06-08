@@ -146,7 +146,6 @@ func main() {
 	log.Printf("decompress %t", *decompress)
 	log.Printf("force %t", *force)
 	log.Printf("keep %t", *keep)
-	log.Printf("keep %t", *keep)
 	log.Printf("preset %d", preset)
 	log.Printf("stdout %t", *stdout)
 }
