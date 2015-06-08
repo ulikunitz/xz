@@ -1,6 +1,7 @@
 package main
 
 //go:generate gocat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE pflagLicense:github.com/ogier/pflag/LICENSE
+//go:generate goversion -o version.go
 
 import (
 	"bytes"
@@ -117,13 +118,14 @@ func main() {
 	pflag.SetInterspersed(true)
 	pflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	var (
-		help       = pflag.BoolP("help", "h", false, "")
-		stdout     = pflag.BoolP("stdout", "c", false, "")
-		decompress = pflag.BoolP("decompress", "d", false, "")
-		force      = pflag.BoolP("force", "f", false, "")
-		keep       = pflag.BoolP("keep", "k", false, "")
-		license    = pflag.BoolP("license", "L", false, "")
-		preset     = defaultPreset
+		help        = pflag.BoolP("help", "h", false, "")
+		stdout      = pflag.BoolP("stdout", "c", false, "")
+		decompress  = pflag.BoolP("decompress", "d", false, "")
+		force       = pflag.BoolP("force", "f", false, "")
+		keep        = pflag.BoolP("keep", "k", false, "")
+		license     = pflag.BoolP("license", "L", false, "")
+		versionFlag = pflag.BoolP("version", "V", false, "")
+		preset      = defaultPreset
 	)
 
 	// process arguments
@@ -137,6 +139,10 @@ func main() {
 	}
 	if *license {
 		licenses(os.Stdout)
+		os.Exit(0)
+	}
+	if *versionFlag {
+		log.Printf("version %s\n", version)
 		os.Exit(0)
 	}
 	if pflag.NArg() == 0 {

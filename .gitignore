@@ -8,6 +8,7 @@ lzma/reader.txt
 
 cmd/lzmago/lzmago
 cmd/gocat/gocat
+cmd/goversion/goversion
 
 # profile files
 *.out
