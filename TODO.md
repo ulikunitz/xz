@@ -17,6 +17,19 @@
 8. Create Release Notes as markdown file.
 9. Check that package is indeed go-gettable.
 
+Release v0.4
+
+1. Write the first version of xzgo. It should be able to decode and
+   encode xz files.
+
+Release v0.5
+
+1. Write a data generator for improving the LZMA encoder and decoder.
+2. Apply it to compression and decompression tests.
+3. Use the Calgary corpus, the various collections of the Calgary corpus and
+   the Hutter Prize file (enwik8) and the large compression benchmark
+   for testing. See Matt Mahoney.
+
 # Release 1.0
 
 1. Full functioning xzgo
