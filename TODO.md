@@ -15,7 +15,8 @@
    Write a go tool to do it and publish it.
 7. Improve documentation
 8. Create Release Notes as markdown file.
-9. Check that package is indeed go-gettable.
+9. execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
+10. Check that package is indeed go-gettable.
 
 Release v0.4
 
