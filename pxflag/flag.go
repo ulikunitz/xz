@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 )
 
 var CommandLine = NewFlagSet(os.Args[0], ExitOnError)
@@ -47,7 +48,7 @@ type FlagSet struct {
 	parsed        bool
 	actual        map[string]*Flag
 	formal        map[string]*Flag
-	shorthand     map[string]*Flag
+	shorthand     map[rune]*Flag
 	args          []string
 	output        io.Writer
 	errorHandling ErrorHandling
@@ -125,20 +126,39 @@ func BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
 }
 
 func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
-	flag := &Flag{Name: name, Usage: usage, Value: value, DefValue: value.String()}
-	_, alreadythere := f.formal[name]
-	if alreadythere {
-		var msg string
-		if f.name == "" {
-			msg = fmt.Sprintf("flag redefined: %s", name)
-		} else {
-			msg = fmt.Sprintf("%s flag redefined: %s", f.name, name)
-		}
+	flag := &Flag{Name: name, Shorthand: shorthand, Usage: usage, Value: value, DefValue: value.String()}
+
+	var msg string
+	if flag.Name == "" && flag.Shorthand != "" {
+		msg = strings.TrimSpace(
+			fmt.Sprintf("%s flag with no name or shorthand",
+				f.name))
 		fmt.Fprintln(f.out(), msg)
 		panic(msg)
 	}
-	if f.formal == nil {
-		f.formal = make(map[string]*Flag)
+
+	if flag.Name != "" {
+		_, alreadythere := f.formal[name]
+		if alreadythere {
+			if f.name == "" {
+				msg = fmt.Sprintf("flag redefined: %s", name)
+			} else {
+				msg = fmt.Sprintf("%s flag redefined: %s", f.name, name)
+			}
+			fmt.Fprintln(f.out(), msg)
+			panic(msg)
+		}
+		if f.formal == nil {
+			f.formal = make(map[string]*Flag)
+		}
+		f.formal[name] = flag
 	}
-	f.formal[name] = flag
+	if flag.Shorthand != "" {
+		if f.shorthand == nil {
+			f.shorthand = make(map[rune]*Flag)
+		}
+		for _, r := range flag.Shorthand {
+			f.shorthand[r] = flag
+		}
+	}
 }
