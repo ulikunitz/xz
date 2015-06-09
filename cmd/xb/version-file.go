@@ -14,8 +14,9 @@ import (
 
 const vfUsage = `xb version-file [options] <id>:<path>...
 
-This command puts the contents of the files given as relative paths to
-the GOPATH variable as string constants into a go file. 
+The command creates go file with a version constant. The version string
+contains the contents of the VERSION environment variable or the output
+of git describe.
 
    -h  prints this message and exits
    -p  package name (default main)
@@ -58,11 +59,16 @@ func versionFile() {
 		}
 	}
 
-	b, err := exec.Command("git", "describe").Output()
-	if err != nil {
-		log.Fatalf("error %s while executing git describe", err)
+	// get the version string
+	version := os.Getenv("VERSION")
+	if version == "" {
+		b, err := exec.Command("git", "describe").Output()
+		if err != nil {
+			log.Fatalf("error %s while executing git describe", err)
+		}
+		version = string(b)
 	}
-	version := strings.TrimSpace(string(b))
+	version = strings.TrimSpace(version)
 
 	versionTmpl := `package main
 
