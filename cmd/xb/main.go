@@ -43,7 +43,7 @@ func main() {
 		os.Exit(0)
 	case "cat":
 		updateArgs("cat")
-		fmt.Printf("os.Args: %v\n", os.Args)
+		cat()
 		os.Exit(0)
 	case "version-file":
 		updateArgs("version-file")
