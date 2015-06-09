@@ -1,6 +1,6 @@
 package main
 
-//go:generate goversion -o version.go
+//go:generate xb version-file -o version.go
 
 import (
 	"fmt"
@@ -47,7 +47,7 @@ func main() {
 		os.Exit(0)
 	case "version-file":
 		updateArgs("version-file")
-		fmt.Printf("os.Args: %v\n", os.Args)
+		versionFile()
 		os.Exit(0)
 	default:
 		log.Fatalf("command %q not supported", os.Args[1])
