@@ -1,6 +1,7 @@
 package main
 
 //go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE pflagLicense:github.com/ogier/pflag/LICENSE
+//go:generate xb version-file -o version.go
 
 import (
 	"bytes"
