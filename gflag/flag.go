@@ -32,12 +32,12 @@ type Value interface {
 }
 
 type Flag struct {
-	Name      string
-	Shorthand string
-	HasArg    HasArg
-	Usage     string
-	Value     Value
-	DefValue  string
+	Name       string
+	Shorthands string
+	HasArg     HasArg
+	Usage      string
+	Value      Value
+	DefValue   string
 }
 
 type FlagSet struct {
@@ -47,7 +47,6 @@ type FlagSet struct {
 	parsed        bool
 	actual        map[string]*Flag
 	formal        map[string]*Flag
-	shorthand     map[rune]*Flag
 	args          []string
 	output        io.Writer
 	errorHandling ErrorHandling
@@ -71,11 +70,11 @@ func (f *FlagSet) out() io.Writer {
 	return f.output
 }
 
-func (f *FlagSet) CounterP(name, shorthand string, value int,
+func (f *FlagSet) CounterP(name, shorthands string, value int,
 	usage string) *int {
 	panic("TODO")
 }
-func (f *FlagSet) CounterVarP(p *int, name, shorthand string, value int,
+func (f *FlagSet) CounterVarP(p *int, name, shorthands string, value int,
 	usage string) {
 	panic("TODO")
 }
@@ -108,9 +107,9 @@ func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
 	return f.BoolP(name, "", value, usage)
 }
 
-func (f *FlagSet) BoolP(name, shorthand string, value bool, usage string) *bool {
+func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool {
 	p := new(bool)
-	f.BoolVarP(p, name, shorthand, value, usage)
+	f.BoolVarP(p, name, shorthands, value, usage)
 	return p
 }
 
@@ -118,17 +117,17 @@ func Bool(name string, value bool, usage string) *bool {
 	return CommandLine.BoolP(name, "", value, usage)
 }
 
-func BoolP(name, shorthand string, value bool, usage string) *bool {
-	return CommandLine.BoolP(name, shorthand, value, usage)
+func BoolP(name, shorthands string, value bool, usage string) *bool {
+	return CommandLine.BoolP(name, shorthands, value, usage)
 }
 
-func (f *FlagSet) BoolVarP(p *bool, name, shorthand string, value bool,
+func (f *FlagSet) BoolVarP(p *bool, name, shorthands string, value bool,
 	usage string) {
-	f.VarP(newBoolValue(value, p), name, shorthand, usage, OptionalArg)
+	f.VarP(newBoolValue(value, p), name, shorthands, usage, OptionalArg)
 }
 
-func BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
-	CommandLine.VarP(newBoolValue(value, p), name, shorthand, usage,
+func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
+	CommandLine.VarP(newBoolValue(value, p), name, shorthands, usage,
 		OptionalArg)
 }
 
@@ -154,42 +153,46 @@ func (f *FlagSet) panicf(format string, values ...interface{}) {
 	panic(msg)
 }
 
-func VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
-	CommandLine.VarP(value, name, shorthand, usage, hasArg)
+func VarP(value Value, name, shorthands, usage string, hasArg HasArg) {
+	CommandLine.VarP(value, name, shorthands, usage, hasArg)
 }
 
-func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
+func (f *FlagSet) setFormal(name string, flag *Flag) {
+	if name == "" {
+		f.panicf("no support for empty name strings")
+	}
+	if _, alreadythere := f.formal[name]; alreadythere {
+		f.panicf("flag redefined: %s", flag.Name)
+	}
+	if f.formal == nil {
+		f.formal = make(map[string]*Flag)
+	}
+	f.formal[name] = flag
+}
+
+func (f *FlagSet) VarP(value Value, name, shorthands, usage string, hasArg HasArg) {
 	flag := &Flag{
-		Name:      name,
-		Shorthand: shorthand,
-		Usage:     usage,
-		Value:     value,
-		DefValue:  value.String(),
+		Name:       name,
+		Shorthands: shorthands,
+		Usage:      usage,
+		Value:      value,
+		DefValue:   value.String(),
 	}
 
-	if flag.Name == "" && flag.Shorthand != "" {
-		f.panicf("flag with no name or shorthand")
+	if flag.Name == "" && flag.Shorthands != "" {
+		f.panicf("flag with no name or shorthands")
 	}
 	if len(flag.Name) == 1 {
-		f.panicf("flag has single character name %q; use shorthand",
+		f.panicf("flag has single character name %q; use shorthands",
 			flag.Name)
 	}
 	if flag.Name != "" {
-		_, alreadythere := f.formal[name]
-		if alreadythere {
-			f.panicf("flag redefined: %s", flag.Name)
-		}
-		if f.formal == nil {
-			f.formal = make(map[string]*Flag)
-		}
-		f.formal[name] = flag
+		f.setFormal(flag.Name, flag)
 	}
-	if flag.Shorthand != "" {
-		if f.shorthand == nil {
-			f.shorthand = make(map[rune]*Flag)
-		}
-		for _, r := range flag.Shorthand {
-			f.shorthand[r] = flag
+	if flag.Shorthands != "" {
+		for _, r := range flag.Shorthands {
+			name := string([]rune{r})
+			f.setFormal(name, flag)
 		}
 	}
 }
@@ -204,5 +207,10 @@ func (f *FlagSet) Var(value Value, name, usage string) {
 	case *boolValue:
 		hasArg = OptionalArg
 	}
-	f.VarP(value, name, "", usage, hasArg)
+	shorthands := ""
+	if len(name) == 1 {
+		shorthands = name
+		name = ""
+	}
+	f.VarP(value, name, shorthands, usage, hasArg)
 }
