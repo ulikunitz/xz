@@ -65,6 +65,25 @@ func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet {
 	return f
 }
 
+func (f *FlagSet) Arg(i int) string {
+	if !(0 <= i && i < len(f.args)) {
+		return ""
+	}
+	return f.args[i]
+}
+
+func Arg(i int) string {
+	return CommandLine.Arg(i)
+}
+
+func (f *FlagSet) Args() []string { return f.args }
+
+func Args() []string { return CommandLine.args }
+
+func (f *FlagSet) NArg() int { return len(f.args) }
+
+func NArg() int { return len(CommandLine.args) }
+
 func Parsed() bool {
 	return CommandLine.parsed
 }

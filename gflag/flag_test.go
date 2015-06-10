@@ -18,4 +18,8 @@ func TestFlagSet_Bool(t *testing.T) {
 	if *b != false {
 		t.Errorf("*b is %t; want %t", *b, false)
 	}
+
+	if f.NArg() != 0 {
+		t.Errorf("f.NArg() is %d; want %d", f.NArg(), 0)
+	}
 }
