@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 )
 
 var CommandLine = NewFlagSet(os.Args[0], ExitOnError)
@@ -129,28 +128,41 @@ func BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
 		OptionalArg)
 }
 
-func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
-	flag := &Flag{Name: name, Shorthand: shorthand, Usage: usage, Value: value, DefValue: value.String()}
-
+func (f *FlagSet) panicf(format string, values ...interface{}) {
 	var msg string
+	if f.name == "" {
+		msg = fmt.Sprintf(format, values...)
+	} else {
+		v := make([]interface{}, 1+len(values))
+		v[0] = f.name
+		copy(v[1:], values)
+		msg = fmt.Sprintf("%s "+format, v...)
+	}
+	fmt.Fprintln(f.out(), msg)
+	panic(msg)
+}
+
+func VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
+	CommandLine.VarP(value, name, shorthand, usage, hasArg)
+}
+
+func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg) {
+	flag := &Flag{
+		Name:      name,
+		Shorthand: shorthand,
+		Usage:     usage,
+		Value:     value,
+		DefValue:  value.String(),
+	}
+
 	if flag.Name == "" && flag.Shorthand != "" {
-		msg = strings.TrimSpace(
-			fmt.Sprintf("%s flag with no name or shorthand",
-				f.name))
-		fmt.Fprintln(f.out(), msg)
-		panic(msg)
+		f.panicf("flag with no name or shorthand")
 	}
 
 	if flag.Name != "" {
 		_, alreadythere := f.formal[name]
 		if alreadythere {
-			if f.name == "" {
-				msg = fmt.Sprintf("flag redefined: %s", name)
-			} else {
-				msg = fmt.Sprintf("%s flag redefined: %s", f.name, name)
-			}
-			fmt.Fprintln(f.out(), msg)
-			panic(msg)
+			f.panicf("flag redefined: %s", flag.Name)
 		}
 		if f.formal == nil {
 			f.formal = make(map[string]*Flag)
@@ -165,4 +177,17 @@ func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg
 			f.shorthand[r] = flag
 		}
 	}
+}
+
+func Var(value Value, name, usage string) {
+	CommandLine.Var(value, name, usage)
+}
+
+func (f *FlagSet) Var(value Value, name, usage string) {
+	hasArg := RequiredArg
+	switch value.(type) {
+	case *boolValue:
+		hasArg = OptionalArg
+	}
+	f.VarP(value, name, "", usage, hasArg)
 }
