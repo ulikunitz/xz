@@ -1,4 +1,4 @@
-package pxflag
+package gflag
 
 import (
 	"fmt"
@@ -70,6 +70,10 @@ func (f *FlagSet) out() io.Writer {
 		return os.Stderr
 	}
 	return f.output
+}
+
+func (f *FlagSet) ParseOne() (bool, error) {
+	panic("TODO")
 }
 
 func (f *FlagSet) CounterP(name, shorthand string, value int,
