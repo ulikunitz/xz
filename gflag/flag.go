@@ -104,10 +104,18 @@ func (b *boolValue) String() string {
 	return fmt.Sprintf("%t", *b)
 }
 
+func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
+	return f.BoolP(name, "", value, usage)
+}
+
 func (f *FlagSet) BoolP(name, shorthand string, value bool, usage string) *bool {
 	p := new(bool)
 	f.BoolVarP(p, name, shorthand, value, usage)
 	return p
+}
+
+func Bool(name string, value bool, usage string) *bool {
+	return CommandLine.BoolP(name, "", value, usage)
 }
 
 func BoolP(name, shorthand string, value bool, usage string) *bool {
@@ -122,6 +130,14 @@ func (f *FlagSet) BoolVarP(p *bool, name, shorthand string, value bool,
 func BoolVarP(p *bool, name, shorthand string, value bool, usage string) {
 	CommandLine.VarP(newBoolValue(value, p), name, shorthand, usage,
 		OptionalArg)
+}
+
+func BoolVar(p *bool, name string, value bool, usage string) {
+	CommandLine.BoolVarP(p, name, "", value, usage)
+}
+
+func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
+	f.BoolVarP(p, name, "", value, usage)
 }
 
 func (f *FlagSet) panicf(format string, values ...interface{}) {
