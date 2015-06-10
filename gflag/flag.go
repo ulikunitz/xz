@@ -114,7 +114,7 @@ func (f *FlagSet) processExtraFlagArg(flag *Flag, i int) error {
 	if i < len(f.args) {
 		arg := f.args[i]
 		if len(arg) == 0 || arg[0] != '-' {
-			f.filterArg(i)
+			f.removeArg(i)
 			return flag.Value.Set(arg)
 		}
 	}
@@ -127,7 +127,7 @@ func (f *FlagSet) processExtraFlagArg(flag *Flag, i int) error {
 	return nil
 }
 
-func (f *FlagSet) filterArg(i int) {
+func (f *FlagSet) removeArg(i int) {
 	copy(f.args[i:], f.args[i+1:])
 	f.args = f.args[:len(f.args)-1]
 }
@@ -139,7 +139,7 @@ func (f *FlagSet) parseArg(i int) (next int, err error) {
 	}
 	if arg[1] == '-' {
 		// argument starts with --
-		f.filterArg(i)
+		f.removeArg(i)
 		if len(arg) == 2 {
 			// argument is --; remove it and ignore all
 			// following arguments
@@ -166,7 +166,7 @@ func (f *FlagSet) parseArg(i int) (next int, err error) {
 		return i, err
 	}
 	// short options
-	f.filterArg(i)
+	f.removeArg(i)
 	arg = arg[1:]
 	for _, r := range arg {
 		flag, err := f.lookupShortOption(r)
