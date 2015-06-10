@@ -316,6 +316,7 @@ func (f *FlagSet) VarP(value Value, name, shorthands, usage string, hasArg HasAr
 		Usage:      usage,
 		Value:      value,
 		DefValue:   value.String(),
+		HasArg:     hasArg,
 	}
 
 	if flag.Name == "" && flag.Shorthands != "" {
