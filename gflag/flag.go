@@ -170,7 +170,10 @@ func (f *FlagSet) VarP(value Value, name, shorthand, usage string, hasArg HasArg
 	if flag.Name == "" && flag.Shorthand != "" {
 		f.panicf("flag with no name or shorthand")
 	}
-
+	if len(flag.Name) == 1 {
+		f.panicf("flag has single character name %q; use shorthand",
+			flag.Name)
+	}
 	if flag.Name != "" {
 		_, alreadythere := f.formal[name]
 		if alreadythere {
