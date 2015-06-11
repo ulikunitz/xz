@@ -21,18 +21,10 @@
 9. execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
 10. Check that package is indeed go-gettable.
 
-Release v0.4
+# Release v0.4
 
 1. Write the first version of xzgo. It should be able to decode and
    encode xz files.
-
-Release v0.5
-
-1. Write a data generator for improving the LZMA encoder and decoder.
-2. Apply it to compression and decompression tests.
-3. Use the Calgary corpus, the various collections of the Calgary corpus and
-   the Hutter Prize file (enwik8) and the large compression benchmark
-   for testing. See Matt Mahoney.
 
 # Release 1.0
 
@@ -64,16 +56,17 @@ Release v0.5
 
 ## Optimizations
 
-- Use radix trees (crit-bit trees) instead of the hash.
+### DAG optimizations
 
-# lzmago binary
+Use full buffer to create minimal bit-length above range encoder.
 
-1. It seems that the main functionality of a compression tool is
-   independent of the actual compression used. So abstract from it and
-   implement functionality only once.
-1. Put the functions in the xz/pack package to prevent reinventing the
-   wheel. Those commands can then be used for optimization.
-2. Add -c  flag
+### Different match finders
+
+- hashes with 2, 3 characters additional to 4 characters
+- binary trees with 2-7 characters (uint64 as key, use uint32 as
+  pointers into a an array)
+- rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
+  into an array with bit-steeling for the colors)
 
 # Log
 
