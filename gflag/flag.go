@@ -415,3 +415,29 @@ func (f *FlagSet) Counter(name string, value int, usage string) *int {
 func Counter(name string, value int, usage string) *int {
 	return CommandLine.CounterP(name, "", value, usage)
 }
+
+func (f *FlagSet) IntVarP(p *int, name, shorthands string, value int, usage string) {
+	f.VarP(newIntValue(value, p), name, shorthands, usage, RequiredArg)
+}
+
+func IntVarP(p *int, name, shorthands string, value int, usage string) {
+	CommandLine.IntVarP(p, name, shorthands, value, usage)
+}
+
+func (f *FlagSet) IntP(name, shorthands string, value int, usage string) *int {
+	p := new(int)
+	f.IntVarP(p, name, shorthands, value, usage)
+	return p
+}
+
+func IntP(name, shorthands string, value int, usage string) *int {
+	return CommandLine.IntP(name, shorthands, value, usage)
+}
+
+func (f *FlagSet) Int(name string, value int, usage string) *int {
+	return f.IntP(name, "", value, usage)
+}
+
+func Int(name string, value int, usage string) *int {
+	return CommandLine.IntP(name, "", value, usage)
+}
