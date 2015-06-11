@@ -4,7 +4,10 @@
 
 1. Simple lzmago supporting all the features of lzma. Links to
     lzma, unlzma and lzmacat are supported.
-        - find configuration for speed integers in xz source code
+2. Create separate xztest project on github.com using Calgary,
+   Canterbury Corpus and enwik8 and enwik9
+    a) Clarify Copyrights
+    b) Create tests
 2. Execute test suite on:
     - x86 (Linux)
     - amd64 (Linux, Windows)
@@ -34,7 +37,7 @@ Release v0.5
 # Release 1.0
 
 1. Full functioning xzgo
-2. Support by xzgo tool. Links for the classic tools should work.
+2. Support by xzgo tool. It will not support lzma in the same binary.
     - xz
     - xzcat
     - unxz
@@ -48,9 +51,14 @@ Release v0.5
 - Implement the package using the LZMA2 support provided by LZMA2.
 - Provide user the capability to get uncompressed size before unpacking.
 
-# Subpackage lzma2
+# Package gflag
 
-## LZMA2 support
+1. Support for legacy short names, e.g. Int("q",...) by transforming in
+   a shorthand. Use Var for it.
+2. Support for usage printing (separate from flags)
+3. Transform lzmago to it
+
+# Package lzma2
 
 1. Develop the package lzma2 using lzma streams.
 
@@ -69,7 +77,13 @@ Release v0.5
 
 # Log
 
-## 2014-06-05
+## 2015-06-11
+
+The gflag package has been developed because I couldn't use flag and
+pflag for a fully compatible support of gzip's and lzma's options. It
+seems to work now quite nicely.
+
+## 2015-06-05
 
 The overflow issue was interesting to research, however Henry S. Warren
 Jr. Hacker's Delight book was very helpful as usual and had the issue
