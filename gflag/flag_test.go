@@ -47,9 +47,11 @@ func TestFlagSet_Counter(t *testing.T) {
 
 func TestFlagSet_Int(t *testing.T) {
 	f := NewFlagSet("Bool", ContinueOnError)
-	a := f.Counter("test-a", 0, "")
-	b := f.CounterP("test-b", "b", 0, "")
-	err := f.Parse([]string{"--test-a=0x23", "foo", "-b", "077", "bar"})
+	a := f.Int("test-a", 0, "")
+	b := f.IntP("test-b", "b", 0, "")
+	c := f.Int("c", 0, "")
+	err := f.Parse([]string{"--test-a=0x23", "foo", "-b", "077",
+		"-c", "33", "bar"})
 	if err != nil {
 		t.Fatalf("f.Parse error %s", err)
 	}
@@ -59,6 +61,9 @@ func TestFlagSet_Int(t *testing.T) {
 	}
 	if *b != 077 {
 		t.Errorf("*b is %d; want %d", *b, 077)
+	}
+	if *c != 33 {
+		t.Errorf("*c is %d; want %d", *c, 33)
 	}
 
 	if f.NArg() != 2 {

@@ -264,7 +264,7 @@ func (f *FlagSet) VarP(value Value, name, shorthands, usage string, hasArg HasAr
 		HasArg:     hasArg,
 	}
 
-	if flag.Name == "" && flag.Shorthands != "" {
+	if flag.Name == "" && flag.Shorthands == "" {
 		f.panicf("flag with no name or shorthands")
 	}
 	if len(flag.Name) == 1 {
@@ -286,12 +286,7 @@ func VarP(value Value, name, shorthands, usage string, hasArg HasArg) {
 	CommandLine.VarP(value, name, shorthands, usage, hasArg)
 }
 
-func (f *FlagSet) Var(value Value, name, usage string) {
-	hasArg := RequiredArg
-	switch value.(type) {
-	case *boolValue:
-		hasArg = OptionalArg
-	}
+func (f *FlagSet) Var(value Value, name, usage string, hasArg HasArg) {
 	shorthands := ""
 	if len(name) == 1 {
 		shorthands = name
@@ -300,8 +295,8 @@ func (f *FlagSet) Var(value Value, name, usage string) {
 	f.VarP(value, name, shorthands, usage, hasArg)
 }
 
-func Var(value Value, name, usage string) {
-	CommandLine.Var(value, name, usage)
+func Var(value Value, name, usage string, hasArg HasArg) {
+	CommandLine.Var(value, name, usage, hasArg)
 }
 
 type boolValue bool
@@ -340,14 +335,6 @@ func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool
 	return p
 }
 
-func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
-	return f.BoolP(name, "", value, usage)
-}
-
-func Bool(name string, value bool, usage string) *bool {
-	return CommandLine.BoolP(name, "", value, usage)
-}
-
 func BoolP(name, shorthands string, value bool, usage string) *bool {
 	return CommandLine.BoolP(name, shorthands, value, usage)
 }
@@ -357,12 +344,22 @@ func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
 		OptionalArg)
 }
 
-func BoolVar(p *bool, name string, value bool, usage string) {
-	CommandLine.BoolVarP(p, name, "", value, usage)
+func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
+	f.Var(newBoolValue(value, p), name, usage, OptionalArg)
 }
 
-func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
-	f.BoolVarP(p, name, "", value, usage)
+func BoolVar(p *bool, name string, value bool, usage string) {
+	CommandLine.BoolVar(p, name, value, usage)
+}
+
+func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
+	p := new(bool)
+	f.BoolVar(p, name, value, usage)
+	return p
+}
+
+func Bool(name string, value bool, usage string) *bool {
+	return CommandLine.Bool(name, value, usage)
 }
 
 type intValue int
@@ -408,12 +405,22 @@ func CounterP(name, shorthands string, value int, usage string) *int {
 	return CommandLine.CounterP(name, shorthands, value, usage)
 }
 
+func (f *FlagSet) CounterVar(p *int, name string, value int, usage string) {
+	f.Var(newIntValue(value, p), name, usage, OptionalArg)
+}
+
+func CounterVar(p *int, name string, value int, usage string) {
+	CommandLine.CounterVar(p, name, value, usage)
+}
+
 func (f *FlagSet) Counter(name string, value int, usage string) *int {
-	return f.CounterP(name, "", value, usage)
+	p := new(int)
+	f.CounterVar(p, name, value, usage)
+	return p
 }
 
 func Counter(name string, value int, usage string) *int {
-	return CommandLine.CounterP(name, "", value, usage)
+	return CommandLine.Counter(name, value, usage)
 }
 
 func (f *FlagSet) IntVarP(p *int, name, shorthands string, value int, usage string) {
@@ -434,10 +441,20 @@ func IntP(name, shorthands string, value int, usage string) *int {
 	return CommandLine.IntP(name, shorthands, value, usage)
 }
 
+func (f *FlagSet) IntVar(p *int, name string, value int, usage string) {
+	f.Var(newIntValue(value, p), name, usage, RequiredArg)
+}
+
+func IntVar(p *int, name string, value int, usage string) {
+	CommandLine.IntVar(p, name, value, usage)
+}
+
 func (f *FlagSet) Int(name string, value int, usage string) *int {
-	return f.IntP(name, "", value, usage)
+	p := new(int)
+	f.IntVar(p, name, value, usage)
+	return p
 }
 
 func Int(name string, value int, usage string) *int {
-	return CommandLine.IntP(name, "", value, usage)
+	return CommandLine.Int(name, value, usage)
 }
