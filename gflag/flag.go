@@ -364,3 +364,54 @@ func BoolVar(p *bool, name string, value bool, usage string) {
 func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
 	f.BoolVarP(p, name, "", value, usage)
 }
+
+type intValue int
+
+func newIntValue(val int, p *int) *intValue {
+	*p = val
+	return (*intValue)(p)
+}
+
+func (n *intValue) Get() interface{} {
+	return int(*n)
+}
+
+func (n *intValue) Set(s string) error {
+	v, err := strconv.ParseInt(s, 0, 0)
+	*n = intValue(v)
+	return err
+}
+
+func (n *intValue) Update() {
+	(*n)++
+}
+
+func (n *intValue) String() string {
+	return fmt.Sprintf("%d", *n)
+}
+
+func (f *FlagSet) CounterVarP(p *int, name, shorthands string, value int, usage string) {
+	f.VarP(newIntValue(value, p), name, shorthands, usage, OptionalArg)
+}
+
+func CounterVarP(p *int, name, shorthands string, value int, usage string) {
+	CommandLine.CounterVarP(p, name, shorthands, value, usage)
+}
+
+func (f *FlagSet) CounterP(name, shorthands string, value int, usage string) *int {
+	p := new(int)
+	f.CounterVarP(p, name, shorthands, value, usage)
+	return p
+}
+
+func CounterP(name, shorthands string, value int, usage string) *int {
+	return CommandLine.CounterP(name, shorthands, value, usage)
+}
+
+func (f *FlagSet) Counter(name string, value int, usage string) *int {
+	return f.CounterP(name, "", value, usage)
+}
+
+func Counter(name string, value int, usage string) *int {
+	return CommandLine.CounterP(name, "", value, usage)
+}
