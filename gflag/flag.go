@@ -227,76 +227,6 @@ func (f *FlagSet) out() io.Writer {
 	return f.output
 }
 
-func (f *FlagSet) CounterP(name, shorthands string, value int,
-	usage string) *int {
-	panic("TODO")
-}
-func (f *FlagSet) CounterVarP(p *int, name, shorthands string, value int,
-	usage string) {
-	panic("TODO")
-}
-
-type boolValue bool
-
-func newBoolValue(val bool, p *bool) *boolValue {
-	*p = val
-	return (*boolValue)(p)
-}
-
-func (b *boolValue) Get() interface{} {
-	return bool(*b)
-}
-
-func (b *boolValue) Set(s string) error {
-	v, err := strconv.ParseBool(s)
-	*b = boolValue(v)
-	return err
-}
-
-func (b *boolValue) Update() {
-	*b = true
-}
-
-func (b *boolValue) String() string {
-	return fmt.Sprintf("%t", *b)
-}
-
-func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
-	return f.BoolP(name, "", value, usage)
-}
-
-func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool {
-	p := new(bool)
-	f.BoolVarP(p, name, shorthands, value, usage)
-	return p
-}
-
-func Bool(name string, value bool, usage string) *bool {
-	return CommandLine.BoolP(name, "", value, usage)
-}
-
-func BoolP(name, shorthands string, value bool, usage string) *bool {
-	return CommandLine.BoolP(name, shorthands, value, usage)
-}
-
-func (f *FlagSet) BoolVarP(p *bool, name, shorthands string, value bool,
-	usage string) {
-	f.VarP(newBoolValue(value, p), name, shorthands, usage, OptionalArg)
-}
-
-func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
-	CommandLine.VarP(newBoolValue(value, p), name, shorthands, usage,
-		OptionalArg)
-}
-
-func BoolVar(p *bool, name string, value bool, usage string) {
-	CommandLine.BoolVarP(p, name, "", value, usage)
-}
-
-func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
-	f.BoolVarP(p, name, "", value, usage)
-}
-
 func (f *FlagSet) panicf(format string, values ...interface{}) {
 	var msg string
 	if f.name == "" {
@@ -309,10 +239,6 @@ func (f *FlagSet) panicf(format string, values ...interface{}) {
 	}
 	fmt.Fprintln(f.out(), msg)
 	panic(msg)
-}
-
-func VarP(value Value, name, shorthands, usage string, hasArg HasArg) {
-	CommandLine.VarP(value, name, shorthands, usage, hasArg)
 }
 
 func (f *FlagSet) setFormal(name string, flag *Flag) {
@@ -356,8 +282,8 @@ func (f *FlagSet) VarP(value Value, name, shorthands, usage string, hasArg HasAr
 	}
 }
 
-func Var(value Value, name, usage string) {
-	CommandLine.Var(value, name, usage)
+func VarP(value Value, name, shorthands, usage string, hasArg HasArg) {
+	CommandLine.VarP(value, name, shorthands, usage, hasArg)
 }
 
 func (f *FlagSet) Var(value Value, name, usage string) {
@@ -372,4 +298,69 @@ func (f *FlagSet) Var(value Value, name, usage string) {
 		name = ""
 	}
 	f.VarP(value, name, shorthands, usage, hasArg)
+}
+
+func Var(value Value, name, usage string) {
+	CommandLine.Var(value, name, usage)
+}
+
+type boolValue bool
+
+func newBoolValue(val bool, p *bool) *boolValue {
+	*p = val
+	return (*boolValue)(p)
+}
+
+func (b *boolValue) Get() interface{} {
+	return bool(*b)
+}
+
+func (b *boolValue) Set(s string) error {
+	v, err := strconv.ParseBool(s)
+	*b = boolValue(v)
+	return err
+}
+
+func (b *boolValue) Update() {
+	*b = true
+}
+
+func (b *boolValue) String() string {
+	return fmt.Sprintf("%t", *b)
+}
+
+func (f *FlagSet) BoolVarP(p *bool, name, shorthands string, value bool,
+	usage string) {
+	f.VarP(newBoolValue(value, p), name, shorthands, usage, OptionalArg)
+}
+
+func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool {
+	p := new(bool)
+	f.BoolVarP(p, name, shorthands, value, usage)
+	return p
+}
+
+func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
+	return f.BoolP(name, "", value, usage)
+}
+
+func Bool(name string, value bool, usage string) *bool {
+	return CommandLine.BoolP(name, "", value, usage)
+}
+
+func BoolP(name, shorthands string, value bool, usage string) *bool {
+	return CommandLine.BoolP(name, shorthands, value, usage)
+}
+
+func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
+	CommandLine.VarP(newBoolValue(value, p), name, shorthands, usage,
+		OptionalArg)
+}
+
+func BoolVar(p *bool, name string, value bool, usage string) {
+	CommandLine.BoolVarP(p, name, "", value, usage)
+}
+
+func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
+	f.BoolVarP(p, name, "", value, usage)
 }
