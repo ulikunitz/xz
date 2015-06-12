@@ -1,6 +1,9 @@
 package gflag
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 func TestFlagSet_Bool(t *testing.T) {
 	f := NewFlagSet("Bool", ContinueOnError)
@@ -75,4 +78,14 @@ func TestFlagSet_Int(t *testing.T) {
 			t.Errorf("f.Arg(%d) is %s; want %s", i, f.Arg(i), s)
 		}
 	}
+}
+
+func TestFlagSet_Usage(t *testing.T) {
+	f := NewFlagSet("test", ContinueOnError)
+	f.IntP("test-a", "a", 3, "tests a")
+	f.CounterP("count-b", "b", 0, "counts b")
+	buf := new(bytes.Buffer)
+	f.SetOutput(buf)
+	f.usage()
+	t.Log(buf.String())
 }
