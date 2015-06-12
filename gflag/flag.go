@@ -503,116 +503,167 @@ func boolLine(name, shorthands string, value bool, usage string) line {
 	return line{lineFlags(name, shorthands, defaultValue), usage}
 }
 
-// BoolVarP defines a bool variable flag with long and short options.
+// BoolVarP defines a bool flag with specified name, shorthands, default
+// value and usage string. The argument p points to a bool variable in
+// which to store the value of the flag.
 func (f *FlagSet) BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
 	f.addLine(boolLine(name, shorthands, value, usage))
 	f.VarP(newBoolValue(value, p), name, shorthands, OptionalArg)
 }
 
-// BoolP creates a bool flag with long and short options.
+// BoolP defines a bool flag with specified name, shorthands, default
+// value and usage string. The return value is the address of a bool
+// variable that stores the value of the flag.
 func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool {
 	p := new(bool)
 	f.BoolVarP(p, name, shorthands, value, usage)
 	return p
 }
 
-// BoolP creates a bool flag for the command line.
+// BoolP defines a bool flag with specified name, shorthands, default
+// value and usage string. The return value is the address of a bool
+// variable that stores the value of the flag.
 func BoolP(name, shorthands string, value bool, usage string) *bool {
 	return CommandLine.BoolP(name, shorthands, value, usage)
 }
 
-// BoolVarP defines a bool flag for the given variable for the command
-// line supporting long and short options.
+// BoolVarP defines a bool flag with specified name, shorthands, default
+// value and usage string. The argument p points to a bool variable in
+// which to store the value of the flag.
 func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
 	CommandLine.BoolVarP(p, name, shorthands, value, usage)
 }
 
+// BoolVar defines a bool flag with specified name, default value and
+// usage string. The argument p points to a bool variable in which to
+// store the value of the flag.
 func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string) {
 	f.addLine(boolLine(name, "", value, usage))
 	f.Var(newBoolValue(value, p), name, OptionalArg)
 }
 
+// BoolVar defines a bool flag with specified name, default value and
+// usage string. The argument p points to a bool variable in which to
+// store the value of the flag.
 func BoolVar(p *bool, name string, value bool, usage string) {
 	CommandLine.BoolVar(p, name, value, usage)
 }
 
+// Bool defines a bool flag with specified name, default value and
+// usage string. The return value is the address of a bool variable that
+// stores the value of the flag.
 func (f *FlagSet) Bool(name string, value bool, usage string) *bool {
 	p := new(bool)
 	f.BoolVar(p, name, value, usage)
 	return p
 }
 
+// Bool defines a bool flag with specified name, default value and
+// usage string. The return value is the address of a bool variable that
+// stores the value of the flag.
 func Bool(name string, value bool, usage string) *bool {
 	return CommandLine.Bool(name, value, usage)
 }
 
+// intValue stores an integer value.
 type intValue int
 
+// newIntValue allocates a new integer value and returns its pointer.
 func newIntValue(val int, p *int) *intValue {
 	*p = val
 	return (*intValue)(p)
 }
 
+// Get returns the integer.
 func (n *intValue) Get() interface{} {
 	return int(*n)
 }
 
+// Set sets the integer value.
 func (n *intValue) Set(s string) error {
 	v, err := strconv.ParseInt(s, 0, 0)
 	*n = intValue(v)
 	return err
 }
 
+// Update increments the integer value.
 func (n *intValue) Update() {
 	(*n)++
 }
 
+// String represents the integer value as string.
 func (n *intValue) String() string {
 	return fmt.Sprintf("%d", *n)
 }
 
+// counterLine returns the usage line for a counter flag.
 func counterLine(name, shorthands, usage string) line {
 	return line{lineFlags(name, shorthands, ""), usage}
 }
 
+// CounterVarP defines a counter flag with specified name, shorthands, default
+// value and usage string. The argument p points to an integer variable in
+// which to store the value of the flag.
 func (f *FlagSet) CounterVarP(p *int, name, shorthands string, value int, usage string) {
 	f.addLine(counterLine(name, shorthands, usage))
 	f.VarP(newIntValue(value, p), name, shorthands, OptionalArg)
 }
 
+// CounterVarP defines a counter flag with specified name, shorthands, default
+// value and usage string. The argument p points to an integer variable in
+// which to store the value of the flag.
 func CounterVarP(p *int, name, shorthands string, value int, usage string) {
 	CommandLine.CounterVarP(p, name, shorthands, value, usage)
 }
 
+// CounterP defines a counter flag with specified name, shorthands, default
+// value and usage string. The return value is the address of an integer
+// variable that stores the value of the flag.
 func (f *FlagSet) CounterP(name, shorthands string, value int, usage string) *int {
 	p := new(int)
 	f.CounterVarP(p, name, shorthands, value, usage)
 	return p
 }
 
+// CounterP defines a counter flag with specified name, shorthands, default
+// value and usage string. The return value is the address of an integer
+// variable that stores the value of the flag.
 func CounterP(name, shorthands string, value int, usage string) *int {
 	return CommandLine.CounterP(name, shorthands, value, usage)
 }
 
+// CounterVar defines a counter flag with specified name, default value and
+// usage string. The argument p points to an integer variable in which to
+// store the value of the flag.
 func (f *FlagSet) CounterVar(p *int, name string, value int, usage string) {
 	f.addLine(counterLine(name, "", usage))
 	f.Var(newIntValue(value, p), name, OptionalArg)
 }
 
+// CounterVar defines a counter flag with specified name, default value and
+// usage string. The argument p points to an integer variable in which to
+// store the value of the flag.
 func CounterVar(p *int, name string, value int, usage string) {
 	CommandLine.CounterVar(p, name, value, usage)
 }
 
+// Counter defines a counter flag with specified name, default value and
+// usage string. The return value is the address of an integer variable that
+// stores the value of the flag.
 func (f *FlagSet) Counter(name string, value int, usage string) *int {
 	p := new(int)
 	f.CounterVar(p, name, value, usage)
 	return p
 }
 
+// Counter defines a counter flag with specified name, default value and
+// usage string. The return value is the address of an integer variable that
+// stores the value of the flag.
 func Counter(name string, value int, usage string) *int {
 	return CommandLine.Counter(name, value, usage)
 }
 
+// intLine returns the usage line for an integer flag.
 func intLine(name, shorthands string, value int, usage string) line {
 	defaultValue := ""
 	if value != 0 {
@@ -621,40 +672,64 @@ func intLine(name, shorthands string, value int, usage string) line {
 	return line{lineFlags(name, shorthands, defaultValue), usage}
 }
 
+// IntVarP defines an integer flag with specified name, shorthands, default
+// value and usage string. The argument p points to an integer variable in
+// which to store the value of the flag.
 func (f *FlagSet) IntVarP(p *int, name, shorthands string, value int, usage string) {
 	f.addLine(intLine(name, shorthands, value, usage))
 	f.VarP(newIntValue(value, p), name, shorthands, RequiredArg)
 }
 
+// IntVarP defines an integer flag with specified name, shorthands, default
+// value and usage string. The argument p points to an integer variable in
+// which to store the value of the flag.
 func IntVarP(p *int, name, shorthands string, value int, usage string) {
 	CommandLine.IntVarP(p, name, shorthands, value, usage)
 }
 
+// IntP defines an integer flag with specified name, shorthands, default
+// value and usage string. The return value is the address of an integer
+// variable that stores the value of the flag.
 func (f *FlagSet) IntP(name, shorthands string, value int, usage string) *int {
 	p := new(int)
 	f.IntVarP(p, name, shorthands, value, usage)
 	return p
 }
 
+// IntP defines an integer flag with specified name, shorthands, default
+// value and usage string. The return value is the address of an integer
+// variable that stores the value of the flag.
 func IntP(name, shorthands string, value int, usage string) *int {
 	return CommandLine.IntP(name, shorthands, value, usage)
 }
 
+// IntVar defines an integer flag with specified name, default value and
+// usage string. The argument p points to an integer variable in which to
+// store the value of the flag.
 func (f *FlagSet) IntVar(p *int, name string, value int, usage string) {
 	f.addLine(intLine(name, "", value, usage))
 	f.Var(newIntValue(value, p), name, RequiredArg)
 }
 
+// IntVar defines an integer flag with specified name, default value and
+// usage string. The argument p points to an integer variable in which to
+// store the value of the flag.
 func IntVar(p *int, name string, value int, usage string) {
 	CommandLine.IntVar(p, name, value, usage)
 }
 
+// Int defines an integer flag with specified name, default value and
+// usage string. The return value is the address of an integer variable that
+// stores the value of the flag.
 func (f *FlagSet) Int(name string, value int, usage string) *int {
 	p := new(int)
 	f.IntVar(p, name, value, usage)
 	return p
 }
 
+// Int defines an integer flag with specified name, default value and
+// usage string. The return value is the address of an integer variable that
+// stores the value of the flag.
 func Int(name string, value int, usage string) *int {
 	return CommandLine.Int(name, value, usage)
 }
