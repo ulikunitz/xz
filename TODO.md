@@ -45,10 +45,8 @@
 
 # Package gflag
 
-1. Support for legacy short names, e.g. Int("q",...) by transforming in
-   a shorthand. Use Var for it.
-2. Support for usage printing (separate from flags)
-3. Transform lzmago to it
+1. Write documentation.
+2. Transform lzmago to it
 
 # Package lzma2
 
