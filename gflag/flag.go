@@ -1,3 +1,10 @@
+/*
+Package gflag implements GNU-style command line flag parsing. It
+supports the transformation of programs using the Go standard library
+flag package, it doesn't intend to be fully API compatible. The type
+Flag has different fields and the Var function has a different
+interface.
+*/
 package gflag
 
 import (
@@ -10,8 +17,12 @@ import (
 	"strings"
 )
 
+// CommandLine is the default set of command-line flags parsed from
+// os.Args. The top-level functions such as BoolVar, Arg, etc. are
+// wrappers for the methods of command line.
 var CommandLine = NewFlagSet(os.Args[0], ExitOnError)
 
+// ErrorHandling defines how flag parsing errors are handled.
 type ErrorHandling int
 
 const (
@@ -20,6 +31,8 @@ const (
 	PanicOnError
 )
 
+// HasArg defines whether a flag argument is required, optional or not
+// supported.
 type HasArg int
 
 const (
@@ -28,6 +41,7 @@ const (
 	OptionalArg
 )
 
+// Value is the interface to the value of a specific flag.
 type Value interface {
 	Set(string) error
 	Update()
@@ -35,6 +49,7 @@ type Value interface {
 	String() string
 }
 
+// Flag represents a single flag.
 type Flag struct {
 	Name       string
 	Shorthands string
@@ -42,11 +57,13 @@ type Flag struct {
 	Value      Value
 }
 
+// line provides a single line of usage information.
 type line struct {
 	flags string
 	usage string
 }
 
+// lineFlags computes the flags string for a usage line.
 func lineFlags(name, shorthands, defaultValue string) string {
 	buf := new(bytes.Buffer)
 	if shorthands != "" {
@@ -69,8 +86,10 @@ func lineFlags(name, shorthands, defaultValue string) string {
 	return buf.String()
 }
 
+// lines provides a set of usage lines.
 type lines []line
 
+// writeLines writes usage line to the writer.
 func writeLines(w io.Writer, ls lines) (n int, err error) {
 	l := make(lines, len(ls))
 	copy(l, ls)
@@ -98,7 +117,9 @@ func (l lines) Len() int           { return len(l) }
 func (l lines) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l lines) Less(i, j int) bool { return l[i].flags < l[j].flags }
 
+// FlagSet represents a set of option flags.
 type FlagSet struct {
+	// If set can provide a  custom usage function.
 	Usage func()
 
 	name          string
@@ -111,17 +132,20 @@ type FlagSet struct {
 	errorHandling ErrorHandling
 }
 
+// Init initializes a flag set variable.
 func (f *FlagSet) Init(name string, errorHandling ErrorHandling) {
 	f.name = name
 	f.errorHandling = errorHandling
 }
 
+// NewFlagSet creates a new flag set.
 func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet {
 	f := new(FlagSet)
 	f.Init(name, errorHandling)
 	return f
 }
 
+// Arg returns the argumenet number i after parsing has been successful.
 func (f *FlagSet) Arg(i int) string {
 	if !(0 <= i && i < len(f.args)) {
 		return ""
@@ -129,31 +153,43 @@ func (f *FlagSet) Arg(i int) string {
 	return f.args[i]
 }
 
+// Arg provides the argument number i after parsing of the command line
+// flags.
 func Arg(i int) string {
 	return CommandLine.Arg(i)
 }
 
+// Args returns all arguments after parsing.
 func (f *FlagSet) Args() []string { return f.args }
 
+// Args returns all arguments after the command line flags have been
+// parsed.
 func Args() []string { return CommandLine.args }
 
+// NArg returns the number of remaining arguments after parsing.
 func (f *FlagSet) NArg() int { return len(f.args) }
 
+// NArg returns the number of remaining arguments after command line
+// parsing.
 func NArg() int { return len(CommandLine.args) }
 
+// Parsed returns whether the command line has already been parsed.
 func Parsed() bool {
 	return CommandLine.parsed
 }
 
+// Parsed returns whether the flag set has already been parsed.
 func (f *FlagSet) Parsed() bool {
 	return f.parsed
 }
 
+// Parse parses the command line.
 func Parse() {
 	// errors are ignored because CommandLine is set on ExitOnError
 	CommandLine.Parse(os.Args[1:])
 }
 
+// lookupLongOption looksup a long option flag.
 func (f *FlagSet) lookupLongOption(name string) (flag *Flag, err error) {
 	if len(name) < 2 {
 		f.panicf("%s is not a long option", name)
@@ -168,6 +204,7 @@ func (f *FlagSet) lookupLongOption(name string) (flag *Flag, err error) {
 	return flag, nil
 }
 
+// lookupShortOption looks a short option up.
 func (f *FlagSet) lookupShortOption(r rune) (flag *Flag, err error) {
 	var ok bool
 	name := string([]rune{r})
@@ -181,6 +218,8 @@ func (f *FlagSet) lookupShortOption(r rune) (flag *Flag, err error) {
 	return flag, nil
 }
 
+// processExtraFlagArg processes a flag with extra arguments not using
+// the form --long-option=arg.
 func (f *FlagSet) processExtraFlagArg(flag *Flag, i int) error {
 	if flag.HasArg == NoArg {
 		// no argument required
@@ -203,11 +242,14 @@ func (f *FlagSet) processExtraFlagArg(flag *Flag, i int) error {
 	return nil
 }
 
+// removeArg removes the arguments at position i from the args field of
+// the flag set.
 func (f *FlagSet) removeArg(i int) {
 	copy(f.args[i:], f.args[i+1:])
 	f.args = f.args[:len(f.args)-1]
 }
 
+// parseArg parses the argument i.
 func (f *FlagSet) parseArg(i int) (next int, err error) {
 	arg := f.args[i]
 	if len(arg) < 2 || arg[0] != '-' {
@@ -256,6 +298,7 @@ func (f *FlagSet) parseArg(i int) (next int, err error) {
 	return i, nil
 }
 
+// defaultUsage provides the default usage information.
 func defaultUsage(f *FlagSet) {
 	if f.name == "" {
 		fmt.Fprintf(f.out(), "Usage:\n")
@@ -265,11 +308,13 @@ func defaultUsage(f *FlagSet) {
 	f.PrintDefaults()
 }
 
+// Usage prints the default usage message.
 var Usage = func() {
 	fmt.Fprintf(CommandLine.out(), "Usage of %s:\n", os.Args[0])
 	PrintDefaults()
 }
 
+// usage provides the usage information for the flag set.
 func (f *FlagSet) usage() {
 	if f.Usage == nil {
 		if f == CommandLine {
@@ -282,6 +327,8 @@ func (f *FlagSet) usage() {
 	}
 }
 
+// Parse parses the arguments. If an error happens the error is printed
+// as well as the usage information.
 func (f *FlagSet) Parse(arguments []string) error {
 	f.parsed = true
 	f.args = arguments
@@ -305,6 +352,7 @@ func (f *FlagSet) Parse(arguments []string) error {
 	return nil
 }
 
+// PrintDefaults prints information about all flags.
 func (f *FlagSet) PrintDefaults() {
 	_, err := writeLines(f.out(), f.lines)
 	if err != nil {
@@ -312,10 +360,13 @@ func (f *FlagSet) PrintDefaults() {
 	}
 }
 
+// PrintDefaults prints the information about all command line flags.
 func PrintDefaults() {
 	CommandLine.PrintDefaults()
 }
 
+// out returns a writer. If the field output has not been set os.Stderr
+// is returned.
 func (f *FlagSet) out() io.Writer {
 	if f.output == nil {
 		return os.Stderr
@@ -323,10 +374,12 @@ func (f *FlagSet) out() io.Writer {
 	return f.output
 }
 
+// SetOuput sets the default output writer for the flag set.
 func (f *FlagSet) SetOutput(w io.Writer) {
 	f.output = w
 }
 
+// panicf printfs a formatted error message and panics.
 func (f *FlagSet) panicf(format string, values ...interface{}) {
 	var msg string
 	if f.name == "" {
@@ -341,6 +394,7 @@ func (f *FlagSet) panicf(format string, values ...interface{}) {
 	panic(msg)
 }
 
+// setFormal sets the flag with the given name to the flag parameter.
 func (f *FlagSet) setFormal(name string, flag *Flag) {
 	if name == "" {
 		f.panicf("no support for empty name strings")
@@ -354,6 +408,7 @@ func (f *FlagSet) setFormal(name string, flag *Flag) {
 	f.formal[name] = flag
 }
 
+// VarP creates a flag with a long and shorthand options.
 func (f *FlagSet) VarP(value Value, name, shorthands string, hasArg HasArg) {
 	flag := &Flag{
 		Name:       name,
@@ -380,10 +435,12 @@ func (f *FlagSet) VarP(value Value, name, shorthands string, hasArg HasArg) {
 	}
 }
 
+// VarP creates a flag for the given value for the command line.
 func VarP(value Value, name, shorthands string, hasArg HasArg) {
 	CommandLine.VarP(value, name, shorthands, hasArg)
 }
 
+// Var creates a flag for the given option name.
 func (f *FlagSet) Var(value Value, name string, hasArg HasArg) {
 	shorthands := ""
 	if len(name) == 1 {
@@ -393,10 +450,12 @@ func (f *FlagSet) Var(value Value, name string, hasArg HasArg) {
 	f.VarP(value, name, shorthands, hasArg)
 }
 
+// Var creates a flag for the given option name for the command line.
 func Var(value Value, name string, hasArg HasArg) {
 	CommandLine.Var(value, name, hasArg)
 }
 
+// addLine adds a usage line to the flag set.
 func (f *FlagSet) addLine(l line) {
 	if l.flags == "" {
 		f.panicf("no flags for %q", l.usage)
@@ -404,31 +463,38 @@ func (f *FlagSet) addLine(l line) {
 	f.lines = append(f.lines, l)
 }
 
+// boolValue represents a bool value in the flag.
 type boolValue bool
 
+// newBoolValue creates a new Bool Value.
 func newBoolValue(val bool, p *bool) *boolValue {
 	*p = val
 	return (*boolValue)(p)
 }
 
+// Get returns the bool value as boolean.
 func (b *boolValue) Get() interface{} {
 	return bool(*b)
 }
 
+// Set sets the bool value to the value provided by the string.
 func (b *boolValue) Set(s string) error {
 	v, err := strconv.ParseBool(s)
 	*b = boolValue(v)
 	return err
 }
 
+// Update sets the bool value to true.
 func (b *boolValue) Update() {
 	*b = true
 }
 
+// String returns the boll value as string.
 func (b *boolValue) String() string {
 	return fmt.Sprintf("%t", *b)
 }
 
+// boolLine creates the usage line for a bool flag.
 func boolLine(name, shorthands string, value bool, usage string) line {
 	defaultValue := ""
 	if value {
@@ -437,21 +503,26 @@ func boolLine(name, shorthands string, value bool, usage string) line {
 	return line{lineFlags(name, shorthands, defaultValue), usage}
 }
 
+// BoolVarP defines a bool variable flag with long and short options.
 func (f *FlagSet) BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
 	f.addLine(boolLine(name, shorthands, value, usage))
 	f.VarP(newBoolValue(value, p), name, shorthands, OptionalArg)
 }
 
+// BoolP creates a bool flag with long and short options.
 func (f *FlagSet) BoolP(name, shorthands string, value bool, usage string) *bool {
 	p := new(bool)
 	f.BoolVarP(p, name, shorthands, value, usage)
 	return p
 }
 
+// BoolP creates a bool flag for the command line.
 func BoolP(name, shorthands string, value bool, usage string) *bool {
 	return CommandLine.BoolP(name, shorthands, value, usage)
 }
 
+// BoolVarP defines a bool flag for the given variable for the command
+// line supporting long and short options.
 func BoolVarP(p *bool, name, shorthands string, value bool, usage string) {
 	CommandLine.BoolVarP(p, name, shorthands, value, usage)
 }
