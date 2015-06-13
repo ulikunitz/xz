@@ -1,9 +1,21 @@
 /*
 Package gflag implements GNU-style command line flag parsing. It
 supports the transformation of programs using the Go standard library
-flag package, it doesn't intend to be fully API compatible. The type
-Flag has different fields and the Var function has a different
-interface.
+flag package. However it doesn't target full compatibility with the Go
+standard library flag package. The Flag structure doesn't support all
+fields of the flag package and the Var method and function does have a
+different signature.
+
+The typical use case looks like this:
+
+  b := Bool("flag-b", "b", false, "boolean flag")
+  h := Bool("help", "h", false, "prints this message")
+
+  Parse()
+
+  if *h {
+	  gflag.Usage()
+  }
 */
 package gflag
 
@@ -119,7 +131,7 @@ func (l lines) Less(i, j int) bool { return l[i].flags < l[j].flags }
 
 // FlagSet represents a set of option flags.
 type FlagSet struct {
-	// If set can provide a  custom usage function.
+	// Provides a custom usage function if set.
 	Usage func()
 
 	name          string
