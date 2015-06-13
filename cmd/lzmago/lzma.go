@@ -7,3 +7,7 @@ package main
 // The default preset is 6.
 // Following list provides exponents of two for the dictionary sizes:
 // 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
+
+func processLZMA(arg string) {
+	panic("TODO")
+}

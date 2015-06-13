@@ -64,6 +64,19 @@ github.com/uli-go/xz -- xz for Go
 	}
 }
 
+var (
+	help        = gflag.BoolP("help", "h", false, "")
+	stdout      = gflag.BoolP("stdout", "c", false, "")
+	decompress  = gflag.BoolP("decompress", "d", false, "")
+	force       = gflag.BoolP("force", "f", false, "")
+	keep        = gflag.BoolP("keep", "k", false, "")
+	license     = gflag.BoolP("license", "L", false, "")
+	versionFlag = gflag.BoolP("version", "V", false, "")
+	quiet       = gflag.CounterP("quiet", "q", 0, "")
+	verbose     = gflag.CounterP("verbose", "v", 0, "")
+	preset      = gflag.Preset(0, 9, 6, "")
+)
+
 func main() {
 	// setup logger
 	cmdName := filepath.Base(os.Args[0])
@@ -73,18 +86,6 @@ func main() {
 	// initialize flags
 	gflag.CommandLine = gflag.NewFlagSet(cmdName, gflag.ExitOnError)
 	gflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
-	var (
-		help        = gflag.BoolP("help", "h", false, "")
-		stdout      = gflag.BoolP("stdout", "c", false, "")
-		decompress  = gflag.BoolP("decompress", "d", false, "")
-		force       = gflag.BoolP("force", "f", false, "")
-		keep        = gflag.BoolP("keep", "k", false, "")
-		license     = gflag.BoolP("license", "L", false, "")
-		versionFlag = gflag.BoolP("version", "V", false, "")
-		quiet       = gflag.CounterP("quiet", "q", 0, "")
-		verbose     = gflag.CounterP("verbose", "v", 0, "")
-		preset      = gflag.Preset(0, 9, 6, "")
-	)
 
 	// process arguments
 	gflag.Parse()
@@ -124,12 +125,18 @@ func main() {
 			" For help type lzmago -h.")
 	}
 
-	log.Printf("decompress %t", *decompress)
-	log.Printf("force %t", *force)
-	log.Printf("keep %t", *keep)
-	log.Printf("preset %d", *preset)
-	log.Printf("stdout %t", *stdout)
-	log.Printf("quiet %d", *quiet)
-	log.Printf("verbose %d", *verbose)
-	log.Printf("args %v", args)
+	for _, arg := range args {
+		f := arg
+		if f == "-" {
+			f = "stdin"
+		}
+		if *decompress {
+			log.SetPrefix(fmt.Sprintf("%s: decompressing %s ",
+				cmdName, arg))
+		} else {
+			log.SetPrefix(fmt.Sprintf("%s: compressing %s ",
+				cmdName, arg))
+		}
+		processLZMA(arg)
+	}
 }
