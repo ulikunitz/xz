@@ -1,10 +1,9 @@
 package main
 
-//go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE pflagLicense:github.com/ogier/pflag/LICENSE
+//go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE
 //go:generate xb version-file -o version.go
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -13,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ogier/pflag"
+	"github.com/uli-go/xz/gflag"
 )
 
 const (
@@ -40,43 +39,6 @@ Report bugs using <https://github.com/uli-go/xz/issues>.
 `
 )
 
-type Preset int
-
-const defaultPreset Preset = 6
-
-func (p *Preset) filterArg(arg string) string {
-	if len(arg) < 2 || arg[0] != '-' || arg[1] == '-' {
-		return arg
-	}
-	buf := new(bytes.Buffer)
-	buf.Grow(len(arg))
-	for _, c := range arg {
-		if '0' <= c && c <= '9' {
-			*p = Preset(c - '0')
-			continue
-		}
-		buf.WriteRune(c)
-	}
-	return buf.String()
-}
-
-func (p *Preset) filter() {
-	args := make([]string, 1, len(os.Args))
-	args[0] = os.Args[0]
-	for i, arg := range os.Args[1:] {
-		if arg == "--" {
-			args = append(args, os.Args[1+i:]...)
-			break
-
-		}
-		arg = p.filterArg(arg)
-		if arg != "-" {
-			args = append(args, arg)
-		}
-	}
-	os.Args = args
-}
-
 func usage(w io.Writer) {
 	fmt.Fprint(w, usageStr)
 }
@@ -87,11 +49,6 @@ github.com/uli-go/xz -- xz for Go
 =================================
 
 {{.xz}}
-
-pflag -- Posix flag package
-===========================
-
-{{.pflag}}
 `
 	out = strings.TrimLeft(out, " \n")
 	tmpl, err := template.New("licenses").Parse(out)
@@ -99,8 +56,7 @@ pflag -- Posix flag package
 		log.Panicf("error %s parsing licenses template", err)
 	}
 	lmap := map[string]string{
-		"xz":    strings.TrimSpace(xzLicense),
-		"pflag": strings.TrimSpace(pflagLicense),
+		"xz": strings.TrimSpace(xzLicense),
 	}
 	if err = tmpl.Execute(w, lmap); err != nil {
 		log.Fatalf("error %s writing licenses template", err)
@@ -114,24 +70,21 @@ func main() {
 	log.SetFlags(0)
 
 	// initialize flags
-	pflag.CommandLine = pflag.NewFlagSet(cmdName, pflag.ExitOnError)
-	pflag.SetInterspersed(true)
-	pflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
+	gflag.CommandLine = gflag.NewFlagSet(cmdName, gflag.ExitOnError)
+	gflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	var (
-		help        = pflag.BoolP("help", "h", false, "")
-		stdout      = pflag.BoolP("stdout", "c", false, "")
-		decompress  = pflag.BoolP("decompress", "d", false, "")
-		force       = pflag.BoolP("force", "f", false, "")
-		keep        = pflag.BoolP("keep", "k", false, "")
-		license     = pflag.BoolP("license", "L", false, "")
-		versionFlag = pflag.BoolP("version", "V", false, "")
-		preset      = defaultPreset
+		help        = gflag.BoolP("help", "h", false, "")
+		stdout      = gflag.BoolP("stdout", "c", false, "")
+		decompress  = gflag.BoolP("decompress", "d", false, "")
+		force       = gflag.BoolP("force", "f", false, "")
+		keep        = gflag.BoolP("keep", "k", false, "")
+		license     = gflag.BoolP("license", "L", false, "")
+		versionFlag = gflag.BoolP("version", "V", false, "")
+		preset      = gflag.Preset(0, 9, 6, "")
 	)
 
 	// process arguments
-	preset.filter()
-	log.Printf("filtered args %v", os.Args)
-	pflag.Parse()
+	gflag.Parse()
 
 	if *help {
 		usage(os.Stdout)
@@ -145,13 +98,13 @@ func main() {
 		log.Printf("version %s\n", version)
 		os.Exit(0)
 	}
-	if pflag.NArg() == 0 {
+	if gflag.NArg() == 0 {
 		log.Fatal("for help, type lzmago -h")
 	}
 
 	log.Printf("decompress %t", *decompress)
 	log.Printf("force %t", *force)
 	log.Printf("keep %t", *keep)
-	log.Printf("preset %d", preset)
+	log.Printf("preset %d", *preset)
 	log.Printf("stdout %t", *stdout)
 }
