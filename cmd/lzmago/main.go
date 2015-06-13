@@ -99,9 +99,16 @@ func main() {
 		log.Printf("version %s\n", version)
 		os.Exit(0)
 	}
-	if gflag.NArg() == 0 && !*stdout {
-		log.Fatal("for help, type lzmago -h")
+	var args []string
+	if gflag.NArg() == 0 {
+		if !*stdout {
+			log.Fatal("For help, type lzmago -h.")
+		}
+		args = []string{"-"}
+	} else {
+		args = gflag.Args()
 	}
+
 	if *stdout && !*decompress && !*force && term.IsTerminal(os.Stdout.Fd()) {
 		log.Print("Compressed data will not be written to a terminal.")
 		log.SetPrefix("")
@@ -114,4 +121,5 @@ func main() {
 	log.Printf("keep %t", *keep)
 	log.Printf("preset %d", *preset)
 	log.Printf("stdout %t", *stdout)
+	log.Printf("args %v", args)
 }
