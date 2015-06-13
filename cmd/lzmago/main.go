@@ -104,6 +104,9 @@ func main() {
 	var args []string
 	if gflag.NArg() == 0 {
 		if !*stdout {
+			if *quiet > 0 {
+				os.Exit(1)
+			}
 			log.Fatal("For help, type lzmago -h.")
 		}
 		args = []string{"-"}
@@ -112,6 +115,9 @@ func main() {
 	}
 
 	if *stdout && !*decompress && !*force && term.IsTerminal(os.Stdout.Fd()) {
+		if *quiet > 0 {
+			os.Exit(1)
+		}
 		log.Print("Compressed data will not be written to a terminal.")
 		log.SetPrefix("")
 		log.Fatal("Use -f to force compression." +
