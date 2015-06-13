@@ -81,6 +81,8 @@ func main() {
 		keep        = gflag.BoolP("keep", "k", false, "")
 		license     = gflag.BoolP("license", "L", false, "")
 		versionFlag = gflag.BoolP("version", "V", false, "")
+		quiet       = gflag.CounterP("quiet", "q", 0, "")
+		verbose     = gflag.CounterP("verbose", "v", 0, "")
 		preset      = gflag.Preset(0, 9, 6, "")
 	)
 
@@ -121,5 +123,7 @@ func main() {
 	log.Printf("keep %t", *keep)
 	log.Printf("preset %d", *preset)
 	log.Printf("stdout %t", *stdout)
+	log.Printf("quiet %d", *quiet)
+	log.Printf("verbose %d", *verbose)
 	log.Printf("args %v", args)
 }
