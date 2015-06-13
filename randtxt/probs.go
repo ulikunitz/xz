@@ -1,3 +1,5 @@
+// Package randtxt supports the generation of random text using a
+// trigram model for the English language.
 package randtxt
 
 import (
