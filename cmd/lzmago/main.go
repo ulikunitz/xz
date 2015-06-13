@@ -137,6 +137,11 @@ func main() {
 			log.SetPrefix(fmt.Sprintf("%s: compressing %s ",
 				cmdName, arg))
 		}
-		processLZMA(arg)
+		if err := processLZMA(arg); err != nil {
+			if *verbose >= 2 {
+				log.Printf("exit after error %s", err)
+			}
+			os.Exit(3)
+		}
 	}
 }
