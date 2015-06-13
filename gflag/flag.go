@@ -142,6 +142,7 @@ type FlagSet struct {
 	args          []string
 	output        io.Writer
 	errorHandling ErrorHandling
+	preset        bool
 }
 
 // Init initializes a flag set variable.
@@ -744,4 +745,60 @@ func (f *FlagSet) Int(name string, value int, usage string) *int {
 // stores the value of the flag.
 func Int(name string, value int, usage string) *int {
 	return CommandLine.Int(name, value, usage)
+}
+
+type presetValue struct {
+	p      *int
+	preset int
+}
+
+func newPresetValue(p *int, preset int) *presetValue {
+	return &presetValue{p, preset}
+}
+
+func (p *presetValue) Get() interface{} {
+	return *p.p
+}
+
+func (p *presetValue) Set(s string) error {
+	val, err := strconv.ParseInt(s, 0, 0)
+	*p.p = int(val)
+	return err
+}
+
+func (p *presetValue) Update() {
+	*p.p = p.preset
+}
+
+func (p *presetValue) String() string {
+	return fmt.Sprintf("%d", *p.p)
+}
+
+func presetLine(start, end int, usage string) line {
+	return line{fmt.Sprintf("-%d ... -%d", start, end), usage}
+}
+
+func (f *FlagSet) PresetVar(p *int, start, end, value int, usage string) {
+	if f.preset {
+		f.panicf("flagset %s has already a preset", f.name)
+	}
+	f.addLine(presetLine(start, end, usage))
+	*p = value
+	for i := start; i <= end; i++ {
+		f.Var(newPresetValue(p, i), fmt.Sprintf("%d", i), NoArg)
+	}
+}
+
+func PresetVar(p *int, start, end, value int, usage string) {
+	CommandLine.PresetVar(p, start, end, value, usage)
+}
+
+func (f *FlagSet) Preset(start, end, value int, usage string) *int {
+	p := new(int)
+	f.PresetVar(p, start, end, value, usage)
+	return p
+}
+
+func Preset(start, end, value int, usage string) *int {
+	return CommandLine.Preset(start, end, value, usage)
 }

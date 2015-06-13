@@ -89,3 +89,18 @@ func TestFlagSet_Usage(t *testing.T) {
 	f.usage()
 	t.Log(buf.String())
 }
+
+func TestFlagSet_Preset(t *testing.T) {
+	f := NewFlagSet("test", ContinueOnError)
+	n := f.Preset(0, 9, 6, "preset flag")
+	if *n != 6 {
+		t.Fatalf("preset is %d; want %d", *n, 6)
+	}
+	err := f.Parse([]string{"-0", "-9", "-8"})
+	if err != nil {
+		t.Fatalf("f.Parse returned %s", err)
+	}
+	if *n != 8 {
+		t.Errorf("preset is %d; want %d", *n, 8)
+	}
+}
