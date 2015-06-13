@@ -22,6 +22,7 @@ func TestFlagSet_Bool(t *testing.T) {
 		t.Errorf("*b is %t; want %t", *b, false)
 	}
 
+	t.Logf("args %v", f.Args())
 	if f.NArg() != 0 {
 		t.Errorf("f.NArg() is %d; want %d", f.NArg(), 0)
 	}

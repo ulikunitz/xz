@@ -242,8 +242,19 @@ func (f *FlagSet) processExtraFlagArg(flag *Flag, i int) error {
 	if i < len(f.args) {
 		arg := f.args[i]
 		if len(arg) == 0 || arg[0] != '-' {
-			f.removeArg(i)
-			return flag.Value.Set(arg)
+			err := flag.Value.Set(arg)
+			switch flag.HasArg {
+			case RequiredArg:
+				f.removeArg(i)
+				return err
+			case OptionalArg:
+				if err != nil {
+					flag.Value.Update()
+					return nil
+				}
+				f.removeArg(i)
+				return nil
+			}
 		}
 	}
 	// no argument
