@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/uli-go/xz/gflag"
+	"github.com/uli-go/xz/term"
 )
 
 const (
@@ -98,8 +99,14 @@ func main() {
 		log.Printf("version %s\n", version)
 		os.Exit(0)
 	}
-	if gflag.NArg() == 0 {
+	if gflag.NArg() == 0 && !*stdout {
 		log.Fatal("for help, type lzmago -h")
+	}
+	if *stdout && !*decompress && !*force && term.IsTerminal(os.Stdout.Fd()) {
+		log.Print("Compressed data will not be written to a terminal.")
+		log.SetPrefix("")
+		log.Fatal("Use -f to force compression." +
+			" For help type lzmago -h.")
 	}
 
 	log.Printf("decompress %t", *decompress)
