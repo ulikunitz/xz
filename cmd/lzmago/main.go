@@ -64,18 +64,33 @@ github.com/uli-go/xz -- xz for Go
 	}
 }
 
-var (
-	help        = gflag.BoolP("help", "h", false, "")
-	stdout      = gflag.BoolP("stdout", "c", false, "")
-	decompress  = gflag.BoolP("decompress", "d", false, "")
-	force       = gflag.BoolP("force", "f", false, "")
-	keep        = gflag.BoolP("keep", "k", false, "")
-	license     = gflag.BoolP("license", "L", false, "")
-	versionFlag = gflag.BoolP("version", "V", false, "")
-	quiet       = gflag.CounterP("quiet", "q", 0, "")
-	verbose     = gflag.CounterP("verbose", "v", 0, "")
-	preset      = gflag.Preset(0, 9, 6, "")
-)
+type options struct {
+	help       bool
+	stdout     bool
+	decompress bool
+	force      bool
+	keep       bool
+	license    bool
+	version    bool
+	quiet      int
+	verbose    int
+	preset     int
+}
+
+func (o *options) Init() {
+	if o.preset != 0 {
+		log.Panicf("options are already initialized")
+	}
+	gflag.BoolVarP(&o.help, "help", "h", false, "")
+	gflag.BoolVarP(&o.decompress, "decompress", "d", false, "")
+	gflag.BoolVarP(&o.force, "force", "f", false, "")
+	gflag.BoolVarP(&o.keep, "keep", "k", false, "")
+	gflag.BoolVarP(&o.license, "license", "L", false, "")
+	gflag.BoolVarP(&o.version, "version", "V", false, "")
+	gflag.CounterVarP(&o.quiet, "quiet", "q", 0, "")
+	gflag.CounterVarP(&o.verbose, "verbose", "v", 0, "")
+	gflag.PresetVar(&o.preset, 0, 9, 6, "")
+}
 
 func main() {
 	// setup logger
@@ -86,26 +101,26 @@ func main() {
 	// initialize flags
 	gflag.CommandLine = gflag.NewFlagSet(cmdName, gflag.ExitOnError)
 	gflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
-
-	// process arguments
+	opts := options{}
+	opts.Init()
 	gflag.Parse()
 
-	if *help {
+	if opts.help {
 		usage(os.Stdout)
 		os.Exit(0)
 	}
-	if *license {
+	if opts.license {
 		licenses(os.Stdout)
 		os.Exit(0)
 	}
-	if *versionFlag {
+	if opts.version {
 		log.Printf("version %s\n", version)
 		os.Exit(0)
 	}
 	var args []string
 	if gflag.NArg() == 0 {
-		if !*stdout {
-			if *quiet > 0 {
+		if !opts.stdout {
+			if opts.quiet > 0 {
 				os.Exit(1)
 			}
 			log.Fatal("For help, type lzmago -h.")
@@ -115,8 +130,9 @@ func main() {
 		args = gflag.Args()
 	}
 
-	if *stdout && !*decompress && !*force && term.IsTerminal(os.Stdout.Fd()) {
-		if *quiet > 0 {
+	if opts.stdout && !opts.decompress && !opts.force &&
+		term.IsTerminal(os.Stdout.Fd()) {
+		if opts.quiet > 0 {
 			os.Exit(1)
 		}
 		log.Print("Compressed data will not be written to a terminal.")
@@ -130,15 +146,15 @@ func main() {
 		if f == "-" {
 			f = "stdin"
 		}
-		if *decompress {
+		if opts.decompress {
 			log.SetPrefix(fmt.Sprintf("%s: decompressing %s ",
 				cmdName, arg))
 		} else {
 			log.SetPrefix(fmt.Sprintf("%s: compressing %s ",
 				cmdName, arg))
 		}
-		if err := processLZMA(arg); err != nil {
-			if *verbose >= 2 {
+		if err := processLZMA(opts, arg); err != nil {
+			if opts.verbose >= 2 {
 				log.Printf("exit after error %s", err)
 			}
 			os.Exit(3)

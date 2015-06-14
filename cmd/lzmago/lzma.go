@@ -8,9 +8,8 @@ package main
 // Following list provides exponents of two for the dictionary sizes:
 // 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
 
-func processLZMA(arg string) error {
+func processLZMA(opts options, arg string) error {
 	// TODO: signal handling?
-	var err error
 	// use deferred function for closure of output depending
 	// on the state of the error variable
 
@@ -23,4 +22,5 @@ func processLZMA(arg string) error {
 	// close input
 	// rename output to correct file
 	// remove input file if not kept and not stdin
+	panic("TODO")
 }
