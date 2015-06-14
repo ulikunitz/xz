@@ -88,6 +88,8 @@ func (gp *gopath) find(arg string) (p cpair, err error) {
 	if p.path == "-" {
 		return
 	}
+	// substitute first ~ by $HOME
+	p.path = strings.Replace(p.path, "~", os.Getenv("HOME"), 1)
 	paths := make([]string, 0, len(gp.p)+1)
 	if filepath.IsAbs(p.path) {
 		paths = append(paths, filepath.Clean(p.path))
