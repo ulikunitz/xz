@@ -1,12 +1,11 @@
 package main
 
-//go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE
+//go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE goLicense:~/go/LICENSE
 //go:generate xb version-file -o version.go
 
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/uli-go/xz/gflag"
 	"github.com/uli-go/xz/term"
+	"github.com/uli-go/xz/xlog"
 )
 
 const (
@@ -50,17 +50,27 @@ github.com/uli-go/xz -- xz for Go
 =================================
 
 {{.xz}}
+
+Go Programming Language
+=======================
+
+The lzmago program contains the packages gflag and xlog that are
+extensions of packages from the Go standard library. The packages may
+contain code from those packages.
+
+{{.go}}
 `
 	out = strings.TrimLeft(out, " \n")
 	tmpl, err := template.New("licenses").Parse(out)
 	if err != nil {
-		log.Panicf("error %s parsing licenses template", err)
+		xlog.Panicf("error %s parsing licenses template", err)
 	}
 	lmap := map[string]string{
 		"xz": strings.TrimSpace(xzLicense),
+		"go": strings.TrimSpace(goLicense),
 	}
 	if err = tmpl.Execute(w, lmap); err != nil {
-		log.Fatalf("error %s writing licenses template", err)
+		xlog.Fatalf("error %s writing licenses template", err)
 	}
 }
 
@@ -79,7 +89,7 @@ type options struct {
 
 func (o *options) Init() {
 	if o.preset != 0 {
-		log.Panicf("options are already initialized")
+		xlog.Panicf("options are already initialized")
 	}
 	gflag.BoolVarP(&o.help, "help", "h", false, "")
 	gflag.BoolVarP(&o.decompress, "decompress", "d", false, "")
@@ -95,8 +105,8 @@ func (o *options) Init() {
 func main() {
 	// setup logger
 	cmdName := filepath.Base(os.Args[0])
-	log.SetPrefix(fmt.Sprintf("%s: ", cmdName))
-	log.SetFlags(0)
+	xlog.SetPrefix(fmt.Sprintf("%s: ", cmdName))
+	xlog.SetFlags(0)
 
 	// initialize flags
 	gflag.CommandLine = gflag.NewFlagSet(cmdName, gflag.ExitOnError)
@@ -114,7 +124,7 @@ func main() {
 		os.Exit(0)
 	}
 	if opts.version {
-		log.Printf("version %s\n", version)
+		xlog.Printf("version %s\n", version)
 		os.Exit(0)
 	}
 	var args []string
@@ -123,7 +133,7 @@ func main() {
 			if opts.quiet > 0 {
 				os.Exit(1)
 			}
-			log.Fatal("For help, type lzmago -h.")
+			xlog.Fatal("For help, type lzmago -h.")
 		}
 		args = []string{"-"}
 	} else {
@@ -135,9 +145,9 @@ func main() {
 		if opts.quiet > 0 {
 			os.Exit(1)
 		}
-		log.Print("Compressed data will not be written to a terminal.")
-		log.SetPrefix("")
-		log.Fatal("Use -f to force compression." +
+		xlog.Print("Compressed data will not be written to a terminal.")
+		xlog.SetPrefix("")
+		xlog.Fatal("Use -f to force compression." +
 			" For help type lzmago -h.")
 	}
 
@@ -147,15 +157,15 @@ func main() {
 			f = "stdin"
 		}
 		if opts.decompress {
-			log.SetPrefix(fmt.Sprintf("%s: decompressing %s ",
+			xlog.SetPrefix(fmt.Sprintf("%s: decompressing %s ",
 				cmdName, arg))
 		} else {
-			log.SetPrefix(fmt.Sprintf("%s: compressing %s ",
+			xlog.SetPrefix(fmt.Sprintf("%s: compressing %s ",
 				cmdName, arg))
 		}
 		if err := processLZMA(opts, arg); err != nil {
 			if opts.verbose >= 2 {
-				log.Printf("exit after error %s", err)
+				xlog.Printf("exit after error %s", err)
 			}
 			os.Exit(3)
 		}
