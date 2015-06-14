@@ -127,12 +127,26 @@ func main() {
 		xlog.Printf("version %s\n", version)
 		os.Exit(0)
 	}
+
+	flags := xlog.Flags()
+	switch {
+	case opts.verbose <= 0:
+		flags |= xlog.Lnoprint | xlog.Lnodebug
+	case opts.verbose == 1:
+		flags |= xlog.Lnodebug
+	}
+	switch {
+	case opts.quiet >= 2:
+		flags |= xlog.Lnoprint | xlog.Lnowarn | xlog.Lnodebug
+		flags |= xlog.Lnopanic | xlog.Lnofatal
+	case opts.quiet == 1:
+		flags |= xlog.Lnoprint | xlog.Lnowarn | xlog.Lnodebug
+	}
+	xlog.SetFlags(flags)
+
 	var args []string
 	if gflag.NArg() == 0 {
 		if !opts.stdout {
-			if opts.quiet > 0 {
-				os.Exit(1)
-			}
 			xlog.Fatal("For help, type lzmago -h.")
 		}
 		args = []string{"-"}
@@ -142,31 +156,13 @@ func main() {
 
 	if opts.stdout && !opts.decompress && !opts.force &&
 		term.IsTerminal(os.Stdout.Fd()) {
-		if opts.quiet > 0 {
-			os.Exit(1)
-		}
-		xlog.Print("Compressed data will not be written to a terminal.")
-		xlog.SetPrefix("")
-		xlog.Fatal("Use -f to force compression." +
-			" For help type lzmago -h.")
+		xlog.Fatal(`Compressed data will not be written to a terminal
+Use -f to force compression. For help type lzmago -h.`)
 	}
 
 	for _, arg := range args {
-		f := arg
-		if f == "-" {
-			f = "stdin"
-		}
-		if opts.decompress {
-			xlog.SetPrefix(fmt.Sprintf("%s: decompressing %s ",
-				cmdName, arg))
-		} else {
-			xlog.SetPrefix(fmt.Sprintf("%s: compressing %s ",
-				cmdName, arg))
-		}
 		if err := processLZMA(opts, arg); err != nil {
-			if opts.verbose >= 2 {
-				xlog.Printf("exit after error %s", err)
-			}
+			xlog.Printf("exit after error %s", err)
 			os.Exit(3)
 		}
 	}
