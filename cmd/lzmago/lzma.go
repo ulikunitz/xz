@@ -19,10 +19,19 @@ import (
 type reader struct {
 	file *os.File
 	*bufio.Reader
+	stdin  bool
 	remove bool
 }
 
 func newReader(opts options, arg string) (r *reader, err error) {
+	if arg == "-" {
+		r = &reader{
+			file:   os.Stdin,
+			Reader: bufio.NewReader(os.Stdin),
+			stdin:  true,
+		}
+		return r, nil
+	}
 	fi, err := os.Lstat(arg)
 	if err != nil {
 		return nil, err
@@ -44,33 +53,41 @@ func newReader(opts options, arg string) (r *reader, err error) {
 	return r, nil
 }
 
+var errReaderClosed = errors.New("reader already closed")
+
 func (r *reader) Close() error {
-	var name string
-	if r.file != nil {
-		name = r.file.Name()
+	if r.Reader == nil {
+		return errReaderClosed
 	}
 
-	if err := r.kill(); err != nil {
-		return err
+	var err error
+	if !r.stdin {
+		if err = r.file.Close(); err != nil {
+			return err
+		}
+		if r.remove {
+			if err = os.Remove(r.file.Name()); err != nil {
+				return err
+			}
+		}
 	}
 
-	if !r.remove {
-		return nil
-	}
-	return os.Remove(name)
+	*r = reader{}
+	return nil
 }
 
 func (r *reader) kill() error {
 	if r.Reader == nil {
-		return errors.New("reader already closed")
+		return errReaderClosed
 	}
 
-	if err := r.file.Close(); err != nil {
-		return err
+	if !r.stdin {
+		if err := r.file.Close(); err != nil {
+			return err
+		}
 	}
 
-	r.Reader = nil
-	r.file = nil
+	*r = reader{}
 	return nil
 }
 
@@ -83,26 +100,29 @@ type writer struct {
 }
 
 func newWriter(opts options, arg string) (w *writer, err error) {
-	w = new(writer)
-	if opts.stdout {
-		w.stdout = true
-		w.file = os.Stdout
-	} else {
-		if arg == "-" {
-			return nil, errors.New(
-				"argument '-' requires -c flag for standard output")
+	if arg == "-" || opts.stdout {
+		w = &writer{
+			file:   os.Stdout,
+			Writer: bufio.NewWriter(os.Stdout),
+			stdout: true,
 		}
-		w.name = arg + ".lzma"
-		var dir string
-		if dir, err = os.Getwd(); err != nil {
-			return nil, err
-		}
-		if w.file, err = ioutil.TempFile(dir, "lzma-"); err != nil {
-			return nil, err
-		}
-		w.rename = true
+		return w, nil
 	}
-	w.Writer = bufio.NewWriter(w.file)
+	name := arg + ".lzma"
+	var dir string
+	if dir, err = os.Getwd(); err != nil {
+		return nil, err
+	}
+	file, err := ioutil.TempFile(dir, "lzma-")
+	if err != nil {
+		return nil, err
+	}
+	w = &writer{
+		file:   file,
+		Writer: bufio.NewWriter(file),
+		rename: true,
+		name:   name,
+	}
 	return w, nil
 }
 
@@ -133,8 +153,7 @@ func (w *writer) Close() error {
 		}
 	}
 
-	w.file = nil
-	w.Writer = nil
+	*w = writer{}
 	return nil
 }
 
@@ -153,8 +172,7 @@ func (w *writer) kill() error {
 		}
 	}
 
-	w.file = nil
-	w.Writer = nil
+	*w = writer{}
 	return nil
 }
 
