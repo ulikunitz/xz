@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -22,7 +23,25 @@ type reader struct {
 }
 
 func newReader(opts options, arg string) (r *reader, err error) {
-	panic("TODO")
+	fi, err := os.Lstat(arg)
+	if err != nil {
+		return nil, err
+	}
+	if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a reqular file", arg)
+	}
+	file, err := os.Open(arg)
+	if err != nil {
+		return nil, err
+	}
+	r = &reader{
+		file:   file,
+		Reader: bufio.NewReader(file),
+	}
+	if !opts.keep {
+		r.remove = true
+	}
+	return r, nil
 }
 
 func (r *reader) Close() error {
