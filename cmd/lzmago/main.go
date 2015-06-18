@@ -147,9 +147,7 @@ func main() {
 
 	var args []string
 	if gflag.NArg() == 0 {
-		if !opts.stdout {
-			xlog.Fatal("For help, type lzmago -h.")
-		}
+		opts.stdout = true
 		args = []string{"-"}
 	} else {
 		args = gflag.Args()
