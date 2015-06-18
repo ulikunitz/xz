@@ -2,29 +2,30 @@
 
 # Release v0.3
 
-1. Simple lzmago supporting all the features of lzma. Links to
-    lzma, unlzma and lzmacat are supported.
+1. Support links to lzma, unlzma and lzcat.
 2. Create separate xztest project on github.com using Calgary,
    Canterbury Corpus and enwik8 and enwik9
     a) Clarify Copyrights
     b) Create tests
-2. Execute test suite on:
+3. Execute test suite on:
     - x86 (Linux)
     - amd64 (Linux, Windows)
-4. Check all external packages for license terms
-5. Include all foreign licenses in the lzmago tool. Use go generate for
-   this.
-6. Add Copyright to all source code files including the markdown files.
-   Write a go tool to do it and publish it.
-7. Improve documentation
-8. Create Release Notes as markdown file.
-9. execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
-10. Check that package is indeed go-gettable.
+4. Create Release Notes as markdown file.
+5. Add Copyright to all source code files including the markdown files.
+   Write a shell script using sed to do it.
+6. execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
+7. Put it in master.
+8. Check that package is indeed go-gettable.
+9. Tag version
 
 # Release v0.4
 
 1. Write the first version of xzgo. It should be able to decode and
    encode xz files.
+
+# Release 0.5
+
+1. Do the signal handling correctly.
 
 # Release 1.0
 
