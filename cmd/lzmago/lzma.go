@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/uli-go/xz/lzma"
 )
@@ -103,7 +104,16 @@ func newWriter(path string, opts *options) (w *writer, err error) {
 		}
 		return w, nil
 	}
-	name := path + ".lzma"
+	const ext = ".lzma"
+	var name string
+	if opts.decompress {
+		if !strings.HasSuffix(path, ext) {
+			return nil, errors.New("unknown suffix -- file ignored")
+		}
+		name = path[:len(path)-len(ext)]
+	} else {
+		name = path + ext
+	}
 	var dir string
 	if dir, err = os.Getwd(); err != nil {
 		return nil, err
