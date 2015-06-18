@@ -355,8 +355,7 @@ func processLZMA(path string, opts *options) (err error) {
 		}
 	}()
 	for {
-		_, err = io.CopyN(w, r, 64*1024)
-		if err != nil {
+		if _, err = io.CopyN(w, r, 64*1024); err != nil {
 			if err == io.EOF {
 				err = nil
 			}
