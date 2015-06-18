@@ -43,7 +43,7 @@ func newReader(path string, opts *options) (r *reader, err error) {
 		file:   file,
 		Reader: bufio.NewReader(file),
 	}
-	if !opts.keep {
+	if !opts.keep && !opts.stdout {
 		r.remove = true
 	}
 	return r, nil

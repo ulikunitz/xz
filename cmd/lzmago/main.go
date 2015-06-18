@@ -92,6 +92,7 @@ func (o *options) Init() {
 		xlog.Panicf("options are already initialized")
 	}
 	gflag.BoolVarP(&o.help, "help", "h", false, "")
+	gflag.BoolVarP(&o.stdout, "stdout", "c", false, "")
 	gflag.BoolVarP(&o.decompress, "decompress", "d", false, "")
 	gflag.BoolVarP(&o.force, "force", "f", false, "")
 	gflag.BoolVarP(&o.keep, "keep", "k", false, "")
