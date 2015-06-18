@@ -37,6 +37,9 @@ func newReader(path string, opts *options) (r *reader, err error) {
 	}
 	fi, err := os.Lstat(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			err = warning{fmt.Errorf("file %s doesn't exist", path)}
+		}
 		return nil, err
 	}
 	if !fi.Mode().IsRegular() {
