@@ -31,15 +31,16 @@ func newReader(path string, opts *options) (r *reader, err error) {
 		return r, nil
 	}
 	if !opts.decompress && strings.HasSuffix(path, ext) {
-		return nil, fmt.Errorf("%s has alread %s suffix -- unchanged",
-			path, ext)
+		err = warning{fmt.Errorf(
+			"%s has already %s suffix -- unchanged", path, ext)}
+		return nil, err
 	}
 	fi, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
 	}
 	if !fi.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a reqular file", path)
+		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -113,7 +114,9 @@ func newWriter(path string, opts *options) (w *writer, err error) {
 	var name string
 	if opts.decompress {
 		if !strings.HasSuffix(path, ext) {
-			return nil, errors.New("unknown suffix -- file ignored")
+			err = warning{errors.New(
+				"unknown suffix -- file ignored")}
+			return nil, err
 		}
 		name = path[:len(path)-len(ext)]
 	} else {

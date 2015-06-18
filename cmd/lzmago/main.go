@@ -103,6 +103,10 @@ func (o *options) Init() {
 	gflag.PresetVar(&o.preset, 0, 9, 6, "")
 }
 
+type warning struct {
+	error
+}
+
 func main() {
 	// setup logger
 	cmdName := filepath.Base(os.Args[0])
@@ -160,8 +164,14 @@ Use -f to force compression. For help type lzmago -h.`)
 	}
 
 	for _, arg := range args {
-		if err := processLZMA(arg, &opts); err != nil {
-			xlog.Fatalf("%s", err)
+		err := processLZMA(arg, &opts)
+		if err != nil {
+			switch err.(type) {
+			case warning:
+				xlog.Warn(err)
+			default:
+				xlog.Fatal(err)
+			}
 		}
 	}
 }
