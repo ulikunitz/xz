@@ -161,7 +161,7 @@ Use -f to force compression. For help type lzmago -h.`)
 
 	for _, arg := range args {
 		if err := processLZMA(arg, &opts); err != nil {
-			xlog.Fatalf("exit after error %s", err)
+			xlog.Fatalf("%s", err)
 		}
 	}
 }

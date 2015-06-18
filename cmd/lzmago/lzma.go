@@ -12,6 +12,8 @@ import (
 	"github.com/uli-go/xz/lzma"
 )
 
+const ext = ".lzma"
+
 type reader struct {
 	file *os.File
 	*bufio.Reader
@@ -27,6 +29,10 @@ func newReader(path string, opts *options) (r *reader, err error) {
 			stdin:  true,
 		}
 		return r, nil
+	}
+	if !opts.decompress && strings.HasSuffix(path, ext) {
+		return nil, fmt.Errorf("%s has alread %s suffix -- unchanged",
+			path, ext)
 	}
 	fi, err := os.Lstat(path)
 	if err != nil {
@@ -104,7 +110,6 @@ func newWriter(path string, opts *options) (w *writer, err error) {
 		}
 		return w, nil
 	}
-	const ext = ".lzma"
 	var name string
 	if opts.decompress {
 		if !strings.HasSuffix(path, ext) {
