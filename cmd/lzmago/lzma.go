@@ -43,7 +43,8 @@ func newReader(path string, opts *options) (r *reader, err error) {
 		return nil, err
 	}
 	if !fi.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", path)
+		return nil,
+			warning{fmt.Errorf("%s is not a regular file", path)}
 	}
 	file, err := os.Open(path)
 	if err != nil {
