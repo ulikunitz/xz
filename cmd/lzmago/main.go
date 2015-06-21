@@ -103,10 +103,6 @@ func (o *options) Init() {
 	gflag.PresetVar(&o.preset, 0, 9, 6, "")
 }
 
-type warning struct {
-	error
-}
-
 func main() {
 	// setup logger
 	cmdName := filepath.Base(os.Args[0])
