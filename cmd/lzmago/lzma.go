@@ -73,17 +73,14 @@ func (p lzmaPacker) pack(w io.Writer, r io.Reader, preset int) (n int64, err err
 	}
 	params := parameters(preset)
 	bw := bufio.NewWriter(w)
-	err = bw.Flush()
 	lw, err := lzma.NewWriterParams(bw, params)
 	if err != nil {
 		return
 	}
-	err = bw.Flush()
 	n, err = io.Copy(lw, r)
 	if err != nil {
 		return
 	}
-	err = bw.Flush()
 	if err = lw.Close(); err != nil {
 		return
 	}
