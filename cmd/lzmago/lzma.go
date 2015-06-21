@@ -7,235 +7,268 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/uli-go/xz/lzma"
+	"github.com/uli-go/xz/xlog"
 )
 
 const ext = ".lzma"
 
+var errInvalidOp = errors.New("invalid operation")
+
+type canceler interface {
+	Cancel() error
+}
+
+type readCanceler interface {
+	io.ReadCloser
+	canceler
+}
+
 type reader struct {
-	file *os.File
-	*bufio.Reader
-	stdin  bool
+	io.Reader
+	file   *os.File
 	remove bool
 }
 
-func newReader(path string, opts *options) (r *reader, err error) {
-	if path == "-" {
-		r = &reader{
-			file:   os.Stdin,
-			Reader: bufio.NewReader(os.Stdin),
-			stdin:  true,
+func (r *reader) Cancel() error { r.remove = false; return nil }
+
+func (r *reader) Close() error {
+	if r.file == nil {
+		return errInvalidOp
+	}
+	if r.file == os.Stdin {
+		if r.remove {
+			panic("remove for stdin")
 		}
-		return r, nil
+		r.file = nil
+		return nil
 	}
-	if !opts.decompress && strings.HasSuffix(path, ext) {
-		err = warning{fmt.Errorf(
-			"%s has already %s suffix -- unchanged", path, ext)}
-		return nil, err
+	err := r.file.Close()
+	if err != nil {
+		return err
 	}
+	if r.remove {
+		if err := os.Remove(r.file.Name()); err != nil {
+			return err
+		}
+	}
+	r.file = nil
+	return nil
+}
+
+func openFile(path string) (f *os.File, err error) {
 	fi, err := os.Lstat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = warning{fmt.Errorf("file %s doesn't exist", path)}
+			err = fmt.Errorf("file %s doesn't exist", path)
 		}
 		return nil, err
 	}
 	if !fi.Mode().IsRegular() {
-		return nil,
-			warning{fmt.Errorf("%s is not a regular file", path)}
+		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
+	return os.Open(path)
+}
+
+func openUncompressedFile(path string) (f *os.File, err error) {
+	if strings.HasSuffix(path, ext) {
+		return nil, fmt.Errorf("%s has already %s suffix -- unchanged",
+			path, ext)
 	}
-	r = &reader{
-		file:   file,
-		Reader: bufio.NewReader(file),
+	return openFile(path)
+}
+
+func openCompressedFile(path string) (f *os.File, err error) {
+	if !strings.HasSuffix(path, ext) {
+		return nil, fmt.Errorf("%s has no %s suffix -- unchanged",
+			path, ext)
 	}
-	if !opts.keep && !opts.stdout {
-		r.remove = true
-	}
+	return openFile(path)
+}
+
+func newReader(file *os.File, remove bool) (r *reader, err error) {
+	br := bufio.NewReader(file)
+	r = &reader{file: file, Reader: br, remove: remove}
 	return r, nil
 }
 
-var errReaderClosed = errors.New("reader already closed")
-
-func (r *reader) Close() error {
-	if r.Reader == nil {
-		return errReaderClosed
-	}
-
-	var err error
-	if !r.stdin {
-		if err = r.file.Close(); err != nil {
-			return err
-		}
-		if r.remove {
-			if err = os.Remove(r.file.Name()); err != nil {
-				return err
-			}
-		}
-	}
-
-	*r = reader{}
-	return nil
-}
-
-func (r *reader) Cancel() error {
-	if r.Reader == nil {
-		return errReaderClosed
-	}
-
-	if !r.stdin {
-		if err := r.file.Close(); err != nil {
-			return err
-		}
-	}
-
-	*r = reader{}
-	return nil
-}
-
-type writer struct {
-	file *os.File
-	*bufio.Writer
-	stdout bool
-	rename bool
-	name   string
-}
-
-func newWriter(path string, opts *options) (w *writer, err error) {
-	if path == "-" || opts.stdout {
-		w = &writer{
-			file:   os.Stdout,
-			Writer: bufio.NewWriter(os.Stdout),
-			stdout: true,
-		}
-		return w, nil
-	}
-	var name string
-	if opts.decompress {
-		if !strings.HasSuffix(path, ext) {
-			err = warning{errors.New(
-				"unknown suffix -- file ignored")}
-			return nil, err
-		}
-		name = path[:len(path)-len(ext)]
-	} else {
-		name = path + ext
-	}
-	var dir string
-	if dir, err = os.Getwd(); err != nil {
-		return nil, err
-	}
-	file, err := ioutil.TempFile(dir, "lzma-")
+func newDecompressor(file *os.File, remove bool) (r *reader, err error) {
+	lr, err := lzma.NewReader(bufio.NewReader(file))
 	if err != nil {
 		return nil, err
 	}
-	w = &writer{
-		file:   file,
-		Writer: bufio.NewWriter(file),
-		rename: true,
-		name:   name,
-	}
-	return w, nil
+	r = &reader{file: file, Reader: lr, remove: remove}
+	return r, nil
 }
 
-var errWriterClosed = errors.New("writer already closed")
-
-func (w *writer) Close() error {
-	if w.Writer == nil {
-		return errWriterClosed
+func newReaderPathOpts(path string, opts *options) (r *reader, err error) {
+	var file *os.File
+	remove := false
+	if path == "-" {
+		file = os.Stdin
+	} else {
+		if opts.decompress {
+			file, err = openCompressedFile(path)
+		} else {
+			file, err = openUncompressedFile(path)
+		}
+		if err != nil {
+			return nil, err
+		}
+		remove = !opts.stdout && !opts.keep
 	}
+	if opts.decompress {
+		r, err = newDecompressor(file, remove)
+	} else {
+		r, err = newReader(file, remove)
+	}
+	return
+}
 
-	var err error
-	if err = w.Writer.Flush(); err != nil {
+type outputFile struct {
+	newName string
+	*os.File
+}
+
+func (f *outputFile) Cancel() error {
+	if f.File == nil || f.File == os.Stdout {
+		return nil
+	}
+	f.newName = ""
+	return os.Remove(f.File.Name())
+}
+
+func (f *outputFile) Close() error {
+	if f.File == nil {
+		return errInvalidOp
+	}
+	if f.File == os.Stdout {
+		*f = outputFile{}
+		return nil
+	}
+	err := f.File.Close()
+	if err != nil {
 		return err
 	}
-
-	if !w.stdout {
-		if err = w.file.Close(); err != nil {
+	if f.newName != "" {
+		if err = os.Rename(f.File.Name(), f.newName); err != nil {
 			return err
 		}
-		if w.rename {
-			if err = os.Rename(w.file.Name(), w.name); err != nil {
-				return err
-			}
-		} else {
-			if err = os.Remove(w.file.Name()); err != nil {
-				return err
-			}
+	}
+	*f = outputFile{}
+	return nil
+}
+
+func createOutputFile(newName string) (f *outputFile, err error) {
+	if _, err := os.Lstat(newName); err == nil {
+		return nil, &os.PathError{
+			Op:   "createOutputFile",
+			Path: newName,
+			Err:  os.ErrExist,
 		}
 	}
+	dir := filepath.Dir(newName)
+	file, err := ioutil.TempFile(dir, "lzmago-")
+	if err != nil {
+		return nil, err
+	}
+	f = &outputFile{newName: newName, File: file}
+	return f, nil
+}
 
-	*w = writer{}
+func createUncompressedFile(path string) (f *outputFile, err error) {
+	if !strings.HasSuffix(path, ext) {
+		return nil, fmt.Errorf(
+			"path %s has no suffix %s -- ignored", path, ext)
+	}
+	newName := path[:len(path)-len(ext)]
+	if newName == "" {
+		return nil, fmt.Errorf(
+			"path contains only the suffix %s", ext)
+	}
+	return createOutputFile(newName)
+}
+
+func createCompressedFile(path string) (f *outputFile, err error) {
+	if strings.HasSuffix(path, ext) {
+		return nil, fmt.Errorf(
+			"path %s has suffix %s -- ignored", path, ext)
+	}
+	if path == "" {
+		return nil, fmt.Errorf("empty path -- ignored")
+	}
+	return createOutputFile(path + ext)
+}
+
+type writeCanceler interface {
+	io.WriteCloser
+	canceler
+}
+
+type writer struct {
+	ofile *outputFile
+	bw    *bufio.Writer
+	io.WriteCloser
+}
+
+func (w *writer) Close() error {
+	if w.ofile == nil {
+		return errInvalidOp
+	}
+	var err error
+	if err = w.WriteCloser.Close(); err != nil {
+		return err
+	}
+	if err = w.bw.Flush(); err != nil {
+		return err
+	}
+	if err = w.ofile.Close(); err != nil {
+		return nil
+	}
+	w.ofile = nil
 	return nil
 }
 
 func (w *writer) Cancel() error {
-	if w.Writer == nil {
-		return errWriterClosed
-	}
-
-	var err error
-	if !w.stdout {
-		if err = w.file.Close(); err != nil {
-			return err
-		}
-		if err = os.Remove(w.file.Name()); err != nil {
-			return err
-		}
-	}
-
-	*w = writer{}
-	return nil
-}
-
-type decompressor struct {
-	*lzma.Reader
-	r *reader
-}
-
-func newDecompressor(path string, opts *options) (d *decompressor, err error) {
-	r, err := newReader(path, opts)
-	if err != nil {
-		return nil, err
-	}
-	lr, err := lzma.NewReader(r)
-	if err != nil {
-		r.Cancel()
-		return nil, err
-	}
-	d = &decompressor{Reader: lr, r: r}
-	return d, nil
-}
-
-func (d *decompressor) Close() error {
-	d.Reader = nil
-	if err := d.r.Close(); err != nil {
-		return err
-	}
-	d.r = nil
-	return nil
-}
-
-func (d *decompressor) Cancel() error {
-	if d.Reader == nil {
+	if w.ofile == nil {
 		return nil
 	}
-	if err := d.r.Cancel(); err != nil {
-		return err
-	}
-	d.Reader = nil
-	d.r = nil
-	return nil
+	return w.ofile.Cancel()
 }
 
-type compressor struct {
-	*lzma.Writer
-	w *writer
+type nopWriteCloser struct {
+	io.Writer
+}
+
+func (w nopWriteCloser) Close() error { return nil }
+
+func newWriter(ofile *outputFile) (w *writer, err error) {
+	bw := bufio.NewWriter(ofile)
+	w = &writer{
+		ofile:       ofile,
+		bw:          bw,
+		WriteCloser: nopWriteCloser{bw},
+	}
+	return w, nil
+}
+
+func newCompressor(ofile *outputFile, p lzma.Parameters) (w *writer, err error) {
+	bw := bufio.NewWriter(ofile)
+	lw, err := lzma.NewWriterParams(bw, p)
+	if err != nil {
+		return nil, err
+	}
+	w = &writer{
+		ofile:       ofile,
+		bw:          bw,
+		WriteCloser: lw,
+	}
+	return w, nil
 }
 
 // parameters converts the lzmago executable flags to lzma parameters.
@@ -247,9 +280,9 @@ type compressor struct {
 // The default preset is 6.
 // Following list provides exponents of two for the dictionary sizes:
 // 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
-func parameters(opts *options) lzma.Parameters {
+func parameters(preset int) lzma.Parameters {
 	dictSizeExps := []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
-	dictSize := int64(1) << dictSizeExps[opts.preset]
+	dictSize := int64(1) << dictSizeExps[preset]
 	p := lzma.Parameters{
 		LC:           3,
 		LP:           0,
@@ -261,106 +294,231 @@ func parameters(opts *options) lzma.Parameters {
 	return p
 }
 
-func newCompressor(path string, opts *options) (c *compressor, err error) {
-	w, err := newWriter(path, opts)
-	if err != nil {
-		return nil, err
+func newWriterPathOpts(path string, opts *options) (w *writer, err error) {
+	var ofile *outputFile
+	if opts.stdout || path == "-" {
+		ofile = &outputFile{File: os.Stdout}
+	} else {
+		if opts.decompress {
+			ofile, err = createUncompressedFile(path)
+		} else {
+			ofile, err = createCompressedFile(path)
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
-	p := parameters(opts)
-	lw, err := lzma.NewWriterParams(w, p)
-	if err != nil {
-		w.Cancel()
-		return nil, err
+	if opts.decompress {
+		w, err = newWriter(ofile)
+	} else {
+		p := parameters(opts.preset)
+		w, err = newCompressor(ofile, p)
 	}
-	c = &compressor{
-		Writer: lw,
-		w:      w,
-	}
-	return c, nil
+	return
 }
 
-func (c *compressor) Close() error {
-	var err error
-	if err = c.Writer.Close(); err != nil {
-		return err
-	}
-	if err := c.w.Close(); err != nil {
-		return err
-	}
-	c.w = nil
-	c.Writer = nil
-	return nil
+type state int
+
+const (
+	sInit state = iota
+	sOpen
+	sClosed
+	sCanceled
+	sOpenCanceled
+)
+
+var stateNames = [...]string{
+	sInit:         "INIT",
+	sOpen:         "OPEN",
+	sClosed:       "CLOSED",
+	sCanceled:     "CANCELED",
+	sOpenCanceled: "OPEN-CANCELED",
 }
 
-func (c *compressor) Cancel() error {
-	if c.Writer == nil {
+func (s state) String() string {
+	if !(sInit <= s && s <= sOpenCanceled) {
+		return fmt.Sprintf("UNKNOWN(%d)", s)
+	}
+	return stateNames[s]
+}
+
+type closeCanceler interface {
+	io.Closer
+	canceler
+}
+
+type stream struct {
+	mu    sync.Mutex
+	state state
+	cc    closeCanceler
+}
+
+func (s *stream) Cancel() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch s.state {
+	case sOpen:
+		err := s.cc.Cancel()
+		s.state = sOpenCanceled
+		return err
+	case sClosed, sCanceled:
+		return nil
+	default:
+		s.state = sCanceled
 		return nil
 	}
-	if err := c.w.Cancel(); err != nil {
-		return err
+}
+
+func (s *stream) openCC(cc closeCanceler) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if cc == nil {
+		return errors.New("Open argument is nil")
 	}
-	c.w = nil
-	c.Writer = nil
+	if s.state != sInit {
+		return fmt.Errorf("Open in state %s", s.state)
+	}
+	s.cc = cc
+	s.state = sOpen
 	return nil
 }
 
-type readCanceler interface {
-	io.ReadCloser
-	Cancel() error
+func (s *stream) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch s.state {
+	case sClosed:
+		return fmt.Errorf("Close in state %s", s.state)
+	case sOpen, sOpenCanceled:
+		err := s.cc.Close()
+		s.cc = nil
+		s.state = sClosed
+		return err
+	default:
+		s.state = sClosed
+		return nil
+	}
 }
 
-func newReadCanceler(path string, opt *options) (r readCanceler, err error) {
-	if opt.decompress {
-		r, err = newDecompressor(path, opt)
-	} else {
-		r, err = newReader(path, opt)
+type input struct {
+	stream
+	r *reader
+}
+
+func (in *input) Open(r *reader) error {
+	if err := in.openCC(r); err != nil {
+		return err
+	}
+	in.r = r
+	return nil
+}
+
+func (in *input) Read(p []byte) (n int, err error) {
+	s := in.state
+	if s != sOpen {
+		return 0, fmt.Errorf("Read in state %s", s)
+	}
+	n, err = in.r.Read(p)
+	if err != nil && err != io.EOF {
+		in.Cancel()
 	}
 	return
 }
 
-type writeCanceler interface {
-	io.WriteCloser
-	Cancel() error
+type output struct {
+	stream
+	w *writer
 }
 
-func newWriteCanceler(path string, opt *options) (w writeCanceler, err error) {
-	if !opt.decompress {
-		w, err = newCompressor(path, opt)
-	} else {
-		w, err = newWriter(path, opt)
+func (out *output) Open(w *writer) error {
+	if err := out.openCC(w); err != nil {
+		return err
+	}
+	out.w = w
+	return nil
+}
+
+func (out *output) Write(p []byte) (n int, err error) {
+	s := out.state
+	if s != sOpen {
+		return 0, fmt.Errorf("Read in state %s", s)
+	}
+	n, err = out.w.Write(p)
+	if err != nil {
+		out.Cancel()
 	}
 	return
 }
 
-func processLZMA(path string, opts *options) (err error) {
-	r, err := newReadCanceler(path, opts)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			r.Cancel()
-		} else {
-			err = r.Close()
-		}
-	}()
-	w, err := newWriteCanceler(path, opts)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			w.Cancel()
-		} else {
-			err = w.Close()
-		}
-	}()
-	for {
-		if _, err = io.CopyN(w, r, 64*1024); err != nil {
-			if err == io.EOF {
-				err = nil
-			}
+func signalHandler(cs ...canceler) chan<- struct{} {
+	quit := make(chan struct{})
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, os.Interrupt)
+	go func() {
+		select {
+		case <-quit:
+			signal.Stop(sigch)
 			return
+		case <-sigch:
+			for _, cc := range cs {
+				cc.Cancel()
+			}
+			os.Exit(7)
 		}
+	}()
+	return quit
+}
+
+func processFile(path string, opts *options) {
+	var err error
+	var (
+		in  input
+		out output
+	)
+	defer func() {
+		if err != nil {
+			if err = out.Cancel(); err != nil {
+				xlog.Warnf("cancel output error %s", err)
+			}
+			if err = in.Cancel(); err != nil {
+				xlog.Warnf("cancel input error %s", err)
+			}
+		}
+		if err = out.Close(); err != nil {
+			xlog.Warnf("close output error %s", err)
+		}
+		if err = in.Close(); err != nil {
+			xlog.Warnf("close input error %s", err)
+		}
+	}()
+
+	quit := signalHandler(&in, &out)
+	defer close(quit)
+
+	r, err := newReaderPathOpts(path, opts)
+	if err != nil {
+		xlog.Warnf("file %s error %s", path, err)
+		return
+	}
+	if err = in.Open(r); err != nil {
+		xlog.Warnf("in.Open error %s", err)
+		return
+	}
+	xlog.Debugf("reader for file %s opened", path)
+
+	w, err := newWriterPathOpts(path, opts)
+	if err != nil {
+		xlog.Warnf("file %s error %s", path, err)
+		return
+	}
+	if err = out.Open(w); err != nil {
+		xlog.Warnf("in.Open error %s", err)
+		return
+	}
+	xlog.Debugf("writer for file %s opened", path)
+
+	if _, err = io.Copy(&out, &in); err != nil {
+		xlog.Warnf("copy error %s", err)
+		return
 	}
 }

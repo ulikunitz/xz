@@ -164,14 +164,6 @@ Use -f to force compression. For help type lzmago -h.`)
 	}
 
 	for _, arg := range args {
-		err := processLZMA(arg, &opts)
-		if err != nil {
-			switch err.(type) {
-			case warning:
-				xlog.Warn(err)
-			default:
-				xlog.Fatal(err)
-			}
-		}
+		processFile(arg, &opts)
 	}
 }
