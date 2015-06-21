@@ -239,11 +239,11 @@ func processFile(path string, opts *options) {
 			return
 		}
 	}
-	defer func(tmp string) {
-		if tmp != "-" {
+	defer func() {
+		if tmpPath != "-" {
 			os.Remove(tmp)
 		}
-	}(tmpPath)
+	}()
 	quit := signalHandler(tmpPath)
 	defer close(quit)
 
