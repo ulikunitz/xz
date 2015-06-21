@@ -606,8 +606,11 @@ func (n *intValue) Get() interface{} {
 // Set sets the integer value.
 func (n *intValue) Set(s string) error {
 	v, err := strconv.ParseInt(s, 0, 0)
+	if err != nil {
+		return err
+	}
 	*n = intValue(v)
-	return err
+	return nil
 }
 
 // Update increments the integer value.

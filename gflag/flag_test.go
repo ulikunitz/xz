@@ -28,8 +28,8 @@ func TestFlagSet_Bool(t *testing.T) {
 	}
 }
 
-func TestFlagSet_Counter(t *testing.T) {
-	f := NewFlagSet("Bool", ContinueOnError)
+func TestFlagSet_Counter_1(t *testing.T) {
+	f := NewFlagSet("Counter_1", ContinueOnError)
 	a := f.Counter("test-a", 0, "")
 	b := f.CounterP("test-b", "b", 0, "")
 	err := f.Parse([]string{"--test-a=3", "-b", "5", "--test-a", "-b"})
@@ -46,6 +46,24 @@ func TestFlagSet_Counter(t *testing.T) {
 
 	if f.NArg() != 0 {
 		t.Errorf("f.NArg() is %d; want %d", f.NArg(), 0)
+	}
+}
+
+func TestFlagSet_Counter_2(t *testing.T) {
+	f := NewFlagSet("Counter_2", ContinueOnError)
+	v := f.CounterP("verbose", "v", 0, "")
+	err := f.Parse([]string{"-vvvv", "test.txt"})
+	if err != nil {
+		t.Fatalf("f.Parse error %s", err)
+	}
+	if f.NArg() != 1 {
+		t.Fatalf("f.NArg() is %d; want %d", f.NArg(), 1)
+	}
+	if f.Arg(0) != "test.txt" {
+		t.Errorf("f.Arg(%d) is %q; want %q", 0, f.Arg(0), "test.txt")
+	}
+	if *v != 4 {
+		t.Errorf("*v is %d; want %d", *v, 4)
 	}
 }
 
