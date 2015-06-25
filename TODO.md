@@ -2,22 +2,21 @@
 
 # Release v0.3
 
-1. improve output if error is a path error
-2. Support links to lzma, unlzma and lzcat.
-3. Create separate xztest project on github.com using Calgary,
-   Canterbury Corpus and enwik8 and enwik9
+- Support links to lzma, unlzma and lzcat.
+- Create separate xztest project on github.com using Calgary,
+  Canterbury Corpus and enwik8 and enwik9
     a) Clarify Copyrights
     b) Create tests
-4. Execute test suite on:
+- Execute test suite on:
     - x86 (Linux)
     - amd64 (Linux, Windows)
-5. Create Release Notes as markdown file.
-6. Add Copyright to all source code files including the markdown files.
-   Write a shell script using sed to do it.
-7. execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
-8. Put it in master.
-9. Check that package is indeed go-gettable.
-10. Tag version
+- Create Release Notes as markdown file.
+- Add Copyright to all source code files including the markdown files.
+  Write a shell script using sed to do it.
+- execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
+- Put it in master
+- Check that package is indeed go-gettable.
+- Tag version
 
 # Release v0.4
 
