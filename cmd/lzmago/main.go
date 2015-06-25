@@ -114,6 +114,14 @@ func main() {
 	gflag.Usage = func() { usage(os.Stderr); os.Exit(1) }
 	opts := options{}
 	opts.Init()
+
+	switch cmdName {
+	case "lzcat":
+		opts.stdout = true
+		opts.decompress = true
+	case "unlzma", "unlzmago":
+		opts.decompress = true
+	}
 	gflag.Parse()
 
 	if opts.help {
