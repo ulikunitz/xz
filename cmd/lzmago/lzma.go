@@ -217,6 +217,33 @@ func packFile(pck packer, path, tmpPath string, opts *options) error {
 	return err
 }
 
+// userPathError represents a path error presentable to a user. In
+// difference to os.PathError it removes the information of the
+// operation returning the error.
+type userPathError struct {
+	Path string
+	Err  error
+}
+
+// Error provides the error string for the path error.
+func (e *userPathError) Error() string {
+	return e.Path + ": " + e.Err.Error()
+}
+
+// userError converts path error to an error message that is
+// acceptable for lzmago users. PathError provides information about the
+// command that has created an error. For instance Lstat informs that
+// lstat detected that a file didn't exist this information is not
+// relevant for users of the lzmago program. This function converts a
+// path error into a generic error removing the operation information.
+func userError(err error) error {
+	pe, ok := err.(*os.PathError)
+	if !ok {
+		return err
+	}
+	return &userPathError{Path: pe.Path, Err: pe.Err}
+}
+
 func processFile(path string, opts *options) {
 	var pck packer
 	if opts.decompress {
@@ -226,7 +253,7 @@ func processFile(path string, opts *options) {
 	}
 	outputPath, tmpPath, err := pck.outputPaths(path)
 	if err != nil {
-		xlog.Warn(err)
+		xlog.Warn(userError(err))
 		return
 	}
 	if opts.stdout {
@@ -248,18 +275,18 @@ func processFile(path string, opts *options) {
 	defer close(quit)
 
 	if err = packFile(pck, path, tmpPath, opts); err != nil {
-		xlog.Warn(err)
+		xlog.Warn(userError(err))
 		return
 	}
 	if tmpPath != "-" && outputPath != "-" {
 		if err = os.Rename(tmpPath, outputPath); err != nil {
-			xlog.Warn(err)
+			xlog.Warn(userError(err))
 			return
 		}
 	}
 	if !opts.keep && !opts.stdout && path != "-" {
 		if err = os.Remove(path); err != nil {
-			xlog.Warn(err)
+			xlog.Warn(userError(err))
 			return
 		}
 	}
