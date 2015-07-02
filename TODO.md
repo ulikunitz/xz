@@ -2,9 +2,8 @@
 
 # Release v0.3
 
-- Support links to lzma, unlzma and lzcat.
-- Create separate xztest project on github.com using Calgary,
-  Canterbury Corpus and enwik8 and enwik9
+- Create separate xztest project using Calgary,
+  Canterbury Corpus, enwik8 and enwik9
     a) Clarify Copyrights
     b) Create tests
 - Execute test suite on:
