@@ -2,10 +2,6 @@
 
 # Release v0.3
 
-- Create separate xztest project using Calgary,
-  Canterbury Corpus, enwik8 and enwik9
-    a) Clarify Copyrights
-    b) Create tests
 - Execute test suite on:
     - x86 (Linux)
     - amd64 (Linux, Windows)
