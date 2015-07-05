@@ -1,3 +1,7 @@
+// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package randtxt
 
 // englm3 contains a trigram language model for the English language. It

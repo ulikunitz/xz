@@ -1,3 +1,7 @@
+// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package lzma
 
 // The type hashDict provides a dictionary with a hash table of all

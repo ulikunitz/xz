@@ -1,3 +1,7 @@
+// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Package xlog provides a simple logging package that allows to disable
 // certain message categories. It defines a type, Logger, with multiple
 // methods for formatting output. The package has also a predefined

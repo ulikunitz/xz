@@ -1,3 +1,7 @@
+// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package hash
 
 // A is the default constant for Robin-Karp rolling hash. This is a random
