@@ -2,8 +2,14 @@
 
 # Release v0.4
 
-1. Write the first version of xzgo. It should be able to decode and
+1. Complete the gflag documentation.
+2. Implement package lzma2
+3. Implement the xz code using the lzma2 package. Check xz documentation
+   for the code filters. Implement them only if they are created by xz
+   without special flags.
+4. Write the first version of xzgo. It should be able to decode and
    encode xz files.
+5. Add test for xzgo
 
 # Release 0.5
 
@@ -28,8 +34,7 @@
 
 # Package gflag
 
-1. Write documentation.
-2. Transform lzmago to it
+1. Write documentation for Preset
 
 # Package lzma2
 
@@ -49,7 +54,27 @@ Use full buffer to create minimal bit-length above range encoder.
 - rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
   into an array with bit-steeling for the colors)
 
+# Release Procedure
+
+- Write release notes in doc/relnotes.
+- Update README.md
+- xb copyright . in xz directory to ensure all new files have Copyright
+  header
+- VERSION=<version> go generate github.com/uli-go/xz/... to update
+  version files
+- Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
+- Update TODO.md - write short log entry
+- git checkout master && git merge dev
+- Check go get for xz package in separate GOPATH
+- git tag -a <version>
+- git push
+
 # Log
+
+## 2015-07-05
+
+Created release v0.3. The version is the foundation for a full xz
+implementation that is the target of v0.4.
 
 ## 2015-06-11
 
