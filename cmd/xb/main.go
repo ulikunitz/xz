@@ -15,6 +15,7 @@ xb is a supporting building tool from the xz project for Go.
   xb help         -- prints this message 
   xb version-file -- generates go file with version information
   xb cat          -- generates go file that includes the given text files
+  xb copyright    -- adds copyright statements to relevant files
   xb version      -- prints version information for xb
 
 Report bugs using <https://github.com/uli-go/xz/issues>.
@@ -27,7 +28,7 @@ func updateArgs(cmd string) {
 }
 
 func main() {
-	log.SetPrefix("xb")
+	log.SetPrefix("xb: ")
 	log.SetFlags(0)
 
 	if len(os.Args) < 2 {
@@ -48,6 +49,10 @@ func main() {
 	case "version-file":
 		updateArgs("version-file")
 		versionFile()
+		os.Exit(0)
+	case "copyright":
+		updateArgs("copyright")
+		copyright()
 		os.Exit(0)
 	default:
 		log.Fatalf("command %q not supported", os.Args[1])
