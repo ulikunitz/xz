@@ -2,8 +2,6 @@
 
 # Release v0.3
 
-- Create Release Notes as markdown file.
-- Update Readme file
 - Add Copyright to all source code files including the markdown files.
   Write a shell script using sed to do it.
 - execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
