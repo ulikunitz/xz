@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -21,9 +23,84 @@ func crUsage(w io.Writer) {
 	fmt.Fprint(w, crUsageString)
 }
 
-func addCopyright(path string) error {
-	fmt.Println(path)
-	return nil
+const copyrightText = `
+Copyright 2015 Ulrich Kunitz. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+`
+
+func goComment(text string) string {
+	buf := new(bytes.Buffer)
+	scanner := bufio.NewScanner(strings.NewReader(text))
+	var err error
+	for scanner.Scan() {
+		s := strings.TrimSpace(scanner.Text())
+		if len(s) == 0 {
+			continue
+		}
+		if _, err = fmt.Fprintln(buf, "//", s); err != nil {
+			panic(err)
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		panic(err)
+	}
+	if _, err = fmt.Fprintln(buf); err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
+
+var goCopyright = goComment(copyrightText)
+
+func addCopyright(path string) (err error) {
+	log.Printf("adding copyright to %s", path)
+	src, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cerr := src.Close()
+		if cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	dst, err := os.Create(path + ".new")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cerr := dst.Close()
+		if cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
+	out := bufio.NewWriter(dst)
+	fmt.Fprint(out, goCopyright)
+	scanner := bufio.NewScanner(src)
+	line := 0
+	del := false
+	for scanner.Scan() {
+		line++
+		txt := scanner.Text()
+		if line == 1 && strings.Contains(txt, "Copyright") {
+			del = true
+			continue
+		}
+		if del {
+			s := strings.TrimSpace(txt)
+			if len(s) == 0 {
+				del = false
+			}
+			continue
+		}
+		fmt.Fprintln(out, txt)
+	}
+	if err = out.Flush(); err != nil {
+		return
+	}
+	err = scanner.Err()
+	return
 }
 
 func walkCopyrights(path string, info os.FileInfo, err error) error {
