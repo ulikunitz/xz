@@ -2,7 +2,6 @@
 
 # Release v0.3
 
-- execute VERSION="v0.3" go generate github.com/uli-go/xz and commit
 - Put it in master
 - Check that package is indeed go-gettable.
 - Tag version
