@@ -65,7 +65,8 @@ func addCopyright(path string) (err error) {
 			err = cerr
 		}
 	}()
-	dst, err := os.Create(path + ".new")
+	newPath := path + ".new"
+	dst, err := os.Create(newPath)
 	if err != nil {
 		return err
 	}
@@ -96,10 +97,13 @@ func addCopyright(path string) (err error) {
 		}
 		fmt.Fprintln(out, txt)
 	}
+	if err = scanner.Err(); err != nil {
+		return err
+	}
 	if err = out.Flush(); err != nil {
 		return
 	}
-	err = scanner.Err()
+	err = os.Rename(newPath, path)
 	return
 }
 
