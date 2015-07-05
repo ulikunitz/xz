@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 const crUsageString = `xb copyright [options] <path>....
@@ -17,6 +19,24 @@ The xb copyright command adds a copyright remark to all go files below path.
 
 func crUsage(w io.Writer) {
 	fmt.Fprint(w, crUsageString)
+}
+
+func addCopyright(path string) error {
+	fmt.Println(path)
+	return nil
+}
+
+func walkCopyrights(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+	if !strings.HasSuffix(info.Name(), ".go") {
+		return nil
+	}
+	return addCopyright(path)
 }
 
 func copyright() {
@@ -46,6 +66,8 @@ func copyright() {
 			log.Printf("%s is not a directory", path)
 			continue
 		}
-		log.Printf("handle %s", path)
+		if err = filepath.Walk(path, walkCopyrights); err != nil {
+			log.Fatalf("%s error %s", path, err)
+		}
 	}
 }
