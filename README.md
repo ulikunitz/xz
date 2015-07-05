@@ -9,15 +9,16 @@ work for you or the APIs to be stable.
 
 # Status
 
-Package xz/lzma has now working support for "classic" lzma files. An
-extremely simple lzmago binary is now provided for testing.
+Package xz/lzma has now working support for "classic" lzma files. A
+lzmago binary supporting the typical flags for a UNIX compression
+command is provided.
 
 To test it call the following command.
 
     $ lzmago bigfile
 
-After some time a hopefully much smaller file bigfile.lzma will have
-been created. To decompress it use the following command.
+After some time a much smaller file bigfile.lzma will replace bigfile.
+To decompress it use the following command.
 
     $ lzmago -d bigfile.lzma
 
