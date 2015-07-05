@@ -1,11 +1,5 @@
 # TODO list
 
-# Release v0.3
-
-- Put it in master
-- Check that package is indeed go-gettable.
-- Tag version
-
 # Release v0.4
 
 1. Write the first version of xzgo. It should be able to decode and
