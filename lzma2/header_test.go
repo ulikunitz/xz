@@ -54,3 +54,20 @@ func TestHeaderChunkType(t *testing.T) {
 		}
 	}
 }
+
+func TestHeaderLen(t *testing.T) {
+	tests := []struct {
+		c chunkType
+		n int
+	}{
+		{cEOS, 1}, {cU, 3}, {cUD, 3}, {cL, 5}, {cLR, 5}, {cLRN, 6},
+		{cLRND, 6},
+	}
+	for _, tc := range tests {
+		n := headerLen(tc.c)
+		if n != tc.n {
+			t.Errorf("header length for %s %d; want %d",
+				tc.c, n, tc.n)
+		}
+	}
+}

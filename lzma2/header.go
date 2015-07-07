@@ -2,6 +2,7 @@ package lzma2
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/uli-go/xz/lzma"
 )
@@ -82,4 +83,18 @@ func headerChunkType(h byte) (c chunkType, err error) {
 		return 0, errHeaderByte
 	}
 	return
+}
+
+func headerLen(c chunkType) int {
+	switch c {
+	case cEOS:
+		return 1
+	case cU, cUD:
+		return 3
+	case cL, cLR:
+		return 5
+	case cLRN, cLRND:
+		return 6
+	}
+	panic(fmt.Sprintf("unsupported chunk type %d", c))
 }
