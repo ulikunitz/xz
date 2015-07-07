@@ -27,10 +27,10 @@ var chunkTypeStrings = [...]string{
 }
 
 func (c chunkType) String() string {
-	if cEOS <= c && c <= cLRND {
-		return chunkTypeStrings[c]
+	if !(cEOS <= c && c <= cLRND) {
+		return "unknown"
 	}
-	return "unknown"
+	return chunkTypeStrings[c]
 }
 
 type chunkHeader struct {
