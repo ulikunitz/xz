@@ -10,8 +10,8 @@ import (
 	"io"
 )
 
-// getUint32LE reads an uint32 integer from a byte slize
-func getUint32LE(b []byte) uint32 {
+// uint32LE reads an uint32 integer from a byte slize
+func uint32LE(b []byte) uint32 {
 	x := uint32(b[3]) << 24
 	x |= uint32(b[2]) << 16
 	x |= uint32(b[1]) << 8
@@ -19,9 +19,9 @@ func getUint32LE(b []byte) uint32 {
 	return x
 }
 
-// getUint64LE converts the uint64 value stored as little endian to an uint64
+// uint64LE converts the uint64 value stored as little endian to an uint64
 // value.
-func getUint64LE(b []byte) uint64 {
+func uint64LE(b []byte) uint64 {
 	x := uint64(b[7]) << 56
 	x |= uint64(b[6]) << 48
 	x |= uint64(b[5]) << 40
@@ -68,8 +68,8 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	p = new(Parameters)
 	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
-	p.DictSize = int64(getUint32LE(b[1:]))
-	u := getUint64LE(b[5:])
+	p.DictSize = int64(uint32LE(b[1:]))
+	u := uint64LE(b[5:])
 	if u == noHeaderLen {
 		p.Size = 0
 		p.EOS = true
