@@ -3,6 +3,7 @@ package lzma2
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/uli-go/xz/lzma"
 )
@@ -97,4 +98,19 @@ func headerLen(c chunkType) int {
 		return 6
 	}
 	panic(fmt.Sprintf("unsupported chunk type %d", c))
+}
+
+func readChunkHeader(r io.Reader) (h *chunkHeader, err error) {
+	p := make([]byte, 1, 6)
+	if _, err = io.ReadFull(r, p); err != nil {
+		return
+	}
+	if c, err = headerChunkType(p[0]); err != nil {
+		return
+	}
+	p = p[:headerLen(c)]
+	if _, err = ReadFull(r, p[1:]); err != nil {
+		return
+	}
+	panic("TODO")
 }
