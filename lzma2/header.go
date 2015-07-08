@@ -12,8 +12,8 @@ type chunkType byte
 
 const (
 	cEOS chunkType = iota
-	cU
 	cUD
+	cU
 	cL
 	cLR
 	cLRN
@@ -35,13 +35,6 @@ func (c chunkType) String() string {
 		return "unknown"
 	}
 	return chunkTypeStrings[c]
-}
-
-type chunkHeader struct {
-	ctype    chunkType
-	unpacked uint32
-	packed   uint16
-	props    lzma.Properties
 }
 
 const (
@@ -97,7 +90,96 @@ func headerLen(c chunkType) int {
 	case cLRN, cLRND:
 		return 6
 	}
-	panic(fmt.Sprintf("unsupported chunk type %d", c))
+	panic(fmt.Errorf("unsupported chunk type %d", c))
+}
+
+type chunkHeader struct {
+	ctype    chunkType
+	unpacked uint32
+	packed   uint16
+	props    lzma.Properties
+}
+
+func (h *chunkHeader) UnmarshalBinary(data []byte) error {
+	if len(data) == 0 {
+		return errors.New("no data")
+	}
+	c, err := headerChunkType(data[0])
+	if err != nil {
+		return err
+	}
+
+	n := headerLen(c)
+	if len(data) < n {
+		return errors.New("incomplete data")
+	}
+	if len(data) > n {
+		return errors.New("invalid data length")
+	}
+
+	*h = chunkHeader{ctype: c}
+	if c == cEOS {
+		return nil
+	}
+
+	h.unpacked = uint32(uint16BE(data[1:3]))
+	if c <= cU {
+		return nil
+	}
+	h.unpacked |= uint32(data[0]&^hLRND) << 16
+
+	h.packed = uint16BE(data[3:5])
+	if c <= cLR {
+		return nil
+	}
+
+	h.props = lzma.Properties(data[5])
+	if h.props > lzma.MaxProperties {
+		return errors.New("invalid properties")
+	}
+	return nil
+}
+
+func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
+	if h.ctype > cLRND {
+		return nil, errors.New("invalid chunk type")
+	}
+	if h.props > lzma.MaxProperties {
+		return nil, errors.New("invalid properties")
+	}
+
+	data = make([]byte, headerLen(h.ctype))
+
+	switch h.ctype {
+	case cEOS:
+		return data, nil
+	case cUD:
+		data[0] = hUD
+	case cU:
+		data[0] = hU
+	case cL:
+		data[0] = hL
+	case cLR:
+		data[0] = hLR
+	case cLRN:
+		data[0] = hLRN
+	case cLRND:
+		data[0] = hLRND
+	}
+
+	putUint16BE(data[1:3], uint16(h.unpacked))
+	if h.ctype <= cU {
+		return data, nil
+	}
+	data[0] |= byte(h.unpacked>>16) &^ hLRND
+
+	putUint16BE(data[3:5], h.packed)
+	if h.ctype <= cLR {
+		return data, nil
+	}
+
+	data[5] = byte(h.props)
+	return data, nil
 }
 
 func readChunkHeader(r io.Reader) (h *chunkHeader, err error) {
@@ -105,12 +187,26 @@ func readChunkHeader(r io.Reader) (h *chunkHeader, err error) {
 	if _, err = io.ReadFull(r, p); err != nil {
 		return
 	}
-	if c, err = headerChunkType(p[0]); err != nil {
+	c, err := headerChunkType(p[0])
+	if err != nil {
 		return
 	}
 	p = p[:headerLen(c)]
-	if _, err = ReadFull(r, p[1:]); err != nil {
+	if _, err = io.ReadFull(r, p[1:]); err != nil {
 		return
 	}
-	panic("TODO")
+	h = new(chunkHeader)
+	if err = h.UnmarshalBinary(p); err != nil {
+		return nil, err
+	}
+	return h, nil
+}
+
+func uint16BE(p []byte) uint16 {
+	return uint16(p[0])<<8 | uint16(p[1])
+}
+
+func putUint16BE(p []byte, x uint16) {
+	p[0] = byte(x >> 8)
+	p[1] = byte(x)
 }

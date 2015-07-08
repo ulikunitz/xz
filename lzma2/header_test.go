@@ -3,6 +3,8 @@ package lzma2
 import (
 	"fmt"
 	"testing"
+
+	"github.com/uli-go/xz/lzma"
 )
 
 func TestChunkTypeString(t *testing.T) {
@@ -68,6 +70,31 @@ func TestHeaderLen(t *testing.T) {
 		if n != tc.n {
 			t.Errorf("header length for %s %d; want %d",
 				tc.c, n, tc.n)
+		}
+	}
+}
+
+func TestMarshalling(t *testing.T) {
+	props, err := lzma.NewProperties(3, 0, 2)
+	if err != nil {
+		t.Fatalf("NewProperties(3, 0, 2) error %s", err)
+	}
+
+	var h, g chunkHeader
+	for c := cEOS; c <= cLRND; c++ {
+		h.ctype = c
+		if c >= cLRN {
+			h.props = props
+		}
+		data, err := h.MarshalBinary()
+		if err != nil {
+			t.Fatalf("MarshalBinary for %v error %s", &h, err)
+		}
+		if err = g.UnmarshalBinary(data); err != nil {
+			t.Fatalf("UnmarshalBinary error %s", err)
+		}
+		if g != h {
+			t.Fatalf("got %v; want %v", g, h)
 		}
 	}
 }
