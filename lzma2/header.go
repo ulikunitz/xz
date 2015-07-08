@@ -8,18 +8,30 @@ import (
 	"github.com/uli-go/xz/lzma"
 )
 
+// chunkType represents the type of an LZMA2 chunk. Note that this
+// value is an internal representation and no actual encoding of a LZMA2
+// chunk header.
 type chunkType byte
 
+// Possible values for the chunk type.
 const (
+	// end of stream
 	cEOS chunkType = iota
+	// unpacked; reset dictionary
 	cUD
+	// unpacked; no reset of dictionary
 	cU
+	// LZMA compressed; no reset
 	cL
+	// LZMA compressed; reset state
 	cLR
+	// LZMA compressed; reset state; new property value
 	cLRN
+	// LZMA compressed; reset state; new property value; reset dictionary
 	cLRND
 )
 
+// chunkTypeStrings provide a string representation for the chunk types.
 var chunkTypeStrings = [...]string{
 	cEOS:  "EOS",
 	cU:    "U",
@@ -30,6 +42,7 @@ var chunkTypeStrings = [...]string{
 	cLRND: "LRND",
 }
 
+// String returns a string representation of the chunk type.
 func (c chunkType) String() string {
 	if !(cEOS <= c && c <= cLRND) {
 		return "unknown"
@@ -37,6 +50,8 @@ func (c chunkType) String() string {
 	return chunkTypeStrings[c]
 }
 
+// Actual encodings for the chunk types in the value. Note that the
+// unpacked bits are stored in the header byte additionally.
 const (
 	hEOS  = 0
 	hUD   = 1
@@ -47,8 +62,12 @@ const (
 	hLRND = 1<<7 | 1<<6 | 1<<5
 )
 
+// errHeaderByte indicates an unsupported value for the chunk header
+// byte. This bytes starts the variable-length chunk header.
 var errHeaderByte = errors.New("unsupported chunk header byte")
 
+// headerChunkType converts the header byte into a chunk type. It
+// ignores the unpacked size bits in the chunk header byte.
 func headerChunkType(h byte) (c chunkType, err error) {
 	if h&hL == 0 {
 		// no compression
@@ -79,6 +98,8 @@ func headerChunkType(h byte) (c chunkType, err error) {
 	return
 }
 
+// headerLen returns the length of the LZMA2 header for a given chunk
+// type.
 func headerLen(c chunkType) int {
 	switch c {
 	case cEOS:
@@ -93,6 +114,7 @@ func headerLen(c chunkType) int {
 	panic(fmt.Errorf("unsupported chunk type %d", c))
 }
 
+// chunkHeader represents the contents of a chunk header.
 type chunkHeader struct {
 	ctype    chunkType
 	unpacked uint32
@@ -100,6 +122,8 @@ type chunkHeader struct {
 	props    lzma.Properties
 }
 
+// UnmarshalBinary reads the content of the chunk header from the data
+// slice. The slice must have the correct length.
 func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 	if len(data) == 0 {
 		return errors.New("no data")
@@ -140,6 +164,8 @@ func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// MarshalBinary encodes the chunk header value. The function checks
+// whether the content of the chunk header is correct.
 func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	if h.ctype > cLRND {
 		return nil, errors.New("invalid chunk type")
@@ -182,6 +208,7 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+// readChunkHeader reads the chunk header from the IO reader.
 func readChunkHeader(r io.Reader) (h *chunkHeader, err error) {
 	p := make([]byte, 1, 6)
 	if _, err = io.ReadFull(r, p); err != nil {
@@ -202,10 +229,14 @@ func readChunkHeader(r io.Reader) (h *chunkHeader, err error) {
 	return h, nil
 }
 
+// uint16BE converts a big-endian uint16 representation to an uint16
+// value.
 func uint16BE(p []byte) uint16 {
 	return uint16(p[0])<<8 | uint16(p[1])
 }
 
+// putUint16BE puts the big-endian uint16 presentation into the given
+// slice.
 func putUint16BE(p []byte, x uint16) {
 	p[0] = byte(x >> 8)
 	p[1] = byte(x)
