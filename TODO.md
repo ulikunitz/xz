@@ -2,7 +2,7 @@
 
 # Release v0.4
 
-1. Implement package lzma2
+1. Implement package lzma2 (see below)
 2. Implement the xz code using the lzma2 package. Check xz documentation
    for the code filters. Implement them only if they are created by xz
    without special flags.
@@ -39,8 +39,7 @@
 
 # Package lzma2
 
-1. Add lengths in the Marshalling test for chunkHeader
-2. Design Writer and Reader interface 
+1. Design Writer and Reader interface
     - make sure that multiple Writers can be combined (EOS handling)
 
 ## Optimizations
