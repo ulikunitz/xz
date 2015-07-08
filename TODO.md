@@ -2,14 +2,15 @@
 
 # Release v0.4
 
-1. Complete the gflag documentation.
-2. Implement package lzma2
-3. Implement the xz code using the lzma2 package. Check xz documentation
+1. Implement package lzma2
+2. Implement the xz code using the lzma2 package. Check xz documentation
    for the code filters. Implement them only if they are created by xz
    without special flags.
-4. Write the first version of xzgo. It should be able to decode and
+3. Write the first version of xzgo. It should be able to decode and
    encode xz files.
-5. Add test for xzgo
+4. Add test for xzgo
+5. Add example for using the xz package to the README. The binary should
+   be put into the background.
 
 # Release 0.5
 
