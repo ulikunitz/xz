@@ -765,37 +765,50 @@ func Int(name string, value int, usage string) *int {
 	return CommandLine.Int(name, value, usage)
 }
 
+// presetValue represents an integer value that can be set with multiple
+// flags as -1 ... -9.
 type presetValue struct {
 	p      *int
 	preset int
 }
 
+// newPresetValue allocates a new preset value and returns its pointer.
 func newPresetValue(p *int, preset int) *presetValue {
 	return &presetValue{p, preset}
 }
 
+// Get returns the actual preset value as integer.
 func (p *presetValue) Get() interface{} {
 	return *p.p
 }
 
+// Set sets the preset value from an integer string.
 func (p *presetValue) Set(s string) error {
 	val, err := strconv.ParseInt(s, 0, 0)
 	*p.p = int(val)
 	return err
 }
 
+// Update sets the preset value to the default.
 func (p *presetValue) Update() {
 	*p.p = p.preset
 }
 
+// String returns the integer representation of the preset value.
 func (p *presetValue) String() string {
 	return fmt.Sprintf("%d", *p.p)
 }
 
+// presetLine creates the usage line for a preset value.
 func presetLine(start, end int, usage string) line {
 	return line{fmt.Sprintf("-%d ... -%d", start, end), usage}
 }
 
+// PresetVar defines a range of preset flags starting at start and
+// ending at end. The argument p points to a preset variable in which to
+// store the value of the flag.
+//
+// If start is 1 and end is 9 the flags -1 to -9 will be supported.
 func (f *FlagSet) PresetVar(p *int, start, end, value int, usage string) {
 	if f.preset {
 		f.panicf("flagset %s has already a preset", f.name)
@@ -807,16 +820,31 @@ func (f *FlagSet) PresetVar(p *int, start, end, value int, usage string) {
 	}
 }
 
+// PresetVar defines a range of preset flags starting at start and
+// ending at end. The argument p points to a preset variable in which to
+// store the value of the flag.
+//
+// If start is 1 and end is 9 the flags -1 to -9 will be supported.
 func PresetVar(p *int, start, end, value int, usage string) {
 	CommandLine.PresetVar(p, start, end, value, usage)
 }
 
+// Preset defines a range of preset flags starting at start and
+// ending at end. The return value is the address of a preset variable
+// in which to store the value of the flag.
+//
+// If start is 1 and end is 9 the flags -1 to -9 will be supported.
 func (f *FlagSet) Preset(start, end, value int, usage string) *int {
 	p := new(int)
 	f.PresetVar(p, start, end, value, usage)
 	return p
 }
 
+// Preset defines a range of preset flags starting at start and
+// ending at end. The return value is the address of a preset variable
+// in which to store the value of the flag.
+//
+// If start is 1 and end is 9 the flags -1 to -9 will be supported.
 func Preset(start, end, value int, usage string) *int {
 	return CommandLine.Preset(start, end, value, usage)
 }
