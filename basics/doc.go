@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// The directory basics provides packages for standard types providing
-// basic functions as addition and subtraction with overflow detection.
+// The directory basics contains packages providing basic functions for
+// standard types. Example for those functions are addition and
+// subtraction with overflow detection.
 package basics
