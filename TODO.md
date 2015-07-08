@@ -38,7 +38,9 @@
 
 # Package lzma2
 
-1. Develop the package lzma2 using lzma streams.
+1. Add lengths in the Marshalling test for chunkHeader
+2. Design Writer and Reader interface 
+    - make sure that multiple Writers can be combined (EOS handling)
 
 ## Optimizations
 
