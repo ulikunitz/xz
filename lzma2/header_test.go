@@ -83,6 +83,12 @@ func TestMarshalling(t *testing.T) {
 	var h, g chunkHeader
 	for c := cEOS; c <= cLRND; c++ {
 		h.ctype = c
+		if c >= cUD {
+			h.unpacked = 0x0304
+		}
+		if c >= cL {
+			h.packed = 0x0201
+		}
 		if c >= cLRN {
 			h.props = props
 		}
