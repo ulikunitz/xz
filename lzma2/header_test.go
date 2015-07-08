@@ -1,6 +1,7 @@
 package lzma2
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -102,13 +103,30 @@ func TestChunkHeaderMarshalling(t *testing.T) {
 	for _, h := range chunkHeaderSamples(t) {
 		data, err := h.MarshalBinary()
 		if err != nil {
-			t.Fatalf("MarshalBinary for %v error %s", &h, err)
+			t.Fatalf("MarshalBinary for %v error %s", h, err)
 		}
 		var g chunkHeader
 		if err = g.UnmarshalBinary(data); err != nil {
 			t.Fatalf("UnmarshalBinary error %s", err)
 		}
 		if g != h {
+			t.Fatalf("got %v; want %v", g, h)
+		}
+	}
+}
+
+func TestReadChunkHeader(t *testing.T) {
+	for _, h := range chunkHeaderSamples(t) {
+		data, err := h.MarshalBinary()
+		if err != nil {
+			t.Fatalf("MarshalBinary for %v error %s", h, err)
+		}
+		r := bytes.NewReader(data)
+		g, err := readChunkHeader(r)
+		if err != nil {
+			t.Fatalf("readChunkHeader for %v error %s", h, err)
+		}
+		if *g != h {
 			t.Fatalf("got %v; want %v", g, h)
 		}
 	}
