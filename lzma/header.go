@@ -65,6 +65,9 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	if err != nil {
 		return nil, err
 	}
+	if b[0] > MaxProperties {
+		return nil, errors.New("invalid properties")
+	}
 	p = new(Parameters)
 	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
