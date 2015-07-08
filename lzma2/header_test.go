@@ -74,14 +74,15 @@ func TestHeaderLen(t *testing.T) {
 	}
 }
 
-func TestChunkHeaderMarshalling(t *testing.T) {
+func chunkHeaderSamples(t *testing.T) []chunkHeader {
 	props, err := lzma.NewProperties(3, 0, 2)
 	if err != nil {
 		t.Fatalf("NewProperties(3, 0, 2) error %s", err)
 	}
 
-	var h, g chunkHeader
+	headers := make([]chunkHeader, 0, 12)
 	for c := cEOS; c <= cLRND; c++ {
+		var h chunkHeader
 		h.ctype = c
 		if c >= cUD {
 			h.unpacked = 0x0304
@@ -92,10 +93,18 @@ func TestChunkHeaderMarshalling(t *testing.T) {
 		if c >= cLRN {
 			h.props = props
 		}
+		headers = append(headers, h)
+	}
+	return headers
+}
+
+func TestChunkHeaderMarshalling(t *testing.T) {
+	for _, h := range chunkHeaderSamples(t) {
 		data, err := h.MarshalBinary()
 		if err != nil {
 			t.Fatalf("MarshalBinary for %v error %s", &h, err)
 		}
+		var g chunkHeader
 		if err = g.UnmarshalBinary(data); err != nil {
 			t.Fatalf("UnmarshalBinary error %s", err)
 		}
