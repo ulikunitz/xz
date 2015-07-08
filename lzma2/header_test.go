@@ -74,7 +74,7 @@ func TestHeaderLen(t *testing.T) {
 	}
 }
 
-func TestMarshalling(t *testing.T) {
+func TestChunkHeaderMarshalling(t *testing.T) {
 	props, err := lzma.NewProperties(3, 0, 2)
 	if err != nil {
 		t.Fatalf("NewProperties(3, 0, 2) error %s", err)
