@@ -8,11 +8,11 @@ import "io"
 type segmentReader struct {
 }
 
-type segmentParameters struct {
+type Parameters struct {
 	DictSize int64
 }
 
-func newSegmentReader(lzma io.Reader, p segmentParameters) (r *segmentReader, err error) {
+func newSegmentReader(lzma io.Reader, p Parameters) (r *segmentReader, err error) {
 	panic("TODO")
 }
 
