@@ -13,8 +13,8 @@ func TestChunkTypeString(t *testing.T) {
 		s string
 	}{
 		{cEOS, "EOS"},
-		{cU, "U"},
 		{cUD, "UD"},
+		{cU, "U"},
 		{cL, "L"},
 		{cLR, "LR"},
 		{cLRN, "LRN"},
