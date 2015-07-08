@@ -6,16 +6,18 @@ package lzma
 
 // Maximum and minimum values for individual parameters.
 const (
-	MinLC         = 0
-	MaxLC         = 8
-	MinLP         = 0
-	MaxLP         = 4
-	MinPB         = 0
-	MaxPB         = 4
-	MaxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
-	MinDictSize   = 1 << 12
-	MaxDictSize   = 1<<32 - 1
+	MinLC       = 0
+	MaxLC       = 8
+	MinLP       = 0
+	MaxLP       = 4
+	MinPB       = 0
+	MaxPB       = 4
+	MinDictSize = 1 << 12
+	MaxDictSize = 1<<32 - 1
 )
+
+// MaxProperties is the maximum value for a properties value.
+const MaxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
 
 // Properties contains the parameters lc, lp and pb.
 type Properties byte
