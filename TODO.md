@@ -33,13 +33,10 @@
 - Implement the package using the LZMA2 support provided by LZMA2.
 - Provide user the capability to get uncompressed size before unpacking.
 
-# Package gflag
-
-1. Write documentation for Preset
-
 # Package lzma2
 
-1. Design Writer and Reader interface
+1. Design Reader and Writer API
+    - describe the use cases before designing the API
     - make sure that multiple Writers can be combined (EOS handling)
 
 ## Optimizations
