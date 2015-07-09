@@ -35,8 +35,9 @@
 
 # Package lzma2
 
-1. Design Reader and Writer API
-    - describe the use cases before designing the API
+1. Use term compressed instead pack consistently.
+1. Adapt StreamWriter to support PackedLimit.
+2. Design Reader and Writer API
     - make sure that multiple Writers can be combined (EOS handling)
 
 ## Optimizations
