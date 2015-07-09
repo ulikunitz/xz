@@ -5,6 +5,7 @@
 package lzma
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
@@ -30,6 +31,9 @@ type Writer struct {
 
 // NewStreamWriter creates a new writer instance.
 func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
+	if pw == nil {
+		return nil, errors.New("NewStreamWriter: argument pw is nil")
+	}
 	if err = p.Verify(); err != nil {
 		return
 	}
