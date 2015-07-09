@@ -34,8 +34,14 @@
 
 # Package lzma2
 
-1. Use term compressed instead pack consistently.
-1. Adapt StreamWriter to support PackedLimit.
+1. Adapt StreamWriter to support CompressedLimit.
+2. StreamWriter functions:
+   - FillDict
+   - Compress(all bool)
+   - ResetDict()
+   - NewProp()
+   - ResetState()
+   - SetWriter(w io.Writer)
 2. Design Reader and Writer API
     - make sure that multiple Writers can be combined (EOS handling)
 
