@@ -30,6 +30,7 @@ func TestStreamWriterCycle(t *testing.T) {
 		LP:       0,
 		PB:       2,
 		DictSize: MinDictSize,
+		EOS:      true,
 	}
 	params.normalizeWriterSizes()
 	buf := new(bytes.Buffer)

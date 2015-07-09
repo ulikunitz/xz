@@ -37,9 +37,6 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return
 	}
-	if !p.SizeInHeader {
-		p.EOS = true
-	}
 	buf, err := newBuffer(p.DictSize + p.ExtraBufSize)
 	if err != nil {
 		return nil, err
