@@ -18,9 +18,9 @@ import (
 	"github.com/uli-go/xz/xlog"
 )
 
-type packer interface {
+type compressor interface {
 	outputPaths(path string) (outputPath, tmpPath string, err error)
-	pack(w io.Writer, r io.Reader, preset int) (n int64, err error)
+	compress(w io.Writer, r io.Reader, preset int) (n int64, err error)
 }
 
 const lzmaSuffix = ".lzma"
@@ -48,9 +48,9 @@ func parameters(preset int) lzma.Parameters {
 	return p
 }
 
-type lzmaPacker struct{}
+type lzmaCompressor struct{}
 
-func (p lzmaPacker) outputPaths(path string) (out, tmp string, err error) {
+func (p lzmaCompressor) outputPaths(path string) (out, tmp string, err error) {
 	if path == "-" {
 		return "-", "-", nil
 	}
@@ -64,11 +64,11 @@ func (p lzmaPacker) outputPaths(path string) (out, tmp string, err error) {
 		return
 	}
 	out = path + lzmaSuffix
-	tmp = out + ".pack"
+	tmp = out + ".compress"
 	return
 }
 
-func (p lzmaPacker) pack(w io.Writer, r io.Reader, preset int) (n int64, err error) {
+func (p lzmaCompressor) compress(w io.Writer, r io.Reader, preset int) (n int64, err error) {
 	if w == nil {
 		panic("writer w is nil")
 	}
@@ -92,9 +92,9 @@ func (p lzmaPacker) pack(w io.Writer, r io.Reader, preset int) (n int64, err err
 	return
 }
 
-type lzmaUnpacker struct{}
+type lzmaDecompressor struct{}
 
-func (u lzmaUnpacker) outputPaths(path string) (out, tmp string, err error) {
+func (d lzmaDecompressor) outputPaths(path string) (out, tmp string, err error) {
 	if path == "-" {
 		return "-", "-", nil
 	}
@@ -111,18 +111,17 @@ func (u lzmaUnpacker) outputPaths(path string) (out, tmp string, err error) {
 		return
 	}
 	out = path[:len(path)-len(lzmaSuffix)]
-	tmp = out + ".unpack"
+	tmp = out + ".decompress"
 	return
 }
 
-func (u lzmaUnpacker) pack(w io.Writer, r io.Reader, preset int) (n int64, err error) {
+func (u lzmaDecompressor) compress(w io.Writer, r io.Reader, preset int) (n int64, err error) {
 	if w == nil {
 		panic("writer w is nil")
 	}
 	if r == nil {
 		panic("reader r is nil")
 	}
-	// pack actually unpacks
 	br := bufio.NewReader(r)
 	lr, err := lzma.NewReader(br)
 	if err != nil {
@@ -151,7 +150,7 @@ func signalHandler(tmpPath string) chan<- struct{} {
 	return quit
 }
 
-func packFile(pck packer, path, tmpPath string, opts *options) error {
+func compressFile(comp compressor, path, tmpPath string, opts *options) error {
 	var err error
 
 	// open reader
@@ -217,7 +216,7 @@ func packFile(pck packer, path, tmpPath string, opts *options) error {
 		}
 	}
 
-	_, err = pck.pack(w, r, opts.preset)
+	_, err = comp.compress(w, r, opts.preset)
 	return err
 }
 
@@ -249,13 +248,13 @@ func userError(err error) error {
 }
 
 func processFile(path string, opts *options) {
-	var pck packer
+	var comp compressor
 	if opts.decompress {
-		pck = lzmaUnpacker{}
+		comp = lzmaDecompressor{}
 	} else {
-		pck = lzmaPacker{}
+		comp = lzmaCompressor{}
 	}
-	outputPath, tmpPath, err := pck.outputPaths(path)
+	outputPath, tmpPath, err := comp.outputPaths(path)
 	if err != nil {
 		xlog.Warn(userError(err))
 		return
@@ -278,7 +277,7 @@ func processFile(path string, opts *options) {
 	quit := signalHandler(tmpPath)
 	defer close(quit)
 
-	if err = packFile(pck, path, tmpPath, opts); err != nil {
+	if err = compressFile(comp, path, tmpPath, opts); err != nil {
 		xlog.Warn(userError(err))
 		return
 	}

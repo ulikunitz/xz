@@ -22,7 +22,7 @@ type Parameters struct {
 	DictSize int64
 	// size of uncompressed data in bytes
 	Size int64
-	// header includes unpacked size
+	// header includes uncompressed size
 	SizeInHeader bool
 	// end-of-stream marker requested
 	EOS bool
