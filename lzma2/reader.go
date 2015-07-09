@@ -8,10 +8,6 @@ import "io"
 type segmentReader struct {
 }
 
-type Parameters struct {
-	DictSize int64
-}
-
 func newSegmentReader(lzma io.Reader, p Parameters) (r *segmentReader, err error) {
 	panic("TODO")
 }

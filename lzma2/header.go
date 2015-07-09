@@ -8,6 +8,13 @@ import (
 	"github.com/uli-go/xz/lzma"
 )
 
+const (
+	// maximum size of packed data in a chunk
+	maxPacked = 1<<16 - 1
+	// maximum size of unpacked data in a chunk
+	maxUnpacked = 1<<21 - 1
+)
+
 // chunkType represents the type of an LZMA2 chunk. Note that this
 // value is an internal representation and no actual encoding of a LZMA2
 // chunk header.
