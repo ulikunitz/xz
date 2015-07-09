@@ -31,7 +31,6 @@
 # Package xz
 
 - Implement the package using the LZMA2 support provided by LZMA2.
-- Provide user the capability to get uncompressed size before unpacking.
 
 # Package lzma2
 
