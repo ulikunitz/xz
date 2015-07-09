@@ -172,7 +172,7 @@ func TestWriter_Size(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
 	}
-	t.Logf("packed size %d", buf.Len())
+	t.Logf("compressed size %d", buf.Len())
 	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
