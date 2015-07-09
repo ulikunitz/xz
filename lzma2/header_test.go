@@ -86,10 +86,10 @@ func chunkHeaderSamples(t *testing.T) []chunkHeader {
 		var h chunkHeader
 		h.ctype = c
 		if c >= cUD {
-			h.unpacked = 0x0304
+			h.uncompressed = 0x0304
 		}
 		if c >= cL {
-			h.packed = 0x0201
+			h.compressed = 0x0201
 		}
 		if c >= cLRN {
 			h.props = props

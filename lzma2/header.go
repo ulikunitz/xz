@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	// maximum size of packed data in a chunk
-	maxPacked = 1<<16 - 1
-	// maximum size of unpacked data in a chunk
-	maxUnpacked = 1<<21 - 1
+	// maximum size of compressed data in a chunk
+	maxCompressed = 1 << 16
+	// maximum size of uncompressed data in a chunk
+	maxUncompressed = 1 << 21
 )
 
 // chunkType represents the type of an LZMA2 chunk. Note that this
@@ -24,9 +24,9 @@ type chunkType byte
 const (
 	// end of stream
 	cEOS chunkType = iota
-	// unpacked; reset dictionary
+	// uncompressed; reset dictionary
 	cUD
-	// unpacked; no reset of dictionary
+	// uncompressed; no reset of dictionary
 	cU
 	// LZMA compressed; no reset
 	cL
@@ -57,8 +57,8 @@ func (c chunkType) String() string {
 	return chunkTypeStrings[c]
 }
 
-// Actual encodings for the chunk types in the value. Note that the
-// unpacked bits are stored in the header byte additionally.
+// Actual encodings for the chunk types in the value. Note that the high
+// uncompressed size bits are stored in the header byte additionally.
 const (
 	hEOS  = 0
 	hUD   = 1
@@ -70,11 +70,11 @@ const (
 )
 
 // errHeaderByte indicates an unsupported value for the chunk header
-// byte. This bytes starts the variable-length chunk header.
+// byte. These bytes starts the variable-length chunk header.
 var errHeaderByte = errors.New("unsupported chunk header byte")
 
 // headerChunkType converts the header byte into a chunk type. It
-// ignores the unpacked size bits in the chunk header byte.
+// ignores the uncompressed size bits in the chunk header byte.
 func headerChunkType(h byte) (c chunkType, err error) {
 	if h&hL == 0 {
 		// no compression
@@ -123,10 +123,10 @@ func headerLen(c chunkType) int {
 
 // chunkHeader represents the contents of a chunk header.
 type chunkHeader struct {
-	ctype    chunkType
-	unpacked uint32
-	packed   uint16
-	props    lzma.Properties
+	ctype        chunkType
+	uncompressed uint32
+	compressed   uint16
+	props        lzma.Properties
 }
 
 // UnmarshalBinary reads the content of the chunk header from the data
@@ -153,13 +153,13 @@ func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 		return nil
 	}
 
-	h.unpacked = uint32(uint16BE(data[1:3]))
+	h.uncompressed = uint32(uint16BE(data[1:3]))
 	if c <= cU {
 		return nil
 	}
-	h.unpacked |= uint32(data[0]&^hLRND) << 16
+	h.uncompressed |= uint32(data[0]&^hLRND) << 16
 
-	h.packed = uint16BE(data[3:5])
+	h.compressed = uint16BE(data[3:5])
 	if c <= cLR {
 		return nil
 	}
@@ -200,13 +200,13 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 		data[0] = hLRND
 	}
 
-	putUint16BE(data[1:3], uint16(h.unpacked))
+	putUint16BE(data[1:3], uint16(h.uncompressed))
 	if h.ctype <= cU {
 		return data, nil
 	}
-	data[0] |= byte(h.unpacked>>16) &^ hLRND
+	data[0] |= byte(h.uncompressed>>16) &^ hLRND
 
-	putUint16BE(data[3:5], h.packed)
+	putUint16BE(data[3:5], h.compressed)
 	if h.ctype <= cLR {
 		return data, nil
 	}
