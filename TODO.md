@@ -11,6 +11,7 @@
 4. Add test for xzgo
 5. Add example for using the xz package to the README. The binary should
    be put into the background.
+6. Add Silesia corpus to the tests
 
 # Release 0.5
 
