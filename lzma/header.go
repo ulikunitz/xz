@@ -82,7 +82,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 		if p.Size < 0 {
 			return nil, errors.New(
 				"uncompressed length in header out of range " +
-				"for an int65 value")
+					"for an int65 value")
 		}
 		p.EOS = false
 		p.SizeInHeader = true
