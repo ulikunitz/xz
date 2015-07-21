@@ -8,33 +8,72 @@ import (
 	"io"
 )
 
-// bWriter is used to convert a standard io.Writer into an io.ByteWriter.
-type bWriter struct {
-	io.Writer
+// byteWriteCounter is a ByteWriter that counts the bytes written.
+type byteWriteCounter interface {
+	io.ByteWriter
+	Size() int64
+}
+
+// bwCounter provides a byteWriteCounter using a ByteWriter.
+type bwCounter struct {
+	BW io.ByteWriter
+	N  int64
+}
+
+// newBWCounter converts a ByteWriter to a byteWriteCounter.
+func newBWCounter(bw io.ByteWriter) *bwCounter {
+	return &bwCounter{BW: bw}
+}
+
+// WriteByte writes a single byte to the bwCounter.
+func (bwc *bwCounter) WriteByte(c byte) error {
+	err := bwc.BW.WriteByte(c)
+	if err == nil {
+		bwc.N++
+	}
+	return err
+}
+
+// Size returns the number of bytes written.
+func (bwc *bwCounter) Size() int64 { return bwc.N }
+
+// wCounter implements a byteWriteCounter on top of a Writer.
+type wCounter struct {
+	W io.Writer
+	N int64
 	a []byte
 }
 
-// newByteWriter transforms an io.Writer into an io.ByteWriter.
-func newByteWriter(w io.Writer) io.ByteWriter {
-	if b, ok := w.(io.ByteWriter); ok {
-		return b
-	}
-	return &bWriter{w, make([]byte, 1)}
+// newWCounter converts a Writer to a wCounter.
+func newWCounter(w io.Writer) *wCounter {
+	return &wCounter{W: w, a: make([]byte, 1)}
 }
 
-// WriteByte writes a single byte into the Writer.
-func (b *bWriter) WriteByte(c byte) error {
-	b.a[0] = c
-	n, err := b.Write(b.a)
+// WriteByte writes a single byte into the wCounter.
+func (wc *wCounter) WriteByte(c byte) error {
+	wc.a[0] = c
+	n, err := wc.W.Write(wc.a)
 	switch {
 	case n > 1:
 		panic("n > 1 for writing a single byte")
 	case n == 1:
+		wc.N++
 		return nil
 	case err == nil:
 		panic("no error for n == 0")
 	}
 	return err
+}
+
+// Size returns the total number of bytes written.
+func (wc *wCounter) Size() int64 { return wc.N }
+
+// newByteWriteCounter transforms an io.Writer into an byteWriteCounter
+func newByteWriteCounter(w io.Writer) byteWriteCounter {
+	if bw, ok := w.(io.ByteWriter); ok {
+		return newBWCounter(bw)
+	}
+	return newWCounter(w)
 }
 
 // bReader is used to convert an io.Reader into an io.ByteReader.
@@ -67,7 +106,7 @@ func (b bReader) ReadByte() (byte, error) {
 // overflow therefore we need uint64. The cache value is used to handle
 // overflows.
 type rangeEncoder struct {
-	w         io.ByteWriter
+	w         byteWriteCounter
 	nrange    uint32
 	low       uint64
 	cacheSize int64
@@ -77,7 +116,7 @@ type rangeEncoder struct {
 // newRangeEncoder creates a new range encoder.
 func newRangeEncoder(w io.Writer) *rangeEncoder {
 	return &rangeEncoder{
-		w:         newByteWriter(w),
+		w:         newByteWriteCounter(w),
 		nrange:    0xffffffff,
 		cacheSize: 1}
 }
