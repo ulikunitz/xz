@@ -11,7 +11,7 @@ import (
 // byteWriteCounter is a ByteWriter that counts the bytes written.
 type byteWriteCounter interface {
 	io.ByteWriter
-	Size() int64
+	Len() int64
 }
 
 // bwCounter provides a byteWriteCounter using a ByteWriter.
@@ -34,8 +34,8 @@ func (bwc *bwCounter) WriteByte(c byte) error {
 	return err
 }
 
-// Size returns the number of bytes written.
-func (bwc *bwCounter) Size() int64 { return bwc.N }
+// Len returns the number of bytes written.
+func (bwc *bwCounter) Len() int64 { return bwc.N }
 
 // wCounter implements a byteWriteCounter on top of a Writer.
 type wCounter struct {
@@ -65,8 +65,8 @@ func (wc *wCounter) WriteByte(c byte) error {
 	return err
 }
 
-// Size returns the total number of bytes written.
-func (wc *wCounter) Size() int64 { return wc.N }
+// Len returns the total number of bytes written.
+func (wc *wCounter) Len() int64 { return wc.N }
 
 // newByteWriteCounter transforms an io.Writer into an byteWriteCounter
 func newByteWriteCounter(w io.Writer) byteWriteCounter {
@@ -153,8 +153,14 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 	return nil
 }
 
-// closeLen returns the number of bytes required for closing.
-func (e *rangeEncoder) closeLen() int64 {
+// Len returns the number of bytes written to the underlying writer.
+func (e *rangeEncoder) Len() int64 {
+	return e.w.Len()
+}
+
+// CloseLen returns the number of bytes Close would write now. The
+// number might change after more data is encoded.
+func (e *rangeEncoder) CloseLen() int64 {
 	return e.cacheSize + 4
 }
 
