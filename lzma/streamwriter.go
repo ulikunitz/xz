@@ -10,13 +10,6 @@ import (
 	"io"
 )
 
-// OpFinder enables the support of multiple different OpFinder
-// algorithms.
-type OpFinder interface {
-	findOps(s *State, all bool) []operation
-	fmt.Stringer
-}
-
 // Writer produces an LZMA stream. EOS requests Close to write an
 // end-of-stream marker.
 type Writer struct {
