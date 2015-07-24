@@ -68,7 +68,7 @@ type Compressor struct {
 	OpFinder   OpFinder
 	state      *State
 	re         *rangeEncoder
-	buf        *buffer
+	dict       *hashDict
 	closed     bool
 	start      int64
 }
@@ -95,18 +95,25 @@ func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error
 		properties: props,
 		OpFinder:   Greedy,
 		state:      state,
-		buf:        buf,
+		dict:       d,
 		re:         newRangeEncoder(lzma),
-		start:      buf.top,
+		start:      d.head,
 	}
 	return c, nil
 }
 
 func (c *Compressor) Write(p []byte) (n int, err error) {
-	panic("TODO")
+	if c.closed {
+		return 0, errWriterClosed
+	}
+	return c.dict.buf.Write(p)
 }
 
 func (c *Compressor) Compress(limit int64, all bool) (n int64, err error) {
+	panic("TODO")
+}
+
+func (c *Compressor) MarkEOS() error {
 	panic("TODO")
 }
 
