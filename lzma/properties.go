@@ -19,7 +19,9 @@ const (
 // MaxProperties is the maximum value for a properties value.
 const MaxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
 
-// Properties contains the parameters lc, lp and pb.
+// Properties contains the parameters LC, LP and PB. The parameter LC
+// defines the number of literal context bits; parameter LP the number
+// of literal position bits and PB the number of position bits.
 type Properties byte
 
 // NewProperties returns a new properties value. It verifies the validity of
