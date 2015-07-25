@@ -68,15 +68,6 @@ func (w *Writer) writeLiteral(l lit) error {
 	return nil
 }
 
-// iverson implements the Iverson operator as proposed by Donald Knuth in his
-// book Concrete Mathematics.
-func iverson(ok bool) uint32 {
-	if ok {
-		return 1
-	}
-	return 0
-}
-
 // writeMatch writes a repetition operation into the operation stream
 func (w *Writer) writeMatch(m match) error {
 	var err error

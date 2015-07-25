@@ -54,20 +54,22 @@ func (err limitError) Error() string {
 
 // Errors used by the lzma code.
 var (
-	errNoMatch       = lzmaError{"no match found"}
-	errEmptyBuf      = lzmaError{"empty buffer"}
-	errOptype        = lzmaError{"unsupported operation type"}
-	errClosedWriter  = lzmaError{"writer is closed"}
-	errClosedReader  = lzmaError{"reader is closed"}
-	errWriterClosed  = lzmaError{"writer is closed"}
-	errEarlyClose    = lzmaError{"writer closed with bytes remaining"}
-	eos              = lzmaError{"end of stream"}
-	errDataAfterEOS  = lzmaError{"data after end of streazm"}
-	errUnexpectedEOS = lzmaError{"unexpected eos"}
-	errAgain         = lzmaError{"buffer exhausted; repeat"}
-	errReadLimit     = limitError{"read"}
-	errWriteLimit    = limitError{"write"}
-	errInt64         = lzmaError{"int64 values not representable as int"}
-	errInt64Overflow = lzmaError{"int64 overflow detected"}
-	errSpace         = lzmaError{"out of buffer space"}
+	errNoMatch          = lzmaError{"no match found"}
+	errEmptyBuf         = lzmaError{"empty buffer"}
+	errOptype           = lzmaError{"unsupported operation type"}
+	errClosedWriter     = lzmaError{"writer is closed"}
+	errClosedReader     = lzmaError{"reader is closed"}
+	errWriterClosed     = lzmaError{"writer is closed"}
+	errCompressorClosed = lzmaError{"compressor is closed"}
+	errEarlyClose       = lzmaError{"writer closed with bytes remaining"}
+	eos                 = lzmaError{"end of stream"}
+	errDataAfterEOS     = lzmaError{"data after end of streazm"}
+	errUnexpectedEOS    = lzmaError{"unexpected eos"}
+	errAgain            = lzmaError{"buffer exhausted; repeat"}
+	errReadLimit        = limitError{"read"}
+	errWriteLimit       = limitError{"write"}
+	errInt64            = lzmaError{"int64 values not representable as int"}
+	errInt64Overflow    = lzmaError{"int64 overflow detected"}
+	errSpace            = lzmaError{"out of buffer space"}
+	errCompressLimit    = lzmaError{"negative compress limit"}
 )
