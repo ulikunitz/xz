@@ -109,29 +109,6 @@ func (c *Compressor) Write(p []byte) (n int, err error) {
 	return c.dict.buf.Write(p)
 }
 
-func (c *Compressor) Compress(limit int64, all bool) (n int64, err error) {
-	if c.closed {
-		return 0, errCompressorClosed
-	}
-	if limit < 0 {
-		return 0, errCompressLimit
-	}
-	ops := c.OpFinder.findOps(c.state, all)
-	l := limit - opLenMargin
-	start := c.re.Len()
-	for _, op := range ops {
-		if n > l {
-			break
-		}
-		if err := c.writeOp(op); err != nil {
-			return n, err
-		}
-		n = c.re.Len() - start
-	}
-	c.dict.sync()
-	return n, nil
-}
-
 // writeLiteral writes a literal into the operation stream
 func (c *Compressor) writeLiteral(l lit) error {
 	var err error
@@ -262,6 +239,28 @@ func (c *Compressor) writeOp(op operation) error {
 	}
 	err = c.discard(op)
 	return err
+}
+
+func (c *Compressor) Compress(limit int64, all bool) (n int64, err error) {
+	if c.closed {
+		return 0, errCompressorClosed
+	}
+	if limit < opLenMargin {
+		return 0, errCompressLimit
+	}
+	ops := c.OpFinder.findOps(c.state, all)
+	start := c.re.Len()
+	end := start + limit - opLenMargin
+	for _, op := range ops {
+		if err := c.writeOp(op); err != nil {
+			return 0, err
+		}
+		if c.re.Len() >= end {
+			break
+		}
+	}
+	c.dict.sync()
+	return c.re.Len() - start, nil
 }
 
 func (c *Compressor) MarkEOS() error {
