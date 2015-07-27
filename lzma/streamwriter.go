@@ -38,7 +38,7 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	d.sync()
+	d.syncLimit()
 	state := NewState(p.Properties(), d)
 	w = &Writer{
 		Params:   p,
@@ -183,7 +183,7 @@ func (w *Writer) compress(all bool) error {
 			return err
 		}
 	}
-	w.state.dict.(*hashDict).sync()
+	w.state.dict.(*hashDict).syncLimit()
 	return nil
 }
 

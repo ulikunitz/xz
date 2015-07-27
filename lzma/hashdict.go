@@ -81,8 +81,8 @@ func (hd *hashDict) start() int64 {
 	return start
 }
 
-// sync synchronizes the write limit of the backing buffer with the
+// syncLimit synchronizes the write limit of the backing buffer with the
 // current dictionary head.
-func (hd *hashDict) sync() {
+func (hd *hashDict) syncLimit() {
 	hd.buf.writeLimit = add(hd.start(), int64(hd.buf.capacity()))
 }

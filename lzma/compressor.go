@@ -88,7 +88,7 @@ func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error
 	if err != nil {
 		return nil, err
 	}
-	d.sync()
+	d.syncLimit()
 	props := p.Properties()
 	state := NewState(props, d)
 	c = &Compressor{
@@ -259,7 +259,7 @@ func (c *Compressor) Compress(limit int64, all bool) (n int64, err error) {
 			break
 		}
 	}
-	c.dict.sync()
+	c.dict.syncLimit()
 	return c.re.Len() - start, nil
 }
 
