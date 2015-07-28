@@ -91,12 +91,16 @@ func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error
 	d.syncLimit()
 	props := p.Properties()
 	state := NewState(props, d)
+	re, err := newRangeEncoder(lzma)
+	if err != nil {
+		return nil, err
+	}
 	c = &Compressor{
 		properties: props,
 		OpFinder:   Greedy,
 		state:      state,
 		dict:       d,
-		re:         newRangeEncoder(lzma),
+		re:         re,
 		start:      d.head,
 	}
 	return c, nil

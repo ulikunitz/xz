@@ -40,12 +40,16 @@ func NewStreamWriter(pw io.Writer, p Parameters) (w *Writer, err error) {
 	}
 	d.syncLimit()
 	state := NewState(p.Properties(), d)
+	re, err := newRangeEncoder(pw)
+	if err != nil {
+		return nil, err
+	}
 	w = &Writer{
 		Params:   p,
 		OpFinder: Greedy,
 		state:    state,
 		buf:      buf,
-		re:       newRangeEncoder(pw),
+		re:       re,
 		start:    buf.top,
 	}
 	return w, nil

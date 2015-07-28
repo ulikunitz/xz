@@ -5,75 +5,39 @@
 package lzma
 
 import (
+	"errors"
 	"io"
 )
 
-// byteWriteCounter is a ByteWriter that counts the bytes written.
-type byteWriteCounter interface {
-	io.ByteWriter
-	Len() int64
-}
+const maxInt64 = 1<<63 - 1
 
-// bwCounter provides a byteWriteCounter using a ByteWriter.
-type bwCounter struct {
-	BW io.ByteWriter
-	N  int64
-}
-
-// newBWCounter converts a ByteWriter to a byteWriteCounter.
-func newBWCounter(bw io.ByteWriter) *bwCounter {
-	return &bwCounter{BW: bw}
-}
-
-// WriteByte writes a single byte to the bwCounter.
-func (bwc *bwCounter) WriteByte(c byte) error {
-	err := bwc.BW.WriteByte(c)
-	if err == nil {
-		bwc.N++
-	}
-	return err
-}
-
-// Len returns the number of bytes written.
-func (bwc *bwCounter) Len() int64 { return bwc.N }
-
-// wCounter implements a byteWriteCounter on top of a Writer.
-type wCounter struct {
-	W io.Writer
-	N int64
+// bWriter is used to convert a standard io.Writer into an io.ByteWriter.
+type bWriter struct {
+	io.Writer
 	a []byte
 }
 
-// newWCounter converts a Writer to a wCounter.
-func newWCounter(w io.Writer) *wCounter {
-	return &wCounter{W: w, a: make([]byte, 1)}
+// newByteWriter transforms an io.Writer into an io.ByteWriter.
+func newByteWriter(w io.Writer) io.ByteWriter {
+	if b, ok := w.(io.ByteWriter); ok {
+		return b
+	}
+	return &bWriter{w, make([]byte, 1)}
 }
 
-// WriteByte writes a single byte into the wCounter.
-func (wc *wCounter) WriteByte(c byte) error {
-	wc.a[0] = c
-	n, err := wc.W.Write(wc.a)
+// WriteByte writes a single byte into the Writer.
+func (b *bWriter) WriteByte(c byte) error {
+	b.a[0] = c
+	n, err := b.Write(b.a)
 	switch {
 	case n > 1:
 		panic("n > 1 for writing a single byte")
 	case n == 1:
-		wc.N++
 		return nil
 	case err == nil:
 		panic("no error for n == 0")
 	}
 	return err
-}
-
-// Len returns the total number of bytes written.
-func (wc *wCounter) Len() int64 { return wc.N }
-
-// newByteWriteCounter transforms an io.Writer into an byteWriteCounter
-func newByteWriteCounter(w io.Writer) byteWriteCounter {
-	if bw, ok := w.(io.ByteWriter); ok {
-		return newBWCounter(bw)
-	}
-	return newWCounter(w)
 }
 
 // bReader is used to convert an io.Reader into an io.ByteReader.
@@ -106,19 +70,69 @@ func (b bReader) ReadByte() (byte, error) {
 // overflow therefore we need uint64. The cache value is used to handle
 // overflows.
 type rangeEncoder struct {
-	w         byteWriteCounter
-	nrange    uint32
-	low       uint64
-	cacheSize int64
-	cache     byte
+	w        io.ByteWriter
+	nrange   uint32
+	low      uint64
+	cacheLen int64
+	cache    byte
+	n        int64
+	limit    int64
 }
 
 // newRangeEncoder creates a new range encoder.
-func newRangeEncoder(w io.Writer) *rangeEncoder {
+func newRangeEncoder(w io.Writer) (re *rangeEncoder, err error) {
 	return &rangeEncoder{
-		w:         newByteWriteCounter(w),
-		nrange:    0xffffffff,
-		cacheSize: 1}
+		w:        newByteWriter(w),
+		nrange:   0xffffffff,
+		cacheLen: 1}, nil
+}
+
+func newRangeEncoderLimit(w io.Writer, limit int64) (re *rangeEncoder, err error) {
+	if limit < 0 {
+		return nil, errors.New(
+			"newRangeEncoderLimit: argument limit is negative")
+	}
+	if 0 < limit && limit < 5 {
+		return nil, errors.New(
+			"newRangeEncoderLimit: non-zero limit argument must " +
+				"larger or equal 5")
+	}
+	re, err = newRangeEncoder(w)
+	if err != nil {
+		return nil, err
+	}
+	re.limit = limit
+	return re, err
+}
+
+// Len returns the number of bytes actually written to the underlying
+// writer.
+func (re *rangeEncoder) Len() int64 {
+	return re.n
+}
+
+// Available returns the number of bytes that still can be written. The
+// method takes the bytes that will be currently written by Close into
+// account.
+func (re *rangeEncoder) Available() int64 {
+	if re.limit == 0 {
+		return maxInt64
+	}
+	return re.limit - (re.n + re.cacheLen + 4)
+}
+
+// writeByte writes a single byte to the underlying writer. An error is
+// returned if the limit is reached. The written byte will be counted if
+// the underlying writer doesn't return an error.
+func (re *rangeEncoder) writeByte(c byte) error {
+	if re.Available() < 1 {
+		return errors.New("range encoder limit reached")
+	}
+	if err := re.w.WriteByte(c); err != nil {
+		return err
+	}
+	re.n++
+	return nil
 }
 
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
@@ -151,17 +165,6 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 	}
 
 	return nil
-}
-
-// Len returns the number of bytes written to the underlying writer.
-func (e *rangeEncoder) Len() int64 {
-	return e.w.Len()
-}
-
-// CloseLen returns the number of bytes Close would write now. The
-// number might change after more data is encoded.
-func (e *rangeEncoder) CloseLen() int64 {
-	return e.cacheSize + 4
 }
 
 // Close writes a complete copy of the low value.
@@ -240,22 +243,22 @@ func (e *rangeEncoder) shiftLow() error {
 	if uint32(e.low) < 0xff000000 || (e.low>>32) != 0 {
 		tmp := e.cache
 		for {
-			err := e.w.WriteByte(tmp + byte(e.low>>32))
+			err := e.writeByte(tmp + byte(e.low>>32))
 			if err != nil {
 				return err
 			}
 			tmp = 0xff
-			e.cacheSize--
-			if e.cacheSize <= 0 {
-				if e.cacheSize < 0 {
-					return negError{"cacheSize", e.cacheSize}
+			e.cacheLen--
+			if e.cacheLen <= 0 {
+				if e.cacheLen < 0 {
+					panic(negError{"cacheLen", e.cacheLen})
 				}
 				break
 			}
 		}
 		e.cache = byte(uint32(e.low) >> 24)
 	}
-	e.cacheSize++
+	e.cacheLen++
 	e.low = uint64(uint32(e.low) << 8)
 	return nil
 }
