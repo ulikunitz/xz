@@ -7,9 +7,9 @@ package lzma
 import (
 	"errors"
 	"io"
-)
 
-const maxInt64 = 1<<63 - 1
+	"github.com/uli-go/xz/basics/i64"
+)
 
 // bWriter is used to convert a standard io.Writer into an io.ByteWriter.
 type bWriter struct {
@@ -116,7 +116,7 @@ func (re *rangeEncoder) Len() int64 {
 // account.
 func (re *rangeEncoder) Available() int64 {
 	if re.limit == 0 {
-		return maxInt64
+		return i64.Max
 	}
 	return re.limit - (re.n + re.cacheLen + 4)
 }
