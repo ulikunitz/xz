@@ -18,14 +18,18 @@ type OpFinder interface {
 	fmt.Stringer
 }
 
+// CompressorParams contains all the parameters for the compressor.
 type CompressorParams struct {
 	LC           int
 	LP           int
 	PB           int
 	DictSize     int64
 	ExtraBufSize int64
+	Limit        int64
+	MarkEOS      bool
 }
 
+// Properties returns the properties as bytes.
 func (p *CompressorParams) Properties() Properties {
 	props, err := NewProperties(p.LC, p.LP, p.PB)
 	if err != nil {
@@ -51,7 +55,8 @@ func (p *CompressorParams) Verify() error {
 		return rangeError{"DictSize", p.DictSize}
 	}
 	if p.DictSize != int64(int(p.DictSize)) {
-		return lzmaError{fmt.Sprintf("DictSize %d too large for int", p.DictSize)}
+		return lzmaError{fmt.Sprintf("DictSize %d too large for int",
+			p.DictSize)}
 	}
 	if p.ExtraBufSize < 0 {
 		return negError{"ExtraBufSize", p.ExtraBufSize}
@@ -60,9 +65,19 @@ func (p *CompressorParams) Verify() error {
 	if bufSize != int64(int(bufSize)) {
 		return lzmaError{"buffer size too large for int"}
 	}
+	if p.Limit < 0 {
+		return negError{"Limit", p.Limit}
+	}
+	if 0 < p.Limit && p.Limit < 5 {
+		return lzmaError{"non-zero limit must be greater or equal 5"}
+	}
 	return nil
 }
 
+// Compressor provides functionality to compress an uncompressed byte
+// stream. The Compressor supports a limit on written bytes and is
+// resettable. It is intended to be used for LZMA and LZMA2 compression
+// formats.
 type Compressor struct {
 	properties Properties
 	OpFinder   OpFinder
@@ -71,8 +86,11 @@ type Compressor struct {
 	dict       *hashDict
 	closed     bool
 	start      int64
+	margin     int64
+	markEOS    bool
 }
 
+// NewCompressor creates a compressor instance.
 func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error) {
 	if lzma == nil {
 		return nil, errors.New("NewCompressor: argument lzma is nil")
@@ -91,9 +109,13 @@ func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error
 	d.syncLimit()
 	props := p.Properties()
 	state := NewState(props, d)
-	re, err := newRangeEncoder(lzma)
+	re, err := newRangeEncoderLimit(lzma, p.Limit)
 	if err != nil {
 		return nil, err
+	}
+	margin := int64(opLenMargin)
+	if p.MarkEOS {
+		margin += opLenMargin
 	}
 	c = &Compressor{
 		properties: props,
@@ -102,10 +124,14 @@ func NewCompressor(lzma io.Writer, p CompressorParams) (c *Compressor, err error
 		dict:       d,
 		re:         re,
 		start:      d.head,
+		margin:     margin,
+		markEOS:    p.MarkEOS,
 	}
 	return c, nil
 }
 
+// Write writes bytes into the compression buffer. Note that there might
+// be not enough space available in the buffer itself.
 func (c *Compressor) Write(p []byte) (n int, err error) {
 	if c.closed {
 		return 0, errCompressorClosed
@@ -245,30 +271,31 @@ func (c *Compressor) writeOp(op operation) error {
 	return err
 }
 
-func (c *Compressor) Compress(limit int64, all bool) (n int64, err error) {
+// Compress compresses data into the buffer. If all is set the complete
+// buffer will be compressed. If it is not set the last operation will
+// not be written with the intention to extend a copy operation if
+// additonal data becomes available.
+func (c *Compressor) Compress(all bool) error {
 	if c.closed {
-		return 0, errCompressorClosed
-	}
-	if limit < opLenMargin {
-		return 0, errCompressLimit
+		return errCompressorClosed
 	}
 	ops := c.OpFinder.findOps(c.state, all)
-	start := c.re.Len()
-	end := start + limit - opLenMargin
 	for _, op := range ops {
-		if err := c.writeOp(op); err != nil {
-			return 0, err
-		}
-		if c.re.Len() >= end {
+		if c.Filled() {
 			break
+		}
+		if err := c.writeOp(op); err != nil {
+			return err
 		}
 	}
 	c.dict.syncLimit()
-	return c.re.Len() - start, nil
+	return nil
 }
 
-func (c *Compressor) MarkEOS() error {
-	panic("TODO")
+// Filled indicates that the underlying writer has reached the size
+// limit.
+func (c *Compressor) Filled() bool {
+	return c.re.Available() < c.margin
 }
 
 func (c *Compressor) Close() error {
