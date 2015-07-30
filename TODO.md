@@ -37,16 +37,25 @@
 
 1. Replace StreamWriter by Compressor supporting all the functions that
    LZMA2 segment writers need.
-2. Use Compressor in Writer
-3. StreamWriter functions:
+2. StreamWriter functions:
    - FillDict
    - Compress(all bool)
    - ResetDict()
    - NewProp()
    - ResetState()
    - SetWriter(w io.Writer)
-4. Design Reader and Writer API
-    - make sure that multiple Writers can be combined (EOS handling)
+3. Implement Decompressor
+4. Implement a test with Compressor and Decompressor
+5. Implement SegmentWriter and SegmentReader in lzma2 using
+   lzma.Compressor and lzma.Decompressor.
+
+   A Segment starts always with a complete Reset and stores all the data
+   in it. Flushing is supported. The LZMA Stream Close will not be
+   written.
+6. Review error handling in lzma.
+   - Is a spezific lzmaError necessary?
+   - Replace direct usage of errors.New
+     and fmt.Errorf.
 
 ## Optimizations
 
