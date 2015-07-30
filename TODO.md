@@ -35,9 +35,8 @@
 
 # Package lzma2
 
-1. Replace StreamWriter by Compressor supporting all the functions that
-   LZMA2 segment writers need.
-2. StreamWriter functions:
+1. Change Size to Len consistently in Compressor and CompressorParams
+2. Implement Compressor.Close
    - FillDict
    - Compress(all bool)
    - ResetDict()
@@ -56,6 +55,8 @@
    - Is a spezific lzmaError necessary?
    - Replace direct usage of errors.New
      and fmt.Errorf.
+7. Reimplement lzma.Reader and lzma.Writer using Decompressor and
+   Compressor
 
 ## Optimizations
 
