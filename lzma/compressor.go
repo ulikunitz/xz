@@ -298,8 +298,21 @@ func (c *Compressor) Filled() bool {
 	return c.re.Available() < c.margin
 }
 
+// Close closes the current LZMA stream.
 func (c *Compressor) Close() error {
-	panic("TODO")
+	if c.closed {
+		return errCompressorClosed
+	}
+	if c.markEOS {
+		if err := c.writeMatch(eosMatch); err != nil {
+			return err
+		}
+	}
+	if err := c.re.Close(); err != nil {
+		return err
+	}
+	c.closed = true
+	return nil
 }
 
 func (c *Compressor) ResetState() {
