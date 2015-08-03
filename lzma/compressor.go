@@ -29,7 +29,7 @@ type CompressorParams struct {
 	MarkEOS      bool
 }
 
-// Properties returns the properties as bytes.
+// Properties returns the properties  as a single byte.
 func (p *CompressorParams) Properties() Properties {
 	props, err := NewProperties(p.LC, p.LP, p.PB)
 	if err != nil {
