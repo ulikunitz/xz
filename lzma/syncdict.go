@@ -5,7 +5,8 @@
 package lzma
 
 // syncDict provides a dictionary that is always synchronized with the
-// top of the buffer.
+// top of the buffer. The field size provides the size of the
+// dictionary. It must be less or equal the size of the buffer.
 type syncDict struct {
 	buf  *buffer
 	size int64
@@ -50,7 +51,9 @@ func (sd *syncDict) WriteByte(c byte) error {
 	return sd.buf.WriteByte(c)
 }
 
-// newSyncDict creates a sync dictionary.
+// newSyncDict creates a sync dictionary. The argument size defines the
+// size of the dictionary. The capacity of the buffer is allowed to be
+// larger.
 func newSyncDict(buf *buffer, size int64) (sd *syncDict, err error) {
 	if !(MinDictSize <= size && size <= int64(buf.capacity())) {
 		return nil, rangeError{"size", size}
