@@ -274,9 +274,6 @@ func (w *Writer) WriteByte(c byte) error {
 	return nil
 }
 
-// This operation will be encoded to indicate that the stream has ended.
-var eosMatch = match{distance: maxDistance, n: MinLength}
-
 func (w *Writer) Size() int64 { return w.buf.top - w.start }
 
 // Close closes the writer.

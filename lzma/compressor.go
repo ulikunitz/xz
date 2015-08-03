@@ -298,6 +298,9 @@ func (c *Compressor) Filled() bool {
 	return c.re.Available() < c.margin
 }
 
+// eosMatch is a pseudo operation that indicates the end of the stream.
+var eosMatch = match{distance: maxDistance, n: MinLength}
+
 // Close closes the current LZMA stream.
 func (c *Compressor) Close() error {
 	if c.closed {
