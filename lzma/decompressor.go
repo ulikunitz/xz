@@ -109,6 +109,9 @@ func NewDecompressor(lzma io.Reader, p DecompressorParams) (d *Decompressor, err
 		length:     p.UncompressedLen,
 		eos:        p.EOS,
 	}
+	if p.CompressedLen == 0 && p.UncompressedLen == 0 {
+		d.eos = true
+	}
 	return d, nil
 }
 
