@@ -52,7 +52,7 @@ func newBuffer(capacity int64) (b *buffer, err error) {
 	return b, nil
 }
 
-// capacity returns the max)imum capacity of the buffer.
+// capacity returns the maximum capacity of the buffer.
 func (b *buffer) capacity() int {
 	return len(b.data)
 }
