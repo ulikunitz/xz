@@ -21,11 +21,14 @@ func TestMaxBufferCapacity(t *testing.T) {
 }
 
 func TestBuffer_Write(t *testing.T) {
-	if _, err := newBuffer(-1); err == nil {
-		t.Fatalf("newBuffer(-1) want error")
+	var (
+		err error
+		buf buffer
+	)
+	if err := initBuffer(&buf, -1); err == nil {
+		t.Fatalf("initBuffer(&buf, -1) want error")
 	}
-	buf, err := newBuffer(10)
-	if err != nil {
+	if err = initBuffer(&buf, 10); err != nil {
 		t.Fatalf("newBuffer error %s", err)
 	}
 	b := []byte("1234567890")
@@ -79,9 +82,12 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Buffered_Available(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
+	var (
+		buf buffer
+		err error
+	)
+	if err = initBuffer(&buf, 10); err != nil {
+		t.Fatalf("initBuffer(&buf, 10) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -108,9 +114,12 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 }
 
 func TestBuffer_Read(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
+	var (
+		buf buffer
+		err error
+	)
+	if err = initBuffer(&buf, 10); err != nil {
+		t.Fatalf("initBuffer(&buf, 10) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -164,9 +173,12 @@ func TestBuffer_Read(t *testing.T) {
 }
 
 func TestBuffer_Discard(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
+	var (
+		buf buffer
+		err error
+	)
+	if err = initBuffer(&buf, 10); err != nil {
+		t.Fatalf("initBuffer(&buf, 10) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -202,9 +214,12 @@ func TestBuffer_Discard(t *testing.T) {
 }
 
 func TestBuffer_Discard_panic(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
+	var (
+		buf buffer
+		err error
+	)
+	if err = initBuffer(&buf, 10); err != nil {
+		t.Fatalf("initBuffer(&buf, 10) error %s", err)
 	}
 	panicked := false
 	func() {

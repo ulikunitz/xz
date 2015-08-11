@@ -30,13 +30,14 @@ type buffer struct {
 	rear  uint32
 }
 
-// newBuffer creates a new buffer. The function might fail if n exceeds
-// the maximum buffer capacity or n is negative. We
-func newBuffer(capacity int) (b *buffer, err error) {
+// initBuffer initializes a buffer with a given capacity. If the
+// capacity is out of range an error is returned.
+func initBuffer(b *buffer, capacity int) error {
 	if !(0 < capacity && int64(capacity) <= maxBufferCapacity) {
-		return nil, errors.New("buffer capacity out of range")
+		return errors.New("buffer capacity out of range")
 	}
-	return &buffer{data: make([]byte, capacity+1)}, nil
+	*b = buffer{data: make([]byte, capacity+1)}
+	return nil
 }
 
 // Cap returns the capacity of the buffer.
