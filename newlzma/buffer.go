@@ -36,15 +36,6 @@ func (b *buffer) Buffered() int {
 	return delta
 }
 
-// Available provides the number of bytes available for writing.
-func (b *buffer) Available() int {
-	delta := int(b.rear) - int(b.front) - 1
-	if delta < 0 {
-		return len(b.data) + delta
-	}
-	return delta
-}
-
 // Read reads byte from the buffer into p and returns the number of
 // bytes read. It never returns an error.
 func (b *buffer) Read(p []byte) (n int, err error) {

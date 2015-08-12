@@ -35,14 +35,6 @@ func TestBuffer_Write(t *testing.T) {
 	if n != c {
 		t.Fatalf("Discard returned %d; want %d", n, c)
 	}
-	buffered := buf.Buffered()
-	available := buf.Available()
-	capacity := buf.Cap()
-	if buffered+available != capacity {
-		t.Logf("buffered %d available %d capacity %d",
-			buffered, available, capacity)
-		t.Fatal("buffered + available != capacity")
-	}
 	n, err = buf.Write(b)
 	if err == nil {
 		t.Fatalf("Write length exceed returned no error; n %d", n)
@@ -81,8 +73,8 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 	if n := buf.Buffered(); n != 10 {
 		t.Fatalf("buf.Buffered() returns %d; want %d", n, 10)
 	}
-	if n := buf.Available(); n != 0 {
-		t.Fatalf("buf.Available() returns %d; want %d", n, 0)
+	if n := buf.Cap() - buf.Buffered(); n != 0 {
+		t.Fatalf("cap-buffered returns %d; want %d", n, 0)
 	}
 	if _, err = buf.Discard(8); err != nil {
 		t.Fatalf("buf.Discard(8) error %s", err)
@@ -93,8 +85,8 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 	if n := buf.Buffered(); n != 9 {
 		t.Fatalf("buf.Buffered() returns %d; want %d", n, 9)
 	}
-	if n := buf.Available(); n != 1 {
-		t.Fatalf("buf.Available() returns %d; want %d", n, 1)
+	if n := buf.Cap() - buf.Buffered(); n != 1 {
+		t.Fatalf("cap-buffered returns %d; want %d", n, 1)
 	}
 }
 
