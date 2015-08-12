@@ -5,21 +5,6 @@ import (
 	"testing"
 )
 
-func TestMaxBufferCapacity(t *testing.T) {
-	const (
-		cap32 = 1<<31 - 2
-		cap64 = 1<<32 - 1
-	)
-	c := int64(cap64)
-	if int(c) < 0 {
-		c = cap32
-	}
-	if maxBufferCapacity != c {
-		t.Fatalf("maxBufferCapacity %#x; want %#x",
-			maxBufferCapacity, c)
-	}
-}
-
 func TestBuffer_Write(t *testing.T) {
 	var (
 		err error
