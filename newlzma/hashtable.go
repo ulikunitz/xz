@@ -65,6 +65,19 @@ func (s *slot) empty() bool {
 	return s.a&slotFilled == 0
 }
 
+// Len returns the number of items stored in the slot.
+func (s *slot) Len() int {
+	if s.empty() {
+		return 0
+	}
+	a, b := s.start(), s.end()
+	n := b - a
+	if n <= 0 {
+		n += slotEntries
+	}
+	return n
+}
+
 // Entries returns all entries in the sequence entered into the slot.
 func (s *slot) Entries() []uint32 {
 	if s.empty() {
@@ -104,6 +117,8 @@ func (s *slot) Reset() {
 type hashTable struct {
 	// actual hash table
 	t []slot
+	// capacity of the dictionary
+	dictCap int
 	// exponent used to compute the hash table size
 	exp int
 	// mask for computing the index for the hash table
@@ -152,6 +167,7 @@ func newHashTable(dictCap int, n int) (t *hashTable, err error) {
 	}
 	t = &hashTable{
 		t:       make([]slot, slotLen),
+		dictCap: dictCap,
 		exp:     exp,
 		mask:    (uint64(1) << uint(exp)) - 1,
 		hoff:    -int64(n),
@@ -180,6 +196,11 @@ func (t *hashTable) putEntry(h uint64, u uint32) {
 // Entries puts the entries for the hash value in the provided slice.
 func (t *hashTable) Entries(h uint64) []uint32 {
 	return t.t[h&t.mask].Entries()
+}
+
+// slot returns the pointer to the slot for the given hash value.
+func (t *hashTable) slot(h uint64) *slot {
+	return &t.t[h&t.mask]
 }
 
 // WriteByte converts a single byte into a hash and puts them into the hash
@@ -216,15 +237,26 @@ func (t *hashTable) dist(u uint32) int {
 // getMatches puts the distances found for a specific hash into the
 // distances array.
 func (t *hashTable) getMatches(h uint64) (distances []int) {
-	// TODO: Take uint32 values directly from the slot.
-	p := t.Entries(h)
-	distances = make([]int, 0, len(p))
-	for _, u := range p {
-		d := t.dist(u)
-		if d < 0 {
-			continue
+	s := t.slot(h)
+	if s.empty() {
+		return nil
+	}
+	distances = make([]int, 0, slotEntries)
+	appendDistances := func(p []uint32) {
+		for _, u := range p {
+			d := t.dist(u)
+			if !(0 < d && d <= t.dictCap) {
+				continue
+			}
+			distances = append(distances, d)
 		}
-		distances = append(distances, d)
+	}
+	a, b := s.start(), s.end()
+	if a >= b {
+		appendDistances(s.entries[a:])
+		appendDistances(s.entries[:b])
+	} else {
+		appendDistances(s.entries[a:b])
 	}
 	return distances
 }
