@@ -65,35 +65,6 @@ func (s *slot) empty() bool {
 	return s.a&slotFilled == 0
 }
 
-// Len returns the number of items stored in the slot.
-func (s *slot) Len() int {
-	if s.empty() {
-		return 0
-	}
-	a, b := s.start(), s.end()
-	n := b - a
-	if n <= 0 {
-		n += slotEntries
-	}
-	return n
-}
-
-// Entries returns all entries in the sequence entered into the slot.
-func (s *slot) Entries() []uint32 {
-	if s.empty() {
-		return nil
-	}
-	a, b := s.start(), s.end()
-	p := make([]uint32, 0, slotEntries)
-	if a >= b {
-		p = append(p, s.entries[a:]...)
-		p = append(p, s.entries[:b]...)
-	} else {
-		p = append(p, s.entries[a:b]...)
-	}
-	return p
-}
-
 // PutEntry puts an entry into a slot.
 func (s *slot) PutEntry(u uint32) {
 	a, b := s.start(), s.end()
@@ -193,16 +164,6 @@ func (t *hashTable) putEntry(h uint64, u uint32) {
 	t.t[h&t.mask].PutEntry(u)
 }
 
-// Entries puts the entries for the hash value in the provided slice.
-func (t *hashTable) Entries(h uint64) []uint32 {
-	return t.t[h&t.mask].Entries()
-}
-
-// slot returns the pointer to the slot for the given hash value.
-func (t *hashTable) slot(h uint64) *slot {
-	return &t.t[h&t.mask]
-}
-
 // WriteByte converts a single byte into a hash and puts them into the hash
 // table.
 func (t *hashTable) WriteByte(b byte) error {
@@ -237,7 +198,8 @@ func (t *hashTable) dist(u uint32) int {
 // getMatches puts the distances found for a specific hash into the
 // distances array.
 func (t *hashTable) getMatches(h uint64) (distances []int) {
-	s := t.slot(h)
+	// get the slot for the hash
+	s := &t.t[h&t.mask]
 	if s.empty() {
 		return nil
 	}
@@ -264,9 +226,6 @@ func (t *hashTable) getMatches(h uint64) (distances []int) {
 // hash computes the rolling hash for p, which must have the same length as
 // SliceLen() returns.
 func (t *hashTable) hash(p []byte) uint64 {
-	if len(p) != t.wordLen {
-		panic("p has an incorrect length")
-	}
 	var h uint64
 	for _, b := range p {
 		h = t.hr.RollByte(b)
