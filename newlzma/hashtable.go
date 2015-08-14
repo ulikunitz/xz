@@ -94,7 +94,6 @@ type hashTable struct {
 	exp int
 	// mask for computing the index for the hash table
 	mask uint64
-	// capacity of the dictionary
 	// hashOffset
 	hoff int64
 	// length of the hashed word
@@ -223,8 +222,8 @@ func (t *hashTable) getMatches(h uint64) (distances []int) {
 	return distances
 }
 
-// hash computes the rolling hash for p, which must have the same length as
-// SliceLen() returns.
+// hash computes the rolling hash for the word stored in p. For correct
+// results its length must be equal to t.wordLen.
 func (t *hashTable) hash(p []byte) uint64 {
 	var h uint64
 	for _, b := range p {
