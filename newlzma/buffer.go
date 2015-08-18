@@ -4,7 +4,7 @@ import "errors"
 
 // buffer provides a circular buffer. If front equals rear the buffer is
 // empty. As a consequence one byte in the data slice cannot be used to
-// ensure that front != rear.
+// ensure that front != rear if the buffer is full.
 type buffer struct {
 	data  []byte
 	front int
@@ -22,6 +22,12 @@ func initBuffer(b *buffer, capacity int) error {
 	return nil
 }
 
+// Resets the buffer. The front and rear index are set to zero.
+func (b *buffer) Reset() {
+	b.front = 0
+	b.rear = 0
+}
+
 // Cap returns the capacity of the buffer.
 func (b *buffer) Cap() int {
 	return len(b.data) - 1
@@ -29,9 +35,17 @@ func (b *buffer) Cap() int {
 
 // Len provides the number of bytes buffered.
 func (b *buffer) Buffered() int {
-	delta := int(b.front) - int(b.rear)
+	delta := b.front - b.rear
 	if delta < 0 {
-		return len(b.data) + delta
+		delta += len(b.data)
+	}
+	return delta
+}
+
+func (b *buffer) Available() int {
+	delta := b.rear - 1 - b.front
+	if delta < 0 {
+		delta += len(b.data)
 	}
 	return delta
 }
@@ -39,21 +53,21 @@ func (b *buffer) Buffered() int {
 // Read reads byte from the buffer into p and returns the number of
 // bytes read. It never returns an error.
 func (b *buffer) Read(p []byte) (n int, err error) {
-	if b.rear > b.front {
-		k := copy(p, b.data[b.rear:])
-		b.rear += k
-		if b.rear == len(b.data) {
-			b.rear = 0
-		}
-		if k == len(p) {
-			return k, nil
-		}
-		p = p[k:]
-		n = k
+	m := b.Buffered()
+	n = len(p)
+	if m < n {
+		n = m
+		p = p[:n]
 	}
-	k := copy(p, b.data[b.rear:b.front])
-	b.rear += k
-	return n + k, nil
+	k := copy(p, b.data[b.rear:])
+	if k < n {
+		copy(p[k:], b.data)
+	}
+	b.rear += n
+	if b.rear >= len(b.data) {
+		b.rear -= len(b.data)
+	}
+	return n, nil
 }
 
 // Discard skips the n next bytes to read from the buffer, returning the
@@ -64,49 +78,35 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	if n < 0 {
 		panic("negative argument")
 	}
-	if b.rear > b.front {
-		k := len(b.data) - int(b.rear)
-		if n < k {
-			b.rear += n
-			return n, nil
-		}
-		discarded += k
-		b.rear = 0
-		n -= k
+	m := b.Buffered()
+	if m < n {
+		n = m
+		err = errors.New("discarded less bytes then requested")
 	}
-	k := b.front - b.rear
-	if n <= k {
-		b.rear += n
-		return discarded + n, nil
+	b.rear += n
+	if b.rear >= len(b.data) {
+		b.rear -= len(b.data)
 	}
-	b.rear += k
-	return discarded + k, errors.New("discarded less bytes then requested")
+	return n, err
 }
 
 // Write puts data into the  buffer. If less bytes are written than
 // requested an error is returned.
 func (b *buffer) Write(p []byte) (n int, err error) {
-	r := b.rear - 1
-	if r < 0 {
-		r += len(b.data)
+	m := b.Available()
+	n = len(p)
+	if m < n {
+		n = m
+		p = p[:m]
+		err = errors.New("not all data written")
 	}
-	if b.front > r {
-		k := copy(b.data[b.front:], p)
-		b.front += k
-		if b.front == len(b.data) {
-			b.front = 0
-		}
-		if k == len(p) {
-			return k, nil
-		}
-		p = p[k:]
-		n += k
+	k := copy(b.data[b.front:], p)
+	if k < n {
+		copy(b.data, p[k:])
 	}
-	k := copy(b.data[b.front:r], p)
-	b.front += k
-	n += k
-	if k < len(p) {
-		return n, errors.New("not all data written")
+	b.front += n
+	if b.front >= len(b.data) {
+		b.front -= len(b.data)
 	}
-	return n, nil
+	return n, err
 }
