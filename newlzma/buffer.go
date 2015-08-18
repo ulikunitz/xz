@@ -2,9 +2,10 @@ package newlzma
 
 import "errors"
 
-// buffer provides a circular buffer. If front equals rear the buffer is
-// empty. As a consequence one byte in the data slice cannot be used to
-// ensure that front != rear if the buffer is full.
+// buffer provides a circular buffer. If the front index equals the rear
+// index the buffer is empty. As a consequence front cannot be equal
+// rear for a full buffer. So a full buffer has 1 byte less than then
+// the capacity of the data slice.
 type buffer struct {
 	data  []byte
 	front int
@@ -33,7 +34,7 @@ func (b *buffer) Cap() int {
 	return len(b.data) - 1
 }
 
-// Len provides the number of bytes buffered.
+// Buffered returns the number of bytes buffered.
 func (b *buffer) Buffered() int {
 	delta := b.front - b.rear
 	if delta < 0 {
@@ -42,6 +43,7 @@ func (b *buffer) Buffered() int {
 	return delta
 }
 
+// Available returns the number of bytes available for writing.
 func (b *buffer) Available() int {
 	delta := b.rear - 1 - b.front
 	if delta < 0 {
@@ -50,8 +52,20 @@ func (b *buffer) Available() int {
 	return delta
 }
 
+// addIndex adds a non-negative integer to the index i and returns the
+// resulting index. The function takes care of wrapping the index as
+// well as potential overflow situations.
+func (b *buffer) addIndex(i int, n int) int {
+	// subtraction of len(b.data) prevents overflow
+	i += n - len(b.data)
+	if i < 0 {
+		i += len(b.data)
+	}
+	return i
+}
+
 // Read reads byte from the buffer into p and returns the number of
-// bytes read. It never returns an error.
+// bytes read. The functions never returns an error.
 func (b *buffer) Read(p []byte) (n int, err error) {
 	m := b.Buffered()
 	n = len(p)
@@ -63,10 +77,7 @@ func (b *buffer) Read(p []byte) (n int, err error) {
 	if k < n {
 		copy(p[k:], b.data)
 	}
-	b.rear += n
-	if b.rear >= len(b.data) {
-		b.rear -= len(b.data)
-	}
+	b.rear = b.addIndex(b.rear, n)
 	return n, nil
 }
 
@@ -83,10 +94,7 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 		n = m
 		err = errors.New("discarded less bytes then requested")
 	}
-	b.rear += n
-	if b.rear >= len(b.data) {
-		b.rear -= len(b.data)
-	}
+	b.rear = b.addIndex(b.rear, n)
 	return n, err
 }
 
@@ -104,9 +112,20 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	if k < n {
 		copy(b.data, p[k:])
 	}
-	b.front += n
-	if b.front >= len(b.data) {
-		b.front -= len(b.data)
-	}
+	b.front = b.addIndex(b.front, n)
 	return n, err
+}
+
+// errNoSpace indicates that free space in the buffer is not sufficient.
+var errNoSpace = errors.New("not enough space in buffer")
+
+// WriteByte writes a single byte into the buffer. An error is returned
+// if there is not enough space.
+func (b *buffer) WriteByte(c byte) error {
+	if b.Available() < 1 {
+		return errNoSpace
+	}
+	b.data[b.front] = c
+	b.front = b.addIndex(b.front, 1)
+	return nil
 }
