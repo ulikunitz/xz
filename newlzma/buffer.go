@@ -64,9 +64,17 @@ func (b *buffer) addIndex(i int, n int) int {
 	return i
 }
 
-// Read reads byte from the buffer into p and returns the number of
+// Read reads bytes from the buffer into p and returns the number of
 // bytes read. The functions never returns an error.
 func (b *buffer) Read(p []byte) (n int, err error) {
+	n, err = b.Peek(p)
+	b.rear = b.addIndex(b.rear, n)
+	return n, err
+}
+
+// Peek reads bytes from the buffer into p without changing the buffer.
+// Peek with the same buffer will have the same result.
+func (b *buffer) Peek(p []byte) (n int, err error) {
 	m := b.Buffered()
 	n = len(p)
 	if m < n {
@@ -77,7 +85,6 @@ func (b *buffer) Read(p []byte) (n int, err error) {
 	if k < n {
 		copy(p[k:], b.data)
 	}
-	b.rear = b.addIndex(b.rear, n)
 	return n, nil
 }
 
