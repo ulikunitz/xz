@@ -124,20 +124,3 @@ func (d *decoderDict) WriteByte(c byte) error {
 func (d *decoderDict) Reset() {
 	d.head = 0
 }
-
-func (d *decoderDict) peek() []byte {
-	p := make([]byte, d.Buffered())
-	oldRear := d.rear
-	k, err := d.Read(p)
-	if err != nil {
-		panic(fmt.Errorf("peek: "+
-			"Read returned unexpected error %s", err))
-	}
-	if k != len(p) {
-		panic(fmt.Errorf("peek: "+
-			"Read returned %d; wanted %d", k, len(p)))
-	}
-	// reset effect of Read
-	d.rear = oldRear
-	return p
-}

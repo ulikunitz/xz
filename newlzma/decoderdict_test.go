@@ -1,6 +1,23 @@
 package newlzma
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+func peek(d *decoderDict) []byte {
+	p := make([]byte, d.Buffered())
+	k, err := d.Peek(p)
+	if err != nil {
+		panic(fmt.Errorf("peek: "+
+			"Read returned unexpected error %s", err))
+	}
+	if k != len(p) {
+		panic(fmt.Errorf("peek: "+
+			"Read returned %d; wanted %d", k, len(p)))
+	}
+	return p
+}
 
 func TestInitDecoderDict(t *testing.T) {
 	var d decoderDict
@@ -36,7 +53,7 @@ func TestDecoderDict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteMatch error %s", err)
 	}
-	s := string(d.peek())
+	s := string(peek(&d))
 	if s != "abcdabcda" {
 		t.Fatalf("WriteMatch produced buffer content %q; want %q",
 			s, "abcdabcda")
@@ -64,7 +81,7 @@ func TestDecoderDict(t *testing.T) {
 	if string(p) != "abcdabc" {
 		t.Fatalf("Read returned %q; want %q", p, "abcdabc")
 	}
-	s = string(d.peek())
+	s = string(peek(&d))
 	if s != "da" {
 		t.Fatalf("Read produced buffer %q; want %q", s, "da")
 	}
