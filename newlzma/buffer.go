@@ -4,8 +4,8 @@ import "errors"
 
 // buffer provides a circular buffer. If the front index equals the rear
 // index the buffer is empty. As a consequence front cannot be equal
-// rear for a full buffer. So a full buffer has 1 byte less than then
-// the capacity of the data slice.
+// rear for a full buffer. So a full buffer has a length that is one
+// byte less the the length of the data slice.
 type buffer struct {
 	data  []byte
 	front int
