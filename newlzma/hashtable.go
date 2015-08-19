@@ -232,6 +232,12 @@ func (t *hashTable) hash(p []byte) uint64 {
 	return h
 }
 
+// WordLen returns the length of the words supported by the Matches
+// function.
+func (t *hashTable) WordLen() int {
+	return t.wordLen
+}
+
 // Matches returns the distances of potential matches. Those matches
 // must be checked. The byte slice p must have word length of the hash
 // table.
