@@ -35,15 +35,15 @@ type encoderDict struct {
 
 // _initEncoderDict initializes the encoder allowing initializations
 // for testing with small sizes.
-func _initEncoderDict(d *encoderDict, dictCap, bufCap int, m matcher) error {
-	*d = encoderDict{capacity: dictCap, matcher: m}
-	return initBuffer(&d.buf, bufCap)
+func _initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
+	*e = encoderDict{capacity: dictCap, matcher: m}
+	return initBuffer(&e.buf, bufCap)
 }
 
 // initializes the encoder dictionary. Note that bufCap must be at
 // least maxMatchLen(273) bytes larger than the dictionary capacity
 // dictCap.
-func initEncoderDict(d *encoderDict, dictCap, bufCap int, m matcher) error {
+func initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
 	if !(minDictCap <= dictCap && dictCap <= maxDictCap) {
 		return errors.New("initEncoderDict: dictCap out of range")
 	}
@@ -53,7 +53,7 @@ func initEncoderDict(d *encoderDict, dictCap, bufCap int, m matcher) error {
 	if m == nil {
 		return errors.New("matcher m is nil")
 	}
-	return _initEncoderDict(d, dictCap, bufCap, m)
+	return _initEncoderDict(e, dictCap, bufCap, m)
 }
 
 // Head returns the dictionary head value.
@@ -107,13 +107,21 @@ func (e *encoderDict) Advance(n int) error {
 	return nil
 }
 
-// Matches finds the matches for the given byte array, which must have
-// the wordLen of the matcher.
-func (e *encoderDict) Matches(p []byte) (distances []int, err error) {
+// Matches find potential matches for the current dictionary head.
+func (e *encoderDict) Matches() (distances []int, err error) {
+	p := make([]byte, e.matcher.WordLen())
+	n, err := e.buf.Peek(p)
+	if err != nil {
+		return nil, err
+	}
+	if n != len(p) {
+		return nil, errors.New("Matches: not enough bytes buffered")
+	}
 	return e.matcher.Matches(p)
 }
 
-// MatchLen computes the length of the match at the given distance. The
+// MatchLen computes the length of the match at the given distance with
+// the current head of the buffer.
 // function returns zero if no match is found.
 func (e *encoderDict) MatchLen(dist int) int {
 	if !(0 < dist && dist <= e.Len()) {
@@ -135,7 +143,7 @@ func (e *encoderDict) MatchLen(dist int) int {
 		i = e.buf.addIndex(i, 1)
 		j = e.buf.addIndex(j, 1)
 	}
-	return maxMatchLen
+	return m
 }
 
 // Write adds new data into the buffer. The position of the dictionary
