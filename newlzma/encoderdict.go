@@ -67,7 +67,7 @@ func (e *encoderDict) Len() int {
 	return int(e.head)
 }
 
-// ByteAt returne a byte stored in the dictionary. If the distance is
+// ByteAt returns a byte stored in the dictionary. If the distance is
 // non-positive or exceeds the current length of the dictionary the zero
 // byte is provided.
 func (e *encoderDict) ByteAt(dist int) byte {

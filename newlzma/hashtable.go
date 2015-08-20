@@ -94,7 +94,7 @@ type hashTable struct {
 	exp int
 	// mask for computing the index for the hash table
 	mask uint64
-	// hashOffset
+	// hash offset
 	hoff int64
 	// length of the hashed word
 	wordLen int
