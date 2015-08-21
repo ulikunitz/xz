@@ -10,7 +10,7 @@ type Flags int
 
 const (
 	EOSMarker Flags = 1 << iota
-	// TODO(uk): Uncompressed
+	Uncompressed
 	NoUncompressedSize
 	NoCompressedSize
 	ResetState
@@ -40,6 +40,8 @@ type Decoder struct {
 	start            int64
 	uncompressedSize int64
 	flags            Flags
+	// reader for uncompressed data
+	lr *io.LimitedReader
 }
 
 func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
@@ -59,10 +61,17 @@ func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
 	d.flags = p.Flags
 	d.uncompressedSize = p.UncompressedSize
 
-	// TODO(uk): handle Uncompressed flag
-
 	if p.Flags&ResetDict != 0 {
 		d.dict.Reset()
+	}
+	d.start = d.dict.head
+
+	if d.flags&Uncompressed != 0 {
+		if d.flags&NoUncompressedSize != 0 {
+			panic("uncompressed segment needs size")
+		}
+		d.lr = &io.LimitedReader{R: r, N: d.uncompressedSize}
+		return nil
 	}
 
 	if p.Flags&(ResetProperties|ResetDict) != 0 {
@@ -85,7 +94,6 @@ func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
 		return err
 	}
 
-	d.start = d.dict.head
 	return nil
 }
 
@@ -295,6 +303,28 @@ func (d *Decoder) fillDict() error {
 	return nil
 }
 
+func (d *Decoder) fillDictUncompressed() error {
+	if d.flags&Uncompressed == 0 {
+		panic("Uncompressed flag not set")
+	}
+	if d.flags&eos != 0 {
+		return nil
+	}
+	for d.dict.Available() >= 0 {
+		_, err := io.CopyN(&d.dict, d.lr, int64(d.dict.Available()))
+		if err != nil {
+			if err == io.EOF {
+				d.flags |= eos
+				if d.lr.N != 0 {
+					return ErrUncompressedSizeWrong
+				}
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
 var (
 	ErrMissingEOSMarker      = errors.New("EOS marker is missing")
 	ErrMoreData              = errors.New("more data after EOS")
@@ -303,9 +333,14 @@ var (
 )
 
 func (d *Decoder) Read(p []byte) (n int, err error) {
+	fillDict := d.fillDict
+	if d.flags&Uncompressed != 0 {
+		fillDict = d.fillDictUncompressed
+	}
+
 	var k int
 	for n < len(p) {
-		if err = d.fillDict(); err != nil {
+		if err = fillDict(); err != nil {
 			return
 		}
 		// Read of decoder dict never returns an error.

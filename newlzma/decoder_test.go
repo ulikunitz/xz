@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -60,5 +61,26 @@ func TestDecoder(t *testing.T) {
 		if got != want {
 			t.Fatalf("read %q; but want %q", got, want)
 		}
+	}
+}
+
+func TestDecoderUncompressed(t *testing.T) {
+	want := "The quick brown fox jumps over the lazy dog.\n"
+	f := strings.NewReader(want)
+	const capacity = 0x800000
+	params := CodecParams{DictCap: capacity, BufCap: capacity}
+	params.Flags = Uncompressed
+	params.UncompressedSize = int64(len(want))
+	r, err := NewDecoder(f, params)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	bytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s", err)
+	}
+	got := string(bytes)
+	if got != want {
+		t.Fatalf("read %q; but want %q", got, want)
 	}
 }
