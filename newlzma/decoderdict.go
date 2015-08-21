@@ -12,9 +12,6 @@ const (
 	maxDictCap = 1<<32 - 1
 )
 
-// maximum length for a match
-const maxMatchLen = 273
-
 // decoderDict provides the sliding window and a circular buffer for
 // reading.
 type decoderDict struct {
@@ -78,7 +75,7 @@ func (d *decoderDict) WriteMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.Len()) {
 		return errors.New("WriteMatch: distance out of range")
 	}
-	if !(0 < length && length <= maxMatchLen) {
+	if !(0 < length && length <= MaxMatchLen) {
 		return errors.New("WriteMatch: length out of range")
 	}
 	if length > d.Available() {

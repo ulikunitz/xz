@@ -5,29 +5,6 @@ import (
 	"io"
 )
 
-type Flags int
-
-const (
-	EOSMark Flags = 1 << iota
-	Uncompressed
-	NoUncompressedSize
-	NoCompressedSize
-	ResetState
-	ResetProperties = ResetState | 1<<iota
-	ResetDict       = ResetProperties | 1<<iota
-)
-
-type CodecParams struct {
-	DictCap          int
-	BufCap           int
-	CompressedSize   int64
-	UncompressedSize int64
-	LC               int
-	LP               int
-	PB               int
-	Flags            Flags
-}
-
 type Encoder struct {
 }
 

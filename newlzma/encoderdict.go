@@ -41,13 +41,13 @@ func _initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
 }
 
 // initializes the encoder dictionary. Note that bufCap must be at
-// least maxMatchLen(273) bytes larger than the dictionary capacity
+// least MaxMatchLen(273) bytes larger than the dictionary capacity
 // dictCap.
 func initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
 	if !(minDictCap <= dictCap && dictCap <= maxDictCap) {
 		return errors.New("initEncoderDict: dictCap out of range")
 	}
-	if !(dictCap <= bufCap-maxMatchLen) {
+	if !(dictCap <= bufCap-MaxMatchLen) {
 		return errors.New("initEncoderDict: bufCap too small")
 	}
 	if m == nil {
@@ -133,8 +133,8 @@ func (e *encoderDict) MatchLen(dist int) int {
 	}
 	j := e.buf.rear
 	m := e.Buffered()
-	if maxMatchLen < m {
-		m = maxMatchLen
+	if MaxMatchLen < m {
+		m = MaxMatchLen
 	}
 	for n := 0; n < m; n++ {
 		if e.buf.data[i] != e.buf.data[j] {

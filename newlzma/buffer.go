@@ -65,7 +65,7 @@ func (b *buffer) addIndex(i int, n int) int {
 }
 
 // Read reads bytes from the buffer into p and returns the number of
-// bytes read. The functions never returns an error.
+// bytes read.he functions never returns an error.
 func (b *buffer) Read(p []byte) (n int, err error) {
 	n, err = b.Peek(p)
 	b.rear = b.addIndex(b.rear, n)
