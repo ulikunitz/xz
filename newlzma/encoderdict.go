@@ -91,7 +91,6 @@ func (e *encoderDict) Matches() (distances []int, err error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("positions %v\n", positions)
 	n := int64(e.Len())
 	for _, pos := range positions {
 		d := hpos - pos

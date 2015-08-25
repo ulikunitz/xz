@@ -6,7 +6,6 @@ package newlzma
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"testing"
 )
@@ -55,7 +54,6 @@ func TestEncoderCycle(t *testing.T) {
 		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
 			len(orig))
 	}
-	fmt.Println(">>> Decoding")
 	params.BufCap = params.DictCap
 	r, err := NewDecoder(&buf, params)
 	if err != nil {

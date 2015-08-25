@@ -258,7 +258,6 @@ func (d *Decoder) readOp() (op operation, err error) {
 }
 
 func (d *Decoder) apply(op operation) error {
-	fmt.Println(op)
 	switch x := op.(type) {
 	case match:
 		return d.dict.WriteMatch(x.distance, x.n)
