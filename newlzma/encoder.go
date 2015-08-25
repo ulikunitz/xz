@@ -25,6 +25,7 @@ type Encoder struct {
 	uncompressedSize int64
 	flags            Flags
 	opFinder         opFinder
+	margin           int
 }
 
 // NewEncoder initializes a new encoder.
@@ -83,6 +84,11 @@ func (e *Encoder) Reset(w io.Writer, p CodecParams) error {
 		e.re, err = newRangeEncoder(w)
 	} else {
 		e.re, err = newRangeEncoderLimit(w, p.CompressedSize)
+	}
+
+	e.margin = opLenMargin
+	if e.flags&EOSMarker != 0 {
+		e.margin += 5
 	}
 	return err
 }
@@ -229,7 +235,7 @@ func (e *Encoder) discardOp(op operation) error {
 // writeOp writes an operation value into the stream. It checks whether there
 // is still enough space available using an upper limit for the size required.
 func (e *Encoder) writeOp(op operation) error {
-	if e.re.Available() < opLenMargin {
+	if e.re.Available() < int64(e.margin) {
 		return ErrCompressedSize
 	}
 	if e.uncompressedSize-e.Uncompressed() < int64(op.Len()) {
