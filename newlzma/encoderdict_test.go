@@ -8,21 +8,20 @@ import (
 func TestEncoderDict(t *testing.T) {
 	const (
 		tst     = "abc abc abc"
+		bufCap  = 12
 		dictCap = 8
 	)
-	ht, err := newHashTable(dictCap, 3)
-	if err != nil {
+	var buf encoderBuffer
+	if err := initBuffer(&buf.buffer, 12); err != nil {
+		t.Fatalf("initBuffer error %s", err)
+	}
+	var err error
+	if buf.matcher, err = newHashTable(dictCap, 3); err != nil {
 		t.Fatalf("newHashTable(%d, %d): error %s", dictCap, 3, err)
 	}
 	var e encoderDict
-	if err = _initEncoderDict(&e, 8, 12, ht); err != nil {
-		t.Fatalf("_initEncoderDict error %s", err)
-	}
-	if k := e.Available(); k != e.buf.Cap() {
-		t.Fatalf("e.Available returned %d; want %d",
-			k, e.buf.Cap())
-	}
-	n, err := e.Write([]byte(tst))
+	_initEncoderDict(&e, 8, &buf)
+	n, err := buf.Write([]byte(tst))
 	if err != nil {
 		t.Fatalf("Write error %s", err)
 	}
@@ -32,12 +31,8 @@ func TestEncoderDict(t *testing.T) {
 	if k := e.Buffered(); k != len(tst) {
 		t.Fatalf("e.Buffered returned %d; want %d", k, len(tst))
 	}
-	if k := e.Available(); k != e.buf.Cap()-len(tst) {
-		t.Fatalf("e.Available#2 returned %d; want %d", k,
-			e.buf.Cap()-len(tst))
-	}
 	if err = e.Advance(8); err != nil {
-		t.Fatalf("e.Advance(%d) error %s", 8, err)
+		t.Fatalf("e.AdvanceHead(%d) error %s", 8, err)
 	}
 	p := make([]byte, 3)
 	n, err = e.buf.Peek(p)

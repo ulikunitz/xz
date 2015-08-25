@@ -40,10 +40,10 @@ func newRangeEncoderLimit(w io.Writer, limit int64) (re *rangeEncoder, err error
 		cacheLen: 1}, nil
 }
 
-// Compressed returns the number of bytes that will be written to the
-// underlying writer if Close would be called now.
+// Compressed returns the number of bytes that has been written to the
+// unterlying writer.
 func (e *rangeEncoder) Compressed() int64 {
-	return e.w.n + e.cacheLen + 4
+	return e.w.n
 }
 
 // Available returns the number of bytes that still can be written. The

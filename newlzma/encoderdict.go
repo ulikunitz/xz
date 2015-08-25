@@ -2,64 +2,48 @@ package newlzma
 
 import (
 	"errors"
-	"io"
+	"fmt"
 )
 
-// matcher is an interface that allows the identification of potential
-// matches for words greater or equal 2. A matcher supports only words
-// of a specific length.
-//
-// The content of the dictionary must be provided by the Write method.
-//
-// Potential matches for short words of a specific word length are
-// provided by the Matches method.
-type matcher interface {
-	io.Writer
-	WordLen() int
-	Matches(word []byte) (distances []int, err error)
-}
-
-// encoderDict provides the dictionary for encoding. The buffer is used
-// for providing the data to the encoder. The head of the dictionary is
-// at the rear of the circular buffer.
 type encoderDict struct {
-	buf buffer
-	// position of the dictionary head; the head is at the rear of
-	// the buffer
-	head int64
-	// capacity of then dictionary
+	buf      *encoderBuffer
+	head     int64
+	zero     int64
 	capacity int
-	// matcher
-	matcher matcher
 }
 
-// _initEncoderDict initializes the encoder allowing initializations
-// for testing with small sizes.
-func _initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
-	*e = encoderDict{capacity: dictCap, matcher: m}
-	return initBuffer(&e.buf, bufCap)
+func _initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) {
+
+	if buf == nil {
+		panic("_initEncoderDict: buf must not be nil")
+	}
+	*e = encoderDict{
+		buf:      buf,
+		zero:     buf.Pos(),
+		capacity: dictCap,
+	}
 }
 
-// initializes the encoder dictionary. Note that bufCap must be at
-// least MaxMatchLen(273) bytes larger than the dictionary capacity
-// dictCap.
-func initEncoderDict(e *encoderDict, dictCap, bufCap int, m matcher) error {
+func initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) error {
 	if !(minDictCap <= dictCap && dictCap <= maxDictCap) {
 		return errors.New("initEncoderDict: dictCap out of range")
 	}
-	if !(dictCap <= bufCap-MaxMatchLen) {
+	if !(dictCap <= buf.Cap()-MaxMatchLen) {
 		return errors.New("initEncoderDict: bufCap too small")
 	}
-	if m == nil {
-		return errors.New("matcher m is nil")
-	}
-	return _initEncoderDict(e, dictCap, bufCap, m)
+	_initEncoderDict(e, dictCap, buf)
+	return nil
 }
 
-// Head returns the dictionary head value.
-func (e *encoderDict) Head() int64 { return e.head }
+func (e *encoderDict) Reset() {
+	e.head = 0
+	e.zero = e.buf.Pos()
+}
 
-// Len returns the current length of the dictionary.
+func (e *encoderDict) Pos() int64 {
+	return e.zero + e.head
+}
+
 func (e *encoderDict) Len() int {
 	if e.head >= int64(e.capacity) {
 		return e.capacity
@@ -67,97 +51,64 @@ func (e *encoderDict) Len() int {
 	return int(e.head)
 }
 
-// ByteAt returns a byte stored in the dictionary. If the distance is
-// non-positive or exceeds the current length of the dictionary the zero
-// byte is provided.
-func (e *encoderDict) ByteAt(dist int) byte {
-	if !(0 < dist && dist <= e.Len()) {
-		return 0
-	}
-	i := e.buf.rear - dist
-	if i < 0 {
-		i += len(e.buf.data)
-	}
-	return e.buf.data[i]
-}
-
-// Available returns the number of bytes available for Writing. Note
-// that a write is not allowed to overwrite the dictionary.
-func (e *encoderDict) Available() int {
-	return e.buf.Available() - e.Len()
-}
-
-// Buffered returns the number of bytes buffered that are yet not part
-// of the dictionary.
 func (e *encoderDict) Buffered() int {
-	return e.buf.Buffered()
+	return int(e.buf.Pos() - e.Pos())
 }
 
-// Advance moves the dictionary head n bytes ahead. Data will be written
-// into the matcher.
 func (e *encoderDict) Advance(n int) error {
-	if !(0 <= n && n <= e.buf.Buffered()) {
+	if !(0 < n && n <= e.Buffered()) {
 		return errors.New("Advance: n out of range")
-	}
-	// Optimize(uk): transfer array directly from data to matcher
-	if _, err := io.CopyN(e.matcher, &e.buf, int64(n)); err != nil {
-		return nil
 	}
 	e.head += int64(n)
 	return nil
 }
 
-// Matches find potential matches for the current dictionary head.
+func (e *encoderDict) ByteAt(distance int) byte {
+	if !(0 < distance && distance <= e.Len()) {
+		return 0
+	}
+	c, err := e.buf.ReadByteAt(e.Pos() - int64(distance))
+	if err != nil {
+		panic(fmt.Errorf("ByteAt: error %s", err))
+	}
+	return c
+}
+
+func (e *encoderDict) Literal() (b byte, err error) {
+	return e.buf.ReadByteAt(e.Pos())
+}
+
 func (e *encoderDict) Matches() (distances []int, err error) {
-	p := make([]byte, e.matcher.WordLen())
-	n, err := e.buf.Peek(p)
+	if e.Buffered() < e.buf.WordLen() {
+		return nil, nil
+	}
+	hpos := e.Pos()
+	p := make([]byte, e.buf.WordLen())
+	if _, err = e.buf.ReadAt(p, hpos); err != nil {
+		return nil, nil
+	}
+	positions, err := e.buf.matcher.Matches(p)
 	if err != nil {
 		return nil, err
 	}
-	if n != len(p) {
-		return nil, errors.New("Matches: not enough bytes buffered")
+	fmt.Printf("positions %v\n", positions)
+	n := int64(e.Len())
+	for _, pos := range positions {
+		d := hpos - pos
+		if 0 < d && d <= n {
+			distances = append(distances, int(d))
+		}
 	}
-	return e.matcher.Matches(p)
+	return distances, nil
 }
 
 // MatchLen computes the length of the match at the given distance with
-// the current head of the buffer.
-// function returns zero if no match is found.
+// the bytes at the head of the dictionary.. The function returns zero
+// if no match is found.
 func (e *encoderDict) MatchLen(dist int) int {
 	if !(0 < dist && dist <= e.Len()) {
 		return 0
 	}
-	i := e.buf.rear - dist
-	if i < 0 {
-		i += len(e.buf.data)
-	}
-	j := e.buf.rear
-	m := e.Buffered()
-	if MaxMatchLen < m {
-		m = MaxMatchLen
-	}
-	for n := 0; n < m; n++ {
-		if e.buf.data[i] != e.buf.data[j] {
-			return n
-		}
-		i = e.buf.addIndex(i, 1)
-		j = e.buf.addIndex(j, 1)
-	}
-	return m
-}
-
-// Write adds new data into the buffer. The position of the dictionary
-// and any related status will not be changed.
-func (e *encoderDict) Write(p []byte) (n int, err error) {
-	m := e.Available()
-	if len(p) > m {
-		p = p[:m]
-	}
-	return e.buf.Write(p)
-}
-
-// Reset clears the dictionary. The current length of the dictionary
-// will be zero as well as head value.
-func (e *encoderDict) Reset() {
-	e.head = 0
+	b := e.Buffered()
+	return e.buf.buffer.EqualBytes(b+dist, b, MaxMatchLen)
 }

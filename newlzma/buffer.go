@@ -105,6 +105,8 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	return n, err
 }
 
+var errNoSpace = errors.New("insufficient space in buffer")
+
 // Write puts data into the  buffer. If less bytes are written than
 // requested an error is returned.
 func (b *buffer) Write(p []byte) (n int, err error) {
@@ -113,7 +115,7 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	if m < n {
 		n = m
 		p = p[:m]
-		err = errors.New("not all data written")
+		err = errNoSpace
 	}
 	k := copy(b.data[b.front:], p)
 	if k < n {
@@ -122,9 +124,6 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	b.front = b.addIndex(b.front, n)
 	return n, err
 }
-
-// errNoSpace indicates that free space in the buffer is not sufficient.
-var errNoSpace = errors.New("not enough space in buffer")
 
 // WriteByte writes a single byte into the buffer. An error is returned
 // if there is not enough space.
@@ -135,4 +134,35 @@ func (b *buffer) WriteByte(c byte) error {
 	b.data[b.front] = c
 	b.front = b.addIndex(b.front, 1)
 	return nil
+}
+
+func (b *buffer) EqualBytes(x, y, max int) int {
+	if !(0 < x && x <= b.Buffered()) {
+		return 0
+	}
+	if !(0 < y && y <= b.Buffered()) {
+		return 0
+	}
+	if x < max {
+		max = x
+	}
+	if y < max {
+		max = y
+	}
+	i := b.front - x
+	if i < 0 {
+		i += len(b.data)
+	}
+	j := b.front - y
+	if j < 0 {
+		j += len(b.data)
+	}
+	for k := 0; k < max; k++ {
+		if b.data[i] != b.data[j] {
+			return k
+		}
+		i = b.addIndex(i, 1)
+		j = b.addIndex(j, 1)
+	}
+	return max
 }

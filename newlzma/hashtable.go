@@ -17,10 +17,6 @@ import (
  * provide this capability.
  */
 
-// MaxDictCap defines the maximum capacity for a dictionary. The LZMA
-// specification calls the dictionary capacity dictionary size.
-const MaxDictCap = 1<<32 - 1
-
 // slotEntries gives the number of entries in one slot of the hash table. If
 // slotEntries is larger than 128 the representation of fields a and b in
 // slot must be reworked.
@@ -88,10 +84,6 @@ func (s *slot) Reset() {
 type hashTable struct {
 	// actual hash table
 	t []slot
-	// capacity of the dictionary
-	dictCap int
-	// exponent used to compute the hash table size
-	exp int
 	// mask for computing the index for the hash table
 	mask uint64
 	// hash offset
@@ -105,7 +97,8 @@ type hashTable struct {
 	hr hash.Roller
 }
 
-// hashTableExponent derives the hash table exponent from the history length.
+// hashTableExponent derives the hash table exponent from the dictionary
+// capacity.
 func hashTableExponent(n uint32) int {
 	e := 30 - u32.NLZ(n)
 	switch {
@@ -117,19 +110,20 @@ func hashTableExponent(n uint32) int {
 	return e
 }
 
-// newHashTable creates a new hash table for n-byte sequences.
-func newHashTable(dictCap int, n int) (t *hashTable, err error) {
+// newHashTable creates a new hash table for word of length wordLen
+func newHashTable(dictCap int, wordLen int) (t *hashTable, err error) {
 	if dictCap < 1 {
 		return nil, errors.New(
 			"newHashTable: dictCap must be larger than 1")
 	}
-	if dictCap > MaxDictCap {
+	if dictCap > maxDictCap {
 		return nil, errors.New(
 			"newHashTable: dictCap exceeds supported maximum")
 	}
 	exp := hashTableExponent(uint32(dictCap))
-	if !(1 <= n && n <= 4) {
-		return nil, errors.New("newHashTable: argument n out of range")
+	if !(1 <= wordLen && wordLen <= 4) {
+		return nil, errors.New("newHashTable: " +
+			"argument wordLen out of range")
 	}
 	slotLen := 1 << uint(exp)
 	if slotLen <= 0 {
@@ -137,13 +131,11 @@ func newHashTable(dictCap int, n int) (t *hashTable, err error) {
 	}
 	t = &hashTable{
 		t:       make([]slot, slotLen),
-		dictCap: dictCap,
-		exp:     exp,
 		mask:    (uint64(1) << uint(exp)) - 1,
-		hoff:    -int64(n),
-		wordLen: n,
-		wr:      newRoller(n),
-		hr:      newRoller(n),
+		hoff:    -int64(wordLen),
+		wordLen: wordLen,
+		wr:      newRoller(wordLen),
+		hr:      newRoller(wordLen),
 	}
 	return t, nil
 }
@@ -156,6 +148,10 @@ func (t *hashTable) Reset() {
 	t.hoff = -int64(t.wordLen)
 	t.wr = newRoller(t.wordLen)
 	t.hr = newRoller(t.wordLen)
+}
+
+func (t *hashTable) Pos() int64 {
+	return t.hoff + int64(t.wordLen)
 }
 
 // putEntry puts an entry into the hash table using the given hash.
@@ -184,42 +180,38 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// dist computes the distance for uint32 value. Note that on a 32-bit
-// platform might return negative value.
-func (t *hashTable) dist(u uint32) int {
-	d := (t.hoff & (1<<32 - 1)) - int64(u)
-	if d < 0 {
-		d += 1 << 32
+// posU32 converts the unsigned uint32 value to an int64 position.
+func (t *hashTable) posU32(u uint32) int64 {
+	h := t.hoff &^ (1<<32 - 1)
+	p := h + int64(u)
+	if p > t.hoff {
+		p -= (1 << 32)
 	}
-	return int(d) + t.wordLen
+	return p
 }
 
-// getMatches puts the distances found for a specific hash into the
-// distances array.
-func (t *hashTable) getMatches(h uint64) (distances []int) {
+// getMatches returns the potential positions for a specific hash.
+func (t *hashTable) getMatches(h uint64) (positions []int64) {
 	// get the slot for the hash
 	s := &t.t[h&t.mask]
 	if s.empty() {
 		return nil
 	}
-	distances = make([]int, 0, slotEntries)
-	appendDistances := func(p []uint32) {
+	positions = make([]int64, 0, slotEntries)
+	appendPositions := func(p []uint32) {
 		for _, u := range p {
-			d := t.dist(u)
-			if !(0 < d && d <= t.dictCap) {
-				continue
-			}
-			distances = append(distances, d)
+			pos := t.posU32(u)
+			positions = append(positions, pos)
 		}
 	}
 	a, b := s.start(), s.end()
 	if a >= b {
-		appendDistances(s.entries[a:])
-		appendDistances(s.entries[:b])
+		appendPositions(s.entries[a:])
+		appendPositions(s.entries[:b])
 	} else {
-		appendDistances(s.entries[a:b])
+		appendPositions(s.entries[a:b])
 	}
-	return distances
+	return positions
 }
 
 // hash computes the rolling hash for the word stored in p. For correct
@@ -238,10 +230,10 @@ func (t *hashTable) WordLen() int {
 	return t.wordLen
 }
 
-// Matches returns the distances of potential matches. Those matches
-// must be checked. The byte slice p must have word length of the hash
-// table.
-func (t *hashTable) Matches(p []byte) (distances []int, err error) {
+// Matches returns the positions of potential matches. Those matches
+// have to be verified, whether they are indeed matching. The byte slice
+// p must have word length of the hash table.
+func (t *hashTable) Matches(p []byte) (positions []int64, err error) {
 	if len(p) != t.wordLen {
 		return nil, fmt.Errorf(
 			"Matches: byte slice must have length %d", t.wordLen)

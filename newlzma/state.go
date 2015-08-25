@@ -7,17 +7,9 @@ package newlzma
 // states defines the overall state count
 const states = 12
 
-// Interface supporting different dictionary implementation.
-// Particularly syncDict and hashDict need to support this interface.
-type dictionary interface {
-	Head() int64
-	ByteAt(dist int) byte
-}
-
 // state maintains the full state of the operation encoding process.
 type state struct {
 	properties  Properties
-	dict        dictionary
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -45,7 +37,7 @@ func (s *state) Reset() {
 	lc, lp, pb := s.properties.LC(), s.properties.LP(), s.properties.PB()
 	*s = state{
 		properties: s.properties,
-		dict:       s.dict,
+		// dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
 	}
 	initProbSlice(s.isMatch[:])
@@ -61,8 +53,8 @@ func (s *state) Reset() {
 }
 
 // initState initializes the state.
-func initState(s *state, p Properties, dict dictionary) {
-	*s = state{properties: p, dict: dict}
+func initState(s *state, p Properties) {
+	*s = state{properties: p}
 	s.Reset()
 }
 
@@ -107,18 +99,17 @@ func (s *state) updateStateShortRep() {
 }
 
 // states computes the states of the operation codec.
-func (s *state) states() (state1, state2, posState uint32) {
+func (s *state) states(dictHead int64) (state1, state2, posState uint32) {
 	state1 = s.state
-	posState = uint32(s.dict.Head()) & s.posBitMask
+	posState = uint32(dictHead) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
 
 // litState computes the literal state.
-func (s *state) litState() uint32 {
-	prevByte := s.dict.ByteAt(1)
+func (s *state) litState(prev byte, dictHead int64) uint32 {
 	lp, lc := uint(s.properties.LP()), uint(s.properties.LC())
-	litState := ((uint32(s.dict.Head()) & ((1 << lp) - 1)) << lc) |
-		(uint32(prevByte) >> (8 - lc))
+	litState := ((uint32(dictHead) & ((1 << lp) - 1)) << lc) |
+		(uint32(prev) >> (8 - lc))
 	return litState
 }

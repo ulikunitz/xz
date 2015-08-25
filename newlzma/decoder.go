@@ -79,7 +79,7 @@ func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
 		if err != nil {
 			return err
 		}
-		initState(&d.state, props, &d.dict)
+		initState(&d.state, props)
 	} else if p.Flags&ResetState != 0 {
 		d.state.Reset()
 	}
@@ -90,16 +90,12 @@ func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
 	} else {
 		d.rd, err = newRangeDecoderLimit(r, p.CompressedSize)
 	}
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (d *Decoder) decodeLiteral() (op operation, err error) {
-	litState := d.state.litState()
-	match := d.state.dict.ByteAt(int(d.state.rep[0]) + 1)
+	litState := d.state.litState(d.dict.ByteAt(1), d.dict.head)
+	match := d.dict.ByteAt(int(d.state.rep[0]) + 1)
 	s, err := d.state.litCodec.Decode(d.rd, d.state.state, match, litState)
 	if err != nil {
 		return nil, err
@@ -167,7 +163,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 	// Value of the end of stream (EOS) marker
 	const eosDist = 1<<32 - 1
 
-	state, state2, posState := d.state.states()
+	state, state2, posState := d.state.states(d.dict.head)
 
 	b, err := d.state.isMatch[state2].Decode(d.rd)
 	if err != nil {
@@ -262,6 +258,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 }
 
 func (d *Decoder) apply(op operation) error {
+	fmt.Println(op)
 	switch x := op.(type) {
 	case match:
 		return d.dict.WriteMatch(x.distance, x.n)
