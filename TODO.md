@@ -33,29 +33,26 @@
 
 - Implement the package using the LZMA2 support provided by LZMA2.
 
+# Package lzma
+
+1. Review Params structure
+    - Rename it to Parameters.
+    - Use bools instead of flags to make usage simpler.
+2. Fully document the package.
+
 # Package lzma2
 
-1. Change Size to Len consistently in Compressor and CompressorParams
-2. Implement Compressor.Close
-   - FillDict
-   - Compress(all bool)
-   - ResetDict()
-   - NewProp()
-   - ResetState()
-   - SetWriter(w io.Writer)
-3. Implement Decompressor
-4. Implement a test with Compressor and Decompressor
-5. Implement SegmentWriter and SegmentReader in lzma2 using
-   lzma.Compressor and lzma.Decompressor.
+1. Implement SegmentWriter and SegmentReader in lzma2 using
+   lzma.Decoder and lzma.Encoder
 
    A Segment starts always with a complete Reset and stores all the data
    in it. Flushing is supported. The LZMA Stream Close will not be
    written.
-6. Review error handling in lzma.
+2. Review error handling in lzma.
    - Is a spezific lzmaError necessary?
    - Replace direct usage of errors.New
      and fmt.Errorf.
-7. Reimplement lzma.Reader and lzma.Writer using Decompressor and
+3. Reimplement lzma.Reader and lzma.Writer using Decompressor and
    Compressor
 
 ## Optimizations
@@ -88,6 +85,12 @@ Use full buffer to create minimal bit-length above range encoder.
 - git push
 
 # Log
+
+## 2015-08-26
+
+I have now reimplemented the lzma package. The code is reasonably fast,
+but can still be optimized. The next step is to implement LZMA2 and then
+xz.
 
 ## 2015-07-05
 
