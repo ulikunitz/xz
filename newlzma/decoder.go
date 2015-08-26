@@ -30,6 +30,7 @@ type CodecParams struct {
 	LC               int
 	LP               int
 	PB               int
+	Debug            byte
 	Flags            Flags
 }
 
@@ -40,6 +41,8 @@ type Decoder struct {
 	start            int64
 	uncompressedSize int64
 	flags            Flags
+	debug            byte
+	opCounter        int64
 	// reader for uncompressed data
 	lr *io.LimitedReader
 }
@@ -60,6 +63,7 @@ func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
 func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
 	d.flags = p.Flags
 	d.uncompressedSize = p.UncompressedSize
+	d.debug = p.Debug
 
 	if p.Flags&ResetDict != 0 {
 		d.dict.Reset()
@@ -156,9 +160,9 @@ func (d *Decoder) handleEOS() error {
 
 var errEOS = errors.New("EOS marker found")
 
-// readOp decodes the next operation from the compressed stream. It returns the
-// operation. If an explicit end of stream marker is identified the eos error is
-// returned.
+// readOp decodes the next operation from the compressed stream. It
+// returns the operation. If an explicit end of stream marker is
+// identified the eos error is returned.
 func (d *Decoder) readOp() (op operation, err error) {
 	// Value of the end of stream (EOS) marker
 	const eosDist = 1<<32 - 1
@@ -257,7 +261,16 @@ func (d *Decoder) readOp() (op operation, err error) {
 	return op, nil
 }
 
+func (d *Decoder) Printf(format string, args ...interface{}) (n int, err error) {
+	if d.debug != 0 {
+		return fmt.Printf(format, args...)
+	}
+	return 0, nil
+}
+
 func (d *Decoder) apply(op operation) error {
+	d.opCounter++
+	d.Printf("%d %s\n", d.opCounter, op)
 	switch x := op.(type) {
 	case match:
 		return d.dict.WriteMatch(x.distance, x.n)
