@@ -2,6 +2,7 @@ package newlzma
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -26,6 +27,8 @@ type Encoder struct {
 	flags            Flags
 	opFinder         opFinder
 	margin           int
+	// uncompressed
+	w io.Writer
 }
 
 // NewEncoder initializes a new encoder.
@@ -67,8 +70,6 @@ func (e *Encoder) Reset(w io.Writer, p CodecParams) error {
 	}
 	e.start = e.dict.Pos()
 
-	// TODO(uk): Uncompressed
-
 	if p.Flags&(ResetProperties|ResetDict) != 0 {
 		props, err := NewProperties(p.LC, p.LP, p.PB)
 		if err != nil {
@@ -79,18 +80,26 @@ func (e *Encoder) Reset(w io.Writer, p CodecParams) error {
 		e.state.Reset()
 	}
 
+	if p.Flags&Uncompressed != 0 {
+		e.w = w
+		return nil
+	}
+
 	var err error
 	if p.Flags&NoCompressedSize != 0 {
 		e.re, err = newRangeEncoder(w)
 	} else {
 		e.re, err = newRangeEncoderLimit(w, p.CompressedSize)
 	}
+	if err != nil {
+		return err
+	}
 
 	e.margin = opLenMargin
 	if e.flags&EOSMarker != 0 {
 		e.margin += 5
 	}
-	return err
+	return nil
 }
 
 // ErrCompressedSize and ErrUncompressedSize indicate that the provided
@@ -106,6 +115,33 @@ var (
 // if either the compressed size or the uncompressed size limit have
 // been reached.
 func (e *Encoder) Write(p []byte) (n int, err error) {
+	if e.flags&Uncompressed != 0 {
+		m := e.uncompressedSize - e.Uncompressed()
+		if m < int64(len(p)) {
+			p = p[:m]
+			err = ErrUncompressedSize
+		}
+		var werr error
+		n, werr = e.w.Write(p)
+		if werr != nil {
+			err = werr
+		}
+		p = p[:n]
+		var j int
+		for j < n {
+			k, werr := e.buf.Write(p[j:])
+			j += k
+			if werr != nil && werr != errNoSpace {
+				panic(fmt.Errorf("buf.Write: unexpected %s",
+					werr))
+			}
+			if werr = e.dict.Advance(k); werr != nil {
+				panic(fmt.Errorf("dict.Advance: unexpected %s",
+					werr))
+			}
+		}
+		return n, err
+	}
 	for {
 		k, err := e.buf.Write(p[n:])
 		n += k
@@ -277,6 +313,9 @@ var eosMatch = match{distance: maxDistance, n: MinMatchLen}
 // error will be returned. If there is remaining data in the buffer the
 // encoder needs to be reset.
 func (e *Encoder) Close() error {
+	if e.flags&Uncompressed != 0 {
+		return nil
+	}
 	err := e.compress(true)
 	if err != nil && err != ErrUncompressedSize && err != ErrCompressedSize {
 
