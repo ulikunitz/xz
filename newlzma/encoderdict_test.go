@@ -16,7 +16,7 @@ func TestEncoderDict(t *testing.T) {
 		t.Fatalf("initBuffer error %s", err)
 	}
 	var err error
-	if buf.matcher, err = newHashTable(dictCap, 3); err != nil {
+	if buf.matcher, err = newHashTable(bufCap, 3); err != nil {
 		t.Fatalf("newHashTable(%d, %d): error %s", dictCap, 3, err)
 	}
 	var e encoderDict
@@ -46,7 +46,7 @@ func TestEncoderDict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Matches error %s", err)
 	}
-	wdists := []int{8, 4}
+	wdists := []int{4, 8}
 	dstr, wdstr := fmt.Sprintf("%v", dists), fmt.Sprintf("%v", wdists)
 	if dstr != wdstr {
 		t.Fatalf("Matches returned %s; want %s", dstr, wdstr)

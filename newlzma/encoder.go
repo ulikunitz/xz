@@ -38,7 +38,7 @@ func NewEncoder(w io.Writer, p CodecParams) (e *Encoder, err error) {
 	if err = initBuffer(&e.buf.buffer, p.BufCap); err != nil {
 		return nil, err
 	}
-	if e.buf.matcher, err = newHashTable(p.DictCap, 4); err != nil {
+	if e.buf.matcher, err = newHashTable(p.BufCap, 4); err != nil {
 		return nil, err
 	}
 	if err = initEncoderDict(&e.dict, p.DictCap, &e.buf); err != nil {
