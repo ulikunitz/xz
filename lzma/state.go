@@ -4,21 +4,12 @@
 
 package lzma
 
-// states defines the overall State count
+// states defines the overall state count
 const states = 12
 
-// Interface supporting different dictionary implementation.
-// Particularly syncDict and hashDict need to support this interface.
-type dictionary interface {
-	offset() int64
-	byteAt(dist int64) byte
-	reset()
-}
-
-// State maintains the full state of the operation encoding process.
-type State struct {
-	Properties  Properties
-	dict        dictionary
+// state maintains the full state of the operation encoding process.
+type state struct {
+	properties  Properties
 	state       uint32
 	posBitMask  uint32
 	isMatch     [states << maxPosBits]prob
@@ -42,11 +33,11 @@ func initProbSlice(p []prob) {
 }
 
 // Reset sets all state information to the original values.
-func (s *State) Reset() {
-	lc, lp, pb := s.Properties.LC(), s.Properties.LP(), s.Properties.PB()
-	*s = State{
-		Properties: s.Properties,
-		dict:       s.dict,
+func (s *state) Reset() {
+	lc, lp, pb := s.properties.LC(), s.properties.LP(), s.properties.PB()
+	*s = state{
+		properties: s.properties,
+		// dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
 	}
 	initProbSlice(s.isMatch[:])
@@ -61,16 +52,14 @@ func (s *State) Reset() {
 	s.distCodec.init()
 }
 
-// NewState creates a new state using the provided dictionary
-// implementation.
-func NewState(p Properties, dict dictionary) *State {
-	s := &State{Properties: p, dict: dict}
+// initState initializes the state.
+func initState(s *state, p Properties) {
+	*s = state{properties: p}
 	s.Reset()
-	return s
 }
 
 // updateStateLiteral updates the state for a literal.
-func (s *State) updateStateLiteral() {
+func (s *state) updateStateLiteral() {
 	switch {
 	case s.state < 4:
 		s.state = 0
@@ -83,7 +72,7 @@ func (s *State) updateStateLiteral() {
 }
 
 // updateStateMatch updates the state for a match.
-func (s *State) updateStateMatch() {
+func (s *state) updateStateMatch() {
 	if s.state < 7 {
 		s.state = 7
 	} else {
@@ -92,7 +81,7 @@ func (s *State) updateStateMatch() {
 }
 
 // updateStateRep updates the state for a repetition.
-func (s *State) updateStateRep() {
+func (s *state) updateStateRep() {
 	if s.state < 7 {
 		s.state = 8
 	} else {
@@ -101,7 +90,7 @@ func (s *State) updateStateRep() {
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (s *State) updateStateShortRep() {
+func (s *state) updateStateShortRep() {
 	if s.state < 7 {
 		s.state = 9
 	} else {
@@ -110,18 +99,17 @@ func (s *State) updateStateShortRep() {
 }
 
 // states computes the states of the operation codec.
-func (s *State) states() (state1, state2, posState uint32) {
+func (s *state) states(dictHead int64) (state1, state2, posState uint32) {
 	state1 = s.state
-	posState = uint32(s.dict.offset()) & s.posBitMask
+	posState = uint32(dictHead) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
 	return
 }
 
 // litState computes the literal state.
-func (s *State) litState() uint32 {
-	prevByte := s.dict.byteAt(1)
-	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
-	litState := ((uint32(s.dict.offset()) & ((1 << lp) - 1)) << lc) |
-		(uint32(prevByte) >> (8 - lc))
+func (s *state) litState(prev byte, dictHead int64) uint32 {
+	lp, lc := uint(s.properties.LP()), uint(s.properties.LC())
+	litState := ((uint32(dictHead) & ((1 << lp) - 1)) << lc) |
+		(uint32(prev) >> (8 - lc))
 	return litState
 }

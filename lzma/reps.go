@@ -4,6 +4,8 @@
 
 package lzma
 
+import "errors"
+
 // reps represents the repetion table in the LZMA state.
 type reps [4]uint32
 
@@ -43,6 +45,8 @@ func (r *reps) addMatch(m match) {
 	}
 }
 
+var errOptype = errors.New("operation type unsupported")
+
 // addOp applies the given operation to the reps variable.
 func (r *reps) addOp(op operation) {
 	switch o := op.(type) {
@@ -79,7 +83,8 @@ func (r reps) optype(op operation) (t int, err error) {
 		g := r.index(dist)
 		if m.n == 1 {
 			if g != 0 {
-				return tUnknown, rangeError{"match length", m.n}
+				return tUnknown,
+					errors.New("match length out of range")
 			}
 			return tShortRep, nil
 		}

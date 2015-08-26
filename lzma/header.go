@@ -59,7 +59,7 @@ func putUint64LE(b []byte, x uint64) {
 const noHeaderLen uint64 = 1<<64 - 1
 
 // readHeader reads the classic LZMA header.
-func readHeader(r io.Reader) (p *Parameters, err error) {
+func readHeader(r io.Reader) (p *CodecParams, err error) {
 	b := make([]byte, 13)
 	_, err = io.ReadFull(r, b)
 	if err != nil {
@@ -68,49 +68,49 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	if b[0] > MaxProperties {
 		return nil, errors.New("invalid properties")
 	}
-	p = new(Parameters)
+	p = &CodecParams{
+		Flags: CNoCompressedSize,
+	}
 	props := Properties(b[0])
 	p.LC, p.LP, p.PB = props.LC(), props.LP(), props.PB()
-	p.DictSize = int64(uint32LE(b[1:]))
+	p.DictCap = int(uint32LE(b[1:]))
+	if p.DictCap < 0 {
+		return nil, errors.New(
+			"dictionary capacity exceeds maximum integer")
+	}
 	u := uint64LE(b[5:])
 	if u == noHeaderLen {
-		p.Size = 0
-		p.EOS = true
-		p.SizeInHeader = false
+		p.Flags |= CEOSMarker | CNoUncompressedSize
 	} else {
-		p.Size = int64(u)
-		if p.Size < 0 {
+		p.UncompressedSize = int64(u)
+		if p.UncompressedSize < 0 {
 			return nil, errors.New(
 				"uncompressed length in header out of range " +
-					"for an int65 value")
+					"for an int64 value")
 		}
-		p.EOS = false
-		p.SizeInHeader = true
 	}
-
-	// TODO: normalizeSizes(p)
 	return p, nil
 }
 
 // writeHeader writes the header for classic LZMA files.
-func writeHeader(w io.Writer, p *Parameters) error {
-	var err error
-	if err = p.Verify(); err != nil {
+func writeHeader(w io.Writer, p *CodecParams) error {
+	b := make([]byte, 13)
+	props, err := NewProperties(p.LC, p.LP, p.PB)
+	if err != nil {
 		return err
 	}
-	b := make([]byte, 13)
-	b[0] = byte(p.Properties())
-	if p.DictSize > MaxDictSize {
-		return lzmaError{fmt.Sprintf(
-			"DictSize %d exceeds maximum value", p.DictSize)}
+	b[0] = byte(props)
+	if p.DictCap > MaxDictCap {
+		return fmt.Errorf("DictCap %d exceeds maximum value",
+			p.DictCap)
 	}
-	putUint32LE(b[1:5], uint32(p.DictSize))
+	putUint32LE(b[1:5], uint32(p.DictCap))
 	var l uint64
-	if p.SizeInHeader {
-		if p.Size < 0 {
-			return negError{"p.Size", p.Size}
+	if p.Flags&CNoUncompressedSize == 0 {
+		if p.UncompressedSize < 0 {
+			return errors.New("uncompressed size is negative")
 		}
-		l = uint64(p.Size)
+		l = uint64(p.UncompressedSize)
 	} else {
 		l = noHeaderLen
 	}

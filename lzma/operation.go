@@ -5,6 +5,7 @@
 package lzma
 
 import (
+	"errors"
 	"fmt"
 	"unicode"
 )
@@ -13,13 +14,12 @@ import (
 // decoding.
 type operation interface {
 	Len() int
-	Apply(d *syncDict) error
 }
 
 // rep represents a repetition at the given distance and the given length
 type match struct {
 	// supports all possible distance values, including the eos marker
-	distance int64
+	distance int
 	// length
 	n int
 }
@@ -28,10 +28,10 @@ type match struct {
 // error is returned.
 func (m match) verify() error {
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		return rangeError{"distance", m.distance}
+		return errors.New("distance out of range")
 	}
-	if !(1 <= m.n && m.n <= MaxLength) {
-		return rangeError{"n", m.n}
+	if !(1 <= m.n && m.n <= MaxMatchLen) {
+		return errors.New("length out of range")
 	}
 	return nil
 }
@@ -39,7 +39,7 @@ func (m match) verify() error {
 // l return the l-value for the match, which is the difference of length
 // n and 2.
 func (m match) l() uint32 {
-	return uint32(m.n - MinLength)
+	return uint32(m.n - MinMatchLen)
 }
 
 // dist returns the dist value for the match, which is one less of the
@@ -53,15 +53,9 @@ func (m match) Len() int {
 	return m.n
 }
 
-// Apply writes the repetition match into the dictionary.
-func (m match) Apply(d *syncDict) error {
-	_, err := d.writeRep(m.distance, m.n)
-	return err
-}
-
 // String returns a string representation for the repetition.
 func (m match) String() string {
-	return fmt.Sprintf("match{%d,%d}", m.distance, m.n)
+	return fmt.Sprintf("M{%d,%d}", m.distance, m.n)
 }
 
 // lit represents a single byte literal.
@@ -74,11 +68,6 @@ func (l lit) Len() int {
 	return 1
 }
 
-// Apply writes the literal byte into the dictionary.
-func (l lit) Apply(d *syncDict) error {
-	return d.WriteByte(l.b)
-}
-
 // String returns a string representation for the literal.
 func (l lit) String() string {
 	var c byte
@@ -87,5 +76,5 @@ func (l lit) String() string {
 	} else {
 		c = '.'
 	}
-	return fmt.Sprintf("lit{%02x %c}", l.b, c)
+	return fmt.Sprintf("lit{%c/%02x}", c, l.b)
 }

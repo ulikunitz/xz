@@ -1,18 +1,27 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package lzma
 
 import "io"
 
-// NewReader creates a new LZMA reader.
+type Reader struct {
+	d Decoder
+}
+
 func NewReader(lzma io.Reader) (r *Reader, err error) {
-	p, err := readHeader(lzma)
+	params, err := readHeader(lzma)
 	if err != nil {
 		return nil, err
 	}
-	p.normalizeReaderSizes()
-	r, err = NewStreamReader(lzma, *p)
-	return
+	if params.DictCap < MinDictCap {
+		params.DictCap = MinDictCap
+	}
+	params.BufCap = params.DictCap
+	r = new(Reader)
+	if err = InitDecoder(&r.d, lzma, params); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (r *Reader) Read(p []byte) (n int, err error) {
+	return r.d.Read(p)
 }

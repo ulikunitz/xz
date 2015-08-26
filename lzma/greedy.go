@@ -4,29 +4,22 @@
 
 package lzma
 
-import "io"
-
 // greedyFinder is an OpFinder that implements a simple greedy algorithm
 // to finding operations.
 type greedyFinder struct{}
 
-// Greedy provides a greedy operation finder.
-var Greedy OpFinder
-
-// don't want to expose the initialization of Greedy
-func init() {
-	Greedy = greedyFinder{}
-}
+// check that greadyFinder satisfies the opFinder interface.
+// var _ opFinder = greedyFinder{}
 
 // miniState represents a minimal state to be used by optimizer.
 type miniState struct {
-	d hashDict
+	d encoderDict
 	r reps
 }
 
 // applyOp applies the LZMA operation to the miniState.
 func (ms *miniState) applyOp(op operation) {
-	if _, err := ms.d.move(op.Len()); err != nil {
+	if err := ms.d.Advance(op.Len()); err != nil {
 		panic(err)
 	}
 	ms.r.addOp(op)
@@ -39,22 +32,20 @@ func weight(n, bits int) int {
 }
 
 // bestMatch provides the longest match reachable over the list of
-// provided offsets.
-func bestOp(ms *miniState, litop lit, offsets []int64) operation {
-	op := operation(litop)
+// provided dists
+func bestOp(ms *miniState, literal byte, distances []int) operation {
+	op := operation(lit{literal})
 	w := weight(1, ms.r.opBits(op))
-	prev := ms.d.head - 1
-	for _, off := range offsets {
-		n := ms.d.buf.equalBytes(ms.d.head, off, MaxLength)
+	for _, distance := range distances {
+		n := ms.d.MatchLen(distance)
 		if n == 0 {
 			continue
 		}
-		dist := uint32(prev - off)
-		if n == 1 && dist != ms.r[0] {
+		if n == 1 && uint32(distance-minDistance) != ms.r[0] {
 			continue
 		}
-		m := match{distance: int64(dist) + 1, n: n}
-		v := weight(m.n, ms.r.opBits(m))
+		m := match{distance: distance, n: n}
+		v := weight(n, ms.r.opBits(m))
 		if v > w {
 			w = v
 			op = m
@@ -63,48 +54,19 @@ func bestOp(ms *miniState, litop lit, offsets []int64) operation {
 	return op
 }
 
-// potentialOffsets returns a list of offset positions where a match to
-// at the current dictionary head can be identified.
-func potentialOffsets(ms *miniState, p []byte) []int64 {
-	prev, start := ms.d.head-1, ms.d.start()
-	offs := make([]int64, 0, 32)
-	var off int64
-	// add repetitions
-	for _, dist := range ms.r {
-		off = prev - int64(dist)
-		if off >= start {
-			offs = append(offs, off)
-		}
-	}
-	off = prev - 9
-	if off < start {
-		off = start
-	}
-	for ; off <= prev; off++ {
-		offs = append(offs, off)
-	}
-	if len(p) == 4 {
-		// distances from the hash table
-		offs = append(offs, ms.d.t4.Offsets(p)...)
-	}
-	return offs
-}
-
 // findOp finds a single operation at the current head of the hash dictionary.
 func findOp(ms *miniState) operation {
-	p := make([]byte, 4)
-	n, err := ms.d.buf.ReadAt(p, ms.d.head)
-	if err != nil && err != io.EOF {
+	l, err := ms.d.Literal()
+	if err != nil {
 		panic(err)
 	}
-	if n <= 0 {
-		if n < 0 {
-			panic("ReadAt returned negative n")
-		}
-		panic(errEmptyBuf)
+	distances, err := ms.d.Matches()
+	if err != nil {
+		panic(err)
 	}
-	offs := potentialOffsets(ms, p[:n])
-	op := bestOp(ms, lit{p[0]}, offs)
+	// add small distances
+	distances = append(distances, 1, 2, 3, 4, 5, 6, 7, 8)
+	op := bestOp(ms, l, distances)
 	return op
 }
 
@@ -113,23 +75,29 @@ func findOp(ms *miniState) operation {
 // buffer will be covered, if it is not set the last operation reaching
 // the head will not be output. This functionality has been included to
 // support the extension of the last operation if new data comes in.
-func (g greedyFinder) findOps(s *State, all bool) []operation {
-	sd, ok := s.dict.(*hashDict)
-	if !ok {
-		panic("state doesn't contain hashDict")
-	}
-	ms := miniState{d: *sd, r: reps(s.rep)}
+func (g greedyFinder) findOps(d *encoderDict, r reps, all bool) []operation {
+	ms := miniState{d: *d, r: r}
 	ops := make([]operation, 0, 256)
-	for ms.d.head < ms.d.buf.top {
-		op := findOp(&ms)
-		ms.applyOp(op)
-		ops = append(ops, op)
-	}
-	if !all && len(ops) > 0 {
-		ops = ops[:len(ops)-1]
+	if ms.d.Buffered() > 0 {
+		for {
+			op := findOp(&ms)
+			if op.Len() >= ms.d.Buffered() {
+				if op.Len() > ms.d.Buffered() {
+					panic("op length exceeds buffered")
+				}
+				if all {
+					ms.applyOp(op)
+					ops = append(ops, op)
+				}
+				break
+
+			}
+			ms.applyOp(op)
+			ops = append(ops, op)
+		}
 	}
 	return ops
 }
 
-// String implements the string function for the greedyFinder.
-func (g greedyFinder) String() string { return "greedy finder" }
+// name returns "greedy" for the greedy finder.
+func (g greedyFinder) name() string { return "greedy" }

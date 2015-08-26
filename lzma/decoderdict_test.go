@@ -1,4 +1,4 @@
-package newlzma
+package lzma
 
 import (
 	"fmt"
