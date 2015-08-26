@@ -64,6 +64,8 @@ func findOp(ms *miniState) operation {
 	if err != nil {
 		panic(err)
 	}
+	// add small distances
+	distances = append(distances, 1, 2, 3, 4, 5, 6, 7, 8)
 	op := bestOp(ms, l, distances)
 	return op
 }
