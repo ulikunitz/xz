@@ -47,6 +47,8 @@ func (b *encoderBuffer) Discard(n int) (discarded int, err error) {
 func (b *encoderBuffer) ReadByteAt(pos int64) (c byte, err error) {
 	d := b.Pos() - pos
 	if !(0 < d && d <= int64(b.Buffered())) {
+		fmt.Printf("pos %d b.Pos %d d %d buffered %d\n",
+			pos, b.Pos(), d, b.Buffered())
 		return 0, errors.New("ReadByteAt: position not buffered")
 	}
 	i := b.front - int(d)

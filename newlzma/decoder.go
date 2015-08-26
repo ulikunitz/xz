@@ -6,20 +6,20 @@ import (
 	"io"
 )
 
-type Flags int
+type CFlags int
 
 const (
-	EOSMarker Flags = 1 << iota
-	Uncompressed
-	NoUncompressedSize
-	NoCompressedSize
-	ResetState
-	ResetProperties
-	ResetDict
+	CEOSMarker CFlags = 1 << iota
+	CUncompressed
+	CNoUncompressedSize
+	CNoCompressedSize
+	CResetState
+	CResetProperties
+	CResetDict
 )
 
 const (
-	eos = ResetDict << (iota + 1)
+	ceos = CResetDict << (iota + 1)
 )
 
 type CodecParams struct {
@@ -31,7 +31,7 @@ type CodecParams struct {
 	LP               int
 	PB               int
 	Debug            byte
-	Flags            Flags
+	Flags            CFlags
 }
 
 type Decoder struct {
@@ -40,24 +40,24 @@ type Decoder struct {
 	rd               *rangeDecoder
 	start            int64
 	uncompressedSize int64
-	flags            Flags
+	flags            CFlags
 	debug            byte
 	opCounter        int64
 	// reader for uncompressed data
 	lr *io.LimitedReader
 }
 
-func InitDecoder(d *Decoder, r io.Reader, p CodecParams) error {
+func InitDecoder(d *Decoder, r io.Reader, p *CodecParams) error {
 	*d = Decoder{}
 	if err := initDecoderDict(&d.dict, p.DictCap, p.BufCap); err != nil {
 		return err
 	}
-	p.Flags |= ResetDict
-	d.Reset(r, p)
-	return nil
+	p.Flags |= CResetDict
+	err := d.Reset(r, p)
+	return err
 }
 
-func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
+func NewDecoder(r io.Reader, p *CodecParams) (d *Decoder, err error) {
 	d = new(Decoder)
 	if err = InitDecoder(d, r, p); err != nil {
 		return nil, err
@@ -65,36 +65,36 @@ func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
 	return d, nil
 }
 
-func (d *Decoder) Reset(r io.Reader, p CodecParams) error {
+func (d *Decoder) Reset(r io.Reader, p *CodecParams) error {
 	d.flags = p.Flags
 	d.uncompressedSize = p.UncompressedSize
 	d.debug = p.Debug
 
-	if p.Flags&ResetDict != 0 {
+	if p.Flags&CResetDict != 0 {
 		d.dict.Reset()
 	}
 	d.start = d.dict.head
 
-	if d.flags&Uncompressed != 0 {
-		if d.flags&NoUncompressedSize != 0 {
+	if d.flags&CUncompressed != 0 {
+		if d.flags&CNoUncompressedSize != 0 {
 			panic("uncompressed segment needs size")
 		}
 		d.lr = &io.LimitedReader{R: r, N: d.uncompressedSize}
 		return nil
 	}
 
-	if p.Flags&(ResetProperties|ResetDict) != 0 {
+	if p.Flags&(CResetProperties|CResetDict) != 0 {
 		props, err := NewProperties(p.LC, p.LP, p.PB)
 		if err != nil {
 			return err
 		}
 		initState(&d.state, props)
-	} else if p.Flags&ResetState != 0 {
+	} else if p.Flags&CResetState != 0 {
 		d.state.Reset()
 	}
 
 	var err error
-	if p.Flags&NoCompressedSize != 0 {
+	if p.Flags&CNoCompressedSize != 0 {
 		d.rd, err = newRangeDecoder(r)
 	} else {
 		d.rd, err = newRangeDecoderLimit(r, p.CompressedSize)
@@ -113,17 +113,17 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 }
 
 func (d *Decoder) verifyEOS() error {
-	if d.flags&NoCompressedSize == 0 && d.rd.r.limit != d.rd.r.n {
+	if d.flags&CNoCompressedSize == 0 && d.rd.r.limit != d.rd.r.n {
 		return ErrCompressedSizeWrong
 	}
-	if d.flags&NoUncompressedSize == 0 && d.uncompressedSize != d.Uncompressed() {
+	if d.flags&CNoUncompressedSize == 0 && d.uncompressedSize != d.Uncompressed() {
 		return ErrUncompressedSizeWrong
 	}
 	return nil
 }
 
 func (d *Decoder) handleEOSMarker() error {
-	d.flags |= eos
+	d.flags |= ceos
 	if !d.rd.possiblyAtEnd() {
 		return ErrMoreData
 	}
@@ -131,8 +131,8 @@ func (d *Decoder) handleEOSMarker() error {
 }
 
 func (d *Decoder) handleEOS() error {
-	d.flags |= eos
-	if d.flags&EOSMarker != 0 {
+	d.flags |= ceos
+	if d.flags&CEOSMarker != 0 {
 		_, err := d.readOp()
 		if err != nil {
 			if err == errEOS {
@@ -143,7 +143,7 @@ func (d *Decoder) handleEOS() error {
 		return ErrMissingEOSMarker
 	}
 	if !d.rd.possiblyAtEnd() ||
-		(d.flags&NoCompressedSize == 0 && d.rd.r.n < d.rd.r.limit) {
+		(d.flags&CNoCompressedSize == 0 && d.rd.r.n < d.rd.r.limit) {
 
 		op, err := d.readOp()
 		if err != nil {
@@ -286,7 +286,7 @@ func (d *Decoder) apply(op operation) error {
 }
 
 func (d *Decoder) fillDict() error {
-	if d.flags&eos != 0 {
+	if d.flags&ceos != 0 {
 		return nil
 	}
 	for d.dict.Available() >= MaxMatchLen {
@@ -297,7 +297,7 @@ func (d *Decoder) fillDict() error {
 		case errEOS:
 			return nil
 		case io.EOF:
-			d.flags |= eos
+			d.flags |= ceos
 			return io.ErrUnexpectedEOF
 		default:
 			return err
@@ -305,12 +305,12 @@ func (d *Decoder) fillDict() error {
 		if err = d.apply(op); err != nil {
 			return err
 		}
-		if d.flags&NoUncompressedSize == 0 && d.Uncompressed() >=
+		if d.flags&CNoUncompressedSize == 0 && d.Uncompressed() >=
 			d.uncompressedSize {
 
 			return d.handleEOS()
 		}
-		if d.flags&NoCompressedSize == 0 && d.rd.r.n >= d.rd.r.limit {
+		if d.flags&CNoCompressedSize == 0 && d.rd.r.n >= d.rd.r.limit {
 			return d.handleEOS()
 		}
 	}
@@ -318,17 +318,17 @@ func (d *Decoder) fillDict() error {
 }
 
 func (d *Decoder) fillDictUncompressed() error {
-	if d.flags&Uncompressed == 0 {
+	if d.flags&CUncompressed == 0 {
 		panic("Uncompressed flag not set")
 	}
-	if d.flags&eos != 0 {
+	if d.flags&ceos != 0 {
 		return nil
 	}
 	for d.dict.Available() >= 0 {
 		_, err := io.CopyN(&d.dict, d.lr, int64(d.dict.Available()))
 		if err != nil {
 			if err == io.EOF {
-				d.flags |= eos
+				d.flags |= ceos
 				if d.lr.N != 0 {
 					return ErrUncompressedSizeWrong
 				}
@@ -348,7 +348,7 @@ var (
 
 func (d *Decoder) Read(p []byte) (n int, err error) {
 	fillDict := d.fillDict
-	if d.flags&Uncompressed != 0 {
+	if d.flags&CUncompressed != 0 {
 		fillDict = d.fillDictUncompressed
 	}
 
@@ -362,7 +362,7 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 		if err != nil {
 			panic(fmt.Errorf("dictionary read error %s", err))
 		}
-		if k == 0 && d.flags&eos != 0 {
+		if k == 0 && d.flags&ceos != 0 {
 			return n, io.EOF
 		}
 		n += k

@@ -26,18 +26,18 @@ func TestDecoder(t *testing.T) {
 			t.Fatalf("io.Readfull error %s", err)
 		}
 		const capacity = 0x800000
-		params := CodecParams{DictCap: capacity, BufCap: capacity}
+		params := &CodecParams{DictCap: capacity, BufCap: capacity}
 		props := Properties(p[0])
 		params.LC = props.LC()
 		params.LP = props.LP()
 		params.PB = props.PB()
-		params.Flags = NoUncompressedSize | NoCompressedSize
+		params.Flags = CNoUncompressedSize | CNoCompressedSize
 		if i > 0 {
-			params.Flags &^= NoUncompressedSize
+			params.Flags &^= CNoUncompressedSize
 			params.UncompressedSize = int64(len(want))
 		}
 		if i == 2 {
-			params.Flags &^= NoCompressedSize
+			params.Flags &^= CNoCompressedSize
 			fi, err := f.Stat()
 			if err != nil {
 				t.Fatalf("f.Stat error %s", err)
@@ -68,8 +68,8 @@ func TestDecoderUncompressed(t *testing.T) {
 	want := "The quick brown fox jumps over the lazy dog.\n"
 	f := strings.NewReader(want)
 	const capacity = 0x800000
-	params := CodecParams{DictCap: capacity, BufCap: capacity}
-	params.Flags = Uncompressed
+	params := &CodecParams{DictCap: capacity, BufCap: capacity}
+	params.Flags = CUncompressed
 	params.UncompressedSize = int64(len(want))
 	r, err := NewDecoder(f, params)
 	if err != nil {

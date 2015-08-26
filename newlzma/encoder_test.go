@@ -25,13 +25,13 @@ var testString = `LZMA decoder test example
 `
 
 func TestEncoderCycle(t *testing.T) {
-	params := CodecParams{
+	params := &CodecParams{
 		LC:      2,
 		LP:      0,
 		PB:      2,
 		DictCap: minDictCap,
 		BufCap:  minDictCap + 1024,
-		Flags:   EOSMarker | NoUncompressedSize | NoCompressedSize,
+		Flags:   CEOSMarker | CNoUncompressedSize | CNoCompressedSize,
 	}
 	var buf bytes.Buffer
 	w, err := NewEncoder(&buf, params)
@@ -74,14 +74,14 @@ func TestEncoderCycle(t *testing.T) {
 }
 
 func TestEncoderUncompressed(t *testing.T) {
-	params := CodecParams{
+	params := &CodecParams{
 		LC:               2,
 		LP:               0,
 		PB:               2,
 		DictCap:          minDictCap,
 		BufCap:           minDictCap + 1024,
 		UncompressedSize: 1<<16 - 1,
-		Flags:            Uncompressed | NoCompressedSize,
+		Flags:            CUncompressed | CNoCompressedSize,
 	}
 	var buf bytes.Buffer
 	w, err := NewEncoder(&buf, params)

@@ -24,14 +24,14 @@ type Encoder struct {
 	re               *rangeEncoder
 	start            int64
 	uncompressedSize int64
-	flags            Flags
+	flags            CFlags
 	opFinder         opFinder
 	margin           int
 	// uncompressed
 	w io.Writer
 }
 
-func InitEncoder(e *Encoder, w io.Writer, p CodecParams) error {
+func InitEncoder(e *Encoder, w io.Writer, p *CodecParams) error {
 	*e = Encoder{opFinder: greedyFinder{}}
 
 	var err error
@@ -45,16 +45,16 @@ func InitEncoder(e *Encoder, w io.Writer, p CodecParams) error {
 		return err
 	}
 
-	p.Flags |= ResetDict
-	e.Reset(w, p)
-	return nil
+	p.Flags |= CResetDict
+	err = e.Reset(w, p)
+	return err
 }
 
 // NewEncoder initializes a new encoder.
 //
 // The parameters CompressedSize and UncompressedSize have the functions
 // of limits for the amount of data to be compressed or uncompressed.
-func NewEncoder(w io.Writer, p CodecParams) (e *Encoder, err error) {
+func NewEncoder(w io.Writer, p *CodecParams) (e *Encoder, err error) {
 	e = new(Encoder)
 	if err = InitEncoder(e, w, p); err != nil {
 		return nil, err
@@ -65,36 +65,36 @@ func NewEncoder(w io.Writer, p CodecParams) (e *Encoder, err error) {
 // Reset reinitializes the encoder with a new writer. Data that has not
 // been compressed so far will remain to be stored in the buffer. The
 // buffer capacity and dictionary capacity will not be changed.
-func (e *Encoder) Reset(w io.Writer, p CodecParams) error {
+func (e *Encoder) Reset(w io.Writer, p *CodecParams) error {
 	e.flags = p.Flags
-	if p.Flags&NoUncompressedSize != 0 {
+	if p.Flags&CNoUncompressedSize != 0 {
 		e.uncompressedSize = maxInt64
 	} else {
 		e.uncompressedSize = p.UncompressedSize
 	}
 
-	if p.Flags&ResetDict != 0 {
+	if p.Flags&CResetDict != 0 {
 		e.dict.Reset()
 	}
 	e.start = e.dict.Pos()
 
-	if p.Flags&(ResetProperties|ResetDict) != 0 {
+	if p.Flags&(CResetProperties|CResetDict) != 0 {
 		props, err := NewProperties(p.LC, p.LP, p.PB)
 		if err != nil {
 			return err
 		}
 		initState(&e.state, props)
-	} else if p.Flags&ResetState != 0 {
+	} else if p.Flags&CResetState != 0 {
 		e.state.Reset()
 	}
 
-	if p.Flags&Uncompressed != 0 {
+	if p.Flags&CUncompressed != 0 {
 		e.w = w
 		return nil
 	}
 
 	var err error
-	if p.Flags&NoCompressedSize != 0 {
+	if p.Flags&CNoCompressedSize != 0 {
 		e.re, err = newRangeEncoder(w)
 	} else {
 		e.re, err = newRangeEncoderLimit(w, p.CompressedSize)
@@ -104,7 +104,7 @@ func (e *Encoder) Reset(w io.Writer, p CodecParams) error {
 	}
 
 	e.margin = opLenMargin
-	if e.flags&EOSMarker != 0 {
+	if e.flags&CEOSMarker != 0 {
 		e.margin += 5
 	}
 	return nil
@@ -123,7 +123,7 @@ var (
 // if either the compressed size or the uncompressed size limit have
 // been reached.
 func (e *Encoder) Write(p []byte) (n int, err error) {
-	if e.flags&Uncompressed != 0 {
+	if e.flags&CUncompressed != 0 {
 		m := e.uncompressedSize - e.Uncompressed()
 		if m < int64(len(p)) {
 			p = p[:m]
@@ -263,17 +263,29 @@ func (e *Encoder) writeMatch(m match) error {
 	return e.state.repLenCodec.Encode(e.re, n, posState)
 }
 
+func (e *Encoder) sanityCheck(s string) {
+	if e.buf.Buffered() != e.dict.Buffered()+e.dict.Len() {
+		fmt.Printf("%s buffered %d; want %d (%d+%d) cap %d\n",
+			s, e.buf.Buffered(), e.dict.Buffered()+e.dict.Len(),
+			e.dict.Buffered(), e.dict.Len(), e.dict.capacity)
+		panic("inconsistent buffer sizes")
+	}
+}
+
 func (e *Encoder) discardOp(op operation) error {
+	e.sanityCheck("#1")
 	n := op.Len()
+	m := n + e.dict.Len() - e.dict.capacity
+	if m > 0 {
+		if _, err := e.buf.Discard(m); err != nil {
+			return err
+		}
+	}
 	if err := e.dict.Advance(n); err != nil {
 		return err
 	}
-	n += e.dict.Len() - e.dict.capacity
-	if n <= 0 {
-		return nil
-	}
-	_, err := e.buf.Discard(n)
-	return err
+	e.sanityCheck("#2")
+	return nil
 }
 
 // writeOp writes an operation value into the stream. It checks whether there
@@ -301,9 +313,6 @@ func (e *Encoder) writeOp(op operation) error {
 
 func (e *Encoder) compress(all bool) error {
 	ops := e.opFinder.findOps(&e.dict, reps(e.state.rep), all)
-	if len(ops) == 0 {
-		panic("no operations found")
-	}
 	for _, op := range ops {
 		if err := e.writeOp(op); err != nil {
 			return err
@@ -321,7 +330,7 @@ var eosMatch = match{distance: maxDistance, n: MinMatchLen}
 // error will be returned. If there is remaining data in the buffer the
 // encoder needs to be reset.
 func (e *Encoder) Close() error {
-	if e.flags&Uncompressed != 0 {
+	if e.flags&CUncompressed != 0 {
 		return nil
 	}
 	err := e.compress(true)
@@ -329,7 +338,7 @@ func (e *Encoder) Close() error {
 
 		return err
 	}
-	if e.flags&EOSMarker != 0 {
+	if e.flags&CEOSMarker != 0 {
 		if err := e.writeMatch(eosMatch); err != nil {
 			return err
 		}
