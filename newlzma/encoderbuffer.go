@@ -13,6 +13,7 @@ import (
 // Matches function.
 type matcher interface {
 	io.Writer
+	Discard(n int) (discarded int, err error)
 	WordLen() int
 	Pos() int64
 	Matches(word []byte) (positions []int64, err error)
@@ -29,6 +30,16 @@ func (b *encoderBuffer) Write(p []byte) (n int, err error) {
 	if merr != nil {
 		panic(fmt.Errorf("matcher wrote %d of %d bytes because of %s",
 			k, n, merr))
+	}
+	return
+}
+
+func (b *encoderBuffer) Discard(n int) (discarded int, err error) {
+	discarded, err = b.buffer.Discard(n)
+	k, merr := b.matcher.Discard(discarded)
+	if merr != nil {
+		panic(fmt.Errorf("matcher discarded %d of %d bytes because of %s",
+			k, discarded, merr))
 	}
 	return
 }

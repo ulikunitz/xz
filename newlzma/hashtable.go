@@ -180,6 +180,10 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+func (t *hashTable) Discard(n int) (discarded int, err error) {
+	return n, nil
+}
+
 // posU32 converts the unsigned uint32 value to an int64 position.
 func (t *hashTable) posU32(u uint32) int64 {
 	h := t.hoff &^ (1<<32 - 1)
