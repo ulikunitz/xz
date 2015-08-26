@@ -114,10 +114,10 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 
 func (d *Decoder) verifyEOS() error {
 	if d.flags&CNoCompressedSize == 0 && d.rd.r.limit != d.rd.r.n {
-		return ErrCompressedSizeWrong
+		return ErrCompressedSize
 	}
 	if d.flags&CNoUncompressedSize == 0 && d.uncompressedSize != d.Uncompressed() {
-		return ErrUncompressedSizeWrong
+		return ErrUncompressedSize
 	}
 	return nil
 }
@@ -330,7 +330,7 @@ func (d *Decoder) fillDictUncompressed() error {
 			if err == io.EOF {
 				d.flags |= ceos
 				if d.lr.N != 0 {
-					return ErrUncompressedSizeWrong
+					return ErrUncompressedSize
 				}
 				return nil
 			}
@@ -340,10 +340,10 @@ func (d *Decoder) fillDictUncompressed() error {
 }
 
 var (
-	ErrMissingEOSMarker      = errors.New("EOS marker is missing")
-	ErrMoreData              = errors.New("more data after EOS")
-	ErrCompressedSizeWrong   = errors.New("compressed size wrong")
-	ErrUncompressedSizeWrong = errors.New("uncompressed size wrong")
+	ErrMissingEOSMarker = errors.New("EOS marker is missing")
+	ErrMoreData         = errors.New("more data after EOS")
+	ErrCompressedSize   = errors.New("compressed size wrong")
+	ErrUncompressedSize = errors.New("uncompressed size wrong")
 )
 
 func (d *Decoder) Read(p []byte) (n int, err error) {

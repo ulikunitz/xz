@@ -110,12 +110,12 @@ func (e *Encoder) Reset(w io.Writer, p *CodecParams) error {
 	return nil
 }
 
-// ErrCompressedSize and ErrUncompressedSize indicate that the provided
+// ErrCompressedLimit and ErrUncompressedLimit indicate that the provided
 // sizes have been reached. The encoder must be closed and reset to
 // compress the remaining buffered data.
 var (
-	ErrCompressedSize   = errors.New("compressed size reached")
-	ErrUncompressedSize = errors.New("uncompressed size reached")
+	ErrCompressedLimit   = errors.New("compressed size limit reached")
+	ErrUncompressedLimit = errors.New("uncompressed size limit reached")
 )
 
 // Write writes the provided bytes into the buffer. If the buffer is
@@ -127,7 +127,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 		m := e.uncompressedSize - e.Uncompressed()
 		if m < int64(len(p)) {
 			p = p[:m]
-			err = ErrUncompressedSize
+			err = ErrUncompressedLimit
 		}
 		var werr error
 		n, werr = e.w.Write(p)
@@ -292,10 +292,10 @@ func (e *Encoder) discardOp(op operation) error {
 // is still enough space available using an upper limit for the size required.
 func (e *Encoder) writeOp(op operation) error {
 	if e.re.Available() < int64(e.margin) {
-		return ErrCompressedSize
+		return ErrCompressedLimit
 	}
 	if e.uncompressedSize-e.Uncompressed() < int64(op.Len()) {
-		return ErrUncompressedSize
+		return ErrUncompressedLimit
 	}
 	var err error
 	switch x := op.(type) {
@@ -334,7 +334,7 @@ func (e *Encoder) Close() error {
 		return nil
 	}
 	err := e.compress(true)
-	if err != nil && err != ErrUncompressedSize && err != ErrCompressedSize {
+	if err != nil && err != ErrUncompressedLimit && err != ErrCompressedLimit {
 
 		return err
 	}
