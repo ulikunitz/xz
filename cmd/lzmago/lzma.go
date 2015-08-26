@@ -34,16 +34,15 @@ const lzmaSuffix = ".lzma"
 // The default preset is 6.
 // Following list provides exponents of two for the dictionary sizes:
 // 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
-func parameters(preset int) lzma.Parameters {
-	dictSizeExps := []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
-	dictSize := int64(1) << dictSizeExps[preset]
-	p := lzma.Parameters{
-		LC:           3,
-		LP:           0,
-		PB:           2,
-		DictSize:     dictSize,
-		EOS:          true,
-		ExtraBufSize: 16 * 1024,
+func parameters(preset int) lzma.Params {
+	dictCapExps := []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
+	dictCap := 1 << dictCapExps[preset]
+	p := lzma.Params{
+		LC:      3,
+		LP:      0,
+		PB:      2,
+		DictCap: dictCap,
+		Flags:   lzma.EOS | lzma.NoUncompressedSize,
 	}
 	return p
 }
@@ -77,7 +76,7 @@ func (p lzmaCompressor) compress(w io.Writer, r io.Reader, preset int) (n int64,
 	}
 	params := parameters(preset)
 	bw := bufio.NewWriter(w)
-	lw, err := lzma.NewWriterParams(bw, params)
+	lw, err := lzma.NewWriterParams(bw, &params)
 	if err != nil {
 		return
 	}
