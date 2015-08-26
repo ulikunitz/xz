@@ -47,16 +47,21 @@ type Decoder struct {
 	lr *io.LimitedReader
 }
 
-func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
-	d = &Decoder{}
-
-	if err = initDecoderDict(&d.dict, p.DictCap, p.BufCap); err != nil {
-		return nil, err
+func InitDecoder(d *Decoder, r io.Reader, p CodecParams) error {
+	*d = Decoder{}
+	if err := initDecoderDict(&d.dict, p.DictCap, p.BufCap); err != nil {
+		return err
 	}
-
 	p.Flags |= ResetDict
 	d.Reset(r, p)
+	return nil
+}
 
+func NewDecoder(r io.Reader, p CodecParams) (d *Decoder, err error) {
+	d = new(Decoder)
+	if err = InitDecoder(d, r, p); err != nil {
+		return nil, err
+	}
 	return d, nil
 }
 

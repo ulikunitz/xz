@@ -31,26 +31,34 @@ type Encoder struct {
 	w io.Writer
 }
 
+func InitEncoder(e *Encoder, w io.Writer, p CodecParams) error {
+	*e = Encoder{opFinder: greedyFinder{}}
+
+	var err error
+	if err = initBuffer(&e.buf.buffer, p.BufCap); err != nil {
+		return err
+	}
+	if e.buf.matcher, err = newHashTable(p.BufCap, 4); err != nil {
+		return err
+	}
+	if err = initEncoderDict(&e.dict, p.DictCap, &e.buf); err != nil {
+		return err
+	}
+
+	p.Flags |= ResetDict
+	e.Reset(w, p)
+	return nil
+}
+
 // NewEncoder initializes a new encoder.
 //
 // The parameters CompressedSize and UncompressedSize have the functions
 // of limits for the amount of data to be compressed or uncompressed.
 func NewEncoder(w io.Writer, p CodecParams) (e *Encoder, err error) {
-	e = &Encoder{opFinder: greedyFinder{}}
-
-	if err = initBuffer(&e.buf.buffer, p.BufCap); err != nil {
+	e = new(Encoder)
+	if err = InitEncoder(e, w, p); err != nil {
 		return nil, err
 	}
-	if e.buf.matcher, err = newHashTable(p.BufCap, 4); err != nil {
-		return nil, err
-	}
-	if err = initEncoderDict(&e.dict, p.DictCap, &e.buf); err != nil {
-		return nil, err
-	}
-
-	p.Flags |= ResetDict
-	e.Reset(w, p)
-
 	return e, nil
 }
 
