@@ -141,8 +141,8 @@ func Example_writer() {
 func TestWriter_Size(t *testing.T) {
 	p := Default
 	p.UncompressedSize = 10
-	p.Flags &^= NoUncompressedSize
-	p.Flags |= EOS
+	p.IgnoreUncompressedSize = false
+	p.EOS = true
 	buf := new(bytes.Buffer)
 	w, err := NewWriterParams(buf, &p)
 	if err != nil {

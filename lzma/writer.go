@@ -17,45 +17,47 @@ const (
 	MaxDictCap = 1<<32 - 1
 )
 
-type Params struct {
-	LC               int
-	LP               int
-	PB               int
-	DictCap          int
-	UncompressedSize int64
-	Flags            Flags
+type Parameters struct {
+	LC                     int
+	LP                     int
+	PB                     int
+	DictCap                int
+	UncompressedSize       int64
+	EOS                    bool
+	IgnoreUncompressedSize bool
 }
 
-func verifyParams(p *Params) error {
+func verifyParameters(p *Parameters) error {
 	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
 	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
 		return errors.New("DictCap out of range")
 	}
-	if p.Flags&NoUncompressedSize == 0 {
+	if p.IgnoreUncompressedSize {
+		if !p.EOS {
+			return errors.New("if no uncompressed size is given, " +
+				"EOS must be set")
+		}
+	} else {
 		if p.UncompressedSize < 0 {
 			return errors.New(
 				"UncompressedSize must be greate or equal 0")
-		}
-	} else {
-		if p.Flags&EOS == 0 {
-			return errors.New("if no uncompressed size is given, " +
-				"EOS must be set")
 		}
 	}
 	return nil
 }
 
-var Default = Params{
+var Default = Parameters{
 	LC:      3,
 	LP:      0,
 	PB:      2,
 	DictCap: 8 * 1024 * 1024,
-	Flags:   EOS | NoUncompressedSize,
+	EOS:     true,
+	IgnoreUncompressedSize: true,
 }
 
-func convertParams(p *Params) CodecParams {
+func convertParameters(p *Parameters) CodecParams {
 	c := CodecParams{
 		DictCap:          p.DictCap,
 		BufCap:           p.DictCap + 1<<13,
@@ -65,10 +67,10 @@ func convertParams(p *Params) CodecParams {
 		PB:               p.PB,
 		Flags:            CNoCompressedSize,
 	}
-	if p.Flags&EOS != 0 {
+	if p.EOS {
 		c.Flags |= CEOSMarker
 	}
-	if p.Flags&NoUncompressedSize != 0 {
+	if p.IgnoreUncompressedSize {
 		c.Flags |= CNoUncompressedSize
 	}
 	return c
@@ -82,11 +84,11 @@ func NewWriter(lzma io.Writer) (w *Writer, err error) {
 	return NewWriterParams(lzma, &Default)
 }
 
-func NewWriterParams(lzma io.Writer, p *Params) (w *Writer, err error) {
-	if err = verifyParams(p); err != nil {
+func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
+	if err = verifyParameters(p); err != nil {
 		return nil, err
 	}
-	cparams := convertParams(p)
+	cparams := convertParameters(p)
 	if err := writeHeader(lzma, &cparams); err != nil {
 		return nil, err
 	}
