@@ -5,13 +5,6 @@ import (
 	"io"
 )
 
-type Flags int
-
-const (
-	EOS Flags = 1 << iota
-	NoUncompressedSize
-)
-
 const (
 	MinDictCap = 1 << 12
 	MaxDictCap = 1<<32 - 1
