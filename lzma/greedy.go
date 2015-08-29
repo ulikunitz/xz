@@ -19,9 +19,7 @@ type miniState struct {
 
 // applyOp applies the LZMA operation to the miniState.
 func (ms *miniState) applyOp(op operation) {
-	if err := ms.d.Advance(op.Len()); err != nil {
-		panic(err)
-	}
+	ms.d.Advance(op.Len())
 	ms.r.addOp(op)
 }
 

@@ -143,10 +143,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 				panic(fmt.Errorf("buf.Write: unexpected %s",
 					werr))
 			}
-			if werr = e.dict.Advance(k); werr != nil {
-				panic(fmt.Errorf("dict.Advance: unexpected %s",
-					werr))
-			}
+			e.dict.Advance(k)
 		}
 		return n, err
 	}
@@ -281,9 +278,7 @@ func (e *Encoder) discardOp(op operation) error {
 			return err
 		}
 	}
-	if err := e.dict.Advance(n); err != nil {
-		return err
-	}
+	e.dict.Advance(n)
 	e.sanityCheck("#2")
 	return nil
 }

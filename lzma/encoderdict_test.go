@@ -31,9 +31,7 @@ func TestEncoderDict(t *testing.T) {
 	if k := e.Buffered(); k != len(tst) {
 		t.Fatalf("e.Buffered returned %d; want %d", k, len(tst))
 	}
-	if err = e.Advance(8); err != nil {
-		t.Fatalf("e.AdvanceHead(%d) error %s", 8, err)
-	}
+	e.Advance(8)
 	p := make([]byte, 3)
 	n, err = e.buf.Peek(p)
 	if err != nil {

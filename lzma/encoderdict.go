@@ -51,16 +51,18 @@ func (e *encoderDict) Len() int {
 	return int(e.head)
 }
 
+// Buffered returns the number of bytes available before the head of the
+// dictionary.
 func (e *encoderDict) Buffered() int {
 	return int(e.buf.Pos() - e.Pos())
 }
 
-func (e *encoderDict) Advance(n int) error {
+// Advance the dictionary head by n bytes.
+func (e *encoderDict) Advance(n int) {
 	if !(0 < n && n <= e.Buffered()) {
-		return errors.New("Advance: n out of range")
+		panic(errors.New("Advance: n out of range"))
 	}
 	e.head += int64(n)
-	return nil
 }
 
 func (e *encoderDict) ByteAt(distance int) byte {
