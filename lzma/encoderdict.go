@@ -71,9 +71,6 @@ func (e *encoderDict) ByteAt(distance int) byte {
 	}
 	c, err := e.buf.ReadByteAt(e.Pos() - int64(distance))
 	if err != nil {
-		fmt.Printf("buf.Pos %d edict.Pos %d distance %d cap %d pos %d\n",
-			e.buf.Pos(), e.Pos(), distance, e.capacity,
-			e.Pos()-int64(distance))
 		panic(fmt.Errorf("ByteAt: error %s", err))
 	}
 	return c
