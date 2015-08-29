@@ -29,6 +29,10 @@ const (
 var newRoller = func(n int) hash.Roller { return hash.NewCyclicPoly(n) }
 
 // hashTable stores the hash table including the rolling hash method.
+//
+// We implement chained hashing into a circular buffer. Each entry in
+// the circular buffer stores the delta distance to the next position with a
+// word that has the same hash value.
 type hashTable struct {
 	// actual hash table
 	t []int64
@@ -101,10 +105,14 @@ func (t *hashTable) Reset() {
 	t.hr = newRoller(t.wordLen)
 }
 
+// Pos returns the number of all byte written already to the matcher. We
+// call it in the code also absolute position.
 func (t *hashTable) Pos() int64 {
 	return t.hoff + int64(t.wordLen)
 }
 
+// available returns the number of of bytes available for the next
+// write.
 func (t *hashTable) available() int {
 	n := t.rear - 1 - t.front
 	if n < 0 {
@@ -113,6 +121,7 @@ func (t *hashTable) available() int {
 	return n
 }
 
+// buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
 	n := t.front - t.rear
 	if n < 0 {
@@ -121,6 +130,8 @@ func (t *hashTable) buffered() int {
 	return n
 }
 
+// addIndex adds n to an index ensuring that is stays inside the
+// circular buffer for the hash chain.
 func (t *hashTable) addIndex(i, n int) int {
 	i += n - len(t.data)
 	if i < 0 {
@@ -129,6 +140,8 @@ func (t *hashTable) addIndex(i, n int) int {
 	return i
 }
 
+// putDelta puts the delta instance at the current front of the circular
+// chain buffer.
 func (t *hashTable) putDelta(delta uint32) error {
 	if t.available() < 1 {
 		return errNoSpace
@@ -138,6 +151,8 @@ func (t *hashTable) putDelta(delta uint32) error {
 	return nil
 }
 
+// putEntry puts a new entry into the hash table. If there is already a
+// value stored it is moved into the circular chain buffer.
 func (t *hashTable) putEntry(h uint64, pos int64) error {
 	i := h & t.mask
 	old := t.t[h&t.mask] - 1
@@ -175,6 +190,7 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// Discard discards data from the circular chain buffer.
 func (t *hashTable) Discard(n int) (discarded int, err error) {
 	if n < 0 {
 		panic("negative argument")
@@ -188,6 +204,10 @@ func (t *hashTable) Discard(n int) (discarded int, err error) {
 	return n, err
 }
 
+// maxMatches limits the number of matches provided by the Matches
+// function. This controls the speed of the overall encoding. This limit
+// might be better implemented at a higher level, because it doesn't
+// care for the current dictionary head.
 const maxMatches = 32
 
 // getMatches returns the potential positions for a specific hash.

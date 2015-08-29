@@ -45,6 +45,7 @@ func (r *reps) addMatch(m match) {
 	}
 }
 
+// errOptype indicates that the operation type is unsupported.
 var errOptype = errors.New("operation type unsupported")
 
 // addOp applies the given operation to the reps variable.

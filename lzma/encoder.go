@@ -31,6 +31,7 @@ type Encoder struct {
 	w io.Writer
 }
 
+// InitEncoder initializes the encoder.
 func InitEncoder(e *Encoder, w io.Writer, p *CodecParams) error {
 	*e = Encoder{opFinder: greedyFinder{}}
 
@@ -269,6 +270,9 @@ func (e *Encoder) sanityCheck(s string) {
 	}
 }
 
+// discardOp retires the provided operation. Data leaving the dictionary
+// is discarded from the encoder buffer and the dictionary head is
+// moved forward.
 func (e *Encoder) discardOp(op operation) error {
 	e.sanityCheck("#1")
 	n := op.Len()
@@ -306,6 +310,8 @@ func (e *Encoder) writeOp(op operation) error {
 	return err
 }
 
+// compress compresses code available in the buffer and writes the
+// operation into the encoder.
 func (e *Encoder) compress(all bool) error {
 	ops := e.opFinder.findOps(&e.dict, reps(e.state.rep), all)
 	for _, op := range ops {

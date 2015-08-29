@@ -20,6 +20,7 @@ type rangeEncoder struct {
 	cache    byte
 }
 
+// maxInt64 provides the  maximal value of the int64 type
 const maxInt64 = 1<<63 - 1
 
 // newRangeEncoder creates a new range encoder.
@@ -30,6 +31,8 @@ func newRangeEncoder(w io.Writer) (re *rangeEncoder, err error) {
 		cacheLen: 1}, nil
 }
 
+// newRangeEncoderLimit creates the range encoder with a limit for the
+// bytes to write.
 func newRangeEncoderLimit(w io.Writer, limit int64) (re *rangeEncoder, err error) {
 	if limit < 5 {
 		return nil, errors.New("limit must be larger or equal 5")

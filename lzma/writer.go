@@ -5,11 +5,14 @@ import (
 	"io"
 )
 
+// MinDictCap and MaxDictCap provide the range of supported dictionary
+// capacities.
 const (
 	MinDictCap = 1 << 12
 	MaxDictCap = 1<<32 - 1
 )
 
+// Parameters control the encoding of a LZMA stream.
 type Parameters struct {
 	LC                     int
 	LP                     int
@@ -20,6 +23,7 @@ type Parameters struct {
 	IgnoreUncompressedSize bool
 }
 
+// verifyParameters verify the parameters provided by the end user.
 func verifyParameters(p *Parameters) error {
 	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
@@ -41,6 +45,7 @@ func verifyParameters(p *Parameters) error {
 	return nil
 }
 
+// Default defines the default parameters for the LZMA writer.
 var Default = Parameters{
 	LC:      3,
 	LP:      0,
@@ -50,6 +55,8 @@ var Default = Parameters{
 	IgnoreUncompressedSize: true,
 }
 
+// convertParameters converts the parameters into the parameters for the
+// Encoder.
 func convertParameters(p *Parameters) CodecParams {
 	c := CodecParams{
 		DictCap:          p.DictCap,
@@ -69,14 +76,18 @@ func convertParameters(p *Parameters) CodecParams {
 	return c
 }
 
+// Writer compresses data in the classic LZMA format.
 type Writer struct {
 	e Encoder
 }
 
+// NewWriter creates a new writer for the classic LZMA format.
 func NewWriter(lzma io.Writer) (w *Writer, err error) {
 	return NewWriterParams(lzma, &Default)
 }
 
+// NewWriterParams supports parameters for the creation of an LZMA
+// writer.
 func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 	if err = verifyParameters(p); err != nil {
 		return nil, err
@@ -92,10 +103,13 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 	return w, nil
 }
 
+// Write puts data into the Writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	return w.e.Write(p)
 }
 
+// Close closes the writer stream. It ensures that all data from the
+// buffer will be compressed and the LZMA stream will be finished.
 func (w *Writer) Close() error {
 	if w.e.flags&CNoUncompressedSize == 0 {
 		if w.e.Uncompressed()+int64(w.e.Buffered()) != w.e.uncompressedSize {
