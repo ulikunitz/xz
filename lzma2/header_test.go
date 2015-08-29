@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/uli-go/xz/lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 func TestChunkTypeString(t *testing.T) {

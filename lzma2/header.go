@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/uli-go/xz/lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 const (

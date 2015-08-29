@@ -100,6 +100,9 @@ func (e *encoderDict) Literal() byte {
 	return c
 }
 
+// Matches returns potential distances for the word at the head of the
+// dictionary. If there are not enough characters a nil slice will be
+// returned.
 func (e *encoderDict) Matches() (distances []int) {
 	if e.Buffered() < e.buf.WordLen() {
 		return nil

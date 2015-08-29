@@ -75,7 +75,7 @@ Use full buffer to create minimal bit-length above range encoder.
 - Update README.md
 - xb copyright . in xz directory to ensure all new files have Copyright
   header
-- VERSION=<version> go generate github.com/uli-go/xz/... to update
+- VERSION=<version> go generate github.com/ulikunitz/xz/... to update
   version files
 - Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
 - Update TODO.md - write short log entry

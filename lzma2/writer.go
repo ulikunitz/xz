@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/uli-go/xz/lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 type Parameters struct {

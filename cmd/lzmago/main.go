@@ -4,7 +4,7 @@
 
 package main
 
-//go:generate xb cat -o licenses.go xzLicense:github.com/uli-go/xz/LICENSE goLicense:~/go/LICENSE
+//go:generate xb cat -o licenses.go xzLicense:github.com/ulikunitz/xz/LICENSE goLicense:~/go/LICENSE
 //go:generate xb version-file -o version.go
 
 import (
@@ -15,9 +15,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/uli-go/xz/gflag"
-	"github.com/uli-go/xz/term"
-	"github.com/uli-go/xz/xlog"
+	"github.com/ulikunitz/xz/gflag"
+	"github.com/ulikunitz/xz/term"
+	"github.com/ulikunitz/xz/xlog"
 )
 
 const (
@@ -40,7 +40,7 @@ in place).
 
 With no file, or when FILE is -, read standard input.
 
-Report bugs using <https://github.com/uli-go/xz/issues>.
+Report bugs using <https://github.com/ulikunitz/xz/issues>.
 `
 )
 
@@ -50,8 +50,8 @@ func usage(w io.Writer) {
 
 func licenses(w io.Writer) {
 	out := `
-github.com/uli-go/xz -- xz for Go 
-=================================
+github.com/ulikunitz/xz -- xz for Go
+====================================
 
 {{.xz}}
 
