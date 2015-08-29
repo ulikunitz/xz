@@ -40,10 +40,7 @@ func TestEncoderDict(t *testing.T) {
 	if n != len(p) {
 		t.Fatalf("Peek returned %d; want %d", n, len(p))
 	}
-	dists, err := e.Matches()
-	if err != nil {
-		t.Fatalf("Matches error %s", err)
-	}
+	dists := e.Matches()
 	wdists := []int{4, 8}
 	dstr, wdstr := fmt.Sprintf("%v", dists), fmt.Sprintf("%v", wdists)
 	if dstr != wdstr {

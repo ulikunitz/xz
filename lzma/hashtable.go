@@ -242,11 +242,11 @@ func (t *hashTable) WordLen() int {
 // Matches returns the positions of potential matches. Those matches
 // have to be verified, whether they are indeed matching. The byte slice
 // p must have word length of the hash table.
-func (t *hashTable) Matches(p []byte) (positions []int64, err error) {
+func (t *hashTable) Matches(p []byte) (positions []int64) {
 	if len(p) != t.wordLen {
-		return nil, fmt.Errorf(
-			"Matches: byte slice must have length %d", t.wordLen)
+		panic(fmt.Errorf(
+			"Matches: byte slice must have length %d", t.wordLen))
 	}
 	h := t.hash(p)
-	return t.getMatches(h), nil
+	return t.getMatches(h)
 }

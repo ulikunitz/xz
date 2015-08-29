@@ -5,13 +5,20 @@ import (
 	"fmt"
 )
 
+// encoderDict provides the dictionary for the encoder.
 type encoderDict struct {
-	buf      *encoderBuffer
-	head     int64
-	zero     int64
+	buf *encoderBuffer
+	// offset of bytes to the zero value
+	head int64
+	// zero position in terms of the absolute position of the
+	// encoder buffer
+	zero int64
+	// dictionary capacity
 	capacity int
 }
 
+// _initEncoderDict initializes the encoder without checking the dictCap
+// value. This allows small dictionary for thesting.
 func _initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) {
 
 	if buf == nil {
@@ -24,6 +31,7 @@ func _initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) {
 	}
 }
 
+// initEncoderDict initializes the encoder dictionary.
 func initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) error {
 	if !(minDictCap <= dictCap && dictCap <= maxDictCap) {
 		return errors.New("initEncoderDict: dictCap out of range")
@@ -35,15 +43,20 @@ func initEncoderDict(e *encoderDict, dictCap int, buf *encoderBuffer) error {
 	return nil
 }
 
+// Reset resets the dictionary. After the method the dictionary will
+// have length zero. The buffer will not be changed.
 func (e *encoderDict) Reset() {
 	e.head = 0
 	e.zero = e.buf.Pos()
 }
 
+// Pos gives the absolute position of the dictionary head for all data
+// written to the encoder buffer.
 func (e *encoderDict) Pos() int64 {
 	return e.zero + e.head
 }
 
+// Len returns the current amount of data in the dictionary.
 func (e *encoderDict) Len() int {
 	if e.head >= int64(e.capacity) {
 		return e.capacity
@@ -65,6 +78,8 @@ func (e *encoderDict) Advance(n int) {
 	e.head += int64(n)
 }
 
+// ByteAt returns a byte from the dictionary. The distance is the
+// positiove value to the head.
 func (e *encoderDict) ByteAt(distance int) byte {
 	if !(0 < distance && distance <= e.Len()) {
 		return 0
@@ -76,23 +91,25 @@ func (e *encoderDict) ByteAt(distance int) byte {
 	return c
 }
 
-func (e *encoderDict) Literal() (b byte, err error) {
-	return e.buf.ReadByteAt(e.Pos())
+// Literal returns the the byte at the position of the head.
+func (e *encoderDict) Literal() byte {
+	c, err := e.buf.ReadByteAt(e.Pos())
+	if err != nil {
+		panic(fmt.Errorf("Literal: %s", err))
+	}
+	return c
 }
 
-func (e *encoderDict) Matches() (distances []int, err error) {
+func (e *encoderDict) Matches() (distances []int) {
 	if e.Buffered() < e.buf.WordLen() {
-		return nil, nil
+		return nil
 	}
 	hpos := e.Pos()
 	p := make([]byte, e.buf.WordLen())
-	if _, err = e.buf.ReadAt(p, hpos); err != nil {
-		return nil, nil
+	if _, err := e.buf.ReadAt(p, hpos); err != nil {
+		return nil
 	}
-	positions, err := e.buf.matcher.Matches(p)
-	if err != nil {
-		return nil, err
-	}
+	positions := e.buf.matcher.Matches(p)
 	n := int64(e.Len())
 	for _, pos := range positions {
 		d := hpos - pos
@@ -100,7 +117,7 @@ func (e *encoderDict) Matches() (distances []int, err error) {
 			distances = append(distances, int(d))
 		}
 	}
-	return distances, nil
+	return distances
 }
 
 // MatchLen computes the length of the match at the given distance with

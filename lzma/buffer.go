@@ -2,10 +2,10 @@ package lzma
 
 import "errors"
 
-// buffer provides a circular buffer. If the front index equals the rear
-// index the buffer is empty. As a consequence front cannot be equal
-// rear for a full buffer. So a full buffer has a length that is one
-// byte less the the length of the data slice.
+// buffer provides a circular buffer of bytes. If the front index equals
+// the rear index the buffer is empty. As a consequence front cannot be
+// equal rear for a full buffer. So a full buffer has a length that is
+// one byte less the the length of the data slice.
 type buffer struct {
 	data  []byte
 	front int
@@ -65,7 +65,8 @@ func (b *buffer) addIndex(i int, n int) int {
 }
 
 // Read reads bytes from the buffer into p and returns the number of
-// bytes read.he functions never returns an error.
+// bytes read. The function never returns an error but might return less
+// data than requested.
 func (b *buffer) Read(p []byte) (n int, err error) {
 	n, err = b.Peek(p)
 	b.rear = b.addIndex(b.rear, n)
@@ -73,7 +74,8 @@ func (b *buffer) Read(p []byte) (n int, err error) {
 }
 
 // Peek reads bytes from the buffer into p without changing the buffer.
-// Peek with the same buffer will have the same result.
+// Peek will never return an error but might return less data than
+// requested.
 func (b *buffer) Peek(p []byte) (n int, err error) {
 	m := b.Buffered()
 	n = len(p)
@@ -105,10 +107,12 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	return n, err
 }
 
+// errNoSpace indicates that there is insufficient space in the buffer
+// available.
 var errNoSpace = errors.New("insufficient space in buffer")
 
 // Write puts data into the  buffer. If less bytes are written than
-// requested an error is returned.
+// requested errNoSpace is returned.
 func (b *buffer) Write(p []byte) (n int, err error) {
 	m := b.Available()
 	n = len(p)
@@ -125,8 +129,8 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-// WriteByte writes a single byte into the buffer. An error is returned
-// if there is not enough space.
+// WriteByte writes a single byte into the buffer. The error errNoSpace
+// is returned if no single byte is available in the buffer for writing.
 func (b *buffer) WriteByte(c byte) error {
 	if b.Available() < 1 {
 		return errNoSpace
@@ -136,6 +140,10 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
+// EqualBytes checks how many bytes are equal comparing two positions in
+// the buffer. The arguments x and y give the distance of the positions
+// from the front index. The argument max gives an upper limit of
+// positions tested.
 func (b *buffer) EqualBytes(x, y, max int) int {
 	if !(0 < x && x <= b.Buffered()) {
 		return 0

@@ -34,10 +34,7 @@ func TestHashTable(t *testing.T) {
 		{"mn", "[2]"},
 	}
 	for _, c := range tests {
-		distances, err := ht.Matches([]byte(c.s))
-		if err != nil {
-			t.Fatalf("Matches error %s", err)
-		}
+		distances := ht.Matches([]byte(c.s))
 		d := fmt.Sprintf("%v", distances)
 		t.Logf("{%q, %q},", c.s, d)
 		/*

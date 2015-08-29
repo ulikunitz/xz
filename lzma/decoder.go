@@ -6,47 +6,80 @@ import (
 	"io"
 )
 
+// The CFlags type is used in the CodecParams structure to store flags.
 type CFlags int
 
+// Flags for the CodecParams structure.
 const (
+	// EOS marker must be written or will be present.
 	CEOSMarker CFlags = 1 << iota
+	// The data will or is not be compressed.
 	CUncompressed
+	// No uncompressed size is provided.
 	CNoUncompressedSize
+	// No compressed size is provided.
 	CNoCompressedSize
+	// If the CodecParams value is used with Reset describes which
+	// part of the encoder or decoder must be reset.
 	CResetState
 	CResetProperties
 	CResetDict
 )
 
-const (
-	ceos = CResetDict << (iota + 1)
-)
+// Flag indicates in a decoder that the end of stream has been reached.
+const ceos = CResetDict << (iota + 1)
 
+// The CodecParams provides the parameters for the encoder and decoder.
+// Note that the size fields are limits for encoding and fixed values
+// for decoding.
+//
+// Currently only the decoder prints the stream of operations of debug
+// is set to a non-zero value.
 type CodecParams struct {
-	DictCap          int
-	BufCap           int
-	CompressedSize   int64
+	// dictionary capacity
+	DictCap int
+	// buffer capacity
+	BufCap int
+	// compressed size; see CNoCompressedSize
+	CompressedSize int64
+	// uncompressed size; see CNoUncompressedSize
 	UncompressedSize int64
-	LC               int
-	LP               int
-	PB               int
-	Debug            byte
-	Flags            CFlags
+	// literal context
+	LC int
+	// literal position bits
+	LP int
+	// position bits
+	PB int
+	// Debug defines the debug level
+	Debug byte
+	// boolean flags are stored here
+	Flags CFlags
 }
 
+// Decoder decodes a raw LZMA stream without any header.
 type Decoder struct {
-	dict             decoderDict
-	state            state
-	rd               *rangeDecoder
-	start            int64
+	// dictionary
+	dict decoderDict
+	// decoder state
+	state state
+	// range decoder
+	rd *rangeDecoder
+	// start stores the head value of the dictionary for the LZMA
+	// stream
+	start int64
+	// uncompressedSize stors the value of the CodecParams  value
 	uncompressedSize int64
-	flags            CFlags
-	debug            byte
-	opCounter        int64
+	// flags as provided by the CodecParams value
+	flags CFlags
+	// debug value as provided by the CodecParams value
+	debug byte
+	// counter of operations used for debug output
+	opCounter int64
 	// reader for uncompressed data
 	lr *io.LimitedReader
 }
 
+// InitDecoder initializes the decoder.
 func InitDecoder(d *Decoder, r io.Reader, p *CodecParams) error {
 	*d = Decoder{}
 	if err := initDecoderDict(&d.dict, p.DictCap, p.BufCap); err != nil {
@@ -57,6 +90,7 @@ func InitDecoder(d *Decoder, r io.Reader, p *CodecParams) error {
 	return err
 }
 
+// NewDecoder allocates and initializes a new decoder value.
 func NewDecoder(r io.Reader, p *CodecParams) (d *Decoder, err error) {
 	d = new(Decoder)
 	if err = InitDecoder(d, r, p); err != nil {
@@ -65,6 +99,8 @@ func NewDecoder(r io.Reader, p *CodecParams) (d *Decoder, err error) {
 	return d, nil
 }
 
+// Reset resets the decoder. Note that the buffer will contain its
+// current value.
 func (d *Decoder) Reset(r io.Reader, p *CodecParams) error {
 	d.flags = p.Flags
 	d.uncompressedSize = p.UncompressedSize
@@ -102,6 +138,7 @@ func (d *Decoder) Reset(r io.Reader, p *CodecParams) error {
 	return err
 }
 
+// decodeLiteral decodes a single literal from the LZMA stream.
 func (d *Decoder) decodeLiteral() (op operation, err error) {
 	litState := d.state.litState(d.dict.ByteAt(1), d.dict.head)
 	match := d.dict.ByteAt(int(d.state.rep[0]) + 1)
@@ -112,6 +149,8 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 	return lit{s}, nil
 }
 
+// verifyEOS checks whether the decoder is indeed at the end of the LZMA
+// stream.
 func (d *Decoder) verifyEOS() error {
 	if d.flags&CNoCompressedSize == 0 && d.rd.r.limit != d.rd.r.n {
 		return ErrCompressedSize
@@ -122,6 +161,7 @@ func (d *Decoder) verifyEOS() error {
 	return nil
 }
 
+// handleEOSMarker handles an identified ESO marker.
 func (d *Decoder) handleEOSMarker() error {
 	d.flags |= ceos
 	if !d.rd.possiblyAtEnd() {
@@ -130,6 +170,8 @@ func (d *Decoder) handleEOSMarker() error {
 	return d.verifyEOS()
 }
 
+// handleEOS handles an identified EOS condition, but not the
+// identification of an EOS marker.
 func (d *Decoder) handleEOS() error {
 	d.flags |= ceos
 	if d.flags&CEOSMarker != 0 {
@@ -163,6 +205,7 @@ func (d *Decoder) handleEOS() error {
 	return d.verifyEOS()
 }
 
+// errEOS indicates that an EOS marker has been found.
 var errEOS = errors.New("EOS marker found")
 
 // readOp decodes the next operation from the compressed stream. It
@@ -266,6 +309,8 @@ func (d *Decoder) readOp() (op operation, err error) {
 	return op, nil
 }
 
+// Printf produces output if d.debug is not zero. It uses fmt.Printf
+// for the implementation.
 func (d *Decoder) Printf(format string, args ...interface{}) (n int, err error) {
 	if d.debug != 0 {
 		return fmt.Printf(format, args...)
@@ -273,6 +318,7 @@ func (d *Decoder) Printf(format string, args ...interface{}) (n int, err error) 
 	return 0, nil
 }
 
+// apply takes the operation and transforms the decoder dictionary accordingly.
 func (d *Decoder) apply(op operation) error {
 	d.opCounter++
 	d.Printf("%d %s\n", d.opCounter, op)
@@ -285,6 +331,8 @@ func (d *Decoder) apply(op operation) error {
 	panic("op is neither a match nor a literal")
 }
 
+// fillDict fills the dictionary unless no space for new data is
+// available in the dictionary.
 func (d *Decoder) fillDict() error {
 	if d.flags&ceos != 0 {
 		return nil
@@ -317,6 +365,8 @@ func (d *Decoder) fillDict() error {
 	return nil
 }
 
+// fillDictUncompressed fills the dictionary if the input stream isn't
+// compressed.
 func (d *Decoder) fillDictUncompressed() error {
 	if d.flags&CUncompressed == 0 {
 		panic("Uncompressed flag not set")
@@ -339,6 +389,7 @@ func (d *Decoder) fillDictUncompressed() error {
 	return nil
 }
 
+// Errors returned while decoding an LZMA stream.
 var (
 	ErrMissingEOSMarker = errors.New("EOS marker is missing")
 	ErrMoreData         = errors.New("more data after EOS")
@@ -346,6 +397,8 @@ var (
 	ErrUncompressedSize = errors.New("uncompressed size wrong")
 )
 
+// Read reads data from the buffer. If no more data is available EOF is
+// returned.
 func (d *Decoder) Read(p []byte) (n int, err error) {
 	fillDict := d.fillDict
 	if d.flags&CUncompressed != 0 {
@@ -370,10 +423,12 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 	return
 }
 
+// Compressed returns the number of compressed bytes read.
 func (d *Decoder) Compressed() int64 {
 	return d.rd.Compressed()
 }
 
+// Uncompressed returns the number of uncompressed bytes decoded.
 func (d *Decoder) Uncompressed() int64 {
 	return d.dict.head - d.start
 }

@@ -54,14 +54,8 @@ func bestOp(ms *miniState, literal byte, distances []int) operation {
 
 // findOp finds a single operation at the current head of the hash dictionary.
 func findOp(ms *miniState) operation {
-	l, err := ms.d.Literal()
-	if err != nil {
-		panic(err)
-	}
-	distances, err := ms.d.Matches()
-	if err != nil {
-		panic(err)
-	}
+	l := ms.d.Literal()
+	distances := ms.d.Matches()
 	// add small distances
 	distances = append(distances, 1, 2, 3, 4, 5, 6, 7, 8)
 	op := bestOp(ms, l, distances)

@@ -12,8 +12,8 @@ const (
 	maxDictCap = 1<<32 - 1
 )
 
-// decoderDict provides the sliding window and a circular buffer for
-// reading.
+// decoderDict provides the sliding window dictionary as well as the
+// circular buffer for reading.
 type decoderDict struct {
 	buffer
 	// absolute position of the dictionary head
@@ -66,11 +66,12 @@ func (d *decoderDict) ByteAt(dist int) byte {
 	return d.data[i]
 }
 
-// errNoSpace indicates that no space is available in the dictionary for
-// writing. You need to read from the dictionary.
 // WriteMatch writes the match at the top of the dictionary. The given
 // distance must point in the current dictionary and the length must not
 // exceed the maximum length 273 supported in LZMA.
+//
+// The error value errNoSpace indicates that no space is available in
+// the dictionary for writing. You need to read from the dictionary.
 func (d *decoderDict) WriteMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.Len()) {
 		return errors.New("WriteMatch: distance out of range")
@@ -116,8 +117,8 @@ func (d *decoderDict) WriteByte(c byte) error {
 	return nil
 }
 
-// Reset resets the dictionary. The read buffer is not changed data will
-// still be readable.
+// Reset resets the dictionary. The read buffer is not changed data, so
+// data decoded will remain readable.
 func (d *decoderDict) Reset() {
 	d.head = 0
 }
