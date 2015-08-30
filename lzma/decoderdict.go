@@ -76,7 +76,7 @@ func (d *decoderDict) WriteMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.Len()) {
 		return errors.New("WriteMatch: distance out of range")
 	}
-	if !(0 < length && length <= MaxMatchLen) {
+	if !(0 < length && length <= maxMatchLen) {
 		return errors.New("WriteMatch: length out of range")
 	}
 	if length > d.Available() {

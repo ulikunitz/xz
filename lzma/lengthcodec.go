@@ -11,12 +11,12 @@ import "errors"
 // for length encoding and decoding.
 const maxPosBits = 4
 
-// MinMatchLen and MaxMatchLen give the minimum and maximum values for
-// encoding and decoding length values. MinMatchLen gives also the base
+// minMatchLen and maxMatchLen give the minimum and maximum values for
+// encoding and decoding length values. minMatchLen is also used as base
 // for the encoded length values.
 const (
-	MinMatchLen = 2
-	MaxMatchLen = MinMatchLen + 16 + 256 - 1
+	minMatchLen = 2
+	maxMatchLen = minMatchLen + 16 + 256 - 1
 )
 
 // lengthCodec support the encoding of the length value.
@@ -55,13 +55,13 @@ func lBits(l uint32) int {
 }
 
 // Encode encodes the length offset. The length offset l can be compute by
-// subtracting MinMatchLen (2) from the actual length.
+// subtracting minMatchLen (2) from the actual length.
 //
-//   l = length - MinMatchLen
+//   l = length - minMatchLen
 //
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
-	if l > MaxMatchLen-MinMatchLen {
+	if l > maxMatchLen-minMatchLen {
 		return errors.New("Encode: l out of range")
 	}
 	if l < 8 {
@@ -88,7 +88,7 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 	return nil
 }
 
-// Decode reads the length offset. Add MinMatchLen to compute the actual length
+// Decode reads the length offset. Add minMatchLen to compute the actual length
 // to the length offset l.
 func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 ) (l uint32, err error) {

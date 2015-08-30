@@ -69,8 +69,8 @@ func newByteWriter(w io.Writer) io.ByteWriter {
 	return &bWriter{w}
 }
 
-// ErrLimit is returned if a given limit has been reached.
-var ErrLimit = errors.New("limit reached")
+// errLimit is returned if a given limit has been reached.
+var errLimit = errors.New("limit reached")
 
 // lbcReader provides a ByteReader that counts the bytes read and has a
 // limit. Using MaxInt64 as the limit results in a practically unlimited
@@ -115,7 +115,7 @@ type lbcWriter struct {
 // is reached an error will be returned.
 func (w *lbcWriter) WriteByte(c byte) error {
 	if w.n >= w.limit {
-		return ErrLimit
+		return errLimit
 	}
 	if err := w.bw.WriteByte(c); err != nil {
 		return err

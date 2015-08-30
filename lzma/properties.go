@@ -6,20 +6,19 @@ package lzma
 
 import "errors"
 
-// Maximum and minimum values for individual parameters.
+// Maximum and minimum values for individual properties.
 const (
-	MinLC       = 0
-	MaxLC       = 8
-	MinLP       = 0
-	MaxLP       = 4
-	MinPB       = 0
-	MaxPB       = 4
-	MinDictSize = 1 << 12
-	MaxDictSize = 1<<32 - 1
+	MinLC = 0
+	MaxLC = 8
+	MinLP = 0
+	MaxLP = 4
+	MinPB = 0
+	MaxPB = 4
 )
 
-// MaxProperties is the maximum value for a properties value.
-const MaxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
+// maxPropertiers is the maximum value to be stored in a Properties
+// variable.
+const maxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
 
 // Properties contains the parameters LC, LP and PB. The parameter LC
 // defines the number of literal context bits; parameter LP the number

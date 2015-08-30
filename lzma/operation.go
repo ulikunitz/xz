@@ -30,7 +30,7 @@ func (m match) verify() error {
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
 		return errors.New("distance out of range")
 	}
-	if !(1 <= m.n && m.n <= MaxMatchLen) {
+	if !(1 <= m.n && m.n <= maxMatchLen) {
 		return errors.New("length out of range")
 	}
 	return nil
@@ -39,7 +39,7 @@ func (m match) verify() error {
 // l return the l-value for the match, which is the difference of length
 // n and 2.
 func (m match) l() uint32 {
-	return uint32(m.n - MinMatchLen)
+	return uint32(m.n - minMatchLen)
 }
 
 // dist returns the dist value for the match, which is one less of the

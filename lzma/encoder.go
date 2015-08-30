@@ -112,7 +112,7 @@ func (e *Encoder) Reset(w io.Writer, p *CodecParams) error {
 }
 
 // ErrCompressedLimit and ErrUncompressedLimit indicate that the provided
-// sizes have been reached. The encoder must be closed and reset to
+// sizes have been reached. The LZMA encoder must be closed and reset to
 // compress the remaining buffered data.
 var (
 	ErrCompressedLimit   = errors.New("compressed size limit reached")
@@ -193,7 +193,7 @@ func (e *Encoder) writeMatch(m match) error {
 		panic("match distance out of range")
 	}
 	dist := uint32(m.distance - minDistance)
-	if !(MinMatchLen <= m.n && m.n <= MaxMatchLen) &&
+	if !(minMatchLen <= m.n && m.n <= maxMatchLen) &&
 		!(dist == e.state.rep[0] && m.n == 1) {
 		panic("match length out of range")
 	}
@@ -211,7 +211,7 @@ func (e *Encoder) writeMatch(m match) error {
 	if err = e.state.isRep[state].Encode(e.re, b); err != nil {
 		return err
 	}
-	n := uint32(m.n - MinMatchLen)
+	n := uint32(m.n - minMatchLen)
 	if b == 0 {
 		// simple match
 		e.state.rep[3], e.state.rep[2], e.state.rep[1], e.state.rep[0] =
@@ -323,7 +323,7 @@ func (e *Encoder) compress(all bool) error {
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.
-var eosMatch = match{distance: maxDistance, n: MinMatchLen}
+var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
 // Close tries to write the outstanding data in the buffer to the
 // underlying writer until compressed or uncompressed size limits areif

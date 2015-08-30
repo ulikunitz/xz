@@ -79,7 +79,7 @@ type Decoder struct {
 	lr *io.LimitedReader
 }
 
-// InitDecoder initializes the decoder.
+// InitDecoder initializes a LZMA decoder value.
 func InitDecoder(d *Decoder, r io.Reader, p *CodecParams) error {
 	*d = Decoder{}
 	if err := initDecoderDict(&d.dict, p.DictCap, p.BufCap); err != nil {
@@ -90,7 +90,7 @@ func InitDecoder(d *Decoder, r io.Reader, p *CodecParams) error {
 	return err
 }
 
-// NewDecoder allocates and initializes a new decoder value.
+// NewDecoder allocates and initializes a new LZMA decoder.
 func NewDecoder(r io.Reader, p *CodecParams) (d *Decoder, err error) {
 	d = new(Decoder)
 	if err = InitDecoder(d, r, p); err != nil {
@@ -153,10 +153,10 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 // stream.
 func (d *Decoder) verifyEOS() error {
 	if d.flags&CNoCompressedSize == 0 && d.rd.r.limit != d.rd.r.n {
-		return ErrCompressedSize
+		return errCompressedSize
 	}
 	if d.flags&CNoUncompressedSize == 0 && d.uncompressedSize != d.Uncompressed() {
-		return ErrUncompressedSize
+		return errUncompressedSize
 	}
 	return nil
 }
@@ -165,7 +165,7 @@ func (d *Decoder) verifyEOS() error {
 func (d *Decoder) handleEOSMarker() error {
 	d.flags |= ceos
 	if !d.rd.possiblyAtEnd() {
-		return ErrMoreData
+		return errMoreData
 	}
 	return d.verifyEOS()
 }
@@ -182,7 +182,7 @@ func (d *Decoder) handleEOS() error {
 			}
 			return err
 		}
-		return ErrMissingEOSMarker
+		return errMissingEOSMarker
 	}
 	if !d.rd.possiblyAtEnd() ||
 		(d.flags&CNoCompressedSize == 0 && d.rd.r.n < d.rd.r.limit) {
@@ -257,7 +257,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 			}
 			return nil, err
 		}
-		op = match{n: int(n) + MinMatchLen,
+		op = match{n: int(n) + minMatchLen,
 			distance: int(d.state.rep[0]) + minDistance}
 		return op, nil
 	}
@@ -305,7 +305,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 		return nil, err
 	}
 	d.state.updateStateRep()
-	op = match{n: int(n) + MinMatchLen, distance: int(dist) + minDistance}
+	op = match{n: int(n) + minMatchLen, distance: int(dist) + minDistance}
 	return op, nil
 }
 
@@ -337,7 +337,7 @@ func (d *Decoder) fillDict() error {
 	if d.flags&ceos != 0 {
 		return nil
 	}
-	for d.dict.Available() >= MaxMatchLen {
+	for d.dict.Available() >= maxMatchLen {
 		op, err := d.readOp()
 		switch err {
 		case nil:
@@ -380,7 +380,7 @@ func (d *Decoder) fillDictUncompressed() error {
 			if err == io.EOF {
 				d.flags |= ceos
 				if d.lr.N != 0 {
-					return ErrUncompressedSize
+					return errUncompressedSize
 				}
 				return nil
 			}
@@ -389,12 +389,12 @@ func (d *Decoder) fillDictUncompressed() error {
 	return nil
 }
 
-// Errors returned while decoding an LZMA stream.
+// Errors that may be returned while decoding data.
 var (
-	ErrMissingEOSMarker = errors.New("EOS marker is missing")
-	ErrMoreData         = errors.New("more data after EOS")
-	ErrCompressedSize   = errors.New("compressed size wrong")
-	ErrUncompressedSize = errors.New("uncompressed size wrong")
+	errMissingEOSMarker = errors.New("EOS marker is missing")
+	errMoreData         = errors.New("more data after EOS")
+	errCompressedSize   = errors.New("compressed size wrong")
+	errUncompressedSize = errors.New("uncompressed size wrong")
 )
 
 // Read reads data from the buffer. If no more data is available EOF is

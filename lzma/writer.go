@@ -113,7 +113,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 func (w *Writer) Close() error {
 	if w.e.flags&CNoUncompressedSize == 0 {
 		if w.e.Uncompressed()+int64(w.e.Buffered()) != w.e.uncompressedSize {
-			return ErrUncompressedSize
+			return errUncompressedSize
 		}
 	}
 	return w.e.Close()
