@@ -13,7 +13,7 @@ type CFlags int
 const (
 	// EOS marker must be written or will be present.
 	CEOSMarker CFlags = 1 << iota
-	// The data will or is not be compressed.
+	// The data will be or is not compressed.
 	CUncompressed
 	// No uncompressed size is provided.
 	CNoUncompressedSize
@@ -33,8 +33,9 @@ const ceos = CResetDict << (iota + 1)
 // Note that the size fields are limits for encoding and fixed values
 // for decoding.
 //
-// Currently only the decoder prints the stream of operations of debug
-// is set to a non-zero value.
+// The debug flag is currently only supported by the LZMA decoder. The
+// stream of operations is printed if the debug field is set to any
+// value not equal to zero.
 type CodecParams struct {
 	// dictionary capacity
 	DictCap int
