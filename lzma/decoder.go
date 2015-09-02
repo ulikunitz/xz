@@ -59,7 +59,8 @@ type CodecParams struct {
 
 // Decoder decodes a raw LZMA stream without any header.
 type Decoder struct {
-	// dictionary
+	// dictionary; the rear pointer of the buffer will be used for
+	// reading the data.
 	dict decoderDict
 	// decoder state
 	state state
