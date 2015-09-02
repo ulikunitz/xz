@@ -35,10 +35,11 @@
 
 # Package lzma
 
-1. Review Params structure
-    - Rename it to Parameters.
-    - Use bools instead of flags to make usage simpler.
-2. Fully document the package.
+1. Rework Decoder to ensure that buffer covers whole dictionary. This
+   alignes the logic to Encoder. 
+2. Ensure that error checking is done at the entry points NewEncoder,
+   NewDecoder, InitDecoder and InitEncoder and reduce use of error codes
+   for other functions to simplify the implementation.
 
 # Package lzma2
 
