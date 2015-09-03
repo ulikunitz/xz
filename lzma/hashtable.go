@@ -7,8 +7,8 @@ package lzma
 import (
 	"fmt"
 
-	"github.com/uli-go/xz/basics/u32"
-	"github.com/uli-go/xz/hash"
+	"github.com/ulikunitz/xz/basics/u32"
+	"github.com/ulikunitz/xz/hash"
 )
 
 /* For compression we need to find byte sequences that match the current byte

@@ -4,7 +4,7 @@
 
 package lzma
 
-import "github.com/uli-go/xz/basics/u32"
+import "github.com/ulikunitz/xz/basics/u32"
 
 // Constants used by the distance codec.
 const (

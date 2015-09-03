@@ -14,7 +14,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/uli-go/xz/randtxt"
+	"github.com/ulikunitz/xz/randtxt"
 )
 
 func TestWriterCycle(t *testing.T) {

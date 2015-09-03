@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/uli-go/xz/lzma"
-	"github.com/uli-go/xz/xlog"
+	"github.com/ulikunitz/xz/lzma"
+	"github.com/ulikunitz/xz/xlog"
 )
 
 type packer interface {
