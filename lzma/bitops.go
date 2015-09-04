@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // The package u32 provides basic function for the uint32 type.
-package u32
+package lzma
 
 /* Naming conventions follows the CodeReviewComments in the Go Wiki. */
 
@@ -18,8 +18,8 @@ var ntzTable = [32]int8{
 	31, 23, 18, 5, 21, 9, 15, 11,
 	30, 17, 8, 14, 29, 13, 28, 27}
 
-// NTZ computes the number of trailing zeros for an unsigned 32-bit integer.
-func NTZ(x uint32) int {
+// ntz32 computes the number of trailing zeros for an unsigned 32-bit integer.
+func ntz32(x uint32) int {
 	if x == 0 {
 		return 32
 	}
@@ -27,8 +27,8 @@ func NTZ(x uint32) int {
 	return int(ntzTable[x>>27])
 }
 
-// NLZ computes the number of leading zeros for an unsigned 32-bit integer.
-func NLZ(x uint32) int {
+// nlz32 computes the number of leading zeros for an unsigned 32-bit integer.
+func nlz32(x uint32) int {
 	// Smear left most bit to the right
 	x |= x >> 1
 	x |= x >> 2

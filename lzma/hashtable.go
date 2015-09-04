@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ulikunitz/xz/basics/u32"
 	"github.com/ulikunitz/xz/hash"
 )
 
@@ -56,7 +55,7 @@ type hashTable struct {
 // hashTableExponent derives the hash table exponent from the dictionary
 // capacity.
 func hashTableExponent(n uint32) int {
-	e := 30 - u32.NLZ(n)
+	e := 30 - nlz32(n)
 	switch {
 	case e < minTableExponent:
 		e = minTableExponent
