@@ -4,6 +4,10 @@
 
 package lzma
 
+import (
+	"errors"
+)
+
 // syncDict provides a dictionary that is always synchronized with the
 // top of the buffer.
 type syncDict struct {
@@ -38,7 +42,7 @@ func (sd *syncDict) reset() {
 // head of the dictionary synchronous with the buffer.
 func (sd *syncDict) writeRep(dist int64, n int) (written int, err error) {
 	if !(0 < dist && dist <= sd.size) {
-		panic("dist out of range")
+		return 0, errors.New("dist out of range")
 	}
 	off := sd.buf.top - dist
 	written, err = sd.buf.writeRepAt(n, off)
