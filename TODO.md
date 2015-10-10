@@ -67,6 +67,8 @@ Use full buffer to create minimal bit-length above range encoder.
 
 # Release Procedure
 
+- execute goch -l for all packages
+- check orthography with gospell
 - Write release notes in doc/relnotes.
 - Update README.md
 - xb copyright . in xz directory to ensure all new files have Copyright
