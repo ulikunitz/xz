@@ -16,6 +16,7 @@
 # Release 0.5
 
 1. Do the signal handling correctly.
+2. Add Go documentation for commands.
 
 # Release 1.0
 
