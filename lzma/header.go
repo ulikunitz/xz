@@ -65,7 +65,7 @@ func readHeader(r io.Reader) (p *CodecParams, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if b[0] > maxProperties {
+	if b[0] > MaxProperties {
 		return nil, errors.New("invalid properties")
 	}
 	p = &CodecParams{

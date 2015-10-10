@@ -16,9 +16,9 @@ const (
 	MaxPB = 4
 )
 
-// maxPropertiers is the maximum value to be stored in a Properties
+// MaxProperties is the maximum value to be stored in a Properties
 // variable.
-const maxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
+const MaxProperties = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
 
 // Properties contains the parameters LC, LP and PB. The parameter LC
 // defines the number of literal context bits; parameter LP the number
