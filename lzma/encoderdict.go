@@ -3,6 +3,7 @@ package lzma
 import (
 	"errors"
 	"fmt"
+	"io"
 )
 
 // encoderDict provides the dictionary for the encoder.
@@ -132,4 +133,20 @@ func (e *encoderDict) MatchLen(dist int) int {
 	}
 	b := e.Buffered()
 	return e.buf.buffer.EqualBytes(b+dist, b, maxMatchLen)
+}
+
+// CopyN copies the last n bytes stored in the dictionary. It is an
+// error if n exceeds the number of bytes stored in the dictionary.
+func (e *encoderDict) CopyN(w io.Writer, n int) (written int, err error) {
+	buf := e.buf.buffer
+	if n > buf.Buffered() {
+		return 0, errors.New(
+			"encoderDict.CopyN: not enough data in dictionary")
+	}
+	buf.rear = buf.front - n
+	if buf.rear < 0 {
+		buf.rear += len(buf.data)
+	}
+	k, err := io.CopyN(w, &buf, int64(n))
+	return int(k), err
 }

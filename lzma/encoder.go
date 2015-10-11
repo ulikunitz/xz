@@ -371,3 +371,9 @@ func (e *Encoder) Compressed() int64 {
 func (e *Encoder) Uncompressed() int64 {
 	return e.dict.Pos() - e.start
 }
+
+// CopyDict copies the last n bytes of the dictionary. It is an error if
+// n exceeds the number of bytes in the dictionary.
+func (e *Encoder) CopyDict(w io.Writer, n int) (written int, err error) {
+	return e.dict.CopyN(w, n)
+}

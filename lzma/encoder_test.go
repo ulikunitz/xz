@@ -6,6 +6,7 @@ package lzma
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"testing"
 )
@@ -121,5 +122,41 @@ func TestEncoderUncompressed(t *testing.T) {
 	}
 	if !bytes.Equal(orig, decoded) {
 		t.Fatalf("decoded file differs from original")
+	}
+}
+
+func TestEncoderCopyDict(t *testing.T) {
+	params := &CodecParams{
+		LC:      2,
+		LP:      0,
+		PB:      2,
+		DictCap: minDictCap,
+		BufCap:  minDictCap + 1024,
+		Flags:   CEOSMarker | CNoUncompressedSize | CNoCompressedSize,
+	}
+	var buf bytes.Buffer
+	w, err := NewEncoder(&buf, params)
+	if err != nil {
+		t.Fatalf("NewEncoder: error %s", err)
+	}
+	n, err := io.WriteString(w, testString)
+	if err != nil {
+		t.Fatalf("w.Write error %s", err)
+	}
+	if n != len(testString) {
+		t.Fatalf("w.Write returned %d; want %d", n, len(testString))
+	}
+	var buf2 bytes.Buffer
+	n, err = w.CopyDict(&buf2, 4)
+	if err != nil {
+		t.Fatalf("w.CopyDict(&buf2, 4) error %s", err)
+	}
+	if n != 4 {
+		t.Fatalf("w.CopyDict(&buf2, 4) returned %d; want %d", n, 4)
+	}
+	s := buf2.String()
+	want := testString[len(testString)-4:]
+	if s != want {
+		t.Fatalf("buf2 contains %q; want %q", s, want)
 	}
 }
