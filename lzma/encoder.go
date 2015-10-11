@@ -310,6 +310,13 @@ func (e *Encoder) writeOp(op operation) error {
 	return err
 }
 
+// Wash compresses all data in the buffer. It isn't able to write out
+// the complete range encoder status, this isn't supported by the LZMA
+// format.
+func (e *Encoder) Wash() error {
+	return e.compress(true)
+}
+
 // compress compresses code available in the buffer and writes the
 // operation into the encoder.
 func (e *Encoder) compress(all bool) error {
