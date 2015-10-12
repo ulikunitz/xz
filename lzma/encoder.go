@@ -261,20 +261,10 @@ func (e *Encoder) writeMatch(m match) error {
 	return e.state.repLenCodec.Encode(e.re, n, posState)
 }
 
-func (e *Encoder) sanityCheck(s string) {
-	if e.buf.Buffered() != e.dict.Buffered()+e.dict.Len() {
-		fmt.Printf("%s buffered %d; want %d (%d+%d) cap %d\n",
-			s, e.buf.Buffered(), e.dict.Buffered()+e.dict.Len(),
-			e.dict.Buffered(), e.dict.Len(), e.dict.capacity)
-		panic("inconsistent buffer sizes")
-	}
-}
-
 // discardOp retires the provided operation. Data leaving the dictionary
 // is discarded from the encoder buffer and the dictionary head is
 // moved forward.
 func (e *Encoder) discardOp(op operation) error {
-	e.sanityCheck("#1")
 	n := op.Len()
 	m := n + e.dict.Len() - e.dict.capacity
 	if m > 0 {
@@ -283,7 +273,6 @@ func (e *Encoder) discardOp(op operation) error {
 		}
 	}
 	e.dict.Advance(n)
-	e.sanityCheck("#2")
 	return nil
 }
 
