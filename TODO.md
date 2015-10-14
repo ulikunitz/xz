@@ -38,16 +38,10 @@
 
 # Package lzma2
 
-1. Implement SegmentWriter and SegmentReader in lzma2 using
-   lzma.Decoder and lzma.Encoder
-
-   A Segment starts always with a complete Reset and stores all the data
-   in it. Flushing is supported. The LZMA Stream Close will not be
-   written.
+1. Implement SegmentReader in lzma2 using lzma.Decoder
 2. Review error handling in lzma.
    - Is a spezific lzmaError necessary?
-   - Replace direct usage of errors.New
-     and fmt.Errorf.
+   - Replace direct usage of errors.New and fmt.Errorf.
 3. Reimplement lzma.Reader and lzma.Writer using Decompressor and
    Compressor
 
