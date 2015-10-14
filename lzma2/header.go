@@ -165,9 +165,6 @@ func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 	}
 
 	h.props = lzma.Properties(data[5])
-	if h.props > lzma.MaxProperties {
-		return errors.New("invalid properties")
-	}
 	return nil
 }
 
