@@ -36,6 +36,16 @@
 
 # Package lzma
 
+1. Simplify Encoder and Decoder
+   - Implement EncoderDict
+   - Adapt Encoder using new EncoderDict and ByteWriter
+        Reset(bw io.ByteWriter, state *State, dict *EncoderDict)
+   - adapt Writer
+   - Implement DecoderDict
+   - Adapt Decoder
+        Reset(bw io.ByteReader, state *State, dict *DecoderDict)
+   - adapt Reader
+
 # Package lzma2
 
 1. Implement SegmentReader in lzma2 using lzma.Decoder
