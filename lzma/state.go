@@ -66,8 +66,8 @@ func NewState(p Properties) *State {
 	return s
 }
 
-// Deepcopy initalizes s as a deep copy of the source.
-func (s *State) Deepcopy(src *State) {
+// deepcopy initalizes s as a deep copy of the source.
+func (s *State) deepcopy(src *State) {
 	if s == src {
 		return
 	}
@@ -85,6 +85,13 @@ func (s *State) Deepcopy(src *State) {
 	s.state = src.state
 	s.posBitMask = src.posBitMask
 	s.properties = src.properties
+}
+
+// NewStateClone creates a new clone of the give state.
+func NewStateClone(src *State) *State {
+	s := new(State)
+	s.deepcopy(src)
+	return s
 }
 
 // updateStateLiteral updates the state for a literal.
