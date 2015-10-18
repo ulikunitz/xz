@@ -31,6 +31,20 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
+// deepcopy initializes dc as deep copy of the source.
+func (dc *distCodec) deepcopy(src *distCodec) {
+	if dc == src {
+		return
+	}
+	for i := range dc.posSlotCodecs {
+		dc.posSlotCodecs[i].deepcopy(&src.posSlotCodecs[i])
+	}
+	for i := range dc.posModel {
+		dc.posModel[i].deepcopy(&src.posModel[i])
+	}
+	dc.alignCodec.deepcopy(&src.alignCodec)
+}
+
 // distBits returns the number of bits required to encode dist.
 func distBits(dist uint32) int {
 	if dist < startPosModel {

@@ -27,6 +27,21 @@ type lengthCodec struct {
 	high   treeCodec
 }
 
+// deepcopy initalizes the lc value as deep copy of the source value.
+func (lc *lengthCodec) deepcopy(src *lengthCodec) {
+	if lc == src {
+		return
+	}
+	lc.choice = src.choice
+	for i := range lc.low {
+		lc.low[i].deepcopy(&src.low[i])
+	}
+	for i := range lc.mid {
+		lc.mid[i].deepcopy(&src.mid[i])
+	}
+	lc.high.deepcopy(&src.high)
+}
+
 // init initializes a new length codec.
 func (lc *lengthCodec) init() {
 	for i := range lc.choice {

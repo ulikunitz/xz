@@ -20,7 +20,7 @@ type opFinder interface {
 type Encoder struct {
 	buf              encoderBuffer
 	dict             encoderDict
-	state            state
+	state            State
 	re               *rangeEncoder
 	start            int64
 	uncompressedSize int64

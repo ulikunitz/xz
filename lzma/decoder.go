@@ -63,7 +63,7 @@ type Decoder struct {
 	// reading the data.
 	dict decoderDict
 	// decoder state
-	state state
+	state State
 	// range decoder
 	rd *rangeDecoder
 	// start stores the head value of the dictionary for the LZMA

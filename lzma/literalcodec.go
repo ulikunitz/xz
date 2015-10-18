@@ -11,6 +11,15 @@ type literalCodec struct {
 	probs []prob
 }
 
+// deepcopy initalizes literal codec c as a deep copy of the source.
+func (c *literalCodec) deepcopy(src *literalCodec) {
+	if c == src {
+		return
+	}
+	c.probs = make([]prob, len(src.probs))
+	copy(c.probs, src.probs)
+}
+
 // init initializes the literal codec.
 func (c *literalCodec) init(lc, lp int) {
 	switch {

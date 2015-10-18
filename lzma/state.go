@@ -7,22 +7,23 @@ package lzma
 // states defines the overall state count
 const states = 12
 
-// state maintains the full state of the operation encoding process.
-type state struct {
-	properties  Properties
-	state       uint32
-	posBitMask  uint32
+// State maintains the full state of the operation encoding or decoding
+// process.
+type State struct {
+	rep         [4]uint32
 	isMatch     [states << maxPosBits]prob
+	isRepG0Long [states << maxPosBits]prob
 	isRep       [states]prob
 	isRepG0     [states]prob
 	isRepG1     [states]prob
 	isRepG2     [states]prob
-	isRepG0Long [states << maxPosBits]prob
-	rep         [4]uint32
 	litCodec    literalCodec
 	lenCodec    lengthCodec
 	repLenCodec lengthCodec
 	distCodec   distCodec
+	state       uint32
+	posBitMask  uint32
+	properties  Properties
 }
 
 // initProbSlice initializes a slice of probabilities.
@@ -33,9 +34,9 @@ func initProbSlice(p []prob) {
 }
 
 // Reset sets all state information to the original values.
-func (s *state) Reset() {
+func (s *State) Reset() {
 	lc, lp, pb := s.properties.LC(), s.properties.LP(), s.properties.PB()
-	*s = state{
+	*s = State{
 		properties: s.properties,
 		// dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
@@ -53,13 +54,41 @@ func (s *state) Reset() {
 }
 
 // initState initializes the state.
-func initState(s *state, p Properties) {
-	*s = state{properties: p}
+func initState(s *State, p Properties) {
+	*s = State{properties: p}
 	s.Reset()
 }
 
+// NewState creates a new state from the give properties.
+func NewState(p Properties) *State {
+	s := &State{properties: p}
+	s.Reset()
+	return s
+}
+
+// Deepcopy initalizes s as a deep copy of the source.
+func (s *State) Deepcopy(src *State) {
+	if s == src {
+		return
+	}
+	s.rep = src.rep
+	s.isMatch = src.isMatch
+	s.isRepG0Long = src.isRepG0Long
+	s.isRep = src.isRep
+	s.isRepG0 = src.isRepG0
+	s.isRepG1 = src.isRepG1
+	s.isRepG2 = src.isRepG2
+	s.litCodec.deepcopy(&src.litCodec)
+	s.lenCodec.deepcopy(&src.lenCodec)
+	s.repLenCodec.deepcopy(&src.repLenCodec)
+	s.distCodec.deepcopy(&src.distCodec)
+	s.state = src.state
+	s.posBitMask = src.posBitMask
+	s.properties = src.properties
+}
+
 // updateStateLiteral updates the state for a literal.
-func (s *state) updateStateLiteral() {
+func (s *State) updateStateLiteral() {
 	switch {
 	case s.state < 4:
 		s.state = 0
@@ -72,7 +101,7 @@ func (s *state) updateStateLiteral() {
 }
 
 // updateStateMatch updates the state for a match.
-func (s *state) updateStateMatch() {
+func (s *State) updateStateMatch() {
 	if s.state < 7 {
 		s.state = 7
 	} else {
@@ -81,7 +110,7 @@ func (s *state) updateStateMatch() {
 }
 
 // updateStateRep updates the state for a repetition.
-func (s *state) updateStateRep() {
+func (s *State) updateStateRep() {
 	if s.state < 7 {
 		s.state = 8
 	} else {
@@ -90,7 +119,7 @@ func (s *state) updateStateRep() {
 }
 
 // updateStateShortRep updates the state for a short repetition.
-func (s *state) updateStateShortRep() {
+func (s *State) updateStateShortRep() {
 	if s.state < 7 {
 		s.state = 9
 	} else {
@@ -99,7 +128,7 @@ func (s *state) updateStateShortRep() {
 }
 
 // states computes the states of the operation codec.
-func (s *state) states(dictHead int64) (state1, state2, posState uint32) {
+func (s *State) states(dictHead int64) (state1, state2, posState uint32) {
 	state1 = s.state
 	posState = uint32(dictHead) & s.posBitMask
 	state2 = (s.state << maxPosBits) | posState
@@ -107,7 +136,7 @@ func (s *state) states(dictHead int64) (state1, state2, posState uint32) {
 }
 
 // litState computes the literal state.
-func (s *state) litState(prev byte, dictHead int64) uint32 {
+func (s *State) litState(prev byte, dictHead int64) uint32 {
 	lp, lc := uint(s.properties.LP()), uint(s.properties.LC())
 	litState := ((uint32(dictHead) & ((1 << lp) - 1)) << lc) |
 		(uint32(prev) >> (8 - lc))
