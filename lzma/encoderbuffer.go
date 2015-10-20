@@ -3,22 +3,7 @@ package lzma
 import (
 	"errors"
 	"fmt"
-	"io"
 )
-
-// matcher is an interface that allows the identification of potential
-// matches for words with a constant length greater or equal 2.
-//
-// The absolute offset of potential matches are provided by the
-// Matches method. The current position of the matcher is provided by
-// the Pos method.
-type matcher interface {
-	io.Writer
-	Discard(n int) (discarded int, err error)
-	WordLen() int
-	Pos() int64
-	Matches(word []byte) (positions []int64)
-}
 
 // encoderBuffer combines a circular byte buffer with a matcher.
 type encoderBuffer struct {

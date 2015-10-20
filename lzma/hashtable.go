@@ -41,7 +41,9 @@ type hashTable struct {
 	rear  int
 	// mask for computing the index for the hash table
 	mask uint64
-	// hash offset
+	// start offset
+	start int64
+	// hash offset; initial value is start - int64(wordLen)
 	hoff int64
 	// length of the hashed word
 	wordLen int
@@ -93,15 +95,20 @@ func newHashTable(bufCap int, wordLen int) (t *hashTable, err error) {
 }
 
 // Reset puts hashTable back into a pristine condition.
-func (t *hashTable) Reset() {
+func (t *hashTable) Reset(pos int64) error {
+	if pos < 0 {
+		return errors.New("hashTable.Reset: pos must be non-negative")
+	}
 	for i := range t.t {
 		t.t[i] = 0
 	}
 	t.front = 0
 	t.rear = 0
-	t.hoff = -int64(t.wordLen)
+	t.start = pos
+	t.hoff = pos - int64(t.wordLen)
 	t.wr = newRoller(t.wordLen)
 	t.hr = newRoller(t.wordLen)
+	return nil
 }
 
 // Pos returns the number of all byte written already to the matcher. We
@@ -171,7 +178,7 @@ func (t *hashTable) putEntry(h uint64, pos int64) error {
 func (t *hashTable) WriteByte(b byte) error {
 	h := t.wr.RollByte(b)
 	t.hoff++
-	if t.hoff < 0 {
+	if t.hoff < t.start {
 		return nil
 	}
 	return t.putEntry(h, t.hoff)
