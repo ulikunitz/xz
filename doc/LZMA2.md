@@ -64,6 +64,8 @@ A dictionary reset requires always new properties. If this is an
 uncompressed chunk the properties need to be provided in the next
 compressed chunk. New properties require a reset of the state.
 
+A dictionary reset puts the current position to zero.
+
 Uncompressed data is written into the dictionary.
 
 The uncompressed size and compressed size are given in big-endian byte order.
