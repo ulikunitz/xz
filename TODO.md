@@ -37,7 +37,7 @@
 # Package lzma
 
 1. Simplify Encoder and Decoder
-   - Implement EncoderDict
+   - Update EncoderDict to reset position always to zero.
    - Adapt Encoder using new EncoderDict and ByteWriter
         Reset(bw io.ByteWriter, state *State, dict *EncoderDict)
    - adapt Writer
@@ -87,6 +87,20 @@ Use full buffer to create minimal bit-length above range encoder.
 - git push
 
 # Log
+
+## 2015-10-21
+
+I have restarted the work on the library. While trying to implement
+LZMA2, I discovered that I need to resimplify the encoder and decoder
+functions. The option approach is too complicated. Using a limited byte
+writer and not caring for written bytes at all and not to try to handle
+uncompressed data simplifies the LZMA encoder and decoder much.
+Processing uncompressed data and handling limits is a feature of the
+LZMA2 format not of LZMA.
+
+I learned an interesting method from the LZO format. If the last copy is
+too far away they are moving the head one 2 bytes and not 1 byte to
+reduce processing times.
 
 ## 2015-08-26
 
