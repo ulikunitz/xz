@@ -37,7 +37,10 @@
 # Package lzma
 
 1. Simplify Encoder and Decoder
-   - Update EncoderDict to reset position always to zero.
+   - Remove Discard from Matcher interface
+   - add Match functions to EncoderDict
+   - test EncoderDict
+   - rewrite encoder with EncoderDict and State as public components
    - Adapt Encoder using new EncoderDict and ByteWriter
         Reset(bw io.ByteWriter, state *State, dict *EncoderDict)
    - adapt Writer
