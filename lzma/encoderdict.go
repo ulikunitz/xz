@@ -164,11 +164,10 @@ func (e *encoderDict) CopyN(w io.Writer, n int) (written int, err error) {
 // at the given position.
 type matcher interface {
 	io.Writer
-	Discard(n int) (discarded int, err error)
 	WordLen() int
 	Pos() int64
 	Matches(word []byte) (positions []int64)
-	Reset(pos int64) error
+	Reset()
 }
 
 // EncoderDict provides the dictionary for the encoder. It includes a

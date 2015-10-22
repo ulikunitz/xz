@@ -25,13 +25,7 @@ func (b *encoderBuffer) Write(p []byte) (n int, err error) {
 // Discard discards data from the encoder buffer. Data that has been
 // discarded may be overwritten.
 func (b *encoderBuffer) Discard(n int) (discarded int, err error) {
-	discarded, err = b.buffer.Discard(n)
-	k, merr := b.matcher.Discard(discarded)
-	if merr != nil {
-		panic(fmt.Errorf("matcher discarded %d of %d bytes because of %s",
-			k, discarded, merr))
-	}
-	return
+	return b.buffer.Discard(n)
 }
 
 // ReadByteAt allows extraction of a single byte from the encoder

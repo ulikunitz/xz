@@ -38,12 +38,9 @@ type hashTable struct {
 	// circular list data with the offset to the next word
 	data  []uint32
 	front int
-	rear  int
 	// mask for computing the index for the hash table
 	mask uint64
-	// start offset
-	start int64
-	// hash offset; initial value is start - int64(wordLen)
+	// hash offset; initial value is -int64(wordLen)
 	hoff int64
 	// length of the hashed word
 	wordLen int
@@ -68,12 +65,12 @@ func hashTableExponent(n uint32) int {
 }
 
 // newHashTable creates a new hash table for word of length wordLen
-func newHashTable(bufCap int, wordLen int) (t *hashTable, err error) {
-	if !(0 < bufCap && 0 < bufCap+1) {
+func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
+	if !(0 < capacity) {
 		return nil, errors.New(
-			"newHashTable: buffer capacity out of range")
+			"newHashTable: capacity must not be negative")
 	}
-	exp := hashTableExponent(uint32(bufCap))
+	exp := hashTableExponent(uint32(capacity))
 	if !(1 <= wordLen && wordLen <= 4) {
 		return nil, errors.New("newHashTable: " +
 			"argument wordLen out of range")
@@ -84,7 +81,7 @@ func newHashTable(bufCap int, wordLen int) (t *hashTable, err error) {
 	}
 	t = &hashTable{
 		t:       make([]int64, n),
-		data:    make([]uint32, bufCap+1),
+		data:    make([]uint32, capacity),
 		mask:    (uint64(1) << uint(exp)) - 1,
 		hoff:    -int64(wordLen),
 		wordLen: wordLen,
@@ -95,20 +92,14 @@ func newHashTable(bufCap int, wordLen int) (t *hashTable, err error) {
 }
 
 // Reset puts hashTable back into a pristine condition.
-func (t *hashTable) Reset(pos int64) error {
-	if pos < 0 {
-		return errors.New("hashTable.Reset: pos must be non-negative")
-	}
+func (t *hashTable) Reset() {
 	for i := range t.t {
 		t.t[i] = 0
 	}
 	t.front = 0
-	t.rear = 0
-	t.start = pos
-	t.hoff = pos - int64(t.wordLen)
+	t.hoff = -int64(t.wordLen)
 	t.wr = newRoller(t.wordLen)
 	t.hr = newRoller(t.wordLen)
-	return nil
 }
 
 // Pos returns the number of all byte written already to the matcher. We
@@ -117,23 +108,16 @@ func (t *hashTable) Pos() int64 {
 	return t.hoff + int64(t.wordLen)
 }
 
-// available returns the number of of bytes available for the next
-// write.
-func (t *hashTable) available() int {
-	n := t.rear - 1 - t.front
-	if n < 0 {
-		n += len(t.data)
-	}
-	return n
-}
-
 // buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
-	n := t.front - t.rear
-	if n < 0 {
-		n += len(t.data)
+	n := t.hoff + 1
+	switch {
+	case n <= 0:
+		return 0
+	case n >= int64(len(t.data)):
+		return len(t.data)
 	}
-	return n
+	return int(n)
 }
 
 // addIndex adds n to an index ensuring that is stays inside the
@@ -148,20 +132,19 @@ func (t *hashTable) addIndex(i, n int) int {
 
 // putDelta puts the delta instance at the current front of the circular
 // chain buffer.
-func (t *hashTable) putDelta(delta uint32) error {
-	if t.available() < 1 {
-		return errNoSpace
-	}
+func (t *hashTable) putDelta(delta uint32) {
 	t.data[t.front] = delta
 	t.front = t.addIndex(t.front, 1)
-	return nil
 }
 
 // putEntry puts a new entry into the hash table. If there is already a
 // value stored it is moved into the circular chain buffer.
-func (t *hashTable) putEntry(h uint64, pos int64) error {
+func (t *hashTable) putEntry(h uint64, pos int64) {
+	if pos < 0 {
+		return
+	}
 	i := h & t.mask
-	old := t.t[h&t.mask] - 1
+	old := t.t[i] - 1
 	t.t[i] = pos + 1
 	var delta int64
 	if old >= 0 {
@@ -170,7 +153,7 @@ func (t *hashTable) putEntry(h uint64, pos int64) error {
 			delta = 0
 		}
 	}
-	return t.putDelta(uint32(delta))
+	t.putDelta(uint32(delta))
 }
 
 // WriteByte converts a single byte into a hash and puts them into the hash
@@ -178,36 +161,19 @@ func (t *hashTable) putEntry(h uint64, pos int64) error {
 func (t *hashTable) WriteByte(b byte) error {
 	h := t.wr.RollByte(b)
 	t.hoff++
-	if t.hoff < t.start {
-		return nil
-	}
-	return t.putEntry(h, t.hoff)
+	t.putEntry(h, t.hoff)
+	return nil
 }
 
 // Write converts the bytes provided into hash tables and stores the
 // abbreviated offsets into the hash table. The function will never return an
 // error.
 func (t *hashTable) Write(p []byte) (n int, err error) {
-	for i, b := range p {
-		if err := t.WriteByte(b); err != nil {
-			return i, err
-		}
+	for _, b := range p {
+		// WriteByte doesn't generate an error.
+		t.WriteByte(b)
 	}
 	return len(p), nil
-}
-
-// Discard discards data from the circular chain buffer.
-func (t *hashTable) Discard(n int) (discarded int, err error) {
-	if n < 0 {
-		panic("negative argument")
-	}
-	m := t.buffered()
-	if m < n {
-		n = m
-		err = errors.New("discarded less bytes then requested")
-	}
-	t.rear = t.addIndex(t.rear, n)
-	return n, err
 }
 
 // maxMatches limits the number of matches provided by the Matches
@@ -218,26 +184,28 @@ const maxMatches = 32
 
 // getMatches returns the potential positions for a specific hash.
 func (t *hashTable) getMatches(h uint64) (positions []int64) {
-	tailPos := t.hoff + 1 - int64(t.buffered())
-	if tailPos < 0 {
-		panic("tail position negative")
+	if t.hoff < 0 {
+		return nil
+	}
+	buffered := t.buffered()
+	tailPos := t.hoff + 1 - int64(buffered)
+	rear := t.front - buffered
+	if rear >= 0 {
+		rear -= len(t.data)
 	}
 	positions = make([]int64, 0, maxMatches)
 	// get the slot for the hash
 	pos := t.t[h&t.mask] - 1
+	delta := pos - tailPos
 	for {
-		delta := pos - tailPos
 		if delta < 0 {
 			return positions
 		}
-		if pos > t.hoff {
-			panic("pos larger than hoff")
-		}
-		positions = append(positions, pos)
+		positions = append(positions, tailPos+delta)
 		if len(positions) >= maxMatches {
 			return positions
 		}
-		i := t.rear - len(t.data) + int(delta)
+		i := rear + int(delta)
 		if i < 0 {
 			i += len(t.data)
 		}
@@ -245,7 +213,7 @@ func (t *hashTable) getMatches(h uint64) (positions []int64) {
 		if u == 0 {
 			return positions
 		}
-		pos -= int64(t.data[i])
+		delta -= int64(u)
 	}
 }
 
