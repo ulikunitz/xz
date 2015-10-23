@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func peek(d *decoderDict) []byte {
+func peek(d *DecoderDict) []byte {
 	p := make([]byte, d.Buffered())
 	k, err := d.Peek(p)
 	if err != nil {
@@ -32,10 +32,22 @@ func TestInitDecoderDict(t *testing.T) {
 	}
 }
 
+func TestNewDecoderDict(t *testing.T) {
+	if _, err := NewDecoderDict(0, 0); err == nil {
+		t.Fatalf("no error for zero dictionary capacity")
+	}
+	if _, err := NewDecoderDict(1, 0); err == nil {
+		t.Fatalf("no error for bufCap < dictCap")
+	}
+	if _, err := NewDecoderDict(8, 12); err != nil {
+		t.Fatalf("error %s", err)
+	}
+}
+
 func TestDecoderDict(t *testing.T) {
-	var d decoderDict
-	if err := initDecoderDict(&d, 8, 12); err != nil {
-		t.Fatalf("initDecoderDict error %s", err)
+	d, err := NewDecoderDict(8, 12)
+	if err != nil {
+		t.Fatalf("NewDecoderDict error %s", err)
 	}
 	if err := d.WriteByte('a'); err != nil {
 		t.Fatalf("WriteByte error %s", err)
@@ -49,18 +61,18 @@ func TestDecoderDict(t *testing.T) {
 	if err := d.WriteByte('d'); err != nil {
 		t.Fatalf("WriteByte error %s", err)
 	}
-	err := d.WriteMatch(4, 5)
+	err = d.WriteMatch(4, 5)
 	if err != nil {
 		t.Fatalf("WriteMatch error %s", err)
 	}
-	s := string(peek(&d))
+	s := string(peek(d))
 	if s != "abcdabcda" {
 		t.Fatalf("WriteMatch produced buffer content %q; want %q",
 			s, "abcdabcda")
 	}
-	if d.Len() != d.capacity {
+	if d.DictLen() != d.capacity {
 		t.Fatalf("dictionary length is %d; want capacity %d",
-			d.Len(), d.capacity)
+			d.DictLen(), d.capacity)
 	}
 	c := d.ByteAt(10)
 	if c != 0 {
@@ -81,7 +93,7 @@ func TestDecoderDict(t *testing.T) {
 	if string(p) != "abcdabc" {
 		t.Fatalf("Read returned %q; want %q", p, "abcdabc")
 	}
-	s = string(peek(&d))
+	s = string(peek(d))
 	if s != "da" {
 		t.Fatalf("Read produced buffer %q; want %q", s, "da")
 	}
