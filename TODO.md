@@ -37,12 +37,13 @@
 # Package lzma
 
 1. Simplify Encoder and Decoder
+   - Adapt RangeEncoder and RangeDecoder to ByteWriter interface with
+     test on LimitedByteWriter
    - Adapt Encoder using new EncoderDict and ByteWriter
         Reset(bw io.ByteWriter, state *State, dict *EncoderDict)
-   - adapt Writer
-   - Implement DecoderDict
-   - Adapt Decoder
+    - Adapt Decoder
         Reset(bw io.ByteReader, state *State, dict *DecoderDict)
+   - adapt Writer
    - adapt Reader
 
 # Package lzma2
