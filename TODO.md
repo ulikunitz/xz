@@ -37,6 +37,8 @@
 # Package lzma
 
 1. Simplify Encoder and Decoder
+   - rename bytewriter.go to byteio.go
+   - Provide LimitedByteReader and ByteReaderFromReader function
    - Adapt RangeEncoder and RangeDecoder to ByteWriter interface with
      test on LimitedByteWriter
    - Adapt Encoder using new EncoderDict and ByteWriter
