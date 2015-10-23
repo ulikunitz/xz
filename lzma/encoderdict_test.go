@@ -11,17 +11,15 @@ func TestEncoderDict(t *testing.T) {
 		bufCap  = 12
 		dictCap = 8
 	)
-	var buf encoderBuffer
-	if err := initBuffer(&buf.buffer, 12); err != nil {
+	var err error
+	e := EncoderDict{capacity: dictCap}
+	if err = initBuffer(&e.buf, bufCap); err != nil {
 		t.Fatalf("initBuffer error %s", err)
 	}
-	var err error
-	if buf.matcher, err = newHashTable(bufCap, 3); err != nil {
+	if e.m, err = newHashTable(bufCap, 3); err != nil {
 		t.Fatalf("newHashTable(%d, %d): error %s", dictCap, 3, err)
 	}
-	var e encoderDict
-	_initEncoderDict(&e, 8, &buf)
-	n, err := buf.Write([]byte(tst))
+	n, err := e.Write([]byte(tst))
 	if err != nil {
 		t.Fatalf("Write error %s", err)
 	}

@@ -102,7 +102,7 @@ func (e *encoderDict) Literal() byte {
 }
 
 // Matches returns potential distances for the word at the head of the
-// dictionary. If there are not enough characters a nil slice will be
+// dictionary. If there are not enough bytes a nil slice will be
 // returned.
 func (e *encoderDict) Matches() (distances []int) {
 	if e.Buffered() < e.buf.WordLen() {
@@ -328,4 +328,48 @@ func (ed *EncoderDict) CopyN(w io.Writer, n int64) (written int64, err error) {
 	k, err = w.Write(ed.buf.data[:ed.buf.rear])
 	written += int64(k)
 	return written, err
+}
+
+// Literal returns the the byte at the position of the head. The method
+// returns 0 if no bytes are buffered.
+func (ed *EncoderDict) Literal() byte {
+	if ed.buf.rear == ed.buf.front {
+		return 0
+	}
+	return ed.buf.data[ed.buf.rear]
+}
+
+// Matches returns potential distances for the word at the head of the
+// dictionary. If there are not enough bytes a nil slice will be
+// returned.
+func (ed *EncoderDict) Matches() (distances []int) {
+	w := ed.m.WordLen()
+	if ed.buf.Buffered() < w {
+		return nil
+	}
+	p := make([]byte, w)
+	// Peek doesn't return errors and we have ensured that there are
+	// enough bytes.
+	ed.buf.Peek(p)
+	positions := ed.m.Matches(p)
+	n := int64(ed.DictLen())
+	hpos := ed.m.Pos()
+	for _, pos := range positions {
+		d := hpos - pos
+		if 0 < d && d <= n {
+			distances = append(distances, int(d))
+		}
+	}
+	return distances
+}
+
+// MatchLen computes the length of the match at the given distance with
+// the bytes at the head of the dictionary. The function returns zero
+// if no match is found.
+func (ed *EncoderDict) MatchLen(dist int) int {
+	if !(0 < dist && dist <= ed.DictLen()) {
+		return 0
+	}
+	b := ed.Buffered()
+	return ed.buf.EqualBytes(b+dist, b, maxMatchLen)
 }
