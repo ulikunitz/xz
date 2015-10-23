@@ -190,7 +190,7 @@ func TestBuffer_Discard(t *testing.T) {
 	}
 }
 
-func TestBuffer_Discard_panic(t *testing.T) {
+func TestBuffer_Discard_error(t *testing.T) {
 	var (
 		buf buffer
 		err error
@@ -198,16 +198,11 @@ func TestBuffer_Discard_panic(t *testing.T) {
 	if err = initBuffer(&buf, 10); err != nil {
 		t.Fatalf("initBuffer(&buf, 10) error %s", err)
 	}
-	panicked := false
-	func() {
-		defer func() {
-			if x := recover(); x != nil {
-				panicked = true
-			}
-		}()
-		buf.Discard(-1)
-	}()
-	if !panicked {
-		t.Fatalf("buf.Discard(-1) didn't panic")
+	n, err := buf.Discard(-1)
+	if err == nil {
+		t.Fatal("buf.Discard(-1) didn't return an error")
+	}
+	if n != 0 {
+		t.Fatalf("buf.Discard(-1) returned %d; want %d", n, 0)
 	}
 }

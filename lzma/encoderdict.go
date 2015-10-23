@@ -177,7 +177,6 @@ type matcher interface {
 type EncoderDict struct {
 	buf      buffer
 	m        matcher
-	head     int
 	capacity int
 }
 
@@ -196,70 +195,39 @@ func NewEncoderDict(dictCap, bufCap int) (ed *EncoderDict, err error) {
 	if err = initBuffer(&ed.buf, bufCap); err != nil {
 		return nil, err
 	}
-	if ed.m, err = newHashTable(bufCap, 4); err != nil {
+	if ed.m, err = newHashTable(dictCap, 4); err != nil {
 		return nil, err
 	}
-	ed.head = ed.buf.front
 	return ed, nil
 }
 
-// Resets the dictionary and sets the position to the given value. The
-// dictionary the will be cleared and the buffered data maybe discarded
-// based on the value of pos.
-func (ed *EncoderDict) Reset(pos int64) error {
-	mpos := ed.m.Pos()
-	cpos := mpos - int64(ed.Buffered())
-	delta := pos - cpos
-	if delta < 0 {
-		return errors.New(
-			"EncoderDict.Reset: pos must not go backwards")
-	}
-	if pos >= mpos {
-		if err := ed.m.Reset(pos); err != nil {
-			return err
-		}
-		ed.buf.Reset()
-		ed.head = 0
-		return nil
-	}
-	if _, err := ed.Advance(int(delta)); err != nil {
-		return err
-	}
-	n := ed.Len()
-	k, err := ed.Discard(n)
-	if err != nil {
-		return err
-	}
-	if k < n {
-		panic("EncoderDict.Reset: discarded less bytes than requested")
-	}
-	return nil
+// Resets the dictionary. Afterwards the state of the dictionary is the
+// same as after NewEncoderDict.
+func (ed *EncoderDict) Reset() {
+	ed.buf.Reset()
+	ed.m.Reset()
 }
 
-// Available returns the number of bytes that can be buffered by a
+// Available returns the number of bytes that can be written by a
 // following Write call.
 func (ed *EncoderDict) Available() int {
-	return ed.buf.Available()
+	return ed.buf.Available() - ed.DictLen()
 }
 
 // Buffered gives the number of bytes available for a following Read or
 // Advance.
 func (ed *EncoderDict) Buffered() int {
-	delta := ed.buf.front - ed.head
-	if delta < 0 {
-		delta += len(ed.buf.data)
-	}
-	return delta
+	return ed.buf.Buffered()
 }
 
-// Len returns the number of bytes stored in the dictionary after the
-// current position. It may be larger then the dictionary length.
+// Len returns the number of bytes stored in the buffer.
 func (ed *EncoderDict) Len() int {
-	delta := ed.head - ed.buf.rear
-	if delta < 0 {
-		delta += len(ed.buf.data)
+	n := ed.m.Pos()
+	a := int64(ed.buf.Available())
+	if n > a {
+		return int(a)
 	}
-	return delta
+	return int(n)
 }
 
 // DictCap returns the dictionary capacity.
@@ -275,16 +243,16 @@ func (ed *EncoderDict) BufCap() int {
 // DictLen returns the current number of bytes of the dictionary. The
 // number has dictCap as upper limit.
 func (ed *EncoderDict) DictLen() int {
-	n := ed.Len()
-	if n > ed.capacity {
+	n := ed.m.Pos()
+	if n > int64(ed.capacity) {
 		return ed.capacity
 	}
-	return n
+	return int(n)
 }
 
 // Returns the current position of the dictionary head.
 func (ed *EncoderDict) Pos() int64 {
-	return ed.m.Pos() - int64(ed.Buffered())
+	return ed.m.Pos()
 }
 
 // ByteAt returns a byte from the dictionary. The distance is the
@@ -294,7 +262,7 @@ func (ed *EncoderDict) ByteAt(distance int) byte {
 	if !(0 < distance && distance < ed.Len()) {
 		return 0
 	}
-	i := ed.head - distance
+	i := ed.buf.rear - distance
 	if i < 0 {
 		i += len(ed.buf.data)
 	}
@@ -303,47 +271,36 @@ func (ed *EncoderDict) ByteAt(distance int) byte {
 
 // Write puts new data into the dictionary.
 func (ed *EncoderDict) Write(p []byte) (n int, err error) {
-	if _, err = ed.m.Write(p); err != nil {
-		// We panic because the matcher should be under our
-		// control and don't return an error.
-		panic(fmt.Errorf("matcher write returned error %s", err))
+	n = len(p)
+	m := ed.Available()
+	if n > m {
+		p = p[:m]
+		err = errNoSpace
 	}
-	if _, err = ed.buf.Write(p); err != nil {
-		// We panic for the same reason as above.
-		panic(fmt.Errorf("buffer write returned error %s", err))
+	var werr error
+	n, werr = ed.buf.Write(p)
+	if werr != nil {
+		err = werr
 	}
-	return len(p), nil
+	return n, err
 }
 
 // Read reads data from the buffer in front of the dictionary. Reading
 // has the same effect as Advance on the dictionary.
 func (ed *EncoderDict) Read(p []byte) (n int, err error) {
-	m := ed.Buffered()
-	n = len(p)
-	if m < n {
-		n = m
-		p = p[:m]
+	n, err = ed.buf.Peek(p)
+	p = p[:n]
+	var cerr error
+	if n, cerr = ed.Advance(n); cerr != nil {
+		err = cerr
 	}
-	k := copy(p, ed.buf.data[ed.head:])
-	if k < n {
-		copy(p[k:], ed.buf.data)
-	}
-	ed.head = ed.buf.addIndex(ed.head, n)
-	return n, nil
+	return n, err
 }
 
 // Advance moves the dictionary head ahead by the given number of bytes.
 func (ed *EncoderDict) Advance(n int) (advanced int, err error) {
-	if n < 0 {
-		return 0, errors.New("Advance: negative argument")
-	}
-	m := ed.Buffered()
-	if m < n {
-		n = m
-		err = errors.New("Advance: cannot advance all bytes requested")
-	}
-	ed.head = ed.buf.addIndex(ed.head, n)
-	return n, err
+	written, err := io.CopyN(ed.m, &ed.buf, int64(n))
+	return int(written), err
 }
 
 // CopyN copies the n topmost bytes of the dictionary. The maximum for n
@@ -356,45 +313,19 @@ func (ed *EncoderDict) CopyN(w io.Writer, n int64) (written int64, err error) {
 	if n <= 0 {
 		return 0, nil
 	}
-	i := ed.head - int(n)
-	if i < 0 {
-		i += len(ed.buf.data)
+	var k int
+	i := ed.buf.rear - int(n)
+	if i >= 0 {
+		k, err = w.Write(ed.buf.data[i:ed.buf.rear])
+		return int64(k), err
 	}
-	for written < n {
-		j := i - len(ed.buf.data) + int(n-written)
-		if j < 0 {
-			j += len(ed.buf.data)
-		} else {
-			j = len(ed.buf.data)
-		}
-		var k int
-		k, err = w.Write(ed.buf.data[i:j])
-		written += int64(k)
-		if err != nil {
-			return written, err
-		}
+	i += len(ed.buf.data)
+	k, err = w.Write(ed.buf.data[i:])
+	written = int64(k)
+	if err != nil {
+		return written, err
 	}
-	return written, nil
-}
-
-// Discard discards data at the end of the dictionary buffer.
-func (ed *EncoderDict) Discard(n int) (discarded int, err error) {
-	if n <= 0 {
-		return 0, nil
-	}
-	m := ed.Len()
-	if n > m {
-		n = m
-	}
-	if _, err = ed.m.Discard(n); err != nil {
-		// We panic because matcher shouldn't return an error
-		// here and recovery is complicated because of the
-		// synchronicity between buffer and matcher.
-		panic(fmt.Errorf("matcher discard returned error %s", err))
-	}
-	if _, err = ed.buf.Discard(n); err != nil {
-		// We panic for the same reason as above.
-		panic(fmt.Errorf("buffer discard returned error %s", err))
-	}
-	return n, nil
+	k, err = w.Write(ed.buf.data[:ed.buf.rear])
+	written += int64(k)
+	return written, err
 }

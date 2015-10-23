@@ -96,7 +96,7 @@ func (b *buffer) Peek(p []byte) (n int, err error) {
 // If Discards skips fewer than n bytes, it returns an error.
 func (b *buffer) Discard(n int) (discarded int, err error) {
 	if n < 0 {
-		panic("negative argument")
+		return 0, errors.New("buffer.Discard: negative argument")
 	}
 	m := b.Buffered()
 	if m < n {
