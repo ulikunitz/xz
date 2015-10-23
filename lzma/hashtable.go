@@ -64,7 +64,7 @@ func hashTableExponent(n uint32) int {
 	return e
 }
 
-// newHashTable creates a new hash table for word of length wordLen
+// newHashTable creates a new hash table for words of length wordLen
 func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
 	if !(0 < capacity) {
 		return nil, errors.New(
