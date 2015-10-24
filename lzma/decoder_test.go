@@ -4,6 +4,7 @@
 
 package lzma
 
+/*
 import (
 	"io"
 	"io/ioutil"
@@ -84,3 +85,4 @@ func TestDecoderUncompressed(t *testing.T) {
 		t.Fatalf("read %q; but want %q", got, want)
 	}
 }
+*/

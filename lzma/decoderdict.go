@@ -78,7 +78,7 @@ func (d *DecoderDict) ByteAt(dist int) byte {
 // distance must point in the current dictionary and the length must not
 // exceed the maximum length 273 supported in LZMA.
 //
-// The error value errNoSpace indicates that no space is available in
+// The error value ErrNoSpace indicates that no space is available in
 // the dictionary for writing. You need to read from the dictionary.
 func (d *DecoderDict) WriteMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.DictLen()) {
@@ -88,7 +88,7 @@ func (d *DecoderDict) WriteMatch(dist int, length int) error {
 		return errors.New("WriteMatch: length out of range")
 	}
 	if length > d.buf.Available() {
-		return errNoSpace
+		return ErrNoSpace
 	}
 	d.head += int64(length)
 

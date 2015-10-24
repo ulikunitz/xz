@@ -13,7 +13,7 @@ type greedyFinder struct{}
 
 // miniState represents a minimal state to be used by optimizer.
 type miniState struct {
-	d encoderDict
+	d *EncoderDict
 	r reps
 }
 
@@ -67,8 +67,8 @@ func findOp(ms *miniState) operation {
 // buffer will be covered, if it is not set the last operation reaching
 // the head will not be output. This functionality has been included to
 // support the extension of the last operation if new data comes in.
-func (g greedyFinder) findOps(d *encoderDict, r reps, all bool) []operation {
-	ms := miniState{d: *d, r: r}
+func (g greedyFinder) findOps(d *EncoderDict, r reps, all bool) []operation {
+	ms := miniState{d: d, r: r}
 	ops := make([]operation, 0, 256)
 	if ms.d.Buffered() > 0 {
 		for {

@@ -2,7 +2,6 @@ package lzma
 
 import (
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -129,7 +128,7 @@ func (d *EncoderDict) Write(p []byte) (n int, err error) {
 	m := d.Available()
 	if n > m {
 		p = p[:m]
-		err = errNoSpace
+		err = ErrNoSpace
 	}
 	var werr error
 	n, werr = d.buf.Write(p)

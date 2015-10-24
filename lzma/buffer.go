@@ -107,19 +107,19 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	return n, err
 }
 
-// errNoSpace indicates that there is insufficient space in the buffer
-// available.
-var errNoSpace = errors.New("insufficient space in buffer")
+// ErrNoSpace indicates that there is insufficient space for the Write
+// operation.
+var ErrNoSpace = errors.New("Write: insufficient space")
 
 // Write puts data into the  buffer. If less bytes are written than
-// requested errNoSpace is returned.
+// requested ErrNoSpace is returned.
 func (b *buffer) Write(p []byte) (n int, err error) {
 	m := b.Available()
 	n = len(p)
 	if m < n {
 		n = m
 		p = p[:m]
-		err = errNoSpace
+		err = ErrNoSpace
 	}
 	k := copy(b.data[b.front:], p)
 	if k < n {
@@ -129,11 +129,11 @@ func (b *buffer) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-// WriteByte writes a single byte into the buffer. The error errNoSpace
+// WriteByte writes a single byte into the buffer. The error ErrNoSpace
 // is returned if no single byte is available in the buffer for writing.
 func (b *buffer) WriteByte(c byte) error {
 	if b.Available() < 1 {
-		return errNoSpace
+		return ErrNoSpace
 	}
 	b.data[b.front] = c
 	b.front = b.addIndex(b.front, 1)

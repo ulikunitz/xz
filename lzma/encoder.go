@@ -135,7 +135,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 		for j < n {
 			k, werr := e.buf.Write(p[j:])
 			j += k
-			if werr != nil && werr != errNoSpace {
+			if werr != nil && werr != ErrNoSpace {
 				panic(fmt.Errorf("buf.Write: unexpected %s",
 					werr))
 			}
@@ -146,7 +146,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 	for {
 		k, err := e.buf.Write(p[n:])
 		n += k
-		if err != errNoSpace {
+		if err != ErrNoSpace {
 			return n, err
 		}
 		if err = e.compress(false); err != nil {

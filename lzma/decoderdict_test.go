@@ -19,19 +19,6 @@ func peek(d *DecoderDict) []byte {
 	return p
 }
 
-func TestInitDecoderDict(t *testing.T) {
-	var d decoderDict
-	if err := initDecoderDict(&d, 0, 0); err == nil {
-		t.Fatalf("no error for zero dictionary capacity")
-	}
-	if err := initDecoderDict(&d, 1, 0); err == nil {
-		t.Fatalf("no error for bufCap < dictCap")
-	}
-	if err := initDecoderDict(&d, 8, 12); err != nil {
-		t.Fatalf("error %s", err)
-	}
-}
-
 func TestNewDecoderDict(t *testing.T) {
 	if _, err := NewDecoderDict(0, 0); err == nil {
 		t.Fatalf("no error for zero dictionary capacity")
