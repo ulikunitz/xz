@@ -38,7 +38,7 @@ func TestDecoder(t *testing.T) {
 		r := new(Decoder)
 		br := bufio.NewReader(f)
 		if err = r.Init(br, state, dict, params); err != nil {
-			t.Fatalf("Reset error %s", err)
+			t.Fatalf("Init error %s", err)
 		}
 		bytes, err := ioutil.ReadAll(r)
 		if err != nil {
