@@ -1,13 +1,8 @@
 package lzma
 
-import (
-	"errors"
-	"fmt"
-	"io"
-)
-
 const opLenMargin = 10
 
+/*
 // opFinder enables the support of multiple different OpFinder
 // algorithms.
 type opFinder interface {
@@ -366,3 +361,4 @@ func (e *Encoder) Uncompressed() int64 {
 func (e *Encoder) CopyDict(w io.Writer, n int) (written int, err error) {
 	return e.dict.CopyN(w, n)
 }
+*/

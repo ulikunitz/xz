@@ -1,5 +1,7 @@
 package lzma
 
+/*
+
 import "io"
 
 // Reader represents a reader for LZMA streams in the classic format.
@@ -29,3 +31,5 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 func (r *Reader) Read(p []byte) (n int, err error) {
 	return r.d.Read(p)
 }
+
+*/

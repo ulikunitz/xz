@@ -1,16 +1,13 @@
 package lzma
 
-import (
-	"errors"
-	"io"
-)
-
 // MinDictCap and MaxDictCap provide the range of supported dictionary
 // capacities.
 const (
 	MinDictCap = 1 << 12
 	MaxDictCap = 1<<32 - 1
 )
+
+/*
 
 // Parameters control the encoding of a LZMA stream.
 type Parameters struct {
@@ -118,3 +115,5 @@ func (w *Writer) Close() error {
 	}
 	return w.e.Close()
 }
+
+*/

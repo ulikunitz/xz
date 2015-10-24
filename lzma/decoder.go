@@ -1,11 +1,5 @@
 package lzma
 
-import (
-	"errors"
-	"fmt"
-	"io"
-)
-
 // The CFlags type is used in the CodecParams structure to store flags.
 type CFlags int
 
@@ -57,6 +51,7 @@ type CodecParams struct {
 	Flags CFlags
 }
 
+/*
 // Decoder decodes a raw LZMA stream without any header.
 type Decoder struct {
 	// dictionary; the rear pointer of the buffer will be used for
@@ -434,3 +429,4 @@ func (d *Decoder) Compressed() int64 {
 func (d *Decoder) Uncompressed() int64 {
 	return d.dict.head - d.start
 }
+*/
