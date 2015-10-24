@@ -12,12 +12,15 @@ const (
 	maxDictCap = 1<<32 - 1
 )
 
+// DecoderDict provides the dictionary to the Decoder.
 type DecoderDict struct {
 	buf      buffer
 	head     int64
 	capacity int
 }
 
+// NewDecoderDict creates a new decoder dictionary. The buffer capacity
+// bufCap must be greater or equal to the dictionary capacity.
 func NewDecoderDict(dictCap, bufCap int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= maxDictCap) {
@@ -35,12 +38,14 @@ func NewDecoderDict(dictCap, bufCap int) (d *DecoderDict, err error) {
 	return d, nil
 }
 
+// Reset clears the dictionary. The read buffer is not changed, so the
+// buffered data can still be read.
 func (d *DecoderDict) Reset() {
 	d.head = 0
 }
 
-// Reset clears the dictionary. The read buffer is not changed, so the
-// buffered data can still be read.
+// WriteByte writes a single byte into the dictionary. It will be used
+// for writing literals.
 func (d *DecoderDict) WriteByte(c byte) error {
 	if err := d.buf.WriteByte(c); err != nil {
 		return err
