@@ -13,7 +13,7 @@ import (
 // overflow therefore we need uint64. The cache value is used to handle
 // overflows.
 type rangeEncoder struct {
-	w        *lbcWriter
+	lbw      *LimitedByteWriter
 	nrange   uint32
 	low      uint64
 	cacheLen int64
@@ -24,36 +24,22 @@ type rangeEncoder struct {
 const maxInt64 = 1<<63 - 1
 
 // newRangeEncoder creates a new range encoder.
-func newRangeEncoder(w io.Writer) (re *rangeEncoder, err error) {
-	return &rangeEncoder{
-		w:        limitByteWriter(w, maxInt64),
-		nrange:   0xffffffff,
-		cacheLen: 1}, nil
-}
-
-// newRangeEncoderLimit creates the range encoder with a limit for the
-// bytes to write.
-func newRangeEncoderLimit(w io.Writer, limit int64) (re *rangeEncoder, err error) {
-	if limit < 5 {
-		return nil, errors.New("limit must be larger or equal 5")
+func newRangeEncoder(bw io.ByteWriter) (re *rangeEncoder, err error) {
+	lbw, ok := bw.(*LimitedByteWriter)
+	if !ok {
+		lbw = &LimitedByteWriter{BW: bw, N: maxInt64}
 	}
 	return &rangeEncoder{
-		w:        limitByteWriter(w, limit),
+		lbw:      lbw,
 		nrange:   0xffffffff,
 		cacheLen: 1}, nil
-}
-
-// Compressed returns the number of bytes that has been written to the
-// unterlying writer.
-func (e *rangeEncoder) Compressed() int64 {
-	return e.w.n
 }
 
 // Available returns the number of bytes that still can be written. The
 // method takes the bytes that will be currently written by Close into
 // account.
 func (e *rangeEncoder) Available() int64 {
-	return e.w.limit - (e.w.n + e.cacheLen + 4)
+	return e.lbw.N - (e.cacheLen + 4)
 }
 
 // writeByte writes a single byte to the underlying writer. An error is
@@ -63,7 +49,7 @@ func (e *rangeEncoder) writeByte(c byte) error {
 	if e.Available() < 1 {
 		return ErrNoSpace
 	}
-	return e.w.WriteByte(c)
+	return e.lbw.WriteByte(c)
 }
 
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
@@ -144,33 +130,61 @@ func (e *rangeEncoder) normalize() error {
 
 // rangeDecoder decodes single bits of the range encoding stream.
 type rangeDecoder struct {
-	r      *lbcReader
+	br     io.ByteReader
 	nrange uint32
 	code   uint32
 }
 
+// init initializes the range decoder, by reading from the byte reader.
+func (d *rangeDecoder) init() error {
+	d.nrange = 0xffffffff
+	d.code = 0
+
+	b, err := d.br.ReadByte()
+	if err != nil {
+		return err
+	}
+	if b != 0 {
+		return errors.New("newRangeDecoder: first byte not zero")
+	}
+
+	for i := 0; i < 4; i++ {
+		if err = d.updateCode(); err != nil {
+			return err
+		}
+	}
+
+	if d.code >= d.nrange {
+		return errors.New("newRangeDecoder: d.code >= d.nrange")
+	}
+
+	return nil
+}
+
 // newRangeDecoder initializes a range decoder. It reads five bytes from the
 // reader and therefore may return an error.
-func newRangeDecoder(r io.Reader) (d *rangeDecoder, err error) {
-	d = &rangeDecoder{r: limitByteReader(r, maxInt64)}
-	err = d.init()
-	return
-}
+func newRangeDecoder(br io.ByteReader) (d *rangeDecoder, err error) {
+	d = &rangeDecoder{br: br, nrange: 0xffffffff}
 
-// newRangeDecoderLimit creates a range decoder with an explicit limit.
-func newRangeDecoderLimit(r io.Reader, limit int64) (d *rangeDecoder, err error) {
-	if limit < 5 {
-		return nil, errors.New("limit must be larger or equal 5")
+	b, err := d.br.ReadByte()
+	if err != nil {
+		return nil, err
 	}
-	d = &rangeDecoder{r: limitByteReader(r, limit)}
-	err = d.init()
-	return
-}
+	if b != 0 {
+		return nil, errors.New("newRangeDecoder: first byte not zero")
+	}
 
-//  Compressed returns the number of bytes that the range encoder read
-//  from the underlying reader.
-func (d *rangeDecoder) Compressed() int64 {
-	return d.r.n
+	for i := 0; i < 4; i++ {
+		if err = d.updateCode(); err != nil {
+			return nil, err
+		}
+	}
+
+	if d.code >= d.nrange {
+		return nil, errors.New("newRangeDecoder: d.code >= d.nrange")
+	}
+
+	return d, nil
 }
 
 // possiblyAtEnd checks whether the decoder may be at the end of the stream.
@@ -223,35 +237,9 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	return b, nil
 }
 
-// init initializes the range decoder, by reading from the byte reader.
-func (d *rangeDecoder) init() error {
-	d.nrange = 0xffffffff
-	d.code = 0
-
-	b, err := d.r.ReadByte()
-	if err != nil {
-		return err
-	}
-	if b != 0 {
-		return errors.New("first byte not zero")
-	}
-
-	for i := 0; i < 4; i++ {
-		if err = d.updateCode(); err != nil {
-			return err
-		}
-	}
-
-	if d.code >= d.nrange {
-		return errors.New("newRangeDecoder: d.code >= d.nrange")
-	}
-
-	return nil
-}
-
 // updateCode reads a new byte into the code.
 func (d *rangeDecoder) updateCode() error {
-	b, err := d.r.ReadByte()
+	b, err := d.br.ReadByte()
 	if err != nil {
 		return err
 	}
