@@ -4,6 +4,7 @@
 
 package lzma
 
+/* TODO
 import (
 	"errors"
 	"fmt"
@@ -118,3 +119,4 @@ func writeHeader(w io.Writer, p *CodecParams) error {
 	_, err = w.Write(b)
 	return err
 }
+*/
