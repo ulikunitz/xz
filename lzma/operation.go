@@ -76,5 +76,5 @@ func (l lit) String() string {
 	} else {
 		c = '.'
 	}
-	return fmt.Sprintf("lit{%c/%02x}", c, l.b)
+	return fmt.Sprintf("L{%c/%02x}", c, l.b)
 }
