@@ -24,7 +24,7 @@ type Encoder struct {
 	margin     int
 }
 
-// Initializes the encoder. If the byte writer must be limited use
+// Init sets the encoder up for use. If the byte writer must be limited use
 // LimitedByteWriter provided by this package.
 func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
 	p CodecParams) error {
