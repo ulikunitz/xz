@@ -1,7 +1,7 @@
 package lzma
 
 import (
-	"bufio"
+	"errors"
 	"io"
 )
 
@@ -9,6 +9,21 @@ import (
 type Reader struct {
 	Parameters Parameters
 	d          Decoder
+}
+
+// breader converts a reader into a byte reader.
+type breader struct {
+	io.Reader
+}
+
+// ReadByte read byte function.
+func (r breader) ReadByte() (c byte, err error) {
+	var p [1]byte
+	n, err := r.Reader.Read(p[:])
+	if n < 1 && err == nil {
+		return 0, errors.New("ReadByte: no data")
+	}
+	return p[0], nil
 }
 
 // NewReader creates a new reader for an LZMA stream using the classic
@@ -19,9 +34,10 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 		return nil, err
 	}
 	params.normalizeReader()
+
 	br, ok := lzma.(io.ByteReader)
 	if !ok {
-		br = bufio.NewReader(lzma)
+		br = breader{lzma}
 	}
 
 	props, err := NewProperties(params.LC, params.LP, params.PB)

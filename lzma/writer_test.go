@@ -4,7 +4,6 @@
 
 package lzma
 
-/*
 import (
 	"bufio"
 	"bytes"
@@ -141,9 +140,8 @@ func Example_writer() {
 
 func TestWriter_Size(t *testing.T) {
 	p := Default
-	p.UncompressedSize = 10
-	p.IgnoreUncompressedSize = false
-	p.EOS = true
+	p.Size = 10
+	p.EOSMarker = true
 	buf := new(bytes.Buffer)
 	w, err := NewWriterParams(buf, &p)
 	if err != nil {
@@ -188,4 +186,3 @@ func TestWriter_Size(t *testing.T) {
 		t.Fatalf("read %q, want %q", s, want)
 	}
 }
-*/

@@ -50,6 +50,9 @@ func TestEncoderCycle(t *testing.T) {
 	if n != len(orig) {
 		t.Fatalf("w.Write returned %d; want %d", n, len(orig))
 	}
+	if err = w.Wash(); err != nil {
+		t.Fatalf("w.Wash error %s", err)
+	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
 	}
@@ -62,8 +65,7 @@ func TestEncoderCycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
-	// state.Reset()
-	state = NewState(props)
+	state.Reset()
 	r := new(Decoder)
 	if err = r.Init(&buf, state, decoderDict, params); err != nil {
 		t.Fatalf("Init error %s", err)

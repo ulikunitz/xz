@@ -1,5 +1,10 @@
 package lzma
 
+import (
+	"bufio"
+	"io"
+)
+
 // MinDictCap and MaxDictCap provide the range of supported dictionary
 // capacities.
 const (
@@ -7,75 +12,11 @@ const (
 	MaxDictCap = 1<<32 - 1
 )
 
-/*
-
-// Parameters control the encoding of a LZMA stream.
-type Parameters struct {
-	LC                     int
-	LP                     int
-	PB                     int
-	DictCap                int
-	UncompressedSize       int64
-	EOS                    bool
-	IgnoreUncompressedSize bool
-}
-
-// verifyParameters verify the parameters provided by the end user.
-func verifyParameters(p *Parameters) error {
-	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
-		return err
-	}
-	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
-		return errors.New("DictCap out of range")
-	}
-	if p.IgnoreUncompressedSize {
-		if !p.EOS {
-			return errors.New("if no uncompressed size is given, " +
-				"EOS must be set")
-		}
-	} else {
-		if p.UncompressedSize < 0 {
-			return errors.New(
-				"UncompressedSize must be greate or equal 0")
-		}
-	}
-	return nil
-}
-
-// Default defines the default parameters for the LZMA writer.
-var Default = Parameters{
-	LC:      3,
-	LP:      0,
-	PB:      2,
-	DictCap: 8 * 1024 * 1024,
-	EOS:     true,
-	IgnoreUncompressedSize: true,
-}
-
-// convertParameters converts the parameters into the parameters for the
-// Encoder.
-func convertParameters(p *Parameters) CodecParams {
-	c := CodecParams{
-		DictCap:          p.DictCap,
-		BufCap:           p.DictCap + 1<<13,
-		UncompressedSize: p.UncompressedSize,
-		LC:               p.LC,
-		LP:               p.LP,
-		PB:               p.PB,
-		Flags:            CNoCompressedSize,
-	}
-	if p.EOS {
-		c.Flags |= CEOSMarker
-	}
-	if p.IgnoreUncompressedSize {
-		c.Flags |= CNoUncompressedSize
-	}
-	return c
-}
-
 // Writer compresses data in the classic LZMA format.
 type Writer struct {
-	e Encoder
+	Parameters Parameters
+	bw         *bufio.Writer
+	e          Encoder
 }
 
 // NewWriter creates a new writer for the classic LZMA format.
@@ -86,15 +27,44 @@ func NewWriter(lzma io.Writer) (w *Writer, err error) {
 // NewWriterParams supports parameters for the creation of an LZMA
 // writer.
 func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
-	if err = verifyParameters(p); err != nil {
+	p.normalizeWriter()
+	if err = p.verifyWriter(); err != nil {
 		return nil, err
 	}
-	cparams := convertParameters(p)
-	if err := writeHeader(lzma, &cparams); err != nil {
+
+	w = &Writer{
+		Parameters: *p,
+	}
+
+	bw, ok := lzma.(io.ByteWriter)
+	if !ok {
+		w.bw = bufio.NewWriter(lzma)
+		bw = w.bw
+		if err := writeHeader(w.bw, p); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := writeHeader(lzma, p); err != nil {
+			return nil, err
+		}
+	}
+
+	props, err := NewProperties(p.LC, p.LP, p.PB)
+	if err != nil {
 		return nil, err
 	}
-	w = new(Writer)
-	if err = InitEncoder(&w.e, lzma, &cparams); err != nil {
+	state := NewState(props)
+
+	dict, err := NewEncoderDict(p.DictCap, p.BufCap)
+	if err != nil {
+		return nil, err
+	}
+
+	codecParams := CodecParams{
+		Size:      p.Size,
+		EOSMarker: p.EOSMarker,
+	}
+	if err = w.e.Init(bw, state, dict, codecParams); err != nil {
 		return nil, err
 	}
 	return w, nil
@@ -102,18 +72,43 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 
 // Write puts data into the Writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
-	return w.e.Write(p)
+	if w.Parameters.Size >= 0 {
+		m := w.Parameters.Size
+		m -= w.e.Uncompressed() + int64(w.e.Dict.Buffered())
+		if m < 0 {
+			m = 0
+		}
+		if m < int64(len(p)) {
+			p = p[:m]
+			err = ErrNoSpace
+		}
+	}
+	var werr error
+	if n, werr = w.e.Write(p); werr != nil {
+		err = werr
+	}
+	return n, err
 }
 
 // Close closes the writer stream. It ensures that all data from the
 // buffer will be compressed and the LZMA stream will be finished.
 func (w *Writer) Close() error {
-	if w.e.flags&CNoUncompressedSize == 0 {
-		if w.e.Uncompressed()+int64(w.e.Buffered()) != w.e.uncompressedSize {
+	if w.Parameters.Size >= 0 {
+		n := w.e.Uncompressed() + int64(w.e.Dict.Buffered())
+		if n != w.Parameters.Size {
 			return errUncompressedSize
 		}
 	}
-	return w.e.Close()
-}
+	err := w.e.Wash()
+	if err == nil {
+		err = w.e.Close()
+	}
 
-*/
+	if w.bw != nil {
+		ferr := w.bw.Flush()
+		if err == nil {
+			err = ferr
+		}
+	}
+	return err
+}

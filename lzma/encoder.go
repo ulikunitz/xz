@@ -207,16 +207,9 @@ func (e *Encoder) compress(all bool) error {
 // eosMatch is a pseudo operation that indicates the end of the stream.
 var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
-// Close tries to write the outstanding data in the buffer to the
-// underlying writer until compressed or uncompressed size limits areif
-// reached. In any case the LZMA stream will be correctly closed and no
-// error will be returned. If there is remaining data in the buffer the
-// encoder needs to be reset.
+// Close closes the stream without writing the outstanding data in the
+// buffer.
 func (e *Encoder) Close() error {
-	err := e.compress(true)
-	if err != nil && err != ErrLimit {
-		return err
-	}
 	if e.eosMarker {
 		if err := e.writeMatch(eosMatch); err != nil {
 			return err
