@@ -11,13 +11,13 @@ func TestEncoderDict(t *testing.T) {
 		bufCap  = 12
 		dictCap = 8
 	)
-	var err error
-	e := EncoderDict{capacity: dictCap}
-	if err = initBuffer(&e.buf, bufCap); err != nil {
-		t.Fatalf("initBuffer error %s", err)
+	e, err := NewEncoderDict(dictCap, bufCap)
+	if err != nil {
+		t.Fatalf("NewEncoderDict error %s", err)
 	}
-	if e.m, err = newHashTable(bufCap, 3); err != nil {
-		t.Fatalf("newHashTable(%d, %d): error %s", dictCap, 3, err)
+	// default matcher wordLen is 4; so this is patched here
+	if e.m, err = newHashTable(dictCap, 3); err != nil {
+		t.Fatalf("newHashTable error %s", err)
 	}
 	n, err := e.Write([]byte(tst))
 	if err != nil {

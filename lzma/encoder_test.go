@@ -4,10 +4,8 @@
 
 package lzma
 
-/*
 import (
 	"bytes"
-	"io"
 	"io/ioutil"
 	"testing"
 )
@@ -27,20 +25,24 @@ var testString = `LZMA decoder test example
 `
 
 func TestEncoderCycle(t *testing.T) {
-	params := &CodecParams{
-		LC:      2,
-		LP:      0,
-		PB:      2,
-		DictCap: minDictCap,
-		BufCap:  minDictCap + 1024,
-		Flags:   CEOSMarker | CNoUncompressedSize | CNoCompressedSize,
-	}
-	var buf bytes.Buffer
-	w, err := NewEncoder(&buf, params)
+	const dictCap = minDictCap
+	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
-		t.Fatalf("NewEncoder: error %s", err)
+		t.Fatal(err)
+	}
+	props, err := NewProperties(2, 0, 2)
+	if err != nil {
+		t.Fatalf("NewProperties error %s", err)
+	}
+	state := NewState(props)
+	var buf bytes.Buffer
+	w := new(Encoder)
+	params := CodecParams{EOSMarker: true, Size: -1}
+	if err = w.Init(&buf, state, encoderDict, params); err != nil {
+		t.Fatalf("w.Init error %s", err)
 	}
 	orig := []byte(testString)
+	t.Logf("len(orig) %d", len(orig))
 	n, err := w.Write(orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
@@ -56,10 +58,15 @@ func TestEncoderCycle(t *testing.T) {
 		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
 			len(orig))
 	}
-	params.BufCap = params.DictCap
-	r, err := NewDecoder(&buf, params)
+	decoderDict, err := NewDecoderDict(dictCap, dictCap)
 	if err != nil {
-		t.Fatalf("NewDecoder error %s", err)
+		t.Fatalf("NewDecoderDict error %s", err)
+	}
+	// state.Reset()
+	state = NewState(props)
+	r := new(Decoder)
+	if err = r.Init(&buf, state, decoderDict, params); err != nil {
+		t.Fatalf("Init error %s", err)
 	}
 	decoded, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -74,91 +81,3 @@ func TestEncoderCycle(t *testing.T) {
 		t.Fatalf("decoded file differs from original")
 	}
 }
-
-func TestEncoderUncompressed(t *testing.T) {
-	params := &CodecParams{
-		LC:               2,
-		LP:               0,
-		PB:               2,
-		DictCap:          minDictCap,
-		BufCap:           minDictCap + 1024,
-		UncompressedSize: 1<<16 - 1,
-		Flags:            CUncompressed | CNoCompressedSize,
-	}
-	var buf bytes.Buffer
-	w, err := NewEncoder(&buf, params)
-	if err != nil {
-		t.Fatalf("NewEncoder: error %s", err)
-	}
-	orig := []byte(testString)
-	n, err := w.Write(orig)
-	if err != nil {
-		t.Fatalf("w.Write error %s", err)
-	}
-	if n != len(orig) {
-		t.Fatalf("w.Write returned %d; want %d", n, len(orig))
-	}
-	if err = w.Close(); err != nil {
-		t.Fatalf("w.Close error %s", err)
-	}
-	t.Logf("buf.Len() %d len(orig) %d", buf.Len(), len(orig))
-	if buf.Len() > len(orig) {
-		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
-			len(orig))
-	}
-	params.UncompressedSize = int64(len(testString))
-	params.BufCap = params.DictCap
-	r, err := NewDecoder(&buf, params)
-	if err != nil {
-		t.Fatalf("NewDecoder error %s", err)
-	}
-	decoded, err := ioutil.ReadAll(r)
-	if err != nil {
-		t.Fatalf("ReadAll(lr) error %s", err)
-	}
-	t.Logf("%s", decoded)
-	if len(orig) != len(decoded) {
-		t.Fatalf("length decoded is %d; want %d", len(decoded),
-			len(orig))
-	}
-	if !bytes.Equal(orig, decoded) {
-		t.Fatalf("decoded file differs from original")
-	}
-}
-
-func TestEncoderCopyDict(t *testing.T) {
-	params := &CodecParams{
-		LC:      2,
-		LP:      0,
-		PB:      2,
-		DictCap: minDictCap,
-		BufCap:  minDictCap + 1024,
-		Flags:   CEOSMarker | CNoUncompressedSize | CNoCompressedSize,
-	}
-	var buf bytes.Buffer
-	w, err := NewEncoder(&buf, params)
-	if err != nil {
-		t.Fatalf("NewEncoder: error %s", err)
-	}
-	n, err := io.WriteString(w, testString)
-	if err != nil {
-		t.Fatalf("w.Write error %s", err)
-	}
-	if n != len(testString) {
-		t.Fatalf("w.Write returned %d; want %d", n, len(testString))
-	}
-	var buf2 bytes.Buffer
-	n, err = w.CopyDict(&buf2, 4)
-	if err != nil {
-		t.Fatalf("w.CopyDict(&buf2, 4) error %s", err)
-	}
-	if n != 4 {
-		t.Fatalf("w.CopyDict(&buf2, 4) returned %d; want %d", n, 4)
-	}
-	s := buf2.String()
-	want := testString[len(testString)-4:]
-	if s != want {
-		t.Fatalf("buf2 contains %q; want %q", s, want)
-	}
-}
-*/

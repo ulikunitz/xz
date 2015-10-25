@@ -101,7 +101,8 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 	m := b.Buffered()
 	if m < n {
 		n = m
-		err = errors.New("discarded less bytes then requested")
+		err = errors.New(
+			"buffer.Discard: discarded less bytes then requested")
 	}
 	b.rear = b.addIndex(b.rear, n)
 	return n, err

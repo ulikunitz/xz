@@ -16,8 +16,6 @@ import (
 type CodecParams struct {
 	// uncompressed size; negative if no size is provided
 	Size int64
-	// Debug defines the debug level
-	Debug byte
 	// true if EOS Marker is expected or should be written
 	EOSMarker bool
 }
@@ -42,8 +40,6 @@ type Decoder struct {
 	eos bool
 	// debug value as provided by the CodecParams value
 	debug byte
-	// opCounter counts operations
-	opCounter int64
 }
 
 // Init initializes the decoder structure.
@@ -61,7 +57,6 @@ func (d *Decoder) Init(br io.ByteReader, state *State, dict *DecoderDict,
 	if d.size < 0 {
 		d.eosMarker = true
 	}
-	d.debug = p.Debug
 	d.start = d.Dict.Pos()
 	return nil
 }
@@ -232,19 +227,8 @@ func (d *Decoder) readOp() (op operation, err error) {
 	return op, nil
 }
 
-// Printf produces output if d.debug is not zero. It uses fmt.Printf
-// for the implementation.
-func (d *Decoder) Printf(format string, args ...interface{}) (n int, err error) {
-	if d.debug != 0 {
-		return fmt.Printf(format, args...)
-	}
-	return 0, nil
-}
-
 // apply takes the operation and transforms the decoder dictionary accordingly.
 func (d *Decoder) apply(op operation) error {
-	d.opCounter++
-	d.Printf("%d %s\n", d.opCounter, op)
 	switch x := op.(type) {
 	case match:
 		return d.Dict.WriteMatch(x.distance, x.n)
