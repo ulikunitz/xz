@@ -4,8 +4,6 @@
 
 package lzma
 
-/*
-
 import (
 	"bufio"
 	"bytes"
@@ -246,6 +244,7 @@ func (r repReader) Read(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+/*
 func newRepReader(c byte, n int64) *io.LimitedReader {
 	return &io.LimitedReader{R: repReader(c), N: n}
 }
