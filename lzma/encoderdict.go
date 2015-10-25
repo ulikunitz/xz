@@ -182,7 +182,6 @@ func (d *EncoderDict) Literal() byte {
 type matcher interface {
 	io.Writer
 	WordLen() int
-	Pos() int64
 	Matches(word []byte) (positions []int64)
 	Reset()
 }
