@@ -1,9 +1,6 @@
 package lzma
 
-import (
-	"fmt"
-	"io"
-)
+import "io"
 
 const opLenMargin = 10
 
@@ -201,14 +198,6 @@ func (e *Encoder) compress(all bool) error {
 		if err := e.writeOp(op); err != nil {
 			return err
 		}
-	}
-	if e.writerDict.Pos() != e.Dict.Pos() {
-		panic(fmt.Errorf("wd pos %d; want %d", e.writerDict.Pos(),
-			e.Dict.Pos()))
-	}
-	if e.writerDict.buf.rear != e.Dict.buf.rear {
-		panic(fmt.Errorf("wd rear %d; want %d",
-			e.writerDict.buf.rear, e.Dict.buf.rear))
 	}
 	return nil
 }
