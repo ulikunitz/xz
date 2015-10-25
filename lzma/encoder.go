@@ -19,15 +19,17 @@ type Encoder struct {
 	writerDict writerDict
 	re         *rangeEncoder
 	start      int64
-	eosMarker  bool
-	opFinder   opFinder
-	margin     int
+	// generate eos marker
+	marker   bool
+	opFinder opFinder
+	margin   int
 }
 
 // Init sets the encoder up for use. If the byte writer must be limited use
-// LimitedByteWriter provided by this package.
+// LimitedByteWriter provided by this package. The eosMarker argument
+// requests that an end-of-stream marker must be written.
 func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
-	p CodecParams) error {
+	eosMarker bool) error {
 	*e = Encoder{opFinder: greedyFinder{}}
 	e.Dict = dict
 	e.State = state
@@ -36,11 +38,11 @@ func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
 		return err
 	}
 
-	e.eosMarker = p.EOSMarker
+	e.marker = eosMarker
 	e.start = e.Dict.Pos()
 
 	e.margin = opLenMargin
-	if e.eosMarker {
+	if e.marker {
 		e.margin += 5
 	}
 	return nil
@@ -210,7 +212,7 @@ var eosMatch = match{distance: maxDistance, n: minMatchLen}
 // Close closes the stream without writing the outstanding data in the
 // buffer.
 func (e *Encoder) Close() error {
-	if e.eosMarker {
+	if e.marker {
 		if err := e.writeMatch(eosMatch); err != nil {
 			return err
 		}

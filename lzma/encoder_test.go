@@ -37,8 +37,7 @@ func TestEncoderCycle(t *testing.T) {
 	state := NewState(props)
 	var buf bytes.Buffer
 	w := new(Encoder)
-	params := CodecParams{EOSMarker: true, Size: -1}
-	if err = w.Init(&buf, state, encoderDict, params); err != nil {
+	if err = w.Init(&buf, state, encoderDict, true); err != nil {
 		t.Fatalf("w.Init error %s", err)
 	}
 	orig := []byte(testString)

@@ -60,11 +60,7 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 		return nil, err
 	}
 
-	codecParams := CodecParams{
-		Size:      p.Size,
-		EOSMarker: p.EOSMarker,
-	}
-	if err = w.e.Init(bw, state, dict, codecParams); err != nil {
+	if err = w.e.Init(bw, state, dict, p.EOSMarker); err != nil {
 		return nil, err
 	}
 	return w, nil

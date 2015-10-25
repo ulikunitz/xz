@@ -6,20 +6,6 @@ import (
 	"io"
 )
 
-// The CodecParams provides the parameters for the encoder and decoder.
-// Note that the size fields are limits for encoding and fixed values
-// for decoding.
-//
-// The debug flag is currently only supported by the LZMA decoder. The
-// stream of operations is printed if the debug field is set to any
-// value not equal to zero.
-type CodecParams struct {
-	// uncompressed size; negative if no size is provided
-	Size int64
-	// true if EOS Marker is expected or should be written
-	EOSMarker bool
-}
-
 // Decoder decodes a raw LZMA stream without any header.
 type Decoder struct {
 	// dictionary; the rear pointer of the buffer will be used for
