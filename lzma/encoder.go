@@ -225,12 +225,6 @@ func (e *Encoder) Close() error {
 	return e.re.Close()
 }
 
-// Buffered reports the amount of data that has not been written to the
-// underlying writer.
-func (e *Encoder) Buffered() int {
-	return e.Dict.Buffered()
-}
-
 // Uncompressed provides the amount of data that has already been
 // compressed to the underlying data stream.
 func (e *Encoder) Uncompressed() int64 {
