@@ -52,11 +52,8 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 	}
 
 	r = &Reader{Parameters: *params}
-	codecParams := CodecParams{
-		Size:      params.Size,
-		EOSMarker: params.EOSMarker,
-	}
-	if err = r.d.Init(br, state, dict, codecParams); err != nil {
+	err = r.d.Init(br, state, dict, params.Size)
+	if err != nil {
 		return nil, err
 	}
 	return r, nil

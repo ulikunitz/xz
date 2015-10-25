@@ -96,7 +96,7 @@ func (w *Writer) Close() error {
 	if w.Parameters.Size >= 0 {
 		n := w.e.Uncompressed() + int64(w.e.Dict.Buffered())
 		if n != w.Parameters.Size {
-			return errUncompressedSize
+			return errSize
 		}
 	}
 	err := w.e.Wash()

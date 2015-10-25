@@ -67,7 +67,8 @@ func TestEncoderCycle(t *testing.T) {
 	}
 	state.Reset()
 	r := new(Decoder)
-	if err = r.Init(&buf, state, decoderDict, params); err != nil {
+	err = r.Init(&buf, state, decoderDict, -1)
+	if err != nil {
 		t.Fatalf("Init error %s", err)
 	}
 	decoded, err := ioutil.ReadAll(r)

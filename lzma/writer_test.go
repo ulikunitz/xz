@@ -158,8 +158,8 @@ func TestWriter_Size(t *testing.T) {
 		}
 		q[0]++
 	}
-	if err = w.Close(); err != errUncompressedSize {
-		t.Fatalf("expected errUncompressedSize, but got %v", err)
+	if err = w.Close(); err != errSize {
+		t.Fatalf("expected errSize, but got %v", err)
 	}
 	n, err := w.Write(q)
 	if err != nil {

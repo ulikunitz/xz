@@ -32,19 +32,18 @@ type Decoder struct {
 	// start stores the head value of the dictionary for the LZMA
 	// stream
 	start int64
-	// size stores the value of the CodecParams value
+	// size of uncompressed data
 	size int64
-	// eosMarker flag
-	eosMarker bool
 	// eos found
 	eos bool
-	// debug value as provided by the CodecParams value
-	debug byte
 }
 
-// Init initializes the decoder structure.
+// Init initializes the decoder structure. The parameter size must be
+// negative if no size is given. In such a case an EOS marker is
+// expected.
 func (d *Decoder) Init(br io.ByteReader, state *State, dict *DecoderDict,
-	p CodecParams) error {
+	size int64) error {
+
 	*d = Decoder{}
 	d.State = state
 	d.Dict = dict
@@ -52,11 +51,7 @@ func (d *Decoder) Init(br io.ByteReader, state *State, dict *DecoderDict,
 	if d.rd, err = newRangeDecoder(br); err != nil {
 		return err
 	}
-	d.size = p.Size
-	d.eosMarker = p.EOSMarker
-	if d.size < 0 {
-		d.eosMarker = true
-	}
+	d.size = size
 	d.start = d.Dict.Pos()
 	return nil
 }
@@ -70,57 +65,6 @@ func (d *Decoder) decodeLiteral() (op operation, err error) {
 		return nil, err
 	}
 	return lit{s}, nil
-}
-
-// verifyEOS checks whether the decoder is indeed at the end of the LZMA
-// stream.
-func (d *Decoder) verifyEOS() error {
-	if d.size >= 0 && d.size != d.Uncompressed() {
-		return errUncompressedSize
-	}
-	return nil
-}
-
-// handleEOSMarker handles an identified ESO marker.
-func (d *Decoder) handleEOSMarker() error {
-	d.eos = true
-	if !d.rd.possiblyAtEnd() {
-		return errMoreData
-	}
-	return d.verifyEOS()
-}
-
-// handleEOS handles an identified EOS condition, but not the
-// identification of an EOS marker.
-func (d *Decoder) handleEOS() error {
-	d.eos = true
-	if d.eosMarker {
-		_, err := d.readOp()
-		if err != nil {
-			if err == errEOS {
-				return nil
-			}
-			return err
-		}
-		return errMissingEOSMarker
-	}
-	if !d.rd.possiblyAtEnd() {
-		op, err := d.readOp()
-		if err != nil {
-			if err == errEOS {
-				return nil
-			}
-			return err
-		}
-		if err = d.apply(op); err != nil {
-			return err
-		}
-		if err = d.verifyEOS(); err != nil {
-			return err
-		}
-		panic("read one more op without an error")
-	}
-	return d.verifyEOS()
 }
 
 // errEOS indicates that an EOS marker has been found.
@@ -170,10 +114,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 			return nil, err
 		}
 		if d.State.rep[0] == eosDist {
-			if err = d.handleEOSMarker(); err == nil {
-				err = errEOS
-			}
-			return nil, err
+			return nil, errEOS
 		}
 		op = match{n: int(n) + minMatchLen,
 			distance: int(d.State.rep[0]) + minDistance}
@@ -250,6 +191,13 @@ func (d *Decoder) fillDict() error {
 		case nil:
 			break
 		case errEOS:
+			d.eos = true
+			if !d.rd.possiblyAtEnd() {
+				return errDataAfterEOS
+			}
+			if d.size >= 0 && d.size != d.Uncompressed() {
+				return errSize
+			}
 			return nil
 		case io.EOF:
 			d.eos = true
@@ -261,7 +209,23 @@ func (d *Decoder) fillDict() error {
 			return err
 		}
 		if d.size >= 0 && d.Uncompressed() >= d.size {
-			return d.handleEOS()
+			d.eos = true
+			if d.Uncompressed() > d.size {
+				return errSize
+			}
+			if !d.rd.possiblyAtEnd() {
+				switch _, err = d.readOp(); err {
+				case nil:
+					return errSize
+				case io.EOF:
+					return io.ErrUnexpectedEOF
+				case errEOS:
+					break
+				default:
+					return err
+				}
+			}
+			return nil
 		}
 	}
 	return nil
@@ -269,10 +233,8 @@ func (d *Decoder) fillDict() error {
 
 // Errors that may be returned while decoding data.
 var (
-	errMissingEOSMarker = errors.New("EOS marker is missing")
-	errMoreData         = errors.New("more data after EOS")
-	errCompressedSize   = errors.New("compressed size wrong")
-	errUncompressedSize = errors.New("uncompressed size wrong")
+	errDataAfterEOS = errors.New("lzma: data after end of stream marker")
+	errSize         = errors.New("lzma: wrong uncompressed data size")
 )
 
 // Read reads data from the buffer. If no more data is available EOF is
