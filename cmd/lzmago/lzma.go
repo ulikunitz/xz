@@ -38,12 +38,12 @@ func parameters(preset int) lzma.Parameters {
 	dictCapExps := []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
 	dictCap := 1 << dictCapExps[preset]
 	p := lzma.Parameters{
-		LC:      3,
-		LP:      0,
-		PB:      2,
-		DictCap: dictCap,
-		EOS:     true,
-		IgnoreUncompressedSize: true,
+		LC:        3,
+		LP:        0,
+		PB:        2,
+		DictCap:   dictCap,
+		Size:      -1,
+		EOSMarker: true,
 	}
 	return p
 }
