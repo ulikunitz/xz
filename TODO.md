@@ -36,26 +36,13 @@
 
 # Package lzma
 
-1. Simplify Encoder and Decoder
-   - rename bytewriter.go to byteio.go
-   - Provide LimitedByteReader and ByteReaderFromReader function
-   - Adapt RangeEncoder and RangeDecoder to ByteWriter interface with
-     test on LimitedByteWriter
-   - Adapt Encoder using new EncoderDict and ByteWriter
-        Reset(bw io.ByteWriter, state *State, dict *EncoderDict)
-    - Adapt Decoder
-        Reset(bw io.ByteReader, state *State, dict *DecoderDict)
-   - adapt Writer
-   - adapt Reader
-
 # Package lzma2
 
-1. Implement SegmentReader in lzma2 using lzma.Decoder
-2. Review error handling in lzma.
-   - Is a spezific lzmaError necessary?
-   - Replace direct usage of errors.New and fmt.Errorf.
-3. Reimplement lzma.Reader and lzma.Writer using Decompressor and
-   Compressor
+- Create SegmentWriter and SegmentReader
+  
+  A SegmentWriter allows the creation of a sequence of LZMA2 chunks.
+  The idea is here that a file can be created for different blocks in
+  different segment chunks.
 
 ## Optimizations
 
