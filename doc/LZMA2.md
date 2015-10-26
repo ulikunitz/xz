@@ -30,7 +30,7 @@ exponent. The smallest dictionary size is 4 KiB and the biggest is 4 GiB
 |       39 |        3 |       30 |       3072 MiB |
 |       40 |        2 |       31 |  4096 MiB - 1B |
 
-For test purposes we add the dictionary size byte as first byte of a
+For test purposes we add the dictionary size byte as first byte of an
 LZMA2 stream.
 
 ## Chunks
@@ -64,9 +64,8 @@ A dictionary reset requires always new properties. If this is an
 uncompressed chunk the properties need to be provided in the next
 compressed chunk. New properties require a reset of the state.
 
-A dictionary reset puts the current position to zero.
-
-Uncompressed data is written into the dictionary.
+A dictionary reset puts the current position to zero. Uncompressed data
+is written into the dictionary.
 
 The uncompressed size and compressed size are given in big-endian byte order.
 The values need to be incremented for the actual size. So a chunk with 1
