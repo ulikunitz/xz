@@ -71,7 +71,7 @@ const (
 
 // errHeaderByte indicates an unsupported value for the chunk header
 // byte. These bytes starts the variable-length chunk header.
-var errHeaderByte = errors.New("unsupported chunk header byte")
+var errHeaderByte = errors.New("lzma2: unsupported chunk header byte")
 
 // headerChunkType converts the header byte into a chunk type. It
 // ignores the uncompressed size bits in the chunk header byte.
