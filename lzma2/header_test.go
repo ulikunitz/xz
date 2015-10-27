@@ -146,3 +146,24 @@ func TestWriteEOS(t *testing.T) {
 		t.Fatalf("b[0] is %#4x; want %#4x", b[0], byte(0))
 	}
 }
+
+func TestReadEOS(t *testing.T) {
+	var b [1]byte
+	r := bytes.NewReader(b[:])
+	h, err := readChunkHeader(r)
+	if err != nil {
+		t.Fatalf("readChunkHeader error %s", err)
+	}
+	if h.ctype != cEOS {
+		t.Errorf("ctype got %s; want %s", h.ctype, cEOS)
+	}
+	if h.compressed != 0 {
+		t.Errorf("compressed got %d; want %d", h.compressed, 0)
+	}
+	if h.uncompressed != 0 {
+		t.Errorf("uncompressed got %d; want %d", h.uncompressed, 0)
+	}
+	if h.props != 0 {
+		t.Errorf("props got %d; want %d", h.props, 0)
+	}
+}
