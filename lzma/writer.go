@@ -55,7 +55,7 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 	}
 	state := NewState(props)
 
-	dict, err := NewEncoderDict(p.DictCap, p.BufCap)
+	dict, err := NewEncoderDict(p.DictCap, p.BufSize)
 	if err != nil {
 		return nil, err
 	}

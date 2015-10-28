@@ -23,9 +23,6 @@ func TestNewDecoderDict(t *testing.T) {
 	if _, err := NewDecoderDict(0, 0); err == nil {
 		t.Fatalf("no error for zero dictionary capacity")
 	}
-	if _, err := NewDecoderDict(1, 0); err == nil {
-		t.Fatalf("no error for bufCap < dictCap")
-	}
 	if _, err := NewDecoderDict(8, 12); err != nil {
 		t.Fatalf("error %s", err)
 	}

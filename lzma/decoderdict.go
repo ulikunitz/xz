@@ -19,20 +19,18 @@ type DecoderDict struct {
 	capacity int
 }
 
-// NewDecoderDict creates a new decoder dictionary. The buffer capacity
-// bufCap must be greater or equal to the dictionary capacity.
-func NewDecoderDict(dictCap, bufCap int) (d *DecoderDict, err error) {
+// NewDecoderDict creates a new decoder dictionary. The buffer size
+// provides the minimum buffer size to support.
+func NewDecoderDict(dictCap, bufSize int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= maxDictCap) {
 		return nil, errors.New("NewDecoderDict: dictCap out of range")
 	}
-	if !(dictCap <= bufCap) {
-		return nil, errors.New("NewDecoderDict: buffer capacity must " +
-			"be greater equal than the dictionary " +
-			"capacity")
+	if dictCap > bufSize {
+		bufSize = dictCap
 	}
 	d = &DecoderDict{capacity: dictCap}
-	if err = initBuffer(&d.buf, bufCap); err != nil {
+	if err = initBuffer(&d.buf, bufSize); err != nil {
 		return nil, err
 	}
 	return d, nil

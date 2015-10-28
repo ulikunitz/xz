@@ -12,14 +12,14 @@ type buffer struct {
 	rear  int
 }
 
-// initBuffer initializes a buffer with a given capacity. If the
-// capacity is out of range an error is returned.
-func initBuffer(b *buffer, capacity int) error {
+// initBuffer initializes a buffer with a given size. If the
+// size is out of range an error is returned.
+func initBuffer(b *buffer, size int) error {
 	// second condition checks for overflow
-	if !(0 < capacity && 0 < capacity+1) {
-		return errors.New("buffer capacity out of range")
+	if !(0 < size && 0 < size+1) {
+		return errors.New("buffer size out of range")
 	}
-	*b = buffer{data: make([]byte, capacity+1)}
+	*b = buffer{data: make([]byte, size+1)}
 	return nil
 }
 
@@ -27,11 +27,6 @@ func initBuffer(b *buffer, capacity int) error {
 func (b *buffer) Reset() {
 	b.front = 0
 	b.rear = 0
-}
-
-// Cap returns the capacity of the buffer.
-func (b *buffer) Cap() int {
-	return len(b.data) - 1
 }
 
 // Buffered returns the number of bytes buffered.

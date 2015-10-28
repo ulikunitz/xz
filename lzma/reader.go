@@ -46,7 +46,7 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 	}
 	state := NewState(props)
 
-	dict, err := NewDecoderDict(params.DictCap, params.BufCap)
+	dict, err := NewDecoderDict(params.DictCap, params.BufSize)
 	if err != nil {
 		return nil, err
 	}

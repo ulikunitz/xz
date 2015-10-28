@@ -2,31 +2,33 @@ package lzma
 
 import (
 	"errors"
-	"fmt"
 	"io"
 )
 
 // writerDict provides a writer dictionary that doesn't support a
 // matcher. It is used for writing the operations out after they have
-// been identified.
+// been identified. Note that the buffer includes the dictionary and the
+// write buffer so its size must be the sum of dictionary capacity and
+// buffer size.
 type writerDict struct {
 	buf      buffer
 	head     int64
 	capacity int
 }
 
-// initWriterDict initializes the writer dictionary.
-func initWriterDict(d *writerDict, dictCap, bufCap int) error {
+// initWriterDict initializes the writer dictionary. The bufSize
+// argument provides the size of the additional write buffer.
+func initWriterDict(d *writerDict, dictCap, bufSize int) error {
 	if !(1 <= dictCap && dictCap <= maxDictCap) {
 		return errors.New("dictionary capacity out of range")
 	}
-	if !(dictCap <= bufCap) {
-		return fmt.Errorf(
-			"buffer capacity must be larger than" +
-				" dictionary capacity")
+	if bufSize < 1 {
+		return errors.New(
+			"writer dictionary: buffer size must be larger " +
+				"than zero")
 	}
 	*d = writerDict{capacity: dictCap}
-	return initBuffer(&d.buf, bufCap)
+	return initBuffer(&d.buf, dictCap+bufSize)
 }
 
 // Reset puts the current position to 0.
@@ -49,11 +51,6 @@ func (d *writerDict) Available() int {
 // DictCap returns the dictionary capacity.
 func (d *writerDict) DictCap() int {
 	return d.capacity
-}
-
-// BufCap returns the buffer capacity.
-func (d *writerDict) BufCap() int {
-	return d.buf.Cap()
 }
 
 // DictLen returns the current number of bytes of the dictionary. The
@@ -188,8 +185,8 @@ type matcher interface {
 
 // EncoderDict provides the dictionary for the encoder. It includes a
 // matcher for searching matching strings in the dictionary. Note that
-// the dictionary also supports a buffer of data that has yet to be
-// moved into the dictionary.
+// the dictionary supports an additional write buffer. The actual buffer
+// size is the sum of the dictionary capacity and the buffer size.
 type EncoderDict struct {
 	writerDict
 	m matcher
@@ -197,15 +194,16 @@ type EncoderDict struct {
 }
 
 // NewEncoderDict creates a new encoder dictionary. The initial position
-// and length of the dictionary will be zero. There will be no buffered
-// data.
-func NewEncoderDict(dictCap, bufCap int) (d *EncoderDict, err error) {
+// and length of the dictionary will be zero. The argument dictCap
+// provides the capacity of the dictionary. The argument bufSize gives
+// the size of the additional write buffer.
+func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 	m, err := newHashTable(dictCap, 4)
 	if err != nil {
 		return nil, err
 	}
 	d = &EncoderDict{m: m}
-	if err = initWriterDict(&d.writerDict, dictCap, bufCap); err != nil {
+	if err = initWriterDict(&d.writerDict, dictCap, bufSize); err != nil {
 		return nil, err
 	}
 	d.p = make([]byte, maxMatchLen)

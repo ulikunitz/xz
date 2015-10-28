@@ -66,7 +66,7 @@ type Parameters struct {
 	DictCap int
 	// uncompressed size; negative value if no size given
 	Size      int64
-	BufCap    int
+	BufSize   int
 	EOSMarker bool
 }
 
@@ -87,8 +87,8 @@ func (p *Parameters) normalizeReader() {
 	if p.Size < 0 {
 		p.EOSMarker = true
 	}
-	if p.BufCap < p.DictCap {
-		p.BufCap = p.DictCap
+	if p.BufSize <= 0 {
+		p.BufSize = p.DictCap
 	}
 }
 
@@ -100,8 +100,8 @@ func (p *Parameters) normalizeWriter() {
 	if p.Size < 0 {
 		p.EOSMarker = true
 	}
-	if p.BufCap < p.DictCap+maxMatchLen {
-		p.BufCap = p.DictCap + 4096
+	if p.BufSize < maxMatchLen {
+		p.BufSize = p.DictCap + 4096
 	}
 }
 
@@ -117,9 +117,9 @@ func (p *Parameters) verifyWriter() error {
 	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
 		return errors.New("dictionary capacity out of range")
 	}
-	if p.DictCap+maxMatchLen > p.BufCap {
-		return fmt.Errorf("buffer capacity must be %d bytes larger "+
-			"than dictionary capacity", maxMatchLen)
+	if p.BufSize < maxMatchLen {
+		return fmt.Errorf("buffer size must be at least %d "+
+			"bytes", maxMatchLen)
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 			"LZMA header: dictionary capacity exceeds maximum " +
 				"integer")
 	}
-	p.BufCap = p.DictCap
+	p.BufSize = p.DictCap
 	u := uint64LE(b[5:])
 	if u == noHeaderLen {
 		p.EOSMarker = true

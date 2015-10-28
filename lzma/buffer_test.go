@@ -73,9 +73,6 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 	if n := buf.Buffered(); n != 10 {
 		t.Fatalf("buf.Buffered() returns %d; want %d", n, 10)
 	}
-	if n := buf.Cap() - buf.Buffered(); n != 0 {
-		t.Fatalf("cap-buffered returns %d; want %d", n, 0)
-	}
 	if _, err = buf.Discard(8); err != nil {
 		t.Fatalf("buf.Discard(8) error %s", err)
 	}
@@ -84,9 +81,6 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 	}
 	if n := buf.Buffered(); n != 9 {
 		t.Fatalf("buf.Buffered() returns %d; want %d", n, 9)
-	}
-	if n := buf.Cap() - buf.Buffered(); n != 1 {
-		t.Fatalf("cap-buffered returns %d; want %d", n, 1)
 	}
 }
 
