@@ -10,9 +10,9 @@ import (
 var EOS = errors.New("lzma2 end-of-stream")
 
 // A reader supports the reading of LZMA2 chunk sequences. Note that the
-// first chunk must have at least a property reset and should have a
-// dictionary reset. The chunk sequence may not be terminated by an
-// end-of-stream chunk.
+// first chunk should have a dictionary reset and the first compressed
+// chunk a properties reset. The chunk sequence may not be terminated by
+// an end-of-stream chunk.
 type Reader struct {
 	// TODO
 }

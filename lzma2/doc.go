@@ -3,7 +3,8 @@
 // uncompressed segments to the LZMA algorithm.
 //
 // The Reader and Writer allows the reading and writing of LZMA2 chunk
-// sequences. They can be used to parallel compress or decompress files.
+// sequences. They can be used to parallel compress or decompress LZMA2
+// streams.
 //
 // FileReader and FileWriter allow the encoding and decoding of LZMA2
 // files sequentially. The first LZMA2 chunk is preceded by dictionary

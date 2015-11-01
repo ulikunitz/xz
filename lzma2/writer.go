@@ -38,7 +38,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	panic("TODO")
 }
 
-// Flush terminates the current chunk. If additional data is provided a
+// Flush terminates the current chunk. If data will be provided later a
 // new chunk will be created.
 func (w *Writer) Flush() error {
 	panic("TODO")
