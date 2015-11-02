@@ -23,7 +23,7 @@ type State struct {
 	distCodec   distCodec
 	state       uint32
 	posBitMask  uint32
-	properties  Properties
+	Properties  Properties
 }
 
 // initProbSlice initializes a slice of probabilities.
@@ -35,9 +35,9 @@ func initProbSlice(p []prob) {
 
 // Reset sets all state information to the original values.
 func (s *State) Reset() {
-	lc, lp, pb := s.properties.LC(), s.properties.LP(), s.properties.PB()
+	lc, lp, pb := s.Properties.LC(), s.Properties.LP(), s.Properties.PB()
 	*s = State{
-		properties: s.properties,
+		Properties: s.Properties,
 		// dict:       s.dict,
 		posBitMask: (uint32(1) << uint(pb)) - 1,
 	}
@@ -55,13 +55,13 @@ func (s *State) Reset() {
 
 // initState initializes the state.
 func initState(s *State, p Properties) {
-	*s = State{properties: p}
+	*s = State{Properties: p}
 	s.Reset()
 }
 
-// NewState creates a new state from the give properties.
+// NewState creates a new state from the give Properties.
 func NewState(p Properties) *State {
-	s := &State{properties: p}
+	s := &State{Properties: p}
 	s.Reset()
 	return s
 }
@@ -84,7 +84,7 @@ func (s *State) deepcopy(src *State) {
 	s.distCodec.deepcopy(&src.distCodec)
 	s.state = src.state
 	s.posBitMask = src.posBitMask
-	s.properties = src.properties
+	s.Properties = src.Properties
 }
 
 // NewStateClone creates a new clone of the give state.
@@ -144,7 +144,7 @@ func (s *State) states(dictHead int64) (state1, state2, posState uint32) {
 
 // litState computes the literal state.
 func (s *State) litState(prev byte, dictHead int64) uint32 {
-	lp, lc := uint(s.properties.LP()), uint(s.properties.LC())
+	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
 	litState := ((uint32(dictHead) & ((1 << lp) - 1)) << lc) |
 		(uint32(prev) >> (8 - lc))
 	return litState
