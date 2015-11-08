@@ -42,7 +42,7 @@ func TestEncoderCycle(t *testing.T) {
 	}
 	orig := []byte(testString)
 	t.Logf("len(orig) %d", len(orig))
-	n, err := writeEncoder(w, orig)
+	n, err := w.Write(orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
 	}

@@ -73,9 +73,10 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict, flags Encoder
 	return e, nil
 }
 
-// writeEncoder writes the bytes from p into the dictionary and
-// compresses them in parallel.
-func writeEncoder(e *Encoder, p []byte) (n int, err error) {
+// Write writes the bytes from p into the dictionary. If not enough
+// space is available the data in the dictionary buffer will be
+// compressed to make additional space available.
+func (e *Encoder) Write(p []byte) (n int, err error) {
 	for {
 		k, err := e.Dict.Write(p[n:])
 		n += k
@@ -247,8 +248,9 @@ func (e *Encoder) Compress(n int, flags CompressFlags) (compressed int, err erro
 // eosMatch is a pseudo operation that indicates the end of the stream.
 var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
-// Close closes the stream without writing the outstanding data in the
-// buffer.
+// Close closes the stream without compressing any remaining data in the
+// dictionary buffer. If requested the end-of-stream marker will be
+// wriiten.
 func (e *Encoder) Close() error {
 	if e.marker {
 		if err := e.writeMatch(eosMatch); err != nil {

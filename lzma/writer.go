@@ -85,7 +85,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		}
 	}
 	var werr error
-	if n, werr = writeEncoder(w.e, p); werr != nil {
+	if n, werr = w.e.Write(p); werr != nil {
 		err = werr
 	}
 	return n, err
