@@ -184,9 +184,10 @@ type matcher interface {
 }
 
 // EncoderDict provides the dictionary for the encoder. It includes a
-// matcher for searching matching strings in the dictionary. Note that
-// the dictionary supports an additional write buffer. The actual buffer
-// size is the sum of the dictionary capacity and the buffer size.
+// matcher for searching matching strings in the dictionary.
+// The type includes a write buffer in front of the actual dictionary.
+// The actual size of the buffer is the total of dictionary capacity and
+// the size of the buffer for writing.
 type EncoderDict struct {
 	writerDict
 	m matcher
@@ -196,7 +197,7 @@ type EncoderDict struct {
 // NewEncoderDict creates a new encoder dictionary. The initial position
 // and length of the dictionary will be zero. The argument dictCap
 // provides the capacity of the dictionary. The argument bufSize gives
-// the size of the additional write buffer.
+// the size of the write buffer.
 func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 	m, err := newHashTable(dictCap, 4)
 	if err != nil {

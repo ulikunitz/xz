@@ -24,9 +24,10 @@ type Decoder struct {
 	eos bool
 }
 
-// NewDecoder creates a new decoder value. The parameter size must be
-// negative if no size is given. In such a case an EOS marker is
-// expected.
+// NewDecoder creates a new decoder value. The parameter size provides
+// the expected byte size of the decompressed data. If the size is
+// unknown use a negative value. In that case the decoder will look for
+// a terminating end-of-stream marker.
 func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (d *Decoder, err error) {
 	rd, err := newRangeDecoder(br)
 	if err != nil {

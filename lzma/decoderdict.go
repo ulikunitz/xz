@@ -19,8 +19,9 @@ type DecoderDict struct {
 	capacity int
 }
 
-// NewDecoderDict creates a new decoder dictionary. The buffer size
-// provides the minimum buffer size to support.
+// NewDecoderDict creates a new decoder dictionary. The size of the
+// allocated buffer will be the maximum of dictCap and bufSize. So
+// bufSize indicates a minimum size for the buffer.
 func NewDecoderDict(dictCap, bufSize int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= maxDictCap) {
@@ -42,8 +43,8 @@ func (d *DecoderDict) Reset() {
 	d.head = 0
 }
 
-// WriteByte writes a single byte into the dictionary. It will be used
-// for writing literals.
+// WriteByte writes a single byte into the dictionary. It is used to
+// write literals into the dictionary.
 func (d *DecoderDict) WriteByte(c byte) error {
 	if err := d.buf.WriteByte(c); err != nil {
 		return err
@@ -82,7 +83,8 @@ func (d *DecoderDict) ByteAt(dist int) byte {
 // exceed the maximum length 273 supported in LZMA.
 //
 // The error value ErrNoSpace indicates that no space is available in
-// the dictionary for writing. You need to read from the dictionary.
+// the dictionary for writing. You need to read from the dictionary
+// first.
 func (d *DecoderDict) WriteMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.DictLen()) {
 		return errors.New("WriteMatch: distance out of range")
@@ -119,7 +121,7 @@ func (d *DecoderDict) WriteMatch(dist int, length int) error {
 	return nil
 }
 
-// Available returns the number of available bytes for writing in the
+// Available returns the number of available bytes for writing into the
 // decoder dictionary.
 func (d *DecoderDict) Available() int { return d.buf.Available() }
 

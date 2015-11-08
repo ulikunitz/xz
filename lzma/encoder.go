@@ -35,7 +35,7 @@ const (
 	EOSMarker EncoderFlags = 1 << iota
 )
 
-// Encoder compressed data buffred in the encoder dictionary and writes
+// Encoder compresses data buffered in the encoder dictionary and writes
 // it into a byte writer.
 type Encoder struct {
 	Dict       *EncoderDict
@@ -49,11 +49,13 @@ type Encoder struct {
 	margin   int
 }
 
-// Init sets the encoder up for use. If the byte writer must be
+// NewEncoder creates a new encoder. If the byte writer must be
 // limited use LimitedByteWriter provided by this package. The flags
-// argument supports the EOSMarker flag, controlling whether an EOS
-// mark should be written.
-func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict, flags EncoderFlags) (e *Encoder, err error) {
+// argument supports the EOSMarker flag, controlling whether a
+// termnating end-of-stream marker must be written.
+func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
+	flags EncoderFlags) (e *Encoder, err error) {
+
 	re, err := newRangeEncoder(bw)
 	if err != nil {
 		return nil, err

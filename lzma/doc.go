@@ -4,12 +4,12 @@
 
 // Package lzma allows the decoding and encoding of LZMA streams.
 //
-// It provides a Writer hand a Reader for decoding and encoding of LZMA
+// It provides a Writer and a Reader for decoding and encoding of LZMA
 // stream with headers.
 //
 // The types Encoder and Decoder are provided to allow the decoding and
-// encoding of raw LZMA streams as required by the implementation of the
-// LZMA2 format.
+// encoding of raw LZMA streams without headers. The lzma2 package uses
+// these types.
 //
 // The package is written completely in Go and doesn't rely on any external
 // library.
