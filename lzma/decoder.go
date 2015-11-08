@@ -178,11 +178,11 @@ func (d *Decoder) apply(op operation) error {
 }
 
 // Decompress fills the dictionary unless no space for new data is
-// available in the dictionary or no further data is available from the
-// byte reader.
-func (d *Decoder) Decompress() error {
+// available. If the end of the LZMA stream has been reached io.EOF will
+// be returned.
+func (d *Decoder) Decompress() (n int, err error) {
 	if d.eos {
-		return nil
+		return 0, io.EOF
 	}
 	for d.Dict.Available() >= maxMatchLen {
 		op, err := d.readOp()
@@ -192,42 +192,43 @@ func (d *Decoder) Decompress() error {
 		case errEOS:
 			d.eos = true
 			if !d.rd.possiblyAtEnd() {
-				return errDataAfterEOS
+				return n, errDataAfterEOS
 			}
 			if d.size >= 0 && d.size != d.Decompressed() {
-				return errSize
+				return n, errSize
 			}
-			return nil
+			return n, io.EOF
 		case io.EOF:
 			d.eos = true
-			return io.ErrUnexpectedEOF
+			return n, io.ErrUnexpectedEOF
 		default:
-			return err
+			return n, err
 		}
 		if err = d.apply(op); err != nil {
-			return err
+			return n, err
 		}
+		n += op.Len()
 		if d.size >= 0 && d.Decompressed() >= d.size {
 			d.eos = true
 			if d.Decompressed() > d.size {
-				return errSize
+				return n, errSize
 			}
 			if !d.rd.possiblyAtEnd() {
 				switch _, err = d.readOp(); err {
 				case nil:
-					return errSize
+					return n, errSize
 				case io.EOF:
-					return io.ErrUnexpectedEOF
+					return n, io.ErrUnexpectedEOF
 				case errEOS:
 					break
 				default:
-					return err
+					return n, err
 				}
 			}
-			return nil
+			return n, io.EOF
 		}
 	}
-	return nil
+	return n, nil
 }
 
 // Errors that may be returned while decoding data.
@@ -236,13 +237,13 @@ var (
 	errSize         = errors.New("lzma: wrong uncompressed data size")
 )
 
-// Read reads data from the buffer. If no more data is available EOF is
+// Read reads data from the buffer. If no more data is available io.EOF is
 // returned.
 func (d *Decoder) Read(p []byte) (n int, err error) {
 	var k int
 	for n < len(p) {
-		if err = d.Decompress(); err != nil {
-			return
+		if _, err = d.Decompress(); err != nil && err != io.EOF {
+			return n, err
 		}
 		// Read of decoder dict never returns an error.
 		k, err = d.Dict.Read(p[n:])
