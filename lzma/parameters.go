@@ -65,7 +65,7 @@ type Parameters struct {
 	PB      int
 	DictCap int
 	// uncompressed size; negative value if no size given
-	Size      int64
+	Size int64
 	// minimum size for the buffer
 	BufSize   int
 	EOSMarker bool

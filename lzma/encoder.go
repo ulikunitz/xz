@@ -1,18 +1,42 @@
 package lzma
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
+// opLenMargin provides the upper limit of the number of bytes required
+// to encode a single operation.
 const opLenMargin = 10
+
+// CompressFlags control the compression process.
+type CompressFlags uint32
+
+// Values for CompressFlags.
+const (
+	// all data should be compresed, even if compression is not
+	// optimal.
+	All CompressFlags = 1 << iota
+)
 
 // opFinder enables the support of multiple different OpFinder
 // algorithms.
 type opFinder interface {
-	findOps(e *EncoderDict, r reps, all bool) []operation
+	findOps(e *EncoderDict, n int, r reps, flags CompressFlags) []operation
 	name() string
 }
 
-// Encoder supports the compression of uncompressed data into a raw LZMA
-// stream.
+// EncoderFlags provide the flags for an encoder.
+type EncoderFlags uint32
+
+// Flags for the encoder.
+const (
+	// Requests that an EOSMarker is written.
+	EOSMarker EncoderFlags = 1 << iota
+)
+
+// Encoder compressed data buffred in the encoder dictionary and writes
+// it into a byte writer.
 type Encoder struct {
 	Dict       *EncoderDict
 	State      *State
@@ -25,11 +49,11 @@ type Encoder struct {
 	margin   int
 }
 
-// Init sets the encoder up for use. If the byte writer must be limited use
-// LimitedByteWriter provided by this package. The eosMarker argument
-// requests that an end-of-stream marker must be written.
-func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
-	eosMarker bool) error {
+// Init sets the encoder up for use. If the byte writer must be
+// limited use LimitedByteWriter provided by this package. The flags
+// argument supports the EOSMarker flag, controlling whether an EOS
+// mark should be written.
+func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict, flags EncoderFlags) error {
 	*e = Encoder{opFinder: greedyFinder{}}
 	e.Dict = dict
 	e.State = state
@@ -38,7 +62,9 @@ func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
 		return err
 	}
 
-	e.marker = eosMarker
+	if flags&EOSMarker != 0 {
+		e.marker = true
+	}
 	e.start = e.Dict.Pos()
 
 	e.margin = opLenMargin
@@ -48,21 +74,31 @@ func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict,
 	return nil
 }
 
-// Write writes the provided bytes into the buffer. If the buffer is
-// full Write will compress the data. The full data may not be written
-// if either the compressed size or the uncompressed size limit have
-// been reached.
-func (e *Encoder) Write(p []byte) (n int, err error) {
+// writeEncoder writes the bytes from p into the dictionary and
+// compresses them in parallel.
+func writeEncoder(e *Encoder, p []byte) (n int, err error) {
 	for {
 		k, err := e.Dict.Write(p[n:])
 		n += k
+		if _, cerr := e.Compress(e.Dict.Buffered(), 0); cerr != nil {
+			if err == nil || err == ErrNoSpace {
+				err = cerr
+			}
+		}
 		if err != ErrNoSpace {
 			return n, err
 		}
-		if err = e.compress(false); err != nil {
-			return n, err
-		}
 	}
+}
+
+// Reopen reopens the encoder with a new byte writer.
+func (e *Encoder) Reopen(bw io.ByteWriter) error {
+	var err error
+	if e.re, err = newRangeEncoder(bw); err != nil {
+		return err
+	}
+	e.start = e.Dict.Pos()
+	return nil
 }
 
 // writeLiteral writes a literal into the LZMA stream
@@ -186,24 +222,28 @@ func (e *Encoder) writeOp(op operation) error {
 	return err
 }
 
-// Wash compresses all data in the buffer. It isn't able to write out
-// the complete range encoder status, this isn't supported by the LZMA
-// format.
-func (e *Encoder) Wash() error {
-	return e.compress(true)
-}
-
-// compress compresses code available in the buffer and writes the
-// operation into the encoder.
-func (e *Encoder) compress(all bool) error {
+// Compress encodes up to n bytes from the dictionary. If the flag all
+// is set, all data requested will be compressed. The function returns
+// the number of bytes that have been consumed from the dictionary
+// buffer.
+func (e *Encoder) Compress(n int, flags CompressFlags) (consumed int, err error) {
 	e.writerDict = e.Dict.writerDict
-	ops := e.opFinder.findOps(e.Dict, reps(e.State.rep), all)
+	ops := e.opFinder.findOps(e.Dict, n, reps(e.State.rep), flags)
 	for _, op := range ops {
-		if err := e.writeOp(op); err != nil {
-			return err
+		if err = e.writeOp(op); err != nil {
+			return consumed, err
+		}
+		consumed += op.Len()
+	}
+
+	// debug code
+	if flags&All != 0 {
+		if consumed != n {
+			panic(fmt.Errorf("consumed %d; wanted %d", consumed, n))
 		}
 	}
-	return nil
+
+	return consumed, nil
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.
@@ -220,8 +260,8 @@ func (e *Encoder) Close() error {
 	return e.re.Close()
 }
 
-// Uncompressed provides the amount of data that has already been
-// compressed to the underlying data stream.
+// Uncompressed provides the number of uncompressed bytes that have
+// been written into the compressed data stream.
 func (e *Encoder) Uncompressed() int64 {
 	return e.Dict.Pos() - e.start
 }

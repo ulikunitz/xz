@@ -60,7 +60,11 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 		return nil, err
 	}
 
-	if err = w.e.Init(bw, state, dict, p.EOSMarker); err != nil {
+	var flags EncoderFlags
+	if p.EOSMarker {
+		flags = EOSMarker
+	}
+	if err = w.e.Init(bw, state, dict, flags); err != nil {
 		return nil, err
 	}
 	return w, nil
@@ -80,7 +84,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		}
 	}
 	var werr error
-	if n, werr = w.e.Write(p); werr != nil {
+	if n, werr = writeEncoder(&w.e, p); werr != nil {
 		err = werr
 	}
 	return n, err
@@ -95,7 +99,7 @@ func (w *Writer) Close() error {
 			return errSize
 		}
 	}
-	err := w.e.Wash()
+	_, err := w.e.Compress(w.e.Dict.Buffered(), All)
 	if err == nil {
 		err = w.e.Close()
 	}

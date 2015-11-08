@@ -37,20 +37,22 @@ func TestEncoderCycle(t *testing.T) {
 	state := NewState(props)
 	var buf bytes.Buffer
 	w := new(Encoder)
-	if err = w.Init(&buf, state, encoderDict, true); err != nil {
-		t.Fatalf("w.Init error %s", err)
+	err = w.Init(&buf, state, encoderDict, EOSMarker)
+	if err != nil {
+		t.Fatalf("InitEncoder error %s", err)
 	}
 	orig := []byte(testString)
 	t.Logf("len(orig) %d", len(orig))
-	n, err := w.Write(orig)
+	n, err := writeEncoder(w, orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
 	}
 	if n != len(orig) {
 		t.Fatalf("w.Write returned %d; want %d", n, len(orig))
 	}
-	if err = w.Wash(); err != nil {
-		t.Fatalf("w.Wash error %s", err)
+	_, err = w.Compress(w.Dict.Buffered(), All)
+	if err != nil {
+		t.Fatalf("w.Compress error %s", err)
 	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
