@@ -16,7 +16,7 @@ const (
 type Writer struct {
 	Parameters Parameters
 	bw         *bufio.Writer
-	e          Encoder
+	e          *Encoder
 }
 
 // NewWriter creates a new writer for the classic LZMA format.
@@ -64,9 +64,10 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 	if p.EOSMarker {
 		flags = EOSMarker
 	}
-	if err = w.e.Init(bw, state, dict, flags); err != nil {
+	if w.e, err = NewEncoder(bw, state, dict, flags); err != nil {
 		return nil, err
 	}
+
 	return w, nil
 }
 
@@ -84,7 +85,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		}
 	}
 	var werr error
-	if n, werr = writeEncoder(&w.e, p); werr != nil {
+	if n, werr = writeEncoder(w.e, p); werr != nil {
 		err = werr
 	}
 	return n, err

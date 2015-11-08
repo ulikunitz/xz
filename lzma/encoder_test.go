@@ -36,10 +36,9 @@ func TestEncoderCycle(t *testing.T) {
 	}
 	state := NewState(props)
 	var buf bytes.Buffer
-	w := new(Encoder)
-	err = w.Init(&buf, state, encoderDict, EOSMarker)
+	w, err := NewEncoder(&buf, state, encoderDict, EOSMarker)
 	if err != nil {
-		t.Fatalf("InitEncoder error %s", err)
+		t.Fatalf("NewEncoder error %s", err)
 	}
 	orig := []byte(testString)
 	t.Logf("len(orig) %d", len(orig))

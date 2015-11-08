@@ -53,25 +53,24 @@ type Encoder struct {
 // limited use LimitedByteWriter provided by this package. The flags
 // argument supports the EOSMarker flag, controlling whether an EOS
 // mark should be written.
-func (e *Encoder) Init(bw io.ByteWriter, state *State, dict *EncoderDict, flags EncoderFlags) error {
-	*e = Encoder{opFinder: greedyFinder{}}
-	e.Dict = dict
-	e.State = state
-	var err error
-	if e.re, err = newRangeEncoder(bw); err != nil {
-		return err
+func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict, flags EncoderFlags) (e *Encoder, err error) {
+	re, err := newRangeEncoder(bw)
+	if err != nil {
+		return nil, err
 	}
-
-	if flags&EOSMarker != 0 {
-		e.marker = true
+	e = &Encoder{
+		opFinder: greedyFinder{},
+		Dict:     dict,
+		State:    state,
+		re:       re,
+		marker:   flags&EOSMarker != 0,
+		start:    dict.Pos(),
+		margin:   opLenMargin,
 	}
-	e.start = e.Dict.Pos()
-
-	e.margin = opLenMargin
 	if e.marker {
 		e.margin += 5
 	}
-	return nil
+	return e, nil
 }
 
 // writeEncoder writes the bytes from p into the dictionary and
@@ -80,14 +79,14 @@ func writeEncoder(e *Encoder, p []byte) (n int, err error) {
 	for {
 		k, err := e.Dict.Write(p[n:])
 		n += k
-		if _, cerr := e.Compress(e.Dict.Buffered(), 0); cerr != nil {
-			if err == nil || err == ErrNoSpace {
-				err = cerr
+		if err == ErrNoSpace {
+			_, err = e.Compress(e.Dict.Buffered(), 0)
+			if err != nil {
+				return n, err
 			}
+			continue
 		}
-		if err != ErrNoSpace {
-			return n, err
-		}
+		return n, err
 	}
 }
 
