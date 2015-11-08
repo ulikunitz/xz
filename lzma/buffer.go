@@ -141,14 +141,14 @@ func (b *buffer) WriteByte(c byte) error {
 // from the front index. The argument max gives an upper limit of
 // positions tested.
 func (b *buffer) EqualBytes(x, y, max int) int {
-	if x < 0 || y < 0 {
-		return 0
-	}
 	if x < max {
 		max = x
 	}
 	if y < max {
 		max = y
+	}
+	if max <= 0 {
+		return 0
 	}
 	i := b.front - x
 	if i < 0 {
