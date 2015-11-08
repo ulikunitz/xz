@@ -75,7 +75,7 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.Parameters.Size >= 0 {
 		m := w.Parameters.Size
-		m -= w.e.Uncompressed() + int64(w.e.Dict.Buffered())
+		m -= w.e.Compressed() + int64(w.e.Dict.Buffered())
 		if m < 0 {
 			m = 0
 		}
@@ -95,7 +95,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 // buffer will be compressed and the LZMA stream will be finished.
 func (w *Writer) Close() error {
 	if w.Parameters.Size >= 0 {
-		n := w.e.Uncompressed() + int64(w.e.Dict.Buffered())
+		n := w.e.Compressed() + int64(w.e.Dict.Buffered())
 		if n != w.Parameters.Size {
 			return errSize
 		}

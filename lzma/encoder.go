@@ -223,26 +223,25 @@ func (e *Encoder) writeOp(op operation) error {
 
 // Compress encodes up to n bytes from the dictionary. If the flag all
 // is set, all data requested will be compressed. The function returns
-// the number of bytes that have been consumed from the dictionary
-// buffer.
-func (e *Encoder) Compress(n int, flags CompressFlags) (consumed int, err error) {
+// the number of input bytes that have been compressed.
+func (e *Encoder) Compress(n int, flags CompressFlags) (compressed int, err error) {
 	e.writerDict = e.Dict.writerDict
 	ops := e.opFinder.findOps(e.Dict, n, reps(e.State.rep), flags)
 	for _, op := range ops {
 		if err = e.writeOp(op); err != nil {
-			return consumed, err
+			return compressed, err
 		}
-		consumed += op.Len()
+		compressed += op.Len()
 	}
 
 	// debug code
 	if flags&All != 0 {
-		if consumed != n {
-			panic(fmt.Errorf("consumed %d; wanted %d", consumed, n))
+		if compressed != n {
+			panic(fmt.Errorf("compressed %d; wanted %d", compressed, n))
 		}
 	}
 
-	return consumed, nil
+	return compressed, nil
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.
@@ -259,8 +258,8 @@ func (e *Encoder) Close() error {
 	return e.re.Close()
 }
 
-// Uncompressed provides the number of uncompressed bytes that have
-// been written into the compressed data stream.
-func (e *Encoder) Uncompressed() int64 {
+// Compressed returns the number bytes of the input data that been
+// compressed.
+func (e *Encoder) Compressed() int64 {
 	return e.Dict.Pos() - e.start
 }
