@@ -8,7 +8,7 @@ import (
 // Reader represents a reader for LZMA streams in the classic format.
 type Reader struct {
 	Parameters Parameters
-	d          Decoder
+	d          *Decoder
 }
 
 // breader converts a reader into a byte reader.
@@ -52,10 +52,11 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 	}
 
 	r = &Reader{Parameters: *params}
-	err = r.d.Init(br, state, dict, params.Size)
-	if err != nil {
+
+	if r.d, err = NewDecoder(br, state, dict, params.Size); err != nil {
 		return nil, err
 	}
+
 	return r, nil
 }
 

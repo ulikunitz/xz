@@ -35,11 +35,10 @@ func TestDecoder(t *testing.T) {
 		if i > 0 {
 			size = int64(len(want))
 		}
-		r := new(Decoder)
 		br := bufio.NewReader(f)
-		err = r.Init(br, state, dict, size)
+		r, err := NewDecoder(br, state, dict, size)
 		if err != nil {
-			t.Fatalf("Init error %s", err)
+			t.Fatalf("NewDecoder error %s", err)
 		}
 		bytes, err := ioutil.ReadAll(r)
 		if err != nil {

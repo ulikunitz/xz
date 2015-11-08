@@ -24,21 +24,33 @@ type Decoder struct {
 	eos bool
 }
 
-// Init initializes the decoder structure. The parameter size must be
+// NewDecoder creates a new decoder value. The parameter size must be
 // negative if no size is given. In such a case an EOS marker is
 // expected.
-func (d *Decoder) Init(br io.ByteReader, state *State, dict *DecoderDict,
-	size int64) error {
+func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (d *Decoder, err error) {
+	rd, err := newRangeDecoder(br)
+	if err != nil {
+		return nil, err
+	}
+	d = &Decoder{
+		State: state,
+		Dict:  dict,
+		rd:    rd,
+		size:  size,
+		start: dict.Pos(),
+	}
+	return d, nil
+}
 
-	*d = Decoder{}
-	d.State = state
-	d.Dict = dict
+// Reopens the decoder with a new byte reader and a new size. Reopen
+// resets the Decompressed counter to zero.
+func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
 	var err error
 	if d.rd, err = newRangeDecoder(br); err != nil {
 		return err
 	}
-	d.size = size
 	d.start = d.Dict.Pos()
+	d.size = size
 	return nil
 }
 
@@ -165,9 +177,10 @@ func (d *Decoder) apply(op operation) error {
 	panic("op is neither a match nor a literal")
 }
 
-// fillDict fills the dictionary unless no space for new data is
-// available in the dictionary.
-func (d *Decoder) fillDict() error {
+// Decompress fills the dictionary unless no space for new data is
+// available in the dictionary or no further data is available from the
+// byte reader.
+func (d *Decoder) Decompress() error {
 	if d.eos {
 		return nil
 	}
@@ -181,7 +194,7 @@ func (d *Decoder) fillDict() error {
 			if !d.rd.possiblyAtEnd() {
 				return errDataAfterEOS
 			}
-			if d.size >= 0 && d.size != d.Uncompressed() {
+			if d.size >= 0 && d.size != d.Decompressed() {
 				return errSize
 			}
 			return nil
@@ -194,9 +207,9 @@ func (d *Decoder) fillDict() error {
 		if err = d.apply(op); err != nil {
 			return err
 		}
-		if d.size >= 0 && d.Uncompressed() >= d.size {
+		if d.size >= 0 && d.Decompressed() >= d.size {
 			d.eos = true
-			if d.Uncompressed() > d.size {
+			if d.Decompressed() > d.size {
 				return errSize
 			}
 			if !d.rd.possiblyAtEnd() {
@@ -228,7 +241,7 @@ var (
 func (d *Decoder) Read(p []byte) (n int, err error) {
 	var k int
 	for n < len(p) {
-		if err = d.fillDict(); err != nil {
+		if err = d.Decompress(); err != nil {
 			return
 		}
 		// Read of decoder dict never returns an error.
@@ -241,10 +254,10 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 		}
 		n += k
 	}
-	return
+	return n, nil
 }
 
-// Uncompressed returns the number of uncompressed bytes decoded.
-func (d *Decoder) Uncompressed() int64 {
+// Decompressed returns the number of bytes decompressed by the decoder.
+func (d *Decoder) Decompressed() int64 {
 	return d.Dict.Pos() - d.start
 }

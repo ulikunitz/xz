@@ -66,8 +66,7 @@ func TestEncoderCycle(t *testing.T) {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
 	state.Reset()
-	r := new(Decoder)
-	err = r.Init(&buf, state, decoderDict, -1)
+	r, err := NewDecoder(&buf, state, decoderDict, -1)
 	if err != nil {
 		t.Fatalf("Init error %s", err)
 	}
