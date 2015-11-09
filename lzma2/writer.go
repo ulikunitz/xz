@@ -1,6 +1,12 @@
 package lzma2
 
-import "io"
+import (
+	"bytes"
+	"errors"
+	"io"
+
+	"github.com/ulikunitz/xz/lzma"
+)
 
 // Parameters describe the parameters for an LZMA2 writer.
 type Parameters struct {
@@ -66,4 +72,111 @@ func NewFileWriter(lzma2 io.Writer) (w *FileWriter, err error) {
 // writing an end-of-stream chunk.
 func (w *FileWriter) Close() error {
 	panic("TODO")
+}
+
+// chunkWriter provides a type that takes care of writing out a single
+// chunk. Since it cannot be known upfront what size the compressed
+// segment will be, the compressed data has to be buffered, before it
+// can be written out. At the same time there is a maximum size the
+// limited byte writer has.
+type chunkWriter struct {
+	w     io.Writer
+	ctype chunkType
+
+	initialState *lzma.State
+	encoder      *lzma.Encoder
+
+	lbw lzma.LimitedByteWriter
+	buf bytes.Buffer
+}
+
+func newChunkWriter(w io.Writer, state *lzma.State, dict *lzma.EncoderDict) (cw *chunkWriter, err error) {
+	cw = &chunkWriter{
+		w:            w,
+		ctype:        cLRND,
+		initialState: lzma.NewStateClone(state),
+		lbw:          lzma.LimitedByteWriter{BW: &cw.buf, N: maxCompressed},
+	}
+	cw.buf.Reset()
+	cw.encoder, err = lzma.NewEncoder(&cw.lbw, state, dict, 0)
+	if err != nil {
+		return nil, err
+	}
+	return cw, nil
+}
+
+func (cw *chunkWriter) Write(p []byte) (n int, err error) {
+	panic("TODO")
+}
+
+func (cw *chunkWriter) writeUncompressedChunk() error {
+	u := cw.encoder.Compressed()
+	if u <= 0 {
+		return errors.New("chunkWriter: can't write empty chunk")
+	}
+	switch cw.ctype {
+	case cLRND:
+		cw.ctype = cUD
+	default:
+		cw.ctype = cU
+	}
+	cw.encoder.State = cw.initialState
+
+	header := chunkHeader{
+		ctype:        cw.ctype,
+		uncompressed: uint32(u - 1),
+	}
+	hdata, err := header.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	if _, err = cw.w.Write(hdata); err != nil {
+		return err
+	}
+	_, err = cw.encoder.Dict.CopyN(cw.w, int(u))
+	return err
+}
+
+func (cw *chunkWriter) writeCompressedChunk() error {
+	if cw.ctype == cU || cw.ctype == cUD {
+		return errors.New(
+			"writeCompressedChunk: uncompressed chunktype")
+	}
+
+	u := cw.encoder.Compressed()
+	if u <= 0 {
+		return errors.New("writeCompressedChunk: empty chunk")
+	}
+	c := cw.buf.Len()
+	if c <= 0 {
+		return errors.New("writeCompressedChunk: no compressed data")
+	}
+	header := chunkHeader{
+		ctype:        cw.ctype,
+		uncompressed: uint32(u - 1),
+		compressed:   uint16(c - 1),
+		props:        cw.encoder.State.Properties,
+	}
+	hdata, err := header.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	if _, err = cw.w.Write(hdata); err != nil {
+		return err
+	}
+
+	_, err = io.Copy(cw.w, &cw.buf)
+	return err
+}
+
+func (cw *chunkWriter) Close() error {
+	if err := cw.encoder.Close(); err != nil {
+		return err
+	}
+	u := int(uncompressedHeaderLen + cw.encoder.Compressed())
+	c := headerLen(cw.ctype) + cw.buf.Len()
+	if u < c {
+		return cw.writeUncompressedChunk()
+	}
+	return cw.writeCompressedChunk()
 }

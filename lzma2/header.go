@@ -105,6 +105,8 @@ func headerChunkType(h byte) (c chunkType, err error) {
 	return
 }
 
+const uncompressedHeaderLen = 3
+
 // headerLen returns the length of the LZMA2 header for a given chunk
 // type.
 func headerLen(c chunkType) int {
@@ -112,7 +114,7 @@ func headerLen(c chunkType) int {
 	case cEOS:
 		return 1
 	case cU, cUD:
-		return 3
+		return uncompressedHeaderLen
 	case cL, cLR:
 		return 5
 	case cLRN, cLRND:
@@ -252,4 +254,95 @@ func WriteEOS(w io.Writer) error {
 	var p [1]byte
 	_, err := w.Write(p[:])
 	return err
+}
+
+// chunkState is used to manage the state of the chunks
+type chunkState byte
+
+// start provides the initial state
+const start chunkState = 'S'
+
+// errors for the chunk state handling
+var (
+	errChunkType = errors.New("lzma2: unexpected chunk type")
+	errState     = errors.New("wrong state")
+)
+
+// next tranisitions state based on chunk type input
+func (c *chunkState) next(ctype chunkType) error {
+	switch *c {
+	// start state
+	case 'S':
+		switch ctype {
+		case cEOS:
+			*c = 'T'
+		case cUD:
+			*c = 'V'
+		case cLRND:
+			*c = 'L'
+		default:
+			return errChunkType
+		}
+	// normal LZMA mode
+	case 'L':
+		switch ctype {
+		case cEOS:
+			*c = 'T'
+		case cUD:
+			*c = 'R'
+		case cU:
+			*c = 'U'
+		case cL, cLR, cLRN, cLRND:
+			break
+		default:
+			return errChunkType
+		}
+	// reset required
+	case 'R':
+		switch ctype {
+		case cEOS:
+			*c = 'T'
+		case cUD, cU:
+			break
+		case cLRN, cLRND:
+			*c = 'L'
+		default:
+			return errChunkType
+		}
+	// uncompressed
+	case 'U':
+		switch ctype {
+		case cEOS:
+			*c = 'T'
+		case cUD:
+			*c = 'R'
+		case cU:
+			break
+		case cL, cLR, cLRN, cLRND:
+			*c = 'L'
+		default:
+			return errChunkType
+		}
+	// terminal state
+	case 'T':
+		return errChunkType
+	default:
+		return errState
+	}
+	return nil
+}
+
+// defaultChunkType returns the default chunk type for each chunk state.
+func (c chunkState) defaultChunkType() chunkType {
+	switch c {
+	case 'S':
+		return cLRND
+	case 'L', 'V':
+		return cL
+	case 'U':
+		return cLRN
+	default:
+		// no error
+		return cEOS
+	}
 }
