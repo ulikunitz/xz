@@ -38,6 +38,8 @@
 
 # Package lzma2
 
+- Creat chunk writer and chunk reader that can be used repeatedly to
+  write and read LZMA2 chunks.
 - Create SegmentWriter and SegmentReader
   
   A SegmentWriter allows the creation of a sequence of LZMA2 chunks.
