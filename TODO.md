@@ -36,6 +36,9 @@
 
 # Package lzma
 
+- Writer and Reader should support error handling as for bufio.Writer
+  and bufio.Reader
+
 # Package lzma2
 
 - Creat chunk writer and chunk reader that can be used repeatedly to
