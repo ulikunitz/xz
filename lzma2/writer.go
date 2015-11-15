@@ -77,8 +77,7 @@ func (w *FileWriter) Close() error {
 // chunkWriter provides a type that takes care of writing out a single
 // chunk. Since it cannot be known upfront what size the compressed
 // segment will be, the compressed data has to be buffered, before it
-// can be written out. At the same time there is a maximum size the
-// limited byte writer has.
+// can be written out.
 type chunkWriter struct {
 	w     io.Writer
 	ctype chunkType
@@ -95,14 +94,28 @@ func newChunkWriter(w io.Writer, state *lzma.State, dict *lzma.EncoderDict) (cw 
 		w:            w,
 		ctype:        cLRND,
 		initialState: lzma.NewStateClone(state),
-		lbw:          lzma.LimitedByteWriter{BW: &cw.buf, N: maxCompressed},
+		lbw: lzma.LimitedByteWriter{
+			BW: &cw.buf, N: maxCompressed},
 	}
-	cw.buf.Reset()
+	cw.buf.Grow(maxCompressed)
+
 	cw.encoder, err = lzma.NewEncoder(&cw.lbw, state, dict, 0)
 	if err != nil {
 		return nil, err
 	}
+
 	return cw, nil
+}
+
+func (cw *chunkWriter) Reopen(ctype chunkType) error {
+	cw.ctype = ctype
+	cw.lbw.N = maxCompressed
+	cw.buf.Reset()
+	cw.initialState = lzma.NewStateClone(cw.encoder.State)
+	if err := cw.encoder.Reopen(&cw.lbw); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (cw *chunkWriter) Write(p []byte) (n int, err error) {
