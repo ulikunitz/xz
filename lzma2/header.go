@@ -105,6 +105,7 @@ func headerChunkType(h byte) (c chunkType, err error) {
 	return
 }
 
+// uncompressedHeaderLen provides the lenght of an uncompressed header
 const uncompressedHeaderLen = 3
 
 // headerLen returns the length of the LZMA2 header for a given chunk
