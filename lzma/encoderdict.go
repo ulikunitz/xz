@@ -191,6 +191,7 @@ type matcher interface {
 type EncoderDict struct {
 	writerDict
 	m matcher
+	// saves allocations in Read method
 	p []byte
 }
 

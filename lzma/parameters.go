@@ -112,7 +112,7 @@ func (p *Parameters) verifyWriter() error {
 	if p == nil {
 		return errors.New("LZMA parameters must be non-nil")
 	}
-	if err := verifyProperties(p.LC, p.LP, p.PB); err != nil {
+	if err := VerifyProperties(p.LC, p.LP, p.PB); err != nil {
 		return err
 	}
 	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
