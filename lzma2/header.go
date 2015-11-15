@@ -260,8 +260,12 @@ func WriteEOS(w io.Writer) error {
 // chunkState is used to manage the state of the chunks
 type chunkState byte
 
-// start provides the initial state
-const start chunkState = 'S'
+// start and stop define the initial and terminating state of the chunk
+// state
+const (
+	start chunkState = 'S'
+	stop             = 'T'
+)
 
 // errors for the chunk state handling
 var (
@@ -278,7 +282,7 @@ func (c *chunkState) next(ctype chunkType) error {
 		case cEOS:
 			*c = 'T'
 		case cUD:
-			*c = 'V'
+			*c = 'R'
 		case cLRND:
 			*c = 'L'
 		default:
@@ -338,9 +342,9 @@ func (c chunkState) defaultChunkType() chunkType {
 	switch c {
 	case 'S':
 		return cLRND
-	case 'L', 'V':
+	case 'L', 'U':
 		return cL
-	case 'U':
+	case 'R':
 		return cLRN
 	default:
 		// no error
