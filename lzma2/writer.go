@@ -79,9 +79,9 @@ func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer,
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 		start:  lzma.NewState(props),
-		lbw:    lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed},
 	}
 	w.buf.Grow(maxCompressed)
+	w.lbw = lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed}
 	d, err := lzma.NewEncoderDict(params.DictCap, params.BufSize)
 	if err != nil {
 		return nil, err
