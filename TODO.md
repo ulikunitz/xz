@@ -32,23 +32,20 @@
 
 # Package xz
 
-- Implement the package using the LZMA2 support provided by LZMA2.
+- Implement the package using the LZMA2 support provided by the lzma
+  package.
 
 # Package lzma
 
 - Writer and Reader should support error handling as for bufio.Writer
   and bufio.Reader
+- Support LZMA2Reader, LZMA2Writer, LZMA2FileReader and LZMA2FileWriter.
 
 # Package lzma2
 
-- Creat chunk writer and chunk reader that can be used repeatedly to
-  write and read LZMA2 chunks.
-
-- Create SegmentWriter and SegmentReader
-  
-  A SegmentWriter allows the creation of a sequence of LZMA2 chunks.
-  The idea is here that a file can be created for different blocks in
-  different segment chunks.
+- Put the package in the lzma. This way we prevent the Encoder, Decoder,
+  EncoderDict and DecoderDict types to be exported. Limiting the
+  exported interfaces will be better in the long term.
 
 ## Optimizations
 
