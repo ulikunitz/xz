@@ -17,6 +17,10 @@ func TestWriter(t *testing.T) {
 	if err = w.Flush(); err != nil {
 		t.Fatalf("w.Flush() error %s", err)
 	}
+	// check that double Flush doesn't write another chunk
+	if err = w.Flush(); err != nil {
+		t.Fatalf("w.Flush() error %s", err)
+	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
