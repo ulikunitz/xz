@@ -20,8 +20,11 @@ type breader struct {
 func (r breader) ReadByte() (c byte, err error) {
 	var p [1]byte
 	n, err := r.Reader.Read(p[:])
-	if n < 1 && err == nil {
-		return 0, errors.New("ReadByte: no data")
+	if n < 1 {
+		if err == nil {
+			err = errors.New("ReadByte: no data")
+		}
+		return 0, err
 	}
 	return p[0], nil
 }
