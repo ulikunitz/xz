@@ -37,6 +37,8 @@
 
 # Package lzma
 
+- Make Encoder a WriteCloser.
+- Make Decoder a Reader
 - Writer and Reader should support error handling as for bufio.Writer
   and bufio.Reader
 - Support LZMA2Reader, LZMA2Writer, LZMA2FileReader and LZMA2FileWriter.
