@@ -242,10 +242,7 @@ var (
 // returned.
 func (d *Decoder) Read(p []byte) (n int, err error) {
 	var k int
-	for n < len(p) {
-		if _, err = d.Decompress(); err != nil && err != io.EOF {
-			return n, err
-		}
+	for {
 		// Read of decoder dict never returns an error.
 		k, err = d.Dict.Read(p[n:])
 		if err != nil {
@@ -255,8 +252,13 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 			return n, io.EOF
 		}
 		n += k
+		if n >= len(p) {
+			return n, nil
+		}
+		if _, err = d.Decompress(); err != nil && err != io.EOF {
+			return n, err
+		}
 	}
-	return n, nil
 }
 
 // Decompressed returns the number of bytes decompressed by the decoder.
