@@ -178,12 +178,12 @@ func (d *Decoder) apply(op operation) error {
 	panic("op is neither a match nor a literal")
 }
 
-// Decompress fills the dictionary unless no space for new data is
+// decompress fills the dictionary unless no space for new data is
 // available. If the end of the LZMA stream has been reached io.EOF will
 // be returned.
-func (d *Decoder) Decompress() (n int, err error) {
+func (d *Decoder) decompress() error {
 	if d.eos {
-		return 0, io.EOF
+		return io.EOF
 	}
 	for d.Dict.Available() >= maxMatchLen {
 		op, err := d.readOp()
@@ -193,43 +193,42 @@ func (d *Decoder) Decompress() (n int, err error) {
 		case errEOS:
 			d.eos = true
 			if !d.rd.possiblyAtEnd() {
-				return n, errDataAfterEOS
+				return errDataAfterEOS
 			}
 			if d.size >= 0 && d.size != d.Decompressed() {
-				return n, errSize
+				return errSize
 			}
-			return n, io.EOF
+			return io.EOF
 		case io.EOF:
 			d.eos = true
-			return n, io.ErrUnexpectedEOF
+			return io.ErrUnexpectedEOF
 		default:
-			return n, err
+			return err
 		}
 		if err = d.apply(op); err != nil {
-			return n, err
+			return err
 		}
-		n += op.Len()
 		if d.size >= 0 && d.Decompressed() >= d.size {
 			d.eos = true
 			if d.Decompressed() > d.size {
-				return n, errSize
+				return errSize
 			}
 			if !d.rd.possiblyAtEnd() {
 				switch _, err = d.readOp(); err {
 				case nil:
-					return n, errSize
+					return errSize
 				case io.EOF:
-					return n, io.ErrUnexpectedEOF
+					return io.ErrUnexpectedEOF
 				case errEOS:
 					break
 				default:
-					return n, err
+					return err
 				}
 			}
-			return n, io.EOF
+			return io.EOF
 		}
 	}
-	return n, nil
+	return nil
 }
 
 // Errors that may be returned while decoding data.
@@ -255,7 +254,7 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 		if n >= len(p) {
 			return n, nil
 		}
-		if _, err = d.Decompress(); err != nil && err != io.EOF {
+		if err = d.decompress(); err != nil && err != io.EOF {
 			return n, err
 		}
 	}
