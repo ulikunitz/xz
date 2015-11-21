@@ -49,8 +49,7 @@ func TestEncoderCycle(t *testing.T) {
 	if n != len(orig) {
 		t.Fatalf("w.Write returned %d; want %d", n, len(orig))
 	}
-	_, err = w.Compress(w.Dict.Buffered(), All)
-	if err != nil {
+	if err = w.compress(all); err != nil {
 		t.Fatalf("w.Compress error %s", err)
 	}
 	if err = w.Close(); err != nil {

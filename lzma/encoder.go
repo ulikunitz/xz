@@ -1,28 +1,25 @@
 package lzma
 
-import (
-	"fmt"
-	"io"
-)
+import "io"
 
 // opLenMargin provides the upper limit of the number of bytes required
 // to encode a single operation.
 const opLenMargin = 10
 
-// CompressFlags control the compression process.
-type CompressFlags uint32
+// compressFlags control the compression process.
+type compressFlags uint32
 
-// Values for CompressFlags.
+// Values for compressFlags.
 const (
 	// all data should be compresed, even if compression is not
 	// optimal.
-	All CompressFlags = 1 << iota
+	all compressFlags = 1 << iota
 )
 
 // opFinder enables the support of multiple different OpFinder
 // algorithms.
 type opFinder interface {
-	findOps(e *EncoderDict, n int, r reps, flags CompressFlags) []operation
+	findOps(e *EncoderDict, r reps, flags compressFlags) []operation
 	name() string
 }
 
@@ -45,6 +42,7 @@ type Encoder struct {
 	start      int64
 	// generate eos marker
 	marker   bool
+	limit    bool
 	opFinder opFinder
 	margin   int
 }
@@ -83,8 +81,7 @@ func (e *Encoder) Write(p []byte) (n int, err error) {
 		k, err := e.Dict.Write(p[n:])
 		n += k
 		if err == ErrNoSpace {
-			_, err = e.Compress(e.Dict.Buffered(), 0)
-			if err != nil {
+			if err = e.compress(0); err != nil {
 				return n, err
 			}
 			continue
@@ -224,42 +221,45 @@ func (e *Encoder) writeOp(op operation) error {
 	return err
 }
 
-// Compress encodes up to n bytes from the dictionary. If the flag all
-// is set, all data requested will be compressed. The function returns
-// the number of input bytes that have been compressed.
-func (e *Encoder) Compress(n int, flags CompressFlags) (compressed int, err error) {
+// compress compressed data from the dictionary buffer. If the flag all
+// is set, all data in the dictionay buffer will be compressed.
+func (e *Encoder) compress(flags compressFlags) error {
+	if e.limit {
+		return ErrLimit
+	}
 	e.writerDict = e.Dict.writerDict
-	ops := e.opFinder.findOps(e.Dict, n, reps(e.State.rep), flags)
+	ops := e.opFinder.findOps(e.Dict, reps(e.State.rep), flags)
 	for _, op := range ops {
-		if err = e.writeOp(op); err != nil {
-			return compressed, err
-		}
-		compressed += op.Len()
-	}
-
-	// debug code
-	if flags&All != 0 {
-		if compressed != n {
-			panic(fmt.Errorf("compressed %d; wanted %d", compressed, n))
+		if err := e.writeOp(op); err != nil {
+			if err == ErrLimit {
+				e.limit = true
+			}
+			return err
 		}
 	}
-
-	return compressed, nil
+	return nil
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.
 var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
-// Close closes the stream without compressing any remaining data in the
-// dictionary buffer. If requested the end-of-stream marker will be
-// wriiten.
+// Close terminates the LZMA stream. If requested the end-of-stream
+// marker will be written. ErrLimit is returned if the limit in the
+// underlying write stream has been encountered.
 func (e *Encoder) Close() error {
+	cerr := e.compress(all)
+	if cerr != nil && cerr != ErrLimit {
+		return cerr
+	}
 	if e.marker {
 		if err := e.writeMatch(eosMatch); err != nil {
 			return err
 		}
 	}
-	return e.re.Close()
+	if err := e.re.Close(); err != nil {
+		return err
+	}
+	return cerr
 }
 
 // Compressed returns the number bytes of the input data that been

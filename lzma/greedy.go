@@ -67,33 +67,24 @@ func findOp(ms *miniState) operation {
 // buffer will be covered, if it is not set the last operation reaching
 // the head will not be output. This functionality has been included to
 // support the extension of the last operation if new data comes in.
-func (g greedyFinder) findOps(d *EncoderDict, n int, r reps, flags CompressFlags) []operation {
+func (g greedyFinder) findOps(d *EncoderDict, r reps, f compressFlags) []operation {
 	ms := miniState{d: d, r: r}
-	if n > ms.d.Buffered() {
-		n = ms.d.Buffered()
-	}
 	ops := make([]operation, 0, 256)
-	if n > 0 {
+	if ms.d.Buffered() > 0 {
 		for {
 			op := findOp(&ms)
-			if op.Len() >= n {
-				if flags&All != 0 {
-					if op.Len() > n {
-						if n == 1 {
-							op = lit{ms.d.Literal()}
-						} else {
-							m := op.(match)
-							m.n = n
-							op = m
-						}
-					}
+			if op.Len() >= ms.d.Buffered() {
+				if op.Len() > ms.d.Buffered() {
+					panic("op length exceeds buffered")
+				}
+				if f&all != 0 {
 					ms.applyOp(op)
 					ops = append(ops, op)
 				}
 				break
+
 			}
 			ms.applyOp(op)
-			n -= op.Len()
 			ops = append(ops, op)
 		}
 	}

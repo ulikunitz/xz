@@ -100,11 +100,7 @@ func (w *Writer) Close() error {
 			return errSize
 		}
 	}
-	_, err := w.e.Compress(w.e.Dict.Buffered(), All)
-	if err == nil {
-		err = w.e.Close()
-	}
-
+	err := w.e.Close()
 	if w.bw != nil {
 		ferr := w.bw.Flush()
 		if err == nil {
