@@ -19,7 +19,7 @@ func TestEncoderDict(t *testing.T) {
 	if e.m, err = newHashTable(dictCap, 3); err != nil {
 		t.Fatalf("newHashTable error %s", err)
 	}
-	n, err := e.Write([]byte(tst))
+	n, err := e.write([]byte(tst))
 	if err != nil {
 		t.Fatalf("Write error %s", err)
 	}
@@ -29,7 +29,7 @@ func TestEncoderDict(t *testing.T) {
 	if k := e.Buffered(); k != len(tst) {
 		t.Fatalf("e.Buffered returned %d; want %d", k, len(tst))
 	}
-	e.Advance(8)
+	e.advance(8)
 	p := make([]byte, 3)
 	n, err = e.buf.Peek(p)
 	if err != nil {
@@ -38,14 +38,14 @@ func TestEncoderDict(t *testing.T) {
 	if n != len(p) {
 		t.Fatalf("Peek returned %d; want %d", n, len(p))
 	}
-	dists := e.Matches()
+	dists := e.matches()
 	wdists := []int{4, 8}
 	dstr, wdstr := fmt.Sprintf("%v", dists), fmt.Sprintf("%v", wdists)
 	if dstr != wdstr {
 		t.Fatalf("Matches returned %s; want %s", dstr, wdstr)
 	}
 	for _, d := range dists {
-		n = e.MatchLen(d)
+		n = e.matchLen(d)
 		if n != 3 {
 			t.Fatalf("MatchLen(%d) returned %d; want %d", d, n, 3)
 		}

@@ -19,7 +19,7 @@ type miniState struct {
 
 // applyOp applies the LZMA operation to the miniState.
 func (ms *miniState) applyOp(op operation) {
-	ms.d.Advance(op.Len())
+	ms.d.advance(op.Len())
 	ms.r.addOp(op)
 }
 
@@ -35,7 +35,7 @@ func bestOp(ms *miniState, literal byte, distances []int) operation {
 	op := operation(lit{literal})
 	w := weight(1, ms.r.opBits(op))
 	for _, distance := range distances {
-		n := ms.d.MatchLen(distance)
+		n := ms.d.matchLen(distance)
 		if n == 0 {
 			continue
 		}
@@ -54,8 +54,8 @@ func bestOp(ms *miniState, literal byte, distances []int) operation {
 
 // findOp finds a single operation at the current head of the hash dictionary.
 func findOp(ms *miniState) operation {
-	l := ms.d.Literal()
-	distances := ms.d.Matches()
+	l := ms.d.literal()
+	distances := ms.d.matches()
 	// add small distances
 	distances = append(distances, 1, 2, 3, 4, 5, 6, 7, 8)
 	op := bestOp(ms, l, distances)

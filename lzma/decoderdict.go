@@ -43,9 +43,9 @@ func (d *DecoderDict) Reset() {
 	d.head = 0
 }
 
-// WriteByte writes a single byte into the dictionary. It is used to
+// writeByte writes a single byte into the dictionary. It is used to
 // write literals into the dictionary.
-func (d *DecoderDict) WriteByte(c byte) error {
+func (d *DecoderDict) writeByte(c byte) error {
 	if err := d.buf.WriteByte(c); err != nil {
 		return err
 	}
@@ -54,10 +54,10 @@ func (d *DecoderDict) WriteByte(c byte) error {
 }
 
 // Pos returns the position of the dictionary head.
-func (d *DecoderDict) Pos() int64 { return d.head }
+func (d *DecoderDict) pos() int64 { return d.head }
 
-// DictLen returns the actual length of the dictionary.
-func (d *DecoderDict) DictLen() int {
+// dictLen returns the actual length of the dictionary.
+func (d *DecoderDict) dictLen() int {
 	if d.head >= int64(d.capacity) {
 		return d.capacity
 	}
@@ -67,8 +67,8 @@ func (d *DecoderDict) DictLen() int {
 // ByteAt returns a byte stored in the dictionary. If the distance is
 // non-positive or exceeds the current length of the dictionary the zero
 // byte is returned.
-func (d *DecoderDict) ByteAt(dist int) byte {
-	if !(0 < dist && dist <= d.DictLen()) {
+func (d *DecoderDict) byteAt(dist int) byte {
+	if !(0 < dist && dist <= d.dictLen()) {
 		return 0
 	}
 	i := d.buf.front - dist
@@ -85,8 +85,8 @@ func (d *DecoderDict) ByteAt(dist int) byte {
 // The error value ErrNoSpace indicates that no space is available in
 // the dictionary for writing. You need to read from the dictionary
 // first.
-func (d *DecoderDict) WriteMatch(dist int, length int) error {
-	if !(0 < dist && dist <= d.DictLen()) {
+func (d *DecoderDict) writeMatch(dist int, length int) error {
+	if !(0 < dist && dist <= d.dictLen()) {
 		return errors.New("WriteMatch: distance out of range")
 	}
 	if !(0 < length && length <= maxMatchLen) {
@@ -123,14 +123,14 @@ func (d *DecoderDict) WriteMatch(dist int, length int) error {
 
 // Available returns the number of available bytes for writing into the
 // decoder dictionary.
-func (d *DecoderDict) Available() int { return d.buf.Available() }
+func (d *DecoderDict) available() int { return d.buf.Available() }
 
 // Read reads data from the buffer contained in the decoder dictionary.
-func (d *DecoderDict) Read(p []byte) (n int, err error) { return d.buf.Read(p) }
+func (d *DecoderDict) read(p []byte) (n int, err error) { return d.buf.Read(p) }
 
 // Buffered returns the number of bytes currently buffered in the
 // decoder dictionary.
-func (d *DecoderDict) Buffered() int { return d.buf.Buffered() }
+func (d *DecoderDict) buffered() int { return d.buf.Buffered() }
 
 // Peek gets data from the buffer without advancing the rear index.
-func (d *DecoderDict) Peek(p []byte) (n int, err error) { return d.buf.Peek(p) }
+func (d *DecoderDict) peek(p []byte) (n int, err error) { return d.buf.Peek(p) }

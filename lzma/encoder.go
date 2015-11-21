@@ -64,7 +64,7 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 		State:    state,
 		re:       re,
 		marker:   flags&EOSMarker != 0,
-		start:    dict.Pos(),
+		start:    dict.pos(),
 		margin:   opLenMargin,
 	}
 	if e.marker {
@@ -78,7 +78,7 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 // compressed to make additional space available.
 func (e *Encoder) Write(p []byte) (n int, err error) {
 	for {
-		k, err := e.Dict.Write(p[n:])
+		k, err := e.Dict.write(p[n:])
 		n += k
 		if err == ErrNoSpace {
 			if err = e.compress(0); err != nil {
@@ -96,19 +96,19 @@ func (e *Encoder) Reopen(bw io.ByteWriter) error {
 	if e.re, err = newRangeEncoder(bw); err != nil {
 		return err
 	}
-	e.start = e.Dict.Pos()
+	e.start = e.Dict.pos()
 	return nil
 }
 
 // writeLiteral writes a literal into the LZMA stream
 func (e *Encoder) writeLiteral(l lit) error {
 	var err error
-	state, state2, _ := e.State.states(e.writerDict.Pos())
+	state, state2, _ := e.State.states(e.writerDict.pos())
 	if err = e.State.isMatch[state2].Encode(e.re, 0); err != nil {
 		return err
 	}
-	litState := e.State.litState(e.writerDict.ByteAt(1), e.writerDict.Pos())
-	match := e.writerDict.ByteAt(int(e.State.rep[0]) + 1)
+	litState := e.State.litState(e.writerDict.byteAt(1), e.writerDict.pos())
+	match := e.writerDict.byteAt(int(e.State.rep[0]) + 1)
 	err = e.State.litCodec.Encode(e.re, l.b, state, match, litState)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (e *Encoder) writeMatch(m match) error {
 		!(dist == e.State.rep[0] && m.n == 1) {
 		panic("match length out of range")
 	}
-	state, state2, posState := e.State.states(e.writerDict.Pos())
+	state, state2, posState := e.State.states(e.writerDict.pos())
 	if err = e.State.isMatch[state2].Encode(e.re, 1); err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (e *Encoder) writeOp(op operation) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.writerDict.Advance(op.Len())
+	_, err = e.writerDict.advance(op.Len())
 	return err
 }
 
@@ -265,5 +265,5 @@ func (e *Encoder) Close() error {
 // Compressed returns the number bytes of the input data that been
 // compressed.
 func (e *Encoder) Compressed() int64 {
-	return e.Dict.Pos() - e.start
+	return e.Dict.pos() - e.start
 }

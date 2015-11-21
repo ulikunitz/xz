@@ -38,7 +38,7 @@ func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (
 		Dict:  dict,
 		rd:    rd,
 		size:  size,
-		start: dict.Pos(),
+		start: dict.pos(),
 	}
 	return d, nil
 }
@@ -50,15 +50,15 @@ func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
 	if d.rd, err = newRangeDecoder(br); err != nil {
 		return err
 	}
-	d.start = d.Dict.Pos()
+	d.start = d.Dict.pos()
 	d.size = size
 	return nil
 }
 
 // decodeLiteral decodes a single literal from the LZMA stream.
 func (d *Decoder) decodeLiteral() (op operation, err error) {
-	litState := d.State.litState(d.Dict.ByteAt(1), d.Dict.head)
-	match := d.Dict.ByteAt(int(d.State.rep[0]) + 1)
+	litState := d.State.litState(d.Dict.byteAt(1), d.Dict.head)
+	match := d.Dict.byteAt(int(d.State.rep[0]) + 1)
 	s, err := d.State.litCodec.Decode(d.rd, d.State.state, match, litState)
 	if err != nil {
 		return nil, err
@@ -171,9 +171,9 @@ func (d *Decoder) readOp() (op operation, err error) {
 func (d *Decoder) apply(op operation) error {
 	switch x := op.(type) {
 	case match:
-		return d.Dict.WriteMatch(x.distance, x.n)
+		return d.Dict.writeMatch(x.distance, x.n)
 	case lit:
-		return d.Dict.WriteByte(x.b)
+		return d.Dict.writeByte(x.b)
 	}
 	panic("op is neither a match nor a literal")
 }
@@ -185,7 +185,7 @@ func (d *Decoder) decompress() error {
 	if d.eos {
 		return io.EOF
 	}
-	for d.Dict.Available() >= maxMatchLen {
+	for d.Dict.available() >= maxMatchLen {
 		op, err := d.readOp()
 		switch err {
 		case nil:
@@ -243,7 +243,7 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 	var k int
 	for {
 		// Read of decoder dict never returns an error.
-		k, err = d.Dict.Read(p[n:])
+		k, err = d.Dict.read(p[n:])
 		if err != nil {
 			panic(fmt.Errorf("dictionary read error %s", err))
 		}
@@ -262,5 +262,5 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 
 // Decompressed returns the number of bytes decompressed by the decoder.
 func (d *Decoder) Decompressed() int64 {
-	return d.Dict.Pos() - d.start
+	return d.Dict.pos() - d.start
 }
