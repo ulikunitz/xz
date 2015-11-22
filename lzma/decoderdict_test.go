@@ -33,17 +33,17 @@ func TestDecoderDict(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
-	if err := d.writeByte('a'); err != nil {
-		t.Fatalf("writeByte error %s", err)
+	if err := d.WriteByte('a'); err != nil {
+		t.Fatalf("WriteByte error %s", err)
 	}
-	if err := d.writeByte('b'); err != nil {
-		t.Fatalf("writeByte error %s", err)
+	if err := d.WriteByte('b'); err != nil {
+		t.Fatalf("WriteByte error %s", err)
 	}
-	if err := d.writeByte('c'); err != nil {
-		t.Fatalf("writeByte error %s", err)
+	if err := d.WriteByte('c'); err != nil {
+		t.Fatalf("WriteByte error %s", err)
 	}
-	if err := d.writeByte('d'); err != nil {
-		t.Fatalf("writeByte error %s", err)
+	if err := d.WriteByte('d'); err != nil {
+		t.Fatalf("WriteByte error %s", err)
 	}
 	err = d.writeMatch(4, 5)
 	if err != nil {
@@ -67,7 +67,7 @@ func TestDecoderDict(t *testing.T) {
 		t.Fatalf("d.byteAt(2) returned %c; want %c", c, 'd')
 	}
 	p := make([]byte, 7)
-	n, err := d.read(p)
+	n, err := d.Read(p)
 	if err != nil {
 		t.Fatalf("Read error %s", err)
 	}
@@ -86,7 +86,7 @@ func TestDecoderDict(t *testing.T) {
 		t.Fatalf("writeMatch error %s", err)
 	}
 	p = make([]byte, 8)
-	n, err = d.read(p)
+	n, err = d.Read(p)
 	if err != nil {
 		t.Fatalf("Read#2 error %s", err)
 	}

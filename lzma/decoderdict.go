@@ -12,7 +12,9 @@ const (
 	maxDictCap = 1<<32 - 1
 )
 
-// DecoderDict provides the dictionary to the Decoder.
+// DecoderDict provides the dictionary to the Decoder. It provides a
+// Read and a Write function to support the handling of uncompressed
+// data.
 type DecoderDict struct {
 	buf      buffer
 	head     int64
@@ -43,9 +45,9 @@ func (d *DecoderDict) Reset() {
 	d.head = 0
 }
 
-// writeByte writes a single byte into the dictionary. It is used to
+// WriteByte writes a single byte into the dictionary. It is used to
 // write literals into the dictionary.
-func (d *DecoderDict) writeByte(c byte) error {
+func (d *DecoderDict) WriteByte(c byte) error {
 	if err := d.buf.WriteByte(c); err != nil {
 		return err
 	}
@@ -53,7 +55,7 @@ func (d *DecoderDict) writeByte(c byte) error {
 	return nil
 }
 
-// Pos returns the position of the dictionary head.
+// pos returns the position of the dictionary head.
 func (d *DecoderDict) pos() int64 { return d.head }
 
 // dictLen returns the actual length of the dictionary.
@@ -64,7 +66,7 @@ func (d *DecoderDict) dictLen() int {
 	return int(d.head)
 }
 
-// ByteAt returns a byte stored in the dictionary. If the distance is
+// byteAt returns a byte stored in the dictionary. If the distance is
 // non-positive or exceeds the current length of the dictionary the zero
 // byte is returned.
 func (d *DecoderDict) byteAt(dist int) byte {
@@ -78,7 +80,7 @@ func (d *DecoderDict) byteAt(dist int) byte {
 	return d.buf.data[i]
 }
 
-// WriteMatch writes the match at the top of the dictionary. The given
+// writeMatch writes the match at the top of the dictionary. The given
 // distance must point in the current dictionary and the length must not
 // exceed the maximum length 273 supported in LZMA.
 //
@@ -121,12 +123,20 @@ func (d *DecoderDict) writeMatch(dist int, length int) error {
 	return nil
 }
 
+// Write writes the given bytes into the dictionary and advances the
+// head.
+func (d *DecoderDict) Write(p []byte) (n int, err error) {
+	n, err = d.buf.Write(p)
+	d.head += int64(n)
+	return n, err
+}
+
 // Available returns the number of available bytes for writing into the
 // decoder dictionary.
-func (d *DecoderDict) available() int { return d.buf.Available() }
+func (d *DecoderDict) Available() int { return d.buf.Available() }
 
 // Read reads data from the buffer contained in the decoder dictionary.
-func (d *DecoderDict) read(p []byte) (n int, err error) { return d.buf.Read(p) }
+func (d *DecoderDict) Read(p []byte) (n int, err error) { return d.buf.Read(p) }
 
 // Buffered returns the number of bytes currently buffered in the
 // decoder dictionary.

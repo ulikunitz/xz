@@ -173,7 +173,7 @@ func (d *Decoder) apply(op operation) error {
 	case match:
 		return d.Dict.writeMatch(x.distance, x.n)
 	case lit:
-		return d.Dict.writeByte(x.b)
+		return d.Dict.WriteByte(x.b)
 	}
 	panic("op is neither a match nor a literal")
 }
@@ -185,7 +185,7 @@ func (d *Decoder) decompress() error {
 	if d.eos {
 		return io.EOF
 	}
-	for d.Dict.available() >= maxMatchLen {
+	for d.Dict.Available() >= maxMatchLen {
 		op, err := d.readOp()
 		switch err {
 		case nil:
@@ -243,7 +243,7 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 	var k int
 	for {
 		// Read of decoder dict never returns an error.
-		k, err = d.Dict.read(p[n:])
+		k, err = d.Dict.Read(p[n:])
 		if err != nil {
 			panic(fmt.Errorf("dictionary read error %s", err))
 		}
