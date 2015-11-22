@@ -37,14 +37,13 @@
 
 # Package lzma
 
-- Make Encoder a WriteCloser.
-- Make Decoder a Reader
 - Writer and Reader should support error handling as for bufio.Writer
   and bufio.Reader
 - Support LZMA2Reader, LZMA2Writer, LZMA2FileReader and LZMA2FileWriter.
 
 # Package lzma2
 
+- Test Reader
 - Put the package in the lzma. This way we prevent the Encoder, Decoder,
   EncoderDict and DecoderDict types to be exported. Limiting the
   exported interfaces will be better in the long term.
