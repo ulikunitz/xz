@@ -45,6 +45,18 @@ func NewWriter(lzma2 io.Writer) (w *Writer, err error) {
 	return NewWriterParams(lzma2, Default)
 }
 
+// verifyProps checks the properties including the LZMA2 specific test
+// that the sum of lc and lp doesn't exceed 4.
+func verifyProps(p lzma.Properties) error {
+	if err := p.Verify(); err != nil {
+		return err
+	}
+	if p.LC+p.LP > 4 {
+		return errors.New("lzma2: sum of lc and lp exceeds 4")
+	}
+	return nil
+}
+
 // NewWriterParams creates an LZMA2 chunk stream writer with the given
 // parameters.
 func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer,
@@ -53,10 +65,12 @@ func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer,
 	if lzma2 == nil {
 		return nil, errors.New("lzma2: writer must not be nil")
 	}
+
 	props := params.Properties
-	if err = props.Verify(); err != nil {
+	if err = verifyProps(props); err != nil {
 		return nil, err
 	}
+
 	w = &Writer{
 		w:      lzma2,
 		cstate: start,
