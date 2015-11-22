@@ -75,7 +75,8 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 
 // Write writes the bytes from p into the dictionary. If not enough
 // space is available the data in the dictionary buffer will be
-// compressed to make additional space available.
+// compressed to make additional space available. If the limit of the
+// underlying writer has been reached ErrLimit will be returned.
 func (e *Encoder) Write(p []byte) (n int, err error) {
 	for {
 		k, err := e.Dict.write(p[n:])
@@ -222,7 +223,9 @@ func (e *Encoder) writeOp(op operation) error {
 }
 
 // compress compressed data from the dictionary buffer. If the flag all
-// is set, all data in the dictionay buffer will be compressed.
+// is set, all data in the dictionay buffer will be compressed. The
+// function returns ErrLimit if the underlying writer has reached its
+// limit.
 func (e *Encoder) compress(flags compressFlags) error {
 	if e.limit {
 		return ErrLimit
@@ -244,22 +247,19 @@ func (e *Encoder) compress(flags compressFlags) error {
 var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
 // Close terminates the LZMA stream. If requested the end-of-stream
-// marker will be written. ErrLimit is returned if the limit in the
-// underlying write stream has been encountered.
+// marker will be written. Reaching the writer limit is ignored.
 func (e *Encoder) Close() error {
-	cerr := e.compress(all)
-	if cerr != nil && cerr != ErrLimit {
-		return cerr
+	err := e.compress(all)
+	if err != nil && err != ErrLimit {
+		return err
 	}
 	if e.marker {
 		if err := e.writeMatch(eosMatch); err != nil {
 			return err
 		}
 	}
-	if err := e.re.Close(); err != nil {
-		return err
-	}
-	return cerr
+	err = e.re.Close()
+	return err
 }
 
 // Compressed returns the number bytes of the input data that been
