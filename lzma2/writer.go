@@ -39,10 +39,10 @@ func (p *Parameters) properties() (props lzma.Properties, err error) {
 	return props, nil
 }
 
-// Writer writes a sequence of LZMA2 chunks. The first chunk will always
-// reset the dictionary. The Writer will not terminate the chunk
-// sequence with an end-of-stream chunk. Use WriteEOS for writing the
-// end of stream chunk.
+// Writer supports the creation of an LZMA2 stream. But note that
+// written data is buffered, so call Flush or Close to write data to the
+// underlying writer. The output of two writers can be concatenated as
+// long as the first writer has been flushed but not closed.
 type Writer struct {
 	w io.Writer
 
@@ -99,8 +99,16 @@ func (w *Writer) written() int {
 	return int(w.encoder.Compressed()) + w.encoder.Dict.Buffered()
 }
 
-// Writes data to the LZMA2 chunk stream.
+// errClosed indicates that the writer is closed.
+var errClosed = errors.New("lzma2: writer closed")
+
+// Writes data to LZMA2 stream. Note that written data will be buffered.
+// Use Flush or Close to ensure that data is written to the underlying
+// writer.
 func (w *Writer) Write(p []byte) (n int, err error) {
+	if w.cstate == stop {
+		return 0, errClosed
+	}
 	for n < len(p) {
 		m := maxUncompressed - w.written()
 		if m <= 0 {
@@ -118,7 +126,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 			return n, err
 		}
 		if err == lzma.ErrLimit || k == m {
-			if err = w.Flush(); err != nil {
+			if err = w.flushChunk(); err != nil {
 				return n, err
 			}
 		}
@@ -126,6 +134,8 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// writeUncompressedChunk writes an uncomressed chunk to the LZMA2
+// stream.
 func (w *Writer) writeUncompressedChunk() error {
 	u := w.encoder.Compressed()
 	if u <= 0 {
@@ -157,6 +167,8 @@ func (w *Writer) writeUncompressedChunk() error {
 	return err
 }
 
+// writeCompressedChunk writes a compressed chunk to the underlying
+// writer.
 func (w *Writer) writeCompressedChunk() error {
 	if w.ctype == cU || w.ctype == cUD {
 		panic("chunk type uncompressed")
@@ -193,6 +205,7 @@ func (w *Writer) writeCompressedChunk() error {
 	return err
 }
 
+// writes a single chunk to the underlying writer.
 func (w *Writer) writeChunk() error {
 	u := int(uncompressedHeaderLen + w.encoder.Compressed())
 	c := headerLen(w.ctype) + w.buf.Len()
@@ -202,9 +215,9 @@ func (w *Writer) writeChunk() error {
 	return w.writeCompressedChunk()
 }
 
-// Flush terminates the current chunk. If data will be provided later a
-// new chunk will be created.
-func (w *Writer) Flush() error {
+// flushChunk terminates the current chunk. The encoder will be reset
+// to support the next chunk.
+func (w *Writer) flushChunk() error {
 	if w.written() == 0 {
 		return nil
 	}
@@ -228,18 +241,36 @@ func (w *Writer) Flush() error {
 	return nil
 }
 
-// Close terminates the chunk sequence. It doesn't write an
-// end-of-stream chunk. Use WriteEOS to write such a chunk.
+// Flush writes all buffered data out to the underlying stream. This
+// could result in multiple chunks to be created.
+func (w *Writer) Flush() error {
+	if w.cstate == stop {
+		return errClosed
+	}
+	for w.written() > 0 {
+		if err := w.flushChunk(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Close terminates the LZMA2 stream with an EOS chunk.
 func (w *Writer) Close() error {
-	if w.written() == 0 {
+	if w.cstate == stop {
+		return errClosed
+	}
+	if err := w.Flush(); err != nil {
 		return nil
 	}
-	var err error
-	if err = w.encoder.Close(); err != nil {
-		return err
+	// write zero byte
+	n, err := w.w.Write([]byte{0})
+	if err != nil {
+		return nil
 	}
-	if err = w.writeChunk(); err != nil {
-		return err
+	if n == 0 {
+		return errors.New(
+			"lzma2: end-of-stream chunk hasn't been written")
 	}
 	w.cstate = stop
 	return nil

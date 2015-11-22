@@ -29,7 +29,7 @@ func TestWriter(t *testing.T) {
 		t.Fatalf("w.Close() error %s", err)
 	}
 	p := buf.Bytes()
-	want := []byte{1, 0, 0, 'a'}
+	want := []byte{1, 0, 0, 'a', 0}
 	if !bytes.Equal(p, want) {
 		t.Fatalf("bytes written %#v; want %#v", p, want)
 	}
