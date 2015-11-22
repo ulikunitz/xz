@@ -94,56 +94,36 @@ func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer,
 	return w, nil
 }
 
-func (w *Writer) compress(flags lzma.CompressFlags) error {
-	var err error
-	for {
-		r := maxUncompressed - w.encoder.Compressed()
-		if r <= 0 {
-			if r < 0 {
-				panic("maxUncompressed limit overrun")
-			}
-			if err = w.Flush(); err != nil {
-				return err
-			}
-			continue
-		}
-
-		n, f := int(r), flags
-		if b := w.encoder.Dict.Buffered(); b < n {
-			n = b
-			if n == 0 {
-				return nil
-			}
-		} else {
-			f |= lzma.All
-		}
-		if n, err = w.encoder.Compress(n, f); err != nil {
-			if err == lzma.ErrLimit {
-				if err = w.Flush(); err == nil {
-					continue
-				}
-			}
-			return err
-		}
-		if n == 0 {
-			return nil
-		}
-	}
+// written returns the number of bytes written to the current chunk
+func (w *Writer) written() int {
+	return int(w.encoder.Compressed()) + w.encoder.Dict.Buffered()
 }
 
 // Writes data to the LZMA2 chunk stream.
 func (w *Writer) Write(p []byte) (n int, err error) {
-	dict := w.encoder.Dict
-	for {
-		k, err := dict.Write(p[n:])
+	for n < len(p) {
+		m := maxUncompressed - w.written()
+		if m <= 0 {
+			panic("lzma2: maxUncompressed reached")
+		}
+		var q []byte
+		if n+m < len(p) {
+			q = p[n : n+m]
+		} else {
+			q = p[n:]
+		}
+		k, err := w.encoder.Write(q)
 		n += k
-		if err != lzma.ErrNoSpace {
+		if err != nil && err != lzma.ErrLimit {
 			return n, err
 		}
-		if err = w.compress(0); err != nil {
-			return n, err
+		if err == lzma.ErrLimit || k == m {
+			if err = w.Flush(); err != nil {
+				return n, err
+			}
 		}
 	}
+	return n, nil
 }
 
 func (w *Writer) writeUncompressedChunk() error {
@@ -225,10 +205,10 @@ func (w *Writer) writeChunk() error {
 // Flush terminates the current chunk. If data will be provided later a
 // new chunk will be created.
 func (w *Writer) Flush() error {
-	var err error
-	if w.encoder.Compressed() == 0 {
+	if w.written() == 0 {
 		return nil
 	}
+	var err error
 	if err = w.encoder.Close(); err != nil {
 		return err
 	}
@@ -251,13 +231,10 @@ func (w *Writer) Flush() error {
 // Close terminates the chunk sequence. It doesn't write an
 // end-of-stream chunk. Use WriteEOS to write such a chunk.
 func (w *Writer) Close() error {
-	var err error
-	if err = w.compress(lzma.All); err != nil {
-		return err
-	}
-	if w.encoder.Compressed() == 0 {
+	if w.written() == 0 {
 		return nil
 	}
+	var err error
 	if err = w.encoder.Close(); err != nil {
 		return err
 	}

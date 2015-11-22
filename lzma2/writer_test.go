@@ -11,8 +11,12 @@ func TestWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
-	if _, err = w.Write([]byte{'a'}); err != nil {
+	n, err := w.Write([]byte{'a'})
+	if err != nil {
 		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
+	}
+	if n != 1 {
+		t.Fatalf("w.Write([]byte{'a'}) returned %d; want %d", n, 1)
 	}
 	if err = w.Flush(); err != nil {
 		t.Fatalf("w.Flush() error %s", err)
