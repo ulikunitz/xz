@@ -49,11 +49,10 @@ func NewWriterParams(lzma io.Writer, p *Parameters) (w *Writer, err error) {
 		}
 	}
 
-	props, err := NewProperties(p.LC, p.LP, p.PB)
-	if err != nil {
+	if err := p.Properties.Verify(); err != nil {
 		return nil, err
 	}
-	state := NewState(props)
+	state := NewState(p.Properties)
 
 	dict, err := NewEncoderDict(p.DictCap, p.BufSize)
 	if err != nil {

@@ -35,11 +35,11 @@ func initProbSlice(p []prob) {
 
 // Reset sets all state information to the original values.
 func (s *State) Reset() {
-	lc, lp, pb := s.Properties.LC(), s.Properties.LP(), s.Properties.PB()
+	p := s.Properties
 	*s = State{
-		Properties: s.Properties,
+		Properties: p,
 		// dict:       s.dict,
-		posBitMask: (uint32(1) << uint(pb)) - 1,
+		posBitMask: (uint32(1) << uint(p.PB)) - 1,
 	}
 	initProbSlice(s.isMatch[:])
 	initProbSlice(s.isRep[:])
@@ -47,7 +47,7 @@ func (s *State) Reset() {
 	initProbSlice(s.isRepG1[:])
 	initProbSlice(s.isRepG2[:])
 	initProbSlice(s.isRepG0Long[:])
-	s.litCodec.init(lc, lp)
+	s.litCodec.init(p.LC, p.LP)
 	s.lenCodec.init()
 	s.repLenCodec.init()
 	s.distCodec.init()
@@ -144,7 +144,7 @@ func (s *State) states(dictHead int64) (state1, state2, posState uint32) {
 
 // litState computes the literal state.
 func (s *State) litState(prev byte, dictHead int64) uint32 {
-	lp, lc := uint(s.Properties.LP()), uint(s.Properties.LC())
+	lp, lc := uint(s.Properties.LP), uint(s.Properties.LC)
 	litState := ((uint32(dictHead) & ((1 << lp) - 1)) << lc) |
 		(uint32(prev) >> (8 - lc))
 	return litState

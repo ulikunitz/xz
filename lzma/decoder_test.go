@@ -25,7 +25,11 @@ func TestDecoder(t *testing.T) {
 		if err != nil {
 			t.Fatalf("io.Readfull error %s", err)
 		}
-		state := NewState(Properties(p[0]))
+		props, err := PropertiesForCode(p[0])
+		if err != nil {
+			t.Fatalf("p[0] error %s", err)
+		}
+		state := NewState(props)
 		const capacity = 0x800000
 		dict, err := NewDecoderDict(capacity, capacity)
 		if err != nil {

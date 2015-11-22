@@ -43,11 +43,7 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 		br = breader{lzma}
 	}
 
-	props, err := NewProperties(params.LC, params.LP, params.PB)
-	if err != nil {
-		return nil, err
-	}
-	state := NewState(props)
+	state := NewState(params.Properties)
 
 	dict, err := NewDecoderDict(params.DictCap, params.BufSize)
 	if err != nil {

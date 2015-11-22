@@ -30,9 +30,9 @@ func TestEncoderCycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	props, err := NewProperties(2, 0, 2)
-	if err != nil {
-		t.Fatalf("NewProperties error %s", err)
+	props := Properties{2, 0, 2}
+	if err := props.Verify(); err != nil {
+		t.Fatalf("properties error %s", err)
 	}
 	state := NewState(props)
 	var buf bytes.Buffer

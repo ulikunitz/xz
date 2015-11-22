@@ -60,10 +60,8 @@ const noHeaderLen uint64 = 1<<64 - 1
 
 // Parameters provides the Parameters of an LZMA reader and LZMA writer.
 type Parameters struct {
-	LC      int
-	LP      int
-	PB      int
-	DictCap int
+	Properties Properties
+	DictCap    int
 	// uncompressed size; negative value if no size given
 	Size int64
 	// minimum size for the buffer
@@ -73,11 +71,9 @@ type Parameters struct {
 
 // Default provides the default parameters for the LZMA writer.
 var Default = Parameters{
-	LC:      3,
-	LP:      0,
-	PB:      2,
-	DictCap: 8 * 1024 * 1024,
-	Size:    -1,
+	Properties: Properties{3, 0, 2},
+	DictCap:    8 * 1024 * 1024,
+	Size:       -1,
 }
 
 // normalizeReader normalizes the parameters for the LZMA reader.
@@ -112,7 +108,7 @@ func (p *Parameters) verifyWriter() error {
 	if p == nil {
 		return errors.New("LZMA parameters must be non-nil")
 	}
-	if err := VerifyProperties(p.LC, p.LP, p.PB); err != nil {
+	if err := p.Properties.Verify(); err != nil {
 		return err
 	}
 	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
@@ -132,15 +128,13 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if b[0] > MaxProperties {
-		return nil, errors.New("LZMA header: invalid properties")
+	props, err := PropertiesForCode(b[0])
+	if err != nil {
+		return nil, err
 	}
-	props := Properties(b[0])
 	p = &Parameters{
-		LC:   props.LC(),
-		LP:   props.LP(),
-		PB:   props.PB(),
-		Size: -1,
+		Properties: props,
+		Size:       -1,
 	}
 	p.DictCap = int(uint32LE(b[1:]))
 	if p.DictCap < 0 {
@@ -165,12 +159,11 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 
 // writeHeader writes the header for classic LZMA files.
 func writeHeader(w io.Writer, p *Parameters) error {
-	b := make([]byte, 13)
-	props, err := NewProperties(p.LC, p.LP, p.PB)
-	if err != nil {
+	if err := p.Properties.Verify(); err != nil {
 		return err
 	}
-	b[0] = byte(props)
+	b := make([]byte, 13)
+	b[0] = p.Properties.Code()
 	if !(0 <= p.DictCap && p.DictCap <= MaxDictCap) {
 		return fmt.Errorf("write LZMA header: DictCap %d out of range",
 			p.DictCap)
@@ -183,6 +176,6 @@ func writeHeader(w io.Writer, p *Parameters) error {
 		l = noHeaderLen
 	}
 	putUint64LE(b[5:], l)
-	_, err = w.Write(b)
+	_, err := w.Write(b)
 	return err
 }
