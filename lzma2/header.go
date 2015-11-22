@@ -167,8 +167,8 @@ func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 		return nil
 	}
 
-	h.props = lzma.Properties(data[5])
-	return nil
+	h.props, err = lzma.PropertiesForCode(data[5])
+	return err
 }
 
 // MarshalBinary encodes the chunk header value. The function checks
@@ -177,8 +177,8 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	if h.ctype > cLRND {
 		return nil, errors.New("invalid chunk type")
 	}
-	if h.props > lzma.MaxProperties {
-		return nil, errors.New("invalid properties")
+	if err = h.props.Verify(); err != nil {
+		return nil, err
 	}
 
 	data = make([]byte, headerLen(h.ctype))
@@ -211,7 +211,7 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 		return data, nil
 	}
 
-	data[5] = byte(h.props)
+	data[5] = h.props.Code()
 	return data, nil
 }
 

@@ -76,11 +76,7 @@ func TestHeaderLen(t *testing.T) {
 }
 
 func chunkHeaderSamples(t *testing.T) []chunkHeader {
-	props, err := lzma.NewProperties(3, 0, 2)
-	if err != nil {
-		t.Fatalf("NewProperties(3, 0, 2) error %s", err)
-	}
-
+	props := lzma.Properties{LC: 3, LP: 0, PB: 2}
 	headers := make([]chunkHeader, 0, 12)
 	for c := cEOS; c <= cLRND; c++ {
 		var h chunkHeader
@@ -163,7 +159,8 @@ func TestReadEOS(t *testing.T) {
 	if h.uncompressed != 0 {
 		t.Errorf("uncompressed got %d; want %d", h.uncompressed, 0)
 	}
-	if h.props != 0 {
-		t.Errorf("props got %d; want %d", h.props, 0)
+	wantProps := lzma.Properties{}
+	if h.props != wantProps {
+		t.Errorf("props got %v; want %v", h.props, wantProps)
 	}
 }

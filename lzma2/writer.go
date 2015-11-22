@@ -3,7 +3,6 @@ package lzma2
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/ulikunitz/xz/lzma"
@@ -11,32 +10,16 @@ import (
 
 // Parameters describe the parameters for an LZMA2 writer.
 type Parameters struct {
-	LC      int
-	LP      int
-	PB      int
-	DictCap int
-	BufSize int
+	Properties lzma.Properties
+	DictCap    int
+	BufSize    int
 }
 
 // Default defines the default parameters for the LZMA writer.
 var Default = Parameters{
-	LC:      3,
-	LP:      0,
-	PB:      2,
-	DictCap: 8 * 1024 * 1024,
-	BufSize: 4096,
-}
-
-// properties returns the Properties value for the Parameters.
-func (p *Parameters) properties() (props lzma.Properties, err error) {
-	if props, err = lzma.NewProperties(p.LC, p.LP, p.PB); err != nil {
-		return props, err
-	}
-	if p.LC+p.LP > 4 {
-		return props, fmt.Errorf(
-			"lzma2: sum of lc and lp must not exceed four")
-	}
-	return props, nil
+	Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
+	DictCap:    8 * 1024 * 1024,
+	BufSize:    4096,
 }
 
 // Writer supports the creation of an LZMA2 stream. But note that
@@ -70,8 +53,8 @@ func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer,
 	if lzma2 == nil {
 		return nil, errors.New("lzma2: writer must not be nil")
 	}
-	props, err := params.properties()
-	if err != nil {
+	props := params.Properties
+	if err = props.Verify(); err != nil {
 		return nil, err
 	}
 	w = &Writer{
