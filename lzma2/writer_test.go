@@ -2,7 +2,12 @@ package lzma2
 
 import (
 	"bytes"
+	"io"
+	"math/rand"
+	"strings"
 	"testing"
+
+	"github.com/ulikunitz/xz/randtxt"
 )
 
 func TestWriter(t *testing.T) {
@@ -58,4 +63,41 @@ func TestCycle1(t *testing.T) {
 	p := make([]byte, 3)
 	n, err = r.Read(p)
 	t.Logf("n %d error %v", n, err)
+}
+
+func TestCycle2(t *testing.T) {
+	buf := new(bytes.Buffer)
+	const txtlen = 2100000
+	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
+	txt := buf.String()
+	buf.Reset()
+	w, err := NewWriter(buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	n, err := io.Copy(w, strings.NewReader(txt))
+	if err != nil {
+		t.Fatalf("Compressing copy error %s", err)
+	}
+	if n != txtlen {
+		t.Fatalf("Compressing data length %d; want %d", n, txtlen)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(buf, Default.DictCap)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out := new(bytes.Buffer)
+	n, err = io.Copy(out, r)
+	if err != nil {
+		t.Fatalf("Decompressing copy error %s", err)
+	}
+	if n != txtlen {
+		t.Fatalf("Decompression data length %d; want %d", n, txtlen)
+	}
+	if txt != out.String() {
+		t.Fatal("decompressed data differes from original")
+	}
 }
