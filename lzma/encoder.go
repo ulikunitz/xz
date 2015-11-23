@@ -98,6 +98,7 @@ func (e *Encoder) Reopen(bw io.ByteWriter) error {
 		return err
 	}
 	e.start = e.Dict.pos()
+	e.limit = false
 	return nil
 }
 
