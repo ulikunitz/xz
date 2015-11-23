@@ -136,7 +136,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 func (w *Writer) writeUncompressedChunk() error {
 	u := w.encoder.Compressed()
 	if u <= 0 {
-		return errors.New("lzma2: can't write empty chunk")
+		return errors.New("lzma2: can't write empty uncompressed chunk")
 	}
 	if u > maxUncompressed {
 		panic("overrun of uncompressed data limit")
