@@ -49,7 +49,7 @@ type Reader struct {
 // NewReader creates a reader for an LZMA2 chunk sequence with the given
 // dictionary capacity.
 func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
-	panic("TODO")
+	return NewReaderSize(lzma2, dictCap, Default.BufSize)
 }
 
 func uncompressed(ctype chunkType) bool {
@@ -59,7 +59,7 @@ func uncompressed(ctype chunkType) bool {
 func (r *Reader) startChunk() error {
 	var err error
 	r.chunkReader = nil
-	if r.header, err = readChunkHeader(r.r); r.err != nil {
+	if r.header, err = readChunkHeader(r.r); err != nil {
 		if err == io.EOF {
 			err = errUnexpectedEOF
 		}
@@ -74,7 +74,7 @@ func (r *Reader) startChunk() error {
 	if r.header.ctype == cUD || r.header.ctype == cLRND {
 		r.dict.Reset()
 	}
-	size := int64(r.header.uncompressed)
+	size := int64(r.header.uncompressed) + 1
 	if uncompressed(r.header.ctype) {
 		if r.ur != nil {
 			r.ur.Reopen(r.r, size)
@@ -84,7 +84,7 @@ func (r *Reader) startChunk() error {
 		r.chunkReader = r.ur
 		return nil
 	}
-	br := breader{io.LimitReader(r.r, int64(r.header.compressed))}
+	br := breader{io.LimitReader(r.r, int64(r.header.compressed)+1)}
 	if r.decoder == nil {
 		state := lzma.NewState(r.header.props)
 		r.decoder, err = lzma.NewDecoder(br, state, r.dict, size)
@@ -136,7 +136,7 @@ func NewReaderSize(lzma2 io.Reader, dictCap int, bufSize int) (r *Reader, err er
 // an end-of-stream chunk io.EOF is returned.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
-		return 0, err
+		return 0, r.err
 	}
 	for n < len(p) {
 		var k int

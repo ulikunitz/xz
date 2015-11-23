@@ -34,3 +34,28 @@ func TestWriter(t *testing.T) {
 		t.Fatalf("bytes written %#v; want %#v", p, want)
 	}
 }
+
+func TestCycle1(t *testing.T) {
+	var buf bytes.Buffer
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	n, err := w.Write([]byte{'a'})
+	if err != nil {
+		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
+	}
+	if n != 1 {
+		t.Fatalf("w.Write([]byte{'a'}) returned %d; want %d", n, 1)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+	r, err := NewReader(&buf, Default.DictCap)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	p := make([]byte, 3)
+	n, err = r.Read(p)
+	t.Logf("n %d error %v", n, err)
+}
