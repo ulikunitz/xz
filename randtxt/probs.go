@@ -174,7 +174,8 @@ func NewReader(src rand.Source) *Reader {
 	return &Reader{rnd, pcdf[i].s}
 }
 
-// Read reads random text.
+// Read reads random text. The Read function will always return len(p)
+// bytes and will never return an error.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for i := range p {
 		r.g3 = cmap.trigram(r.g3[1:], r.rnd.Float64())
