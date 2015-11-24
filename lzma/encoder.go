@@ -248,7 +248,9 @@ func (e *Encoder) compress(flags compressFlags) error {
 var eosMatch = match{distance: maxDistance, n: minMatchLen}
 
 // Close terminates the LZMA stream. If requested the end-of-stream
-// marker will be written. Reaching the writer limit is ignored.
+// marker will be written. If the byte writer limit has been or will be
+// reached during compression of the remaining data in the buffer the
+// LZMA stream will be closed and data will remain in the buffer.
 func (e *Encoder) Close() error {
 	err := e.compress(all)
 	if err != nil && err != ErrLimit {
