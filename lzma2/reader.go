@@ -7,9 +7,6 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// errUnexpectedEOF indicates an unexpected end of file.
-var errUnexpectedEOF = errors.New("lzma2: unexpected eof")
-
 // breader converts a reader into a byte reader.
 type breader struct {
 	io.Reader
@@ -61,7 +58,7 @@ func (r *Reader) startChunk() error {
 	r.chunkReader = nil
 	if r.header, err = readChunkHeader(r.r); err != nil {
 		if err == io.EOF {
-			err = errUnexpectedEOF
+			err = io.ErrUnexpectedEOF
 		}
 		return err
 	}
@@ -212,7 +209,7 @@ func (ur *uncompressedReader) fill() error {
 		}
 	}
 	if ur.lr.N != 0 {
-		return errUnexpectedEOF
+		return io.ErrUnexpectedEOF
 	}
 	return io.EOF
 }
