@@ -78,3 +78,67 @@ func (l lit) String() string {
 	}
 	return fmt.Sprintf("L{%c/%02x}", c, l.b)
 }
+
+// The opBuffer provides a ring buffer of operations.
+type opBuffer struct {
+	ops   []operation
+	front int
+	rear  int
+}
+
+func newOpBuffer(bufSize int) *opBuffer {
+	return &opBuffer{ops: make([]operation, bufSize+1)}
+}
+
+func (b *opBuffer) reset() {
+	b.front = 0
+	b.rear = 0
+}
+
+// len returns the length of the buffer.
+func (b *opBuffer) len() int { return len(b.ops) - 1 }
+
+func (b *opBuffer) available() int {
+	delta := b.rear - 1 - b.front
+	if delta < 0 {
+		delta += len(b.ops)
+	}
+	return delta
+}
+
+func (b *opBuffer) buffered() int {
+	delta := b.front - b.rear
+	if delta < 0 {
+		delta += len(b.ops)
+	}
+	return delta
+}
+
+func (b *opBuffer) addIndex(i, n int) int {
+	i += n - len(b.ops)
+	if i < 0 {
+		i += len(b.ops)
+	}
+	return i
+}
+
+func (b *opBuffer) readOp() (op operation, err error) {
+	if b.rear == b.front {
+		return nil, errors.New("lzma: no op available")
+	}
+	op = b.ops[b.rear]
+	b.rear = b.addIndex(b.rear, 1)
+	return op, nil
+}
+
+func (b *opBuffer) writeOp(op operation) error {
+	if b.available() <= 0 {
+		return ErrNoSpace
+	}
+	if op == nil {
+		return errors.New("op must not be nil")
+	}
+	b.ops[b.front] = op
+	b.front = b.addIndex(b.front, 1)
+	return nil
+}
