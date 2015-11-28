@@ -176,16 +176,11 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// maxMatches limits the number of matches provided by the Matches
-// function. This controls the speed of the overall encoding. This limit
-// might be better implemented at a higher level, because it doesn't
-// care for the current dictionary head.
-const maxMatches = 32
-
-// getMatches returns the potential positions for a specific hash.
-func (t *hashTable) getMatches(h uint64) (positions []int64) {
-	if t.hoff < 0 {
-		return nil
+// getMatches the matches for a specific hash. The functions returns the
+// number of positions found.
+func (t *hashTable) getMatches(h uint64, positions []int64) (n int) {
+	if t.hoff < 0 || len(positions) == 0 {
+		return 0
 	}
 	buffered := t.buffered()
 	tailPos := t.hoff + 1 - int64(buffered)
@@ -193,17 +188,17 @@ func (t *hashTable) getMatches(h uint64) (positions []int64) {
 	if rear >= 0 {
 		rear -= len(t.data)
 	}
-	positions = make([]int64, 0, maxMatches)
 	// get the slot for the hash
 	pos := t.t[h&t.mask] - 1
 	delta := pos - tailPos
 	for {
 		if delta < 0 {
-			return positions
+			return n
 		}
-		positions = append(positions, tailPos+delta)
-		if len(positions) >= maxMatches {
-			return positions
+		positions[n] = tailPos + delta
+		n++
+		if n >= len(positions) {
+			return n
 		}
 		i := rear + int(delta)
 		if i < 0 {
@@ -211,7 +206,7 @@ func (t *hashTable) getMatches(h uint64) (positions []int64) {
 		}
 		u := t.data[i]
 		if u == 0 {
-			return positions
+			return n
 		}
 		delta -= int64(u)
 	}
@@ -233,14 +228,14 @@ func (t *hashTable) WordLen() int {
 	return t.wordLen
 }
 
-// Matches returns the positions of potential matches. Those matches
-// have to be verified, whether they are indeed matching. The byte slice
-// p must have word length of the hash table.
-func (t *hashTable) Matches(p []byte) (positions []int64) {
+// Matches fills the positions slice with potential matches. The
+// functions returns the number of positions filled into positions. The
+// byte slice p must have word length of the hash table.
+func (t *hashTable) Matches(p []byte, positions []int64) int {
 	if len(p) != t.wordLen {
 		panic(fmt.Errorf(
 			"Matches: byte slice must have length %d", t.wordLen))
 	}
 	h := t.hash(p)
-	return t.getMatches(h)
+	return t.getMatches(h, positions)
 }
