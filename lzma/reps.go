@@ -52,7 +52,7 @@ var errOptype = errors.New("operation type unsupported")
 func (r *reps) addOp(op operation) {
 	switch o := op.(type) {
 	case lit:
-		break
+		return
 	case match:
 		r.addMatch(o)
 	default:
