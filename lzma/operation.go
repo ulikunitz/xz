@@ -86,8 +86,12 @@ type opBuffer struct {
 	rear  int
 }
 
-func newOpBuffer(bufSize int) *opBuffer {
-	return &opBuffer{ops: make([]operation, bufSize+1)}
+func newOpBuffer(size int) (b *opBuffer, err error) {
+	if !(0 < size && 0 < size+1) {
+		return nil, errors.New(
+			"lzma: operation buffer size out of range")
+	}
+	return &opBuffer{ops: make([]operation, size+1)}, nil
 }
 
 func (b *opBuffer) reset() {

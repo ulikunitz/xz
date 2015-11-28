@@ -3,7 +3,10 @@ package lzma
 import "testing"
 
 func TestOpBuffer(t *testing.T) {
-	b := newOpBuffer(10)
+	b, err := newOpBuffer(10)
+	if err != nil {
+		t.Fatalf("newOpBuffer error %s", err)
+	}
 	for i := 0; i < b.len(); i++ {
 		if i&1 == 0 {
 			if err := b.writeOp(match{0, i}); err != nil {
