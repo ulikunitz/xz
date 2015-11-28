@@ -6,14 +6,11 @@ import (
 )
 
 func TestBuffer_Write(t *testing.T) {
-	var (
-		err error
-		buf buffer
-	)
-	if err := initBuffer(&buf, -1); err == nil {
-		t.Fatalf("initBuffer(&buf, -1) want error")
+	buf, err := newBuffer(-1)
+	if err == nil {
+		t.Fatalf("newBuffer(-1): want error")
 	}
-	if err = initBuffer(&buf, 10); err != nil {
+	if buf, err = newBuffer(10); err != nil {
 		t.Fatalf("newBuffer error %s", err)
 	}
 	b := []byte("1234567890")
@@ -59,12 +56,9 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Buffered_Available(t *testing.T) {
-	var (
-		buf buffer
-		err error
-	)
-	if err = initBuffer(&buf, 10); err != nil {
-		t.Fatalf("initBuffer(&buf, 10) error %s", err)
+	buf, err := newBuffer(19)
+	if err != nil {
+		t.Fatalf("newBuffer(19) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -85,12 +79,9 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 }
 
 func TestBuffer_Read(t *testing.T) {
-	var (
-		buf buffer
-		err error
-	)
-	if err = initBuffer(&buf, 10); err != nil {
-		t.Fatalf("initBuffer(&buf, 10) error %s", err)
+	buf, err := newBuffer(10)
+	if err != nil {
+		t.Fatalf("newBuffer(10) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -144,12 +135,9 @@ func TestBuffer_Read(t *testing.T) {
 }
 
 func TestBuffer_Discard(t *testing.T) {
-	var (
-		buf buffer
-		err error
-	)
-	if err = initBuffer(&buf, 10); err != nil {
-		t.Fatalf("initBuffer(&buf, 10) error %s", err)
+	buf, err := newBuffer(10)
+	if err != nil {
+		t.Fatalf("newBuffer(10) error %s", err)
 	}
 	b := []byte("0123456789")
 	if _, err = buf.Write(b); err != nil {
@@ -185,12 +173,9 @@ func TestBuffer_Discard(t *testing.T) {
 }
 
 func TestBuffer_Discard_error(t *testing.T) {
-	var (
-		buf buffer
-		err error
-	)
-	if err = initBuffer(&buf, 10); err != nil {
-		t.Fatalf("initBuffer(&buf, 10) error %s", err)
+	buf, err := newBuffer(10)
+	if err != nil {
+		t.Fatalf("newBuffer(10) error %s", err)
 	}
 	n, err := buf.Discard(-1)
 	if err == nil {

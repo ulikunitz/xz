@@ -12,15 +12,14 @@ type buffer struct {
 	rear  int
 }
 
-// initBuffer initializes a buffer with a given size. If the
-// size is out of range an error is returned.
-func initBuffer(b *buffer, size int) error {
+// newBuffer creates a buffer with the given size.
+func newBuffer(size int) (b *buffer, err error) {
 	// second condition checks for overflow
 	if !(0 < size && 0 < size+1) {
-		return errors.New("buffer size out of range")
+		return nil, errors.New(
+			"lzma: buffer size out of range")
 	}
-	*b = buffer{data: make([]byte, size+1)}
-	return nil
+	return &buffer{data: make([]byte, size+1)}, nil
 }
 
 // Resets the buffer. The front and rear index are set to zero.
