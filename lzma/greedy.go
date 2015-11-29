@@ -52,14 +52,15 @@ func addOp(d *EncoderDict, op operation) {
 // greedy creates operations until the buffer is full. The function
 // returns true if the end of the buffer has been reached.
 func greedy(d *EncoderDict, f compressFlags) (end bool) {
-	if d.Buffered() == 0 {
+	if d.bufferedAtFront() == 0 {
 		return true
 	}
 	distances := make([]int, maxMatches+10)
 	for d.ops.available() > 0 {
 		op := findOp(d, distances)
-		if op.Len() >= d.Buffered() {
-			if op.Len() > d.Buffered() {
+		m := d.bufferedAtFront()
+		if op.Len() >= m {
+			if op.Len() > m {
 				panic("op length exceed buffered")
 			}
 			if f&all != 0 {

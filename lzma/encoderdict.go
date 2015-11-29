@@ -93,9 +93,14 @@ func (d *EncoderDict) available() int {
 	return d.buf.Available() - d.dictLen()
 }
 
-// Buffered gives the number of bytes available for a following read or
-// advance.
+// Buffered gives the number of bytes in front of the dictionary.
 func (d *EncoderDict) Buffered() int {
+	return d.buf.Buffered()
+}
+
+// bufferedAtFront returns the number of bytes in the buffer in front of
+// the cursor.
+func (d *EncoderDict) bufferedAtFront() int {
 	delta := d.buf.front - d.cursor
 	if delta < 0 {
 		delta += len(d.buf.data)
@@ -121,7 +126,7 @@ func (d *EncoderDict) write(p []byte) (n int, err error) {
 
 // peek returns data from the cursor, but doesn't move it.
 func (d *EncoderDict) peek(p []byte) (n int, err error) {
-	m := d.Buffered()
+	m := d.bufferedAtFront()
 	n = len(p)
 	if m < n {
 		n = m
@@ -138,7 +143,7 @@ func (d *EncoderDict) peek(p []byte) (n int, err error) {
 // The cursor will be advanced.
 func (d *EncoderDict) writeOp(op operation) error {
 	n := op.Len()
-	if n > d.Buffered() {
+	if n > d.bufferedAtFront() {
 		return ErrNoSpace
 	}
 
@@ -193,7 +198,7 @@ func (d *EncoderDict) discardOp() error {
 // the slice are returned.
 func (d *EncoderDict) matches(distances []int) int {
 	w := d.m.WordLen()
-	if d.Buffered() < w {
+	if d.bufferedAtFront() < w {
 		return 0
 	}
 	if len(d.p) < w {
@@ -249,7 +254,7 @@ func (d *EncoderDict) matchLen(dist int) int {
 	if !(0 < dist && dist <= d.cursorDictLen()) {
 		return 0
 	}
-	b := d.Buffered()
+	b := d.bufferedAtFront()
 	return d.buf.EqualBytes(b+dist, b, maxMatchLen)
 }
 
