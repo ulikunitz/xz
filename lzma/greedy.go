@@ -4,25 +4,6 @@
 
 package lzma
 
-// greedyFinder is an OpFinder that implements a simple greedy algorithm
-// to finding operations.
-type greedyFinder struct{}
-
-// check that greadyFinder satisfies the opFinder interface.
-// var _ opFinder = greedyFinder{}
-
-// miniState represents a minimal state to be used by optimizer.
-type miniState struct {
-	d *EncoderDict
-	r reps
-}
-
-// applyOp applies the LZMA operation to the miniState.
-func (ms *miniState) applyOp(op operation) {
-	ms.d.advance(op.Len())
-	ms.r.addOp(op)
-}
-
 // weight provides a function to compute the weight of an operation with
 // length n that can be encoded with the given number of bits.
 func weight(n, bits int) int {
@@ -31,19 +12,19 @@ func weight(n, bits int) int {
 
 // bestMatch provides the longest match reachable over the list of
 // provided dists
-func bestOp(ms *miniState, literal byte, distances []int) operation {
-	op := operation(lit{literal})
-	w := weight(1, ms.r.opBits(op))
+func bestOp(d *EncoderDict, distances []int) operation {
+	op := operation(lit{d.literal()})
+	w := weight(1, d.reps.opBits(op))
 	for _, distance := range distances {
-		n := ms.d.matchLen(distance)
+		n := d.matchLen(distance)
 		if n == 0 {
 			continue
 		}
-		if n == 1 && uint32(distance-minDistance) != ms.r[0] {
+		if n == 1 && uint32(distance-minDistance) != d.reps[0] {
 			continue
 		}
 		m := match{distance: distance, n: n}
-		v := weight(n, ms.r.opBits(m))
+		v := weight(n, d.reps.opBits(m))
 		if v > w {
 			w = v
 			op = m
@@ -53,43 +34,40 @@ func bestOp(ms *miniState, literal byte, distances []int) operation {
 }
 
 // findOp finds a single operation at the current head of the hash dictionary.
-func findOp(ms *miniState) operation {
-	l := ms.d.literal()
-	distances := ms.d.matches()
+func findOp(d *EncoderDict, distances []int) operation {
+	n := d.matches(distances)
+	distances = distances[:n]
 	// add small distances
 	distances = append(distances, 1, 2, 3, 4, 5, 6, 7, 8)
-	op := bestOp(ms, l, distances)
+	op := bestOp(d, distances)
 	return op
 }
 
-// findOps identifies a sequence of operations starting at the current
-// head of the dictionary stored in s. If all is set the whole data
-// buffer will be covered, if it is not set the last operation reaching
-// the head will not be output. This functionality has been included to
-// support the extension of the last operation if new data comes in.
-func (g greedyFinder) findOps(d *EncoderDict, r reps, f compressFlags) []operation {
-	ms := miniState{d: d, r: r}
-	ops := make([]operation, 0, 256)
-	if ms.d.Buffered() > 0 {
-		for {
-			op := findOp(&ms)
-			if op.Len() >= ms.d.Buffered() {
-				if op.Len() > ms.d.Buffered() {
-					panic("op length exceeds buffered")
-				}
-				if f&all != 0 {
-					ms.applyOp(op)
-					ops = append(ops, op)
-				}
-				break
-
-			}
-			ms.applyOp(op)
-			ops = append(ops, op)
-		}
+func addOp(d *EncoderDict, op operation) {
+	if err := d.writeOp(op); err != nil {
+		panic(err)
 	}
-	return ops
 }
 
-// name returns "greedy" for the greedy finder.
-func (g greedyFinder) name() string { return "greedy" }
+// greedy creates operations until the buffer is full. The function
+// returns true if the end of the buffer has been reached.
+func greedy(d *EncoderDict, f compressFlags) (end bool) {
+	if d.Buffered() == 0 {
+		return true
+	}
+	distances := make([]int, maxMatches+10)
+	for d.ops.available() > 0 {
+		op := findOp(d, distances)
+		if op.Len() >= d.Buffered() {
+			if op.Len() > d.Buffered() {
+				panic("op length exceed buffered")
+			}
+			if f&all != 0 {
+				addOp(d, op)
+			}
+			return true
+		}
+		addOp(d, op)
+	}
+	return false
+}

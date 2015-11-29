@@ -169,13 +169,16 @@ func (d *Decoder) readOp() (op operation, err error) {
 
 // apply takes the operation and transforms the decoder dictionary accordingly.
 func (d *Decoder) apply(op operation) error {
+	var err error
 	switch x := op.(type) {
 	case match:
-		return d.Dict.writeMatch(x.distance, x.n)
+		err = d.Dict.writeMatch(x.distance, x.n)
 	case lit:
-		return d.Dict.WriteByte(x.b)
+		err = d.Dict.WriteByte(x.b)
+	default:
+		panic("op is neither a match nor a literal")
 	}
-	panic("op is neither a match nor a literal")
+	return err
 }
 
 // decompress fills the dictionary unless no space for new data is

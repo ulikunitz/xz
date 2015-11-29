@@ -1,6 +1,8 @@
 package lzma
 
-import "io"
+import (
+	"io"
+)
 
 // opLenMargin provides the upper limit of the number of bytes required
 // to encode a single operation.
@@ -16,12 +18,7 @@ const (
 	all compressFlags = 1 << iota
 )
 
-// opFinder enables the support of multiple different OpFinder
-// algorithms.
-type opFinder interface {
-	findOps(e *EncoderDict, r reps, flags compressFlags) []operation
-	name() string
-}
+type findOps func(d *EncoderDict, f compressFlags) (end bool)
 
 // EncoderFlags provide the flags for an encoder.
 type EncoderFlags uint32
@@ -35,16 +32,15 @@ const (
 // Encoder compresses data buffered in the encoder dictionary and writes
 // it into a byte writer.
 type Encoder struct {
-	Dict       *EncoderDict
-	State      *State
-	writerDict writerDict
-	re         *rangeEncoder
-	start      int64
+	Dict  *EncoderDict
+	State *State
+	re    *rangeEncoder
+	start int64
 	// generate eos marker
-	marker   bool
-	limit    bool
-	opFinder opFinder
-	margin   int
+	marker  bool
+	limit   bool
+	findOps findOps
+	margin  int
 }
 
 // NewEncoder creates a new encoder. If the byte writer must be
@@ -59,13 +55,13 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 		return nil, err
 	}
 	e = &Encoder{
-		opFinder: greedyFinder{},
-		Dict:     dict,
-		State:    state,
-		re:       re,
-		marker:   flags&EOSMarker != 0,
-		start:    dict.pos(),
-		margin:   opLenMargin,
+		findOps: greedy,
+		Dict:    dict,
+		State:   state,
+		re:      re,
+		marker:  flags&EOSMarker != 0,
+		start:   dict.pos(),
+		margin:  opLenMargin,
 	}
 	if e.marker {
 		e.margin += 5
@@ -105,12 +101,12 @@ func (e *Encoder) Reopen(bw io.ByteWriter) error {
 // writeLiteral writes a literal into the LZMA stream
 func (e *Encoder) writeLiteral(l lit) error {
 	var err error
-	state, state2, _ := e.State.states(e.writerDict.pos())
+	state, state2, _ := e.State.states(e.Dict.pos())
 	if err = e.State.isMatch[state2].Encode(e.re, 0); err != nil {
 		return err
 	}
-	litState := e.State.litState(e.writerDict.byteAt(1), e.writerDict.pos())
-	match := e.writerDict.byteAt(int(e.State.rep[0]) + 1)
+	litState := e.State.litState(e.Dict.byteAt(1), e.Dict.pos())
+	match := e.Dict.byteAt(int(e.State.rep[0]) + 1)
 	err = e.State.litCodec.Encode(e.re, l.b, state, match, litState)
 	if err != nil {
 		return err
@@ -139,7 +135,7 @@ func (e *Encoder) writeMatch(m match) error {
 		!(dist == e.State.rep[0] && m.n == 1) {
 		panic("match length out of range")
 	}
-	state, state2, posState := e.State.states(e.writerDict.pos())
+	state, state2, posState := e.State.states(e.Dict.pos())
 	if err = e.State.isMatch[state2].Encode(e.re, 1); err != nil {
 		return err
 	}
@@ -203,24 +199,32 @@ func (e *Encoder) writeMatch(m match) error {
 	return e.State.repLenCodec.Encode(e.re, n, posState)
 }
 
-// writeOp writes an operation value into the stream. It checks whether there
-// is still enough space available using an upper limit for the size required.
-func (e *Encoder) writeOp(op operation) error {
-	if e.re.Available() < int64(e.margin) {
-		return ErrLimit
+// writeOps writes the buffered operations into the range encoder. If
+// there is not enough space in the range encoder ErrLimit will be
+// returned.
+func (e *Encoder) writeOps() error {
+	for e.Dict.ops.buffered() > 0 {
+		if e.re.Available() < int64(e.margin) {
+			return ErrLimit
+		}
+		op, err := e.Dict.peekOp()
+		if err != nil {
+			return err
+		}
+		switch x := op.(type) {
+		case match:
+			err = e.writeMatch(x)
+		case lit:
+			err = e.writeLiteral(x)
+		}
+		if err != nil {
+			return err
+		}
+		if err = e.Dict.discardOp(); err != nil {
+			return err
+		}
 	}
-	var err error
-	switch x := op.(type) {
-	case match:
-		err = e.writeMatch(x)
-	case lit:
-		err = e.writeLiteral(x)
-	}
-	if err != nil {
-		return err
-	}
-	_, err = e.writerDict.advance(op.Len())
-	return err
+	return nil
 }
 
 // compress compressed data from the dictionary buffer. If the flag all
@@ -228,20 +232,16 @@ func (e *Encoder) writeOp(op operation) error {
 // function returns ErrLimit if the underlying writer has reached its
 // limit.
 func (e *Encoder) compress(flags compressFlags) error {
-	if e.limit {
-		return ErrLimit
-	}
-	e.writerDict = e.Dict.writerDict
-	ops := e.opFinder.findOps(e.Dict, reps(e.State.rep), flags)
-	for _, op := range ops {
-		if err := e.writeOp(op); err != nil {
-			if err == ErrLimit {
-				e.limit = true
-			}
+	var end bool
+	for {
+		if err := e.writeOps(); err != nil {
 			return err
 		}
+		if end {
+			return nil
+		}
+		end = e.findOps(e.Dict, flags)
 	}
-	return nil
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.

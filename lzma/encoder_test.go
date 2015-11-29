@@ -6,8 +6,12 @@ package lzma
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
+	"math/rand"
 	"testing"
+
+	"github.com/ulikunitz/xz/randtxt"
 )
 
 var testString = `LZMA decoder test example
@@ -24,7 +28,12 @@ var testString = `LZMA decoder test example
 =========================
 `
 
-func TestEncoderCycle(t *testing.T) {
+func cycle(t *testing.T, n int) {
+	t.Logf("cycle(t,%d)", n)
+	if n > len(testString) {
+		t.Fatalf("cycle: n=%d larger than len(testString)=%d", n,
+			len(testString))
+	}
 	const dictCap = minDictCap
 	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
@@ -40,26 +49,19 @@ func TestEncoderCycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEncoder error %s", err)
 	}
-	orig := []byte(testString)
+	orig := []byte(testString)[:n]
 	t.Logf("len(orig) %d", len(orig))
-	n, err := w.Write(orig)
+	k, err := w.Write(orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
 	}
-	if n != len(orig) {
-		t.Fatalf("w.Write returned %d; want %d", n, len(orig))
-	}
-	if err = w.compress(all); err != nil {
-		t.Fatalf("w.Compress error %s", err)
+	if k != len(orig) {
+		t.Fatalf("w.Write returned %d; want %d", k, len(orig))
 	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d len(orig) %d", buf.Len(), len(orig))
-	if buf.Len() > len(orig) {
-		t.Errorf("buf.Len()=%d bigger then len(orig)=%d", buf.Len(),
-			len(orig))
-	}
 	decoderDict, err := NewDecoderDict(dictCap, dictCap)
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
@@ -73,12 +75,69 @@ func TestEncoderCycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadAll(lr) error %s", err)
 	}
-	t.Logf("%s", decoded)
+	t.Logf("decoded: %s", decoded)
 	if len(orig) != len(decoded) {
 		t.Fatalf("length decoded is %d; want %d", len(decoded),
 			len(orig))
 	}
 	if !bytes.Equal(orig, decoded) {
 		t.Fatalf("decoded file differs from original")
+	}
+}
+
+func TestEncoderCycle(t *testing.T) {
+	cycle(t, len(testString))
+}
+
+func TestEncoderCycle2(t *testing.T) {
+	buf := new(bytes.Buffer)
+	const txtlen = 50000
+	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
+	txt := buf.String()
+	buf.Reset()
+	const dictCap = minDictCap
+	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	props := Properties{3, 0, 2}
+	if err := props.Verify(); err != nil {
+		t.Fatalf("properties error %s", err)
+	}
+	state := NewState(props)
+	lbw := &LimitedByteWriter{BW: buf, N: 100}
+	w, err := NewEncoder(lbw, state, encoderDict, 0)
+	if err != nil {
+		t.Fatalf("NewEncoder error %s", err)
+	}
+	_, err = io.WriteString(w, txt)
+	if err != nil && err != ErrLimit {
+		t.Fatalf("WriteString error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	n := w.Compressed()
+	txt = txt[:n]
+	decoderDict, err := NewDecoderDict(dictCap, dictCap)
+	if err != nil {
+		t.Fatalf("NewDecoderDict error %s", err)
+	}
+	state.Reset()
+	r, err := NewDecoder(buf, state, decoderDict, n)
+	if err != nil {
+		t.Fatalf("NewDecoder error %s", err)
+	}
+	out := new(bytes.Buffer)
+	if _, err = io.Copy(out, r); err != nil {
+		t.Fatalf("decompress copy error %s", err)
+	}
+	got := out.String()
+	t.Logf("%s", got)
+	if len(got) != int(n) {
+		t.Fatalf("len(got) %d; want %d", len(got), n)
+	}
+	if got != txt {
+		t.Fatalf("got and txt differ")
 	}
 }

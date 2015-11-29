@@ -126,13 +126,30 @@ func (b *opBuffer) addIndex(i, n int) int {
 	return i
 }
 
-func (b *opBuffer) readOp() (op operation, err error) {
+var errNoOp = errors.New("lzma: no op available")
+
+func (b *opBuffer) peekOp() (op operation, err error) {
 	if b.rear == b.front {
-		return nil, errors.New("lzma: no op available")
+		return nil, errNoOp
 	}
-	op = b.ops[b.rear]
+	return b.ops[b.rear], nil
+}
+
+func (b *opBuffer) readOp() (op operation, err error) {
+	op, err = b.peekOp()
+	if err != nil {
+		return op, err
+	}
 	b.rear = b.addIndex(b.rear, 1)
 	return op, nil
+}
+
+func (b *opBuffer) discardOp() error {
+	if b.rear == b.front {
+		return errNoOp
+	}
+	b.rear = b.addIndex(b.rear, 1)
+	return nil
 }
 
 func (b *opBuffer) writeOp(op operation) error {

@@ -32,6 +32,7 @@ type EncoderDict struct {
 	// start of the operation buffer
 	cursor int
 	ops    opBuffer
+	reps   reps
 	m      matcher
 	// head of the dictionary as absolute offset
 	head int64
@@ -80,8 +81,9 @@ func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 func (d *EncoderDict) Reset() {
 	d.buf.Reset()
 	d.cursor = 0
-	d.head = 0
 	d.ops.reset()
+	d.reps = reps{}
+	d.head = 0
 	d.m.Reset()
 }
 
@@ -166,21 +168,25 @@ func (d *EncoderDict) writeOp(op operation) error {
 		return err
 	}
 	d.cursor = d.buf.addIndex(d.cursor, n)
+	d.reps.addOp(op)
 	return nil
 }
 
-// readOp reads an operation from the operation buffer and advances the
-// dictionary head.
-func (d *EncoderDict) readOp() (op operation, err error) {
-	if op, err = d.ops.readOp(); err != nil {
-		return op, err
+func (d *EncoderDict) peekOp() (op operation, err error) {
+	return d.ops.peekOp()
+}
+
+func (d *EncoderDict) discardOp() error {
+	op, err := d.ops.readOp()
+	if err != nil {
+		return err
 	}
 	n := op.Len()
 	if _, err = d.buf.Discard(n); err != nil {
-		return op, err
+		return err
 	}
 	d.head += int64(n)
-	return op, nil
+	return nil
 }
 
 // matches finds potential distances. The number of distances put into

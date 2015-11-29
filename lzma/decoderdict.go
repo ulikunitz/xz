@@ -32,9 +32,13 @@ func NewDecoderDict(dictCap, bufSize int) (d *DecoderDict, err error) {
 	if dictCap > bufSize {
 		bufSize = dictCap
 	}
-	d = &DecoderDict{capacity: dictCap}
-	if err = initBuffer(&d.buf, bufSize); err != nil {
+	buf, err := newBuffer(bufSize)
+	if err != nil {
 		return nil, err
+	}
+	d = &DecoderDict{
+		buf:      *buf,
+		capacity: dictCap,
 	}
 	return d, nil
 }
