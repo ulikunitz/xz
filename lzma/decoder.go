@@ -52,6 +52,7 @@ func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
 	}
 	d.start = d.Dict.pos()
 	d.size = size
+	d.eos = false
 	return nil
 }
 
