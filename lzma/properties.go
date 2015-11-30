@@ -4,7 +4,10 @@
 
 package lzma
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Maximum and minimum values for the LZMA properties.
 const (
@@ -26,6 +29,11 @@ type Properties struct {
 	LC int
 	LP int
 	PB int
+}
+
+// String returns the properties in a string representation.
+func (p *Properties) String() string {
+	return fmt.Sprintf("LC %d LP %d PB %d", p.LC, p.LP, p.PB)
 }
 
 // PropertiesForCode converts a properties code byte into a Properties value.
