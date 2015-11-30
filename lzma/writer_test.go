@@ -186,3 +186,73 @@ func TestWriter_Size(t *testing.T) {
 		t.Fatalf("read %q, want %q", s, want)
 	}
 }
+
+func BenchmarkReader(b *testing.B) {
+	const (
+		seed = 49
+		size = 50000
+	)
+	r := io.LimitReader(randtxt.NewReader(rand.NewSource(seed)), size)
+	txt, err := ioutil.ReadAll(r)
+	if err != nil {
+		b.Fatalf("ReadAll error %s", err)
+	}
+	buf := &bytes.Buffer{}
+	params := Default
+	params.DictCap = 0x4000
+	w, err := NewWriterParams(buf, &params)
+	if err != nil {
+		b.Fatalf("NewWriter error %s", err)
+	}
+	if _, err = w.Write(txt); err != nil {
+		b.Fatalf("w.Write error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		b.Fatalf("w.Close error %s", err)
+	}
+	data, err := ioutil.ReadAll(buf)
+	if err != nil {
+		b.Fatalf("ReadAll error %s", err)
+	}
+	b.SetBytes(int64(len(txt)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		lr, err := NewReader(bytes.NewReader(data))
+		if err != nil {
+			b.Fatalf("NewReader error %s", err)
+		}
+		if _, err = ioutil.ReadAll(lr); err != nil {
+			b.Fatalf("ReadAll(lr) error %s", err)
+		}
+	}
+}
+
+func BenchmarkWriter(b *testing.B) {
+	const (
+		seed = 49
+		size = 50000
+	)
+	r := io.LimitReader(randtxt.NewReader(rand.NewSource(seed)), size)
+	txt, err := ioutil.ReadAll(r)
+	if err != nil {
+		b.Fatalf("ReadAll error %s", err)
+	}
+	buf := &bytes.Buffer{}
+	b.SetBytes(int64(len(txt)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		params := Default
+		params.DictCap = 0x4000
+		w, err := NewWriterParams(buf, &params)
+		if err != nil {
+			b.Fatalf("NewWriter error %s", err)
+		}
+		if _, err = w.Write(txt); err != nil {
+			b.Fatalf("w.Write error %s", err)
+		}
+		if err = w.Close(); err != nil {
+			b.Fatalf("w.Close error %s", err)
+		}
+	}
+}
