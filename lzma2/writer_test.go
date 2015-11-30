@@ -68,6 +68,7 @@ func TestCycle1(t *testing.T) {
 func TestCycle2(t *testing.T) {
 	buf := new(bytes.Buffer)
 	const txtlen = 2100000
+	// const txtlen = 1024
 	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
 	txt := buf.String()
 	buf.Reset()
@@ -85,6 +86,7 @@ func TestCycle2(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
 	}
+	t.Logf("buf.Len() %d", buf.Len())
 	r, err := NewReader(buf, Default.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
@@ -92,7 +94,7 @@ func TestCycle2(t *testing.T) {
 	out := new(bytes.Buffer)
 	n, err = io.Copy(out, r)
 	if err != nil {
-		t.Fatalf("Decompressing copy error %s", err)
+		t.Fatalf("Decompressing copy error %s after %d bytes", err, n)
 	}
 	if n != txtlen {
 		t.Fatalf("Decompression data length %d; want %d", n, txtlen)
