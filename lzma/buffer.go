@@ -157,12 +157,13 @@ func (b *buffer) EqualBytes(x, y, max int) int {
 	if j < 0 {
 		j += len(b.data)
 	}
+	n := len(b.data)
 	for k := 0; k < max; k++ {
 		if b.data[i] != b.data[j] {
 			return k
 		}
-		i = b.addIndex(i, 1)
-		j = b.addIndex(j, 1)
+		i = (i + 1) % n
+		j = (j + 1) % n
 	}
 	return max
 }

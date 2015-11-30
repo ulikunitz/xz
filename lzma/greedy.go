@@ -17,11 +17,13 @@ func bestOp(d *EncoderDict, distances []int) operation {
 	w := weight(1, d.reps.opBits(op))
 	for _, distance := range distances {
 		n := d.matchLen(distance)
-		if n == 0 {
+		switch n {
+		case 0:
 			continue
-		}
-		if n == 1 && uint32(distance-minDistance) != d.reps[0] {
-			continue
+		case 1:
+			if uint32(distance-minDistance) != d.reps[0] {
+				continue
+			}
 		}
 		m := match{distance: distance, n: n}
 		v := weight(n, d.reps.opBits(m))
@@ -55,7 +57,7 @@ func greedy(d *EncoderDict, f compressFlags) (end bool) {
 	if d.bufferedAtFront() == 0 {
 		return true
 	}
-	distances := make([]int, maxMatches+10)
+	distances := make([]int, maxMatches, maxMatches+10)
 	for d.ops.available() > 0 {
 		op := findOp(d, distances)
 		m := d.bufferedAtFront()

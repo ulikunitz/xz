@@ -7,7 +7,7 @@ import (
 
 // maxMatches limits the number of matches requested from the Matches
 // function. This controls the speed of the overall encoding.
-const maxMatches = 32
+const maxMatches = 16
 
 // matcher is an interface that allows the identification of potential
 // matches for words with a constant length greater or equal 2.
