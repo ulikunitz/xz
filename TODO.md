@@ -1,6 +1,6 @@
 # TODO list
 
-# Release v0.4
+## Release v0.4
 
 1. Implement package lzma2 (see below)
 2. Implement the xz code using the lzma2 package. Check xz documentation
@@ -13,12 +13,13 @@
    be put into the background.
 6. Add Silesia corpus to the tests
 
-# Release 0.5
+## Release v0.5
 
+1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
 1. Do the signal handling correctly.
 2. Add Go documentation for commands.
 
-# Release 1.0
+## Release v1.0
 
 1. Full functioning xzgo
 2. Support by xzgo tool. It will not support lzma in the same binary.
@@ -30,20 +31,27 @@
 5. Add godoc URL to README.md (godoc.org)
 6. Resolve all issues.
 
-# Package xz
+## Package xz
 
 - Implement the package using the LZMA2 support provided by the lzma
   package.
 
-# Package lzma
+## Package lzma
 
-- Writer and Reader should support error handling as for bufio.Writer
-  and bufio.Reader
-- Support LZMA2Reader, LZMA2Writer, LZMA2FileReader and LZMA2FileWriter.
+- Rename EncoderDict and DecoderDict into EncoderBuffer and
+  DecoderBuffer.
 
-# Package lzma2
+### Release v0.5
 
-- Test Reader
+- Rewrite Encoder into a simple greedy one-op-at-a-time encoder
+  including
+    + simple scan at the dictionary head for the same byte
+    + use the killer byte (requiring matches to get longer, the first
+      test should be the byte that would make the match longer)
+
+
+## Package lzma2
+
 - Put the package in the lzma. This way we prevent the Encoder, Decoder,
   EncoderDict and DecoderDict types to be exported. Limiting the
   exported interfaces will be better in the long term.
@@ -62,7 +70,7 @@ Use full buffer to create minimal bit-length above range encoder.
 - rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
   into an array with bit-steeling for the colors)
 
-# Release Procedure
+## Release Procedure
 
 - execute goch -l for all packages
 - check orthography with gospell
@@ -79,9 +87,15 @@ Use full buffer to create minimal bit-length above range encoder.
 - git tag -a <version>
 - git push
 
-# Log
+## Log
 
-## 2015-10-21
+### 2015-12-02
+
+I'm now ready to implement xz because, I have a working LZMA2
+implementation. I decided today that v0.4 will use the slow encoder
+using the operations buffer to be able to go back, if I intend to do so.
+
+### 2015-10-21
 
 I have restarted the work on the library. While trying to implement
 LZMA2, I discovered that I need to resimplify the encoder and decoder
@@ -95,24 +109,24 @@ I learned an interesting method from the LZO format. If the last copy is
 too far away they are moving the head one 2 bytes and not 1 byte to
 reduce processing times.
 
-## 2015-08-26
+### 2015-08-26
 
 I have now reimplemented the lzma package. The code is reasonably fast,
 but can still be optimized. The next step is to implement LZMA2 and then
 xz.
 
-## 2015-07-05
+### 2015-07-05
 
 Created release v0.3. The version is the foundation for a full xz
 implementation that is the target of v0.4.
 
-## 2015-06-11
+### 2015-06-11
 
 The gflag package has been developed because I couldn't use flag and
 pflag for a fully compatible support of gzip's and lzma's options. It
 seems to work now quite nicely.
 
-## 2015-06-05
+### 2015-06-05
 
 The overflow issue was interesting to research, however Henry S. Warren
 Jr. Hacker's Delight book was very helpful as usual and had the issue
@@ -120,12 +134,12 @@ explained perfectly. Fefe's information on his website was based on the
 C FAQ and quite bad, because it didn't address the issue of -MININT ==
 MININT.
 
-## 2015-06-04
+### 2015-06-04
 
 It has been a productive day. I improved the interface of lzma.Reader
 and lzma.Writer and fixed the error handling.
 
-## 2015-06-01
+### 2015-06-01
 
 By computing the bit length of the LZMA operations I was able to
 improve the greedy algorithm implementation. By using an 8 MByte buffer
@@ -135,7 +149,7 @@ gzip default.
 Compression is currently slow, but this is something we will be able to
 improve over time.
 
-## 2015-05-26
+### 2015-05-26
 
 Checked the license of ogier/pflag. The binary lzmago binary should
 include the license terms for the pflag library.
@@ -143,24 +157,24 @@ include the license terms for the pflag library.
 I added the endorsement clause as used by Google for the Go sources the
 LICENSE file.
 
-## 2015-05-22
+### 2015-05-22
 
 The package lzb contains now the basic implementation for creating or
 reading LZMA byte streams. It allows the support for the implementation
 of the DAG-shortest-path algorithm for the compression function.
 
-## 2015-04-23 
+### 2015-04-23 
 
 Completed yesterday the lzbase classes. I'm a little bit concerned that
 using the components may require too much code, but on the other hand
 there is a lot of flexibility.
 
-## 2015-04-22
+### 2015-04-22
 
 Implemented Reader and Writer during the Bayern game against Porto. The
 second half gave me enough time.
 
-## 2015-04-21
+### 2015-04-21
 
 While showering today morning I discovered that the design for OpEncoder
 and OpDecoder doesn't work, because encoding/decoding might depend on
@@ -180,35 +194,35 @@ As a start I have implemented ReaderState and WriterState to ensure
 that the state for reading is only used by readers and WriterState only
 used by Writers. 
 
-## 2015-04-20
+### 2015-04-20
 
 Today I implemented the OpDecoder and tested OpEncoder and OpDecoder.
 
-## 2015-04-08
+### 2015-04-08
 
 Came up with a new simplified design for lzbase. I implemented already
 the type State that replaces OpCodec.
 
-## 2015-04-06
+### 2015-04-06
 
 The new lzma package is now fully usable and lzmago is using it now. The
 old lzma package has been completely removed.
 
-## 2015-04-05
+### 2015-04-05
 
 Implemented lzma.Reader and tested it.
 
-## 2015-04-04
+### 2015-04-04
 
 Implemented baseReader by adapting code form lzma.Reader.
 
-## 2015-04-03
+### 2015-04-03
 
 The opCodec has been copied yesterday to lzma2. opCodec has a high
 number of dependencies on other files in lzma2. Therefore I had to copy
 almost all files from lzma.
 
-## 2015-03-31
+### 2015-03-31
 
 Removed only a TODO item. 
 
@@ -220,15 +234,15 @@ https://talks.golang.org/2014/go4java.slide#51
 
 I have never used this, but it seems to be a cool idea.
 
-## 2015-03-30
+### 2015-03-30
 
 Finished the type writerDict and wrote a simple test.
 
-## 2015-03-25
+### 2015-03-25
 
 I started to implement the writerDict.
 
-## 2015-03-24
+### 2015-03-24
 
 After thinking long about the LZMA2 code and several false starts, I
 have now a plan to create a self-sufficient lzma2 package that supports
@@ -237,7 +251,7 @@ baseReader and baseWriter type that support the basic LZMA stream
 without any headers. Both types must support the reuse of dictionaries
 and the opCodec.
 
-## 2015-01-10
+### 2015-01-10
 
 1. Implemented simple lzmago tool
 2. Tested tool against large 4.4G file
@@ -246,6 +260,6 @@ and the opCodec.
 3. Fixed a bug in the compressor and wrote a test for it
 4. Executed full cycle for 4.4 GB file; performance can be improved ;-)
 
-## 2015-01-11
+### 2015-01-11
 
 - Release v0.2 because of the working LZMA encoder and decoder
