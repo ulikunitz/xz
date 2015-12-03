@@ -1,28 +1,26 @@
 package xz
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
-func TestVariableLengthEncoding(t *testing.T) {
-	tests := []uint64{0, 0x80, 0x100, 1<<64 - 1}
+func TestUvarint(t *testing.T) {
+	tests := []uint64{0, 0x80, 0x100, 0xffffffff, 0x100000000, 1<<64 - 1}
 	p := make([]byte, 10)
 	for _, u := range tests {
 		p = p[:10]
-		n, err := encodeU64(p, u)
+		n := putUvarint(p, u)
+		if n < 1 {
+			t.Fatalf("putUvarint returned %d", n)
+		}
+		r := bytes.NewReader(p[:n])
+		x, err := readUvarint(r)
 		if err != nil {
-			t.Errorf("encodeU64(p, %#x): %d, %s", u, n, err)
+			t.Fatalf("readUvarint returned %s", err)
 		}
-		v, k, err := decodeU64(p)
-		if err != nil {
-			t.Errorf("decodeU64(p) for %#x: %#x, %d, %s",
-				u, k, v, err)
-		}
-		if v != u {
-			t.Errorf("decodeU64(p) returned %#x; want %#x",
-				v, u)
-		}
-		if k != n {
-			t.Errorf("decodeU64(p) for %#x returned length %d;"+
-				" want %d", u, k, n)
+		if x != u {
+			t.Fatalf("readUvarint returned 0x%x; want 0x%x", x, u)
 		}
 	}
 }
