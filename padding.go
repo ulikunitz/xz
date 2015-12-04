@@ -43,9 +43,36 @@ func (w *padWriter) Pad() (n int, err error) {
 	return n, err
 }
 
+type bReader struct {
+	io.Reader
+	p []byte
+}
+
+// byteReader converts a reader to a byte reader. If the reader doesn't
+// support the ByteReader interface, it returns a wrapper.
+func byteReader(r io.Reader) io.ByteReader {
+	if br, ok := r.(io.ByteReader); ok {
+		return br
+	}
+	return &bReader{r, make([]byte, 1)}
+}
+
+// ReadByte reads a single byte.
+func (br *bReader) ReadByte() (c byte, err error) {
+	n, err := br.Read(br.p)
+	if n == 0 {
+		if err != nil {
+			return 0, err
+		}
+		return 0, errors.New("bReader: no data")
+	}
+	return br.p[0], nil
+}
+
 // PadReader supports the reading of pads from a reader.
 type padReader struct {
 	r         io.Reader
+	br        io.ByteReader
 	n         int64
 	blockSize int
 	p         []byte
@@ -58,6 +85,7 @@ func newPadReader(r io.Reader, blockSize int) *padReader {
 	}
 	return &padReader{
 		r:         r,
+		br:        byteReader(r),
 		blockSize: blockSize,
 		p:         make([]byte, blockSize-1),
 	}
@@ -68,6 +96,15 @@ func (r *padReader) Read(p []byte) (n int, err error) {
 	n, err = r.r.Read(p)
 	r.n += int64(n)
 	return n, err
+}
+
+// ReadByte reads a byte from the pad reader.
+func (r *padReader) ReadByte() (c byte, err error) {
+	c, err = r.br.ReadByte()
+	if err == nil {
+		r.n += 1
+	}
+	return c, err
 }
 
 // Pad reads the padding from the underlying reader.
