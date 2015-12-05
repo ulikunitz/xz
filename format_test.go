@@ -30,6 +30,36 @@ func TestHeader(t *testing.T) {
 	}
 }
 
+func TestFooter(t *testing.T) {
+	flags := fCRC32
+	indexSize := uint32(1234)
+	var buf bytes.Buffer
+
+	n, err := writeFooter(&buf, indexSize, flags)
+	if err != nil {
+		t.Fatalf("writeFooter error %s", err)
+	}
+	if n != footerLen {
+		t.Fatalf("writeFooter returned %d; want %d", n, footerLen)
+	}
+
+	rIndexSize, rFlags, m, err := readFooter(&buf)
+	if err != nil {
+		t.Fatalf("readFooter error %s", err)
+	}
+	if m != footerLen {
+		t.Fatalf("readFooter returned length %d; want %d", m, footerLen)
+	}
+	if rIndexSize != indexSize {
+		t.Fatalf("readFooter returned index size %d; want %d",
+			rIndexSize, indexSize)
+	}
+	if rFlags != flags {
+		t.Fatalf("readFooter returned flags 0x%02x; want 0x%02x",
+			rFlags, flags)
+	}
+}
+
 func TestRecord(t *testing.T) {
 	r := record{1234567, 10000}
 	var buf bytes.Buffer

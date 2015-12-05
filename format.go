@@ -128,6 +128,72 @@ func readHeader(r io.Reader) (flags byte, n int, err error) {
 	return flags, n, nil
 }
 
+/*** Footer ***/
+
+// footerLen defines the length of the footer.
+const footerLen = 12
+
+// footerMagic contains the footer magic bytes.
+var footerMagic = []byte{'Y', 'Z'}
+
+// writeFooter writes the footer with the given index size and flags
+// into the writer.
+func writeFooter(w io.Writer, indexSize uint32, flags byte) (n int, err error) {
+	if err = verifyFlags(flags); err != nil {
+		return 0, err
+	}
+
+	p := make([]byte, footerLen)
+	// backward size (index size)
+	putUint32LE(p[4:], indexSize)
+	// flags
+	p[9] = flags
+	// footer magic
+	copy(p[10:], footerMagic)
+
+	// CRC-32
+	crc := crc32.NewIEEE()
+	crc.Write(p[4:10])
+	putUint32LE(p, crc.Sum32())
+
+	return w.Write(p)
+}
+
+// readFooter reads the stream footer.
+func readFooter(r io.Reader) (indexSize uint32, flags byte, n int, err error) {
+	p := make([]byte, footerLen)
+
+	if n, err = io.ReadFull(r, p); err != nil {
+		return 0, 0, n, err
+	}
+
+	// magic bytes
+	if !bytes.Equal(p[10:], footerMagic) {
+		return 0, 0, n, errors.New("xz: footer magic invalid")
+	}
+
+	// CRC-32
+	crc := crc32.NewIEEE()
+	crc.Write(p[4:10])
+	if uint32LE(p) != crc.Sum32() {
+		return 0, 0, n, errors.New("checksum error")
+	}
+
+	// backward size (index size)
+	indexSize = uint32LE(p[4:])
+
+	// flags
+	if p[8] != 0 {
+		return 0, 0, n, errInvalidFlags
+	}
+	flags = p[9]
+	if err = verifyFlags(flags); err != nil {
+		return indexSize, flags, n, errInvalidFlags
+	}
+
+	return indexSize, flags, n, nil
+}
+
 /*** Index ***/
 
 // record describes a block in the xz file index.
