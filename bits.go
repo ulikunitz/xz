@@ -21,18 +21,20 @@ func putUvarint(p []byte, x uint64) int {
 var overflow = errors.New("xz: uvarint overflows 64-bit unsigned integer")
 
 // readUvarint reads a uvarint from the given byte reader.
-func readUvarint(r io.ByteReader) (x uint64, err error) {
+func readUvarint(r io.ByteReader) (x uint64, n int, err error) {
 	var s uint
-	for i := 0; ; i++ {
+	i := 0
+	for {
 		b, err := r.ReadByte()
 		if err != nil {
-			return x, err
+			return x, i, err
 		}
+		i++
 		if b < 0x80 {
-			if i > 9 || i == 9 && b > 1 {
-				return x, overflow
+			if i > 10 || i == 10 && b > 1 {
+				return x, i, overflow
 			}
-			return x | uint64(b)<<s, nil
+			return x | uint64(b)<<s, i, nil
 		}
 		x |= uint64(b&0x7f) << s
 		s += 7

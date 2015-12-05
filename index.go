@@ -12,32 +12,33 @@ type record struct {
 }
 
 // readFrom reads the record from the byte reader
-func (rec *record) readFrom(r io.ByteReader) error {
-	u, err := readUvarint(r)
+func (rec *record) readFrom(r io.ByteReader) (n int, err error) {
+	u, k, err := readUvarint(r)
+	n += k
 	if err != nil {
-		return err
+		return n, err
 	}
 	rec.unpaddedSize = int64(u)
 	if rec.unpaddedSize < 0 {
-		return errors.New("xz: unpadded size negative")
+		return n, errors.New("xz: unpadded size negative")
 	}
-	u, err = readUvarint(r)
+	u, k, err = readUvarint(r)
+	n += k
 	if err != nil {
-		return err
+		return n, err
 	}
 	rec.uncompressedSize = int64(u)
 	if rec.uncompressedSize < 0 {
-		return errors.New("xz: uncompressed size negative")
+		return n, errors.New("xz: uncompressed size negative")
 	}
-	return err
+	return n, nil
 }
 
 // writeTo writes the record into the writer
-func (rec *record) writeTo(w io.Writer) error {
+func (rec *record) writeTo(w io.Writer) (n int, err error) {
 	// maximum length of a uvarint is 10
 	p := make([]byte, 20)
-	n := putUvarint(p, uint64(rec.unpaddedSize))
+	n = putUvarint(p, uint64(rec.unpaddedSize))
 	n += putUvarint(p[n:], uint64(rec.uncompressedSize))
-	_, err := w.Write(p[:n])
-	return err
+	return w.Write(p[:n])
 }

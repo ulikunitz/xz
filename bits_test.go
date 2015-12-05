@@ -15,9 +15,12 @@ func TestUvarint(t *testing.T) {
 			t.Fatalf("putUvarint returned %d", n)
 		}
 		r := bytes.NewReader(p[:n])
-		x, err := readUvarint(r)
+		x, m, err := readUvarint(r)
 		if err != nil {
 			t.Fatalf("readUvarint returned %s", err)
+		}
+		if m != n {
+			t.Fatalf("readUvarint read %d bytes; want %d", m, n)
 		}
 		if x != u {
 			t.Fatalf("readUvarint returned 0x%x; want 0x%x", x, u)
