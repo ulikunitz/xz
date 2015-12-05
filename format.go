@@ -12,6 +12,9 @@ import (
 // headerMagic stores the magic bytes for the header
 var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
 
+// headerLen defines the length of the stream header.
+const headerLen = 12
+
 // Constants for the checksum methods supported by xz.
 const (
 	fCRC32  byte = 0x1
@@ -65,16 +68,45 @@ func writeHeader(w io.Writer, flags byte) (n int, err error) {
 	return n, err
 }
 
-// readHeader reads the stream header and returns the flags value.
+// Errors returned by readHeader.
+var (
+	errPadding     = errors.New("xz: found padding")
+	errHeaderMagic = errors.New("xz: invalid header magic bytes")
+)
+
+// readHeader reads the stream header and returns the flags value. The
+// function supports padding checks by reading four bytes first to
+// return errPadding if they are all zero. So repeatedly calling the
+// function will find eventually the stream header after the padding.
 func readHeader(r io.Reader) (flags byte, n int, err error) {
-	p := make([]byte, 12)
-	if n, err = io.ReadFull(r, p); err != nil {
+	p := make([]byte, headerLen)
+
+	// check for padding
+	n, err = io.ReadFull(r, p[:4])
+	if err != nil {
+		return 0, n, err
+	}
+	if p[0] == 0 {
+		for _, c := range p[1:4] {
+			if c != 0 {
+				return 0, n, errHeaderMagic
+			}
+		}
+		return 0, n, errPadding
+	}
+	if !bytes.Equal(p[:4], headerMagic[:4]) {
+		return 0, n, errHeaderMagic
+	}
+
+	k, err := io.ReadFull(r, p[4:])
+	n += k
+	if err != nil {
 		return 0, n, err
 	}
 
 	// magic header
-	if !bytes.Equal(headerMagic, p[:6]) {
-		return 0, n, errors.New("xz: invalid header magic")
+	if !bytes.Equal(headerMagic[4:], p[4:6]) {
+		return 0, n, errHeaderMagic
 	}
 
 	// stream flags

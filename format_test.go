@@ -13,16 +13,16 @@ func TestHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("writeHeader error %s", err)
 	}
-	if n != 12 {
-		t.Fatalf("writeHeader returned %d; want %d", n, 12)
+	if n != headerLen {
+		t.Fatalf("writeHeader returned %d; want %d", n, headerLen)
 	}
 
 	g, m, err := readHeader(&buf)
 	if err != nil {
 		t.Fatalf("readHeader error %s", err)
 	}
-	if m != n {
-		t.Fatalf("readHeader returned %d; want %d", m, n)
+	if m != headerLen {
+		t.Fatalf("readHeader returned %d; want %d", m, headerLen)
 	}
 	if g != flags {
 		t.Fatalf("readHeader returned flags 0x%02x; want 0x%02x", g,
