@@ -1,10 +1,102 @@
 package xz
 
 import (
+	"bytes"
 	"errors"
 	"hash/crc32"
 	"io"
 )
+
+/*** Header ***/
+
+// headerMagic stores the magic bytes for the header
+var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
+
+// Constants for the checksum methods supported by xz.
+const (
+	fCRC32  byte = 0x1
+	fCRC64       = 0x4
+	fSHA256      = 0xa
+)
+
+// errInvalidFlags indicates that flags are invalid.
+var errInvalidFlags = errors.New("xz: invalid flags")
+
+// verifyFlags returns the error errInvalidFlags if the value is
+// invalid.
+func verifyFlags(flags byte) error {
+	switch flags {
+	case fCRC32, fCRC64, fSHA256:
+		return nil
+	default:
+		return errInvalidFlags
+	}
+}
+
+// writeHeader writes the stream header into the provided writer.
+func writeHeader(w io.Writer, flags byte) (n int, err error) {
+	if err = verifyFlags(flags); err != nil {
+		return 0, err
+	}
+
+	// header magic
+	k, err := w.Write(headerMagic)
+	n += k
+	if err != nil {
+		return n, err
+	}
+
+	crc := crc32.NewIEEE()
+	mw := io.MultiWriter(w, crc)
+
+	// stream flags
+	k, err = mw.Write([]byte{0, flags})
+	n += k
+	if err != nil {
+		return n, err
+	}
+
+	// crc32
+	p := make([]byte, 4)
+	putUint32LE(p, crc.Sum32())
+	k, err = w.Write(p)
+	n += k
+
+	return n, err
+}
+
+// readHeader reads the stream header and returns the flags value.
+func readHeader(r io.Reader) (flags byte, n int, err error) {
+	p := make([]byte, 12)
+	if n, err = io.ReadFull(r, p); err != nil {
+		return 0, n, err
+	}
+
+	// magic header
+	if !bytes.Equal(headerMagic, p[:6]) {
+		return 0, n, errors.New("xz: invalid header magic")
+	}
+
+	// stream flags
+	if p[6] != 0 {
+		return 0, n, errInvalidFlags
+	}
+	flags = p[7]
+	if err = verifyFlags(flags); err != nil {
+		return flags, n, err
+	}
+
+	// checksum
+	crc := crc32.NewIEEE()
+	crc.Write(p[6:8])
+	if uint32LE(p[8:]) != crc.Sum32() {
+		return flags, n, errors.New("xz: invalid checksum for header")
+	}
+
+	return flags, n, nil
+}
+
+/*** Index ***/
 
 // record describes a block in the xz file index.
 type record struct {
@@ -86,7 +178,7 @@ func writeIndex(w io.Writer, index []record) (n int, err error) {
 
 	// crc32 checksum
 	putUint32LE(p, crc.Sum32())
-	k, err = mw.Write(p[:4])
+	k, err = w.Write(p[:4])
 	n += k
 
 	return n, err
@@ -161,14 +253,14 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 	}
 
 	// crc32
-	g := crc.Sum32()
+	s := crc.Sum32()
 	p := make([]byte, 4)
 	k, err = io.ReadFull(br.(io.Reader), p)
 	n += k
 	if err != nil {
 		return records, n, err
 	}
-	if uint32LE(p) != g {
+	if uint32LE(p) != s {
 		return records, n, errors.New("xz: wrong checsum for index")
 	}
 

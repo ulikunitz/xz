@@ -5,7 +5,32 @@ import (
 	"testing"
 )
 
-func TestRecordReadWrite(t *testing.T) {
+func TestHeader(t *testing.T) {
+	flags := fCRC32
+	var buf bytes.Buffer
+
+	n, err := writeHeader(&buf, flags)
+	if err != nil {
+		t.Fatalf("writeHeader error %s", err)
+	}
+	if n != 12 {
+		t.Fatalf("writeHeader returned %d; want %d", n, 12)
+	}
+
+	g, m, err := readHeader(&buf)
+	if err != nil {
+		t.Fatalf("readHeader error %s", err)
+	}
+	if m != n {
+		t.Fatalf("readHeader returned %d; want %d", m, n)
+	}
+	if g != flags {
+		t.Fatalf("readHeader returned flags 0x%02x; want 0x%02x", g,
+			flags)
+	}
+}
+
+func TestRecord(t *testing.T) {
 	r := record{1234567, 10000}
 	var buf bytes.Buffer
 	n, err := r.writeTo(&buf)
@@ -30,7 +55,7 @@ func TestRecordReadWrite(t *testing.T) {
 	}
 }
 
-func TestIndexReadWrite(t *testing.T) {
+func TestIndex(t *testing.T) {
 	records := []record{{1234, 1}, {2345, 2}}
 
 	var buf bytes.Buffer
