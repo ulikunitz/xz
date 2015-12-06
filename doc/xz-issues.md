@@ -6,24 +6,37 @@ later development of an improved format.
 
 # xz file format
 
-The file format should be structured in packets that have all encoded
-their length in the header. The Index must be fully parsed to identify
-its end.
+## Consistency
 
-A better approach would also have been to store the index size in the
-index footer. This way a simple flag in the stream flags could have
-indicated whether an index is present or not. The current format
-requires the index always to be present. With the default block size an
-xz file has only one block and the index would not have been required.
+## General
+
+Packets should either be constant size or should have encoded the size
+in the header. File header and footer are constant size and the block
+header has the size encoded. The index doesn't fulfill the criteria even
+when its size is included in the footer.
+
+## Index
+
+The index doesn't have the size in the header. So in a stream you are
+forced to read the whole index to identify its length.
+
+The index should have made optional. This would require to remove the
+index size from the footer and include its own footer in the index.
+
+## Padding
 
 The padding should allow direct mapping of the CRC values into memory, but it
 wastes bytes bearing no information. This is certainly not optimal for a
 compression format.
 
-It might also not be necessary to provide the filters including their
-parameters to be provided for each block.
+## Filters for each block
+
+Filteres should have been defined in front of blocks. This way they
+would not need to be repeated.
 
 # LZMA2 
+
+## Consistent header byte.
 
 LZMA2 consists of a series of chunks with a header byte. The header byte
 has a different format depending on whether it is an uncompressed or
@@ -32,4 +45,4 @@ properties and dictionary is not possible with an uncompressed chunk.
 The encoder has to keep a state variable tracking a dictionary reset in
 an uncompressed chunk to ensure that the flags are added in the first
 compressed chunk to follow. This complicates the implementation of the
-encoder.
+encoder and decoder.
