@@ -54,7 +54,10 @@
 
 - Put the package in the lzma. This way we prevent the Encoder, Decoder,
   EncoderDict and DecoderDict types to be exported. Limiting the
-  exported interfaces will be better in the long term.
+  exported interfaces will be better in the long term. (TODO: We need to
+  think about it.)
+- We need an example to explain how to use Reader and Writer.
+
 
 ## Optimizations
 
