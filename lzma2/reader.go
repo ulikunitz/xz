@@ -158,24 +158,6 @@ func (r *Reader) EOS() bool {
 	return r.cstate == stop
 }
 
-// The file reader supports the reading of LZMA2 files, where the first
-// chunk is preceded by the dictionary size.
-type FileReader struct {
-	r Reader
-}
-
-// NewFileReader creates a reader for LZMA2 files, where the dictionary
-// capacity is encoded in the first byte.
-func NewFileReader(lzma2File io.Reader) (r *FileReader, err error) {
-	panic("TODO")
-}
-
-// Reads data from the file reader. It returns io.EOF if the end of the
-// file is encountered.
-func (r *FileReader) Read(p []byte) (n int, err error) {
-	panic("TODO")
-}
-
 type uncompressedReader struct {
 	lr   io.LimitedReader
 	Dict *lzma.DecoderDict
