@@ -20,6 +20,9 @@ The padding should allow direct mapping of the CRC values into memory, but it
 wastes bytes bearing no information. This is certainly not optimal for a
 compression format.
 
+It might also not be necessary to provide the filters including their
+parameters to be provided for each block.
+
 # LZMA2 
 
 LZMA2 consists of a series of chunks with a header byte. The header byte
