@@ -6,69 +6,44 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	flags := fCRC32
-	var buf bytes.Buffer
-
-	n, err := writeHeader(&buf, flags)
+	h := header{flags: fCRC32}
+	data, err := h.MarshalBinary()
 	if err != nil {
-		t.Fatalf("writeHeader error %s", err)
+		t.Fatalf("MarshalBinary error %s", err)
 	}
-	if n != headerLen {
-		t.Fatalf("writeHeader returned %d; want %d", n, headerLen)
+	var g header
+	if err = g.UnmarshalBinary(data); err != nil {
+		t.Fatalf("UnmarshalBinary error %s", err)
 	}
-
-	g, m, err := readHeader(&buf)
-	if err != nil {
-		t.Fatalf("readHeader error %s", err)
-	}
-	if m != headerLen {
-		t.Fatalf("readHeader returned %d; want %d", m, headerLen)
-	}
-	if g != flags {
-		t.Fatalf("readHeader returned flags 0x%02x; want 0x%02x", g,
-			flags)
+	if g != h {
+		t.Fatalf("unmarshalled %#v; want %#v", g, h)
 	}
 }
 
 func TestFooter(t *testing.T) {
-	flags := fCRC32
-	indexSize := uint32(1234)
-	var buf bytes.Buffer
-
-	n, err := writeFooter(&buf, indexSize, flags)
+	f := footer{indexSize: 64, flags: fCRC32}
+	data, err := f.MarshalBinary()
 	if err != nil {
-		t.Fatalf("writeFooter error %s", err)
+		t.Fatalf("MarshalBinary error %s", err)
 	}
-	if n != footerLen {
-		t.Fatalf("writeFooter returned %d; want %d", n, footerLen)
+	var g footer
+	if err = g.UnmarshalBinary(data); err != nil {
+		t.Fatalf("UnmarshalBinary error %s", err)
 	}
-
-	rIndexSize, rFlags, m, err := readFooter(&buf)
-	if err != nil {
-		t.Fatalf("readFooter error %s", err)
-	}
-	if m != footerLen {
-		t.Fatalf("readFooter returned length %d; want %d", m, footerLen)
-	}
-	if rIndexSize != indexSize {
-		t.Fatalf("readFooter returned index size %d; want %d",
-			rIndexSize, indexSize)
-	}
-	if rFlags != flags {
-		t.Fatalf("readFooter returned flags 0x%02x; want 0x%02x",
-			rFlags, flags)
+	if g != f {
+		t.Fatalf("unmarshalled %#v; want %#v", g, f)
 	}
 }
 
 func TestRecord(t *testing.T) {
 	r := record{1234567, 10000}
-	var buf bytes.Buffer
-	n, err := r.writeTo(&buf)
+	p, err := r.MarshalBinary()
 	if err != nil {
-		t.Fatalf("writeTo error %s", err)
+		t.Fatalf("MarshalBinary error %s", err)
 	}
-	var g record
-	m, err := g.readFrom(&buf)
+	n := len(p)
+	buf := bytes.NewReader(p)
+	g, m, err := readRecord(buf)
 	if err != nil {
 		t.Fatalf("readFrom error %s", err)
 	}
@@ -120,5 +95,44 @@ func TestIndex(t *testing.T) {
 		if g[i] != rec {
 			t.Errorf("records[%d] is %v; want %v", i, g[i], rec)
 		}
+	}
+}
+
+func TestBlockHeader(t *testing.T) {
+	h := blockHeader{
+		compressedSize:   1234,
+		uncompressedSize: -1,
+		filters:          []filter{&lzmaFilter{4096}},
+	}
+	data, err := h.MarshalBinary()
+	if err != nil {
+		t.Fatalf("MarshalBinary error %s", err)
+	}
+
+	r := bytes.NewReader(data)
+	g, n, err := readBlockHeader(r)
+	if err != nil {
+		t.Fatalf("readBlockHeader error %s", err)
+	}
+	if n != len(data) {
+		t.Fatalf("readBlockHeader returns %d bytes; want %d", n,
+			len(data))
+	}
+	if g.compressedSize != h.compressedSize {
+		t.Errorf("got compressedSize %d; want %d",
+			g.compressedSize, h.compressedSize)
+	}
+	if g.uncompressedSize != h.uncompressedSize {
+		t.Errorf("got uncompressedSize %d; want %d",
+			g.uncompressedSize, h.uncompressedSize)
+	}
+	if len(g.filters) != len(h.filters) {
+		t.Errorf("got len(filters) %d; want %d",
+			len(g.filters), len(h.filters))
+	}
+	glf := g.filters[0].(*lzmaFilter)
+	hlf := h.filters[0].(*lzmaFilter)
+	if glf.dictCap != hlf.dictCap {
+		t.Errorf("got dictCap %d; want %d", glf.dictCap, hlf.dictCap)
 	}
 }
