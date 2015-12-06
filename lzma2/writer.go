@@ -272,21 +272,3 @@ func (w *Writer) Close() error {
 	w.cstate = stop
 	return nil
 }
-
-// The FileWriter writes LZMA2 files with a leading dictionary capacity
-// byte and an end-of-stream chunk.
-type FileWriter struct {
-	Writer
-}
-
-// NewFileWriter creates an LZMA2 file writer. It writes the initial
-// dictionary capacity byte.
-func NewFileWriter(lzma2 io.Writer) (w *FileWriter, err error) {
-	panic("TODO")
-}
-
-// Close closes the file writer by terminating the active chunk and
-// writing an end-of-stream chunk.
-func (w *FileWriter) Close() error {
-	panic("TODO")
-}
