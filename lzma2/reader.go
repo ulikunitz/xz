@@ -45,7 +45,30 @@ type Reader struct {
 // NewReader creates a reader for an LZMA2 chunk sequence with the given
 // dictionary capacity.
 func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
-	return NewReaderSize(lzma2, dictCap, Default.BufSize)
+	return NewReaderOptions(lzma2, dictCap, Default.Options)
+}
+
+func NewReaderOptions(lzma2 io.Reader, dictCap int, options Options) (r *Reader, err error) {
+	if lzma2 == nil {
+		return nil, errors.New("lzma2: reader must be non-nil")
+	}
+
+	r = &Reader{
+		r:      lzma2,
+		cstate: start,
+	}
+	r.dict, err = lzma.NewDecoderDict(dictCap, options.BufSize)
+	if err != nil {
+		return nil, err
+	}
+	if err = r.startChunk(); err != nil {
+		if err == io.EOF {
+			r.err = err
+			return r, nil
+		}
+		return nil, err
+	}
+	return r, nil
 }
 
 func uncompressed(ctype chunkType) bool {
@@ -102,29 +125,6 @@ func (r *Reader) startChunk() error {
 	}
 	r.chunkReader = r.decoder
 	return nil
-}
-
-func NewReaderSize(lzma2 io.Reader, dictCap int, bufSize int) (r *Reader, err error) {
-
-	if lzma2 == nil {
-		return nil, errors.New("lzma2: reader must be non-nil")
-	}
-
-	r = &Reader{
-		r:      lzma2,
-		cstate: start,
-	}
-	if r.dict, err = lzma.NewDecoderDict(dictCap, bufSize); err != nil {
-		return nil, err
-	}
-	if err = r.startChunk(); err != nil {
-		if err == io.EOF {
-			r.err = err
-			return r, nil
-		}
-		return nil, err
-	}
-	return r, nil
 }
 
 // Read reads data from the LZMA2 chunk sequence. If an end-of-stream
