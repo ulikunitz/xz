@@ -56,7 +56,7 @@ func TestCycle1(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
-	r, err := NewReader(&buf, Default.DictCap)
+	r, err := NewReader(&buf, WriterDefaults.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -87,7 +87,7 @@ func TestCycle2(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader(buf, Default.DictCap)
+	r, err := NewReader(buf, WriterDefaults.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}

@@ -8,32 +8,19 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// Parameters describe LZMA2 parameters.
-type Parameters struct {
+// WriterParameters defines the parameters for an LZMA2 writer.
+type WriterParameters struct {
 	Properties lzma.Properties
 	DictCap    int
-}
-
-// Options defines the options controlling the behaviour of the reader
-// and writer processes.
-type Options struct {
-	// lookahead buffer size
+	// size of lookahead buffer
 	BufSize int
 }
 
-// Default provides the default parameters and options for the LZMA2
-// encoding and decoding.
-var Default = struct {
-	Parameters
-	Options
-}{
-	Parameters{
-		Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
-		DictCap:    8 * 1024 * 1024,
-	},
-	Options{
-		BufSize: 4096,
-	},
+// WriterDefaults provide the default parameters for an LZMA2 writer.
+var WriterDefaults = WriterParameters{
+	Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
+	DictCap:    8 * 1024 * 1024,
+	BufSize:    4096,
 }
 
 // Writer supports the creation of an LZMA2 stream. But note that
@@ -58,13 +45,7 @@ type Writer struct {
 // NewWriter creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
 func NewWriter(lzma2 io.Writer) (w *Writer, err error) {
-	return NewWriterPO(lzma2, Default.Parameters, Default.Options)
-}
-
-// NewWriterParams creates a new Writer with the given parameters. The
-// writer will use the default options.
-func NewWriterParams(lzma2 io.Writer, params Parameters) (w *Writer, err error) {
-	return NewWriterPO(lzma2, params, Default.Options)
+	return NewWriterParams(lzma2, WriterDefaults)
 }
 
 // verifyProps checks the properties including the LZMA2 specific test
@@ -79,9 +60,8 @@ func verifyProps(p lzma.Properties) error {
 	return nil
 }
 
-// NewWriterPO generates a new writer using the given parameters and
-// options.
-func NewWriterPO(lzma2 io.Writer, params Parameters, options Options) (w *Writer, err error) {
+// NewWriterParams creates a new writer using the given parameters.
+func NewWriterParams(lzma2 io.Writer, params WriterParameters) (w *Writer, err error) {
 
 	if lzma2 == nil {
 		return nil, errors.New("lzma2: writer must not be nil")
@@ -100,7 +80,7 @@ func NewWriterPO(lzma2 io.Writer, params Parameters, options Options) (w *Writer
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := lzma.NewEncoderDict(params.DictCap, options.BufSize)
+	d, err := lzma.NewEncoderDict(params.DictCap, params.BufSize)
 	if err != nil {
 		return nil, err
 	}
