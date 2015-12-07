@@ -29,14 +29,14 @@ func (r breader) ReadByte() (c byte, err error) {
 	n, err := r.Reader.Read(p[:])
 	if n < 1 {
 		if err == nil {
-			err = errors.New("ReadByte: no data")
+			err = errors.New("lzma2: no data while reading")
 		}
 		return 0, err
 	}
 	return p[0], nil
 }
 
-// A reader supports the reading of LZMA2 chunk sequences. Note that the
+// Reader supports the reading of LZMA2 chunk sequences. Note that the
 // first chunk should have a dictionary reset and the first compressed
 // chunk a properties reset. The chunk sequence may not be terminated by
 // an end-of-stream chunk.
@@ -165,8 +165,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-//  EOS returns whether the LZMA2 stream has been terminated by an
-//  end-of-stream chunk.
+// EOS returns whether the LZMA2 stream has been terminated by an
+// end-of-stream chunk.
 func (r *Reader) EOS() bool {
 	return r.cstate == stop
 }
