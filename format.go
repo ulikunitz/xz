@@ -39,6 +39,7 @@ func verifyFlags(flags byte) error {
 	}
 }
 
+// header provides the actual content of the xz file header: the flags.
 type header struct {
 	flags byte
 }
@@ -49,6 +50,7 @@ var (
 	errHeaderMagic = errors.New("xz: invalid header magic bytes")
 )
 
+// UnmarshalBinary reads header from the provided data slice.
 func (h *header) UnmarshalBinary(data []byte) error {
 	// header length
 	if len(data) != headerLen {
@@ -80,6 +82,7 @@ func (h *header) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// MarshalBinary generates the xz file header.
 func (h *header) MarshalBinary() (data []byte, err error) {
 	if err = verifyFlags(h.flags); err != nil {
 		return nil, err
@@ -104,16 +107,20 @@ const footerLen = 12
 // footerMagic contains the footer magic bytes.
 var footerMagic = []byte{'Y', 'Z'}
 
+// footer represents the content of the xz file footer.
 type footer struct {
 	indexSize int64
 	flags     byte
 }
 
+// Minimum and maximum for the size of the index (backward size).
 const (
 	minIndexSize = 4
 	maxIndexSize = (1 << 32) * 4
 )
 
+// MarshalBinary converts footer values into an xz file footer. Note
+// that the footer value is checked for correctness.
 func (f *footer) MarshalBinary() (data []byte, err error) {
 	if err = verifyFlags(f.flags); err != nil {
 		return nil, err
@@ -144,6 +151,8 @@ func (f *footer) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+// UnmarshalBinary sets the footer value by unmarshalling an xz file
+// footer.
 func (f *footer) UnmarshalBinary(data []byte) error {
 	if len(data) != footerLen {
 		return errors.New("xz: wrong footer length")
@@ -180,6 +189,7 @@ func (f *footer) UnmarshalBinary(data []byte) error {
 
 /*** Block Header ***/
 
+// blockHeader represents the content of an xz block header.
 type blockHeader struct {
 	compressedSize   int64
 	uncompressedSize int64
@@ -194,8 +204,11 @@ const (
 	reservedBlockFlags      = 0x3C
 )
 
+// errIndexIndicator signals that an index indicator (0x00) has been found
+// instead of an expected block header indicator.
 var errIndexIndicator = errors.New("xz: found index indicator")
 
+// readBlockHeader reads the block header.
 func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 	var buf bytes.Buffer
 	buf.Grow(20)
@@ -229,6 +242,9 @@ func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 	return h, n, nil
 }
 
+// readSizeInBlockHeader reads the uncompressed or compressed size
+// fields in the block header. The present value informs the function
+// whether the respective field is actually present in the header.
 func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
 	if !present {
 		return -1, nil
@@ -243,6 +259,7 @@ func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
 	return int64(x), nil
 }
 
+// UnmarshalBinary unmarshals the block header.
 func (h *blockHeader) UnmarshalBinary(data []byte) error {
 	// Check header length
 	s := data[0]
@@ -306,6 +323,7 @@ func (h *blockHeader) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// MarshalBinary marshals the binary header.
 func (h *blockHeader) MarshalBinary() (data []byte, err error) {
 	if !(minFilters <= len(h.filters) && len(h.filters) <= maxFilters) {
 		return nil, errors.New("xz: filter count wrong")
@@ -384,34 +402,44 @@ func (h *blockHeader) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
+// Constants used for marshalling and unmarshalling filters in the xz
+// block header.
 const (
 	minFilters    = 1
 	maxFilters    = 4
 	minReservedID = 1 << 62
 )
 
+// filter represents a filter in the block header.
 type filter interface {
 	id() uint64
 	UnmarshalBinary(data []byte) error
 	MarshalBinary() (data []byte, err error)
 }
 
+// LZMA filter constants.
 const (
 	lzmaFilterID  = 0x21
 	lzmaFilterLen = 3
 )
 
+// lzmaFilter declares the LZMA2 filter information stored in an xz
+// block header.
 type lzmaFilter struct {
 	dictCap int64
 }
 
+// id returns the ID for the LZMA2 filter.
 func (f lzmaFilter) id() uint64 { return lzmaFilterID }
 
+// MarshalBinary converts the lzmaFilter in its encoded representation.
 func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
 	c := lzma2.EncodeDictCap(f.dictCap)
 	return []byte{lzmaFilterID, 1, c}, nil
 }
 
+// UnmarshalBinary unmarshals the given data representation of the LZMA2
+// filter.
 func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 	if len(data) != lzmaFilterLen {
 		return errors.New("xz: data for LZMA2 filter has wrong length")
@@ -431,6 +459,8 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// readFilter reads a block filter from the block header. At this point
+// in time only the LZMA2 filter is supported.
 func readFilter(r io.Reader) (f filter, err error) {
 	br := byteReader(r)
 
@@ -462,6 +492,8 @@ func readFilter(r io.Reader) (f filter, err error) {
 	return f, err
 }
 
+// readFilters reads count filters. At this point in time only the count
+// 1 is supported.
 func readFilters(r io.Reader, count int) (filters []filter, err error) {
 	if count != 1 {
 		return nil, errors.New("xz: unsupported filter count")
@@ -473,6 +505,7 @@ func readFilters(r io.Reader, count int) (filters []filter, err error) {
 	return []filter{f}, err
 }
 
+// writeFilters writes the filters.
 func writeFilters(w io.Writer, filters []filter) (n int, err error) {
 	for _, f := range filters {
 		p, err := f.MarshalBinary()
@@ -496,6 +529,7 @@ type record struct {
 	uncompressedSize int64
 }
 
+// readRecord reads an index record.
 func readRecord(r io.ByteReader) (rec record, n int, err error) {
 	u, k, err := readUvarint(r)
 	n += k
@@ -520,6 +554,7 @@ func readRecord(r io.ByteReader) (rec record, n int, err error) {
 	return rec, n, nil
 }
 
+// MarshalBinary converts an index record in its binary encoding.
 func (rec *record) MarshalBinary() (data []byte, err error) {
 	// maximum length of a uvarint is 10
 	p := make([]byte, 20)
@@ -528,6 +563,7 @@ func (rec *record) MarshalBinary() (data []byte, err error) {
 	return p[:n], nil
 }
 
+// writeIndex writes the index, a sequence of records.
 func writeIndex(w io.Writer, index []record) (n int, err error) {
 	crc := crc32.NewIEEE()
 	mw := io.MultiWriter(w, crc)
@@ -578,11 +614,13 @@ func writeIndex(w io.Writer, index []record) (n int, err error) {
 	return n, err
 }
 
+// bReader provides the ReadByte function for a reader.
 type bReader struct {
 	io.Reader
 	p []byte
 }
 
+// ReadByte reads a single byte from the reader.
 func (br *bReader) ReadByte() (c byte, err error) {
 	n, err := br.Read(br.p)
 	if n == 1 {
@@ -594,6 +632,9 @@ func (br *bReader) ReadByte() (c byte, err error) {
 	return 0, err
 }
 
+// byteReader converts the reader into a ByteReader. If the reader
+// supports the ByteReader interface directly it will be used otherwise
+// a wrapper will be used.
 func byteReader(r io.Reader) io.ByteReader {
 	if br, ok := r.(io.ByteReader); ok {
 		return br
@@ -601,6 +642,8 @@ func byteReader(r io.Reader) io.ByteReader {
 	return &bReader{r, make([]byte, 1)}
 }
 
+// readIndexBody reads the index from the reader. It assumes that the
+// index indicator has already been read.
 func readIndexBody(r io.Reader) (records []record, n int, err error) {
 	crc := crc32.NewIEEE()
 
