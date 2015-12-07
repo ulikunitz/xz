@@ -46,7 +46,7 @@ type Encoder struct {
 // NewEncoder creates a new encoder. If the byte writer must be
 // limited use LimitedByteWriter provided by this package. The flags
 // argument supports the EOSMarker flag, controlling whether a
-// termnating end-of-stream marker must be written.
+// terminating end-of-stream marker must be written.
 func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 	flags EncoderFlags) (e *Encoder, err error) {
 
