@@ -10,6 +10,16 @@ import (
 	"github.com/ulikunitz/xz/lzma2"
 )
 
+// allZeros checks whether a given byte slice has only zeros.
+func allZeros(p []byte) bool {
+	for _, c := range p {
+		if c != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 /*** Header ***/
 
 // headerMagic stores the magic bytes for the header
@@ -271,11 +281,12 @@ func (h *blockHeader) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("xz: data length %d; want %d", len(data),
 			headerLen)
 	}
+	n := headerLen - 4
 
 	// Check CRC-32
 	crc := crc32.NewIEEE()
-	crc.Write(data[:headerLen-4])
-	if crc.Sum32() != uint32LE(data[headerLen-4:]) {
+	crc.Write(data[:n])
+	if crc.Sum32() != uint32LE(data[n:]) {
 		return errors.New("xz: checksum error for block header")
 	}
 
@@ -285,7 +296,7 @@ func (h *blockHeader) UnmarshalBinary(data []byte) error {
 		return errors.New("xz: reserved block header flags set")
 	}
 
-	r := bytes.NewReader(data[2 : headerLen-4])
+	r := bytes.NewReader(data[2:n])
 
 	// Compressed size
 	var err error
@@ -310,16 +321,13 @@ func (h *blockHeader) UnmarshalBinary(data []byte) error {
 	// Check padding
 	// Since headerLen is a multiple of 4 we don't need to check
 	// alignment.
-	if r.Len() > 3 {
+	k := r.Len()
+	if k > 3 {
 		return errors.New("xz: unexpected padding size")
 	}
-	for i := 0; i < r.Len(); i++ {
-		c, _ := r.ReadByte()
-		if c != 0 {
-			return errPadding
-		}
+	if !allZeros(data[n-k : n]) {
+		return errPadding
 	}
-
 	return nil
 }
 
@@ -646,7 +654,6 @@ func byteReader(r io.Reader) io.ByteReader {
 // index indicator has already been read.
 func readIndexBody(r io.Reader) (records []record, n int, err error) {
 	crc := crc32.NewIEEE()
-
 	// index indicator
 	crc.Write([]byte{0})
 
@@ -669,36 +676,33 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 		records[i], k, err = readRecord(br)
 		n += k
 		if err != nil {
-			return records[:i], n, err
+			return nil, n, err
 		}
 	}
 
-	// index padding
-	if k = (n + 1) % 4; k > 0 {
-		k = 4 - k
-		for i := 0; i < k; i++ {
-			c, err := br.ReadByte()
-			if err != nil {
-				return records, n, err
-			}
-			n += 1
-			if c != 0 {
-				return records, n, errors.New(
-					"xz: non-zero byte in index padding")
-			}
-		}
+	if k = (n+1)%4; k > 0 {
+		k = 4-k
+	}
+	p := make([]byte, k, 4)
+	k, err = io.ReadFull(br.(io.Reader), p)
+	n += k
+	if err != nil {
+		return nil, n, err
+	}
+	if !allZeros(p) {
+		return nil, n, errors.New("xz: non-zero byte in index padding")
 	}
 
 	// crc32
 	s := crc.Sum32()
-	p := make([]byte, 4)
+	p = p[:4]
 	k, err = io.ReadFull(br.(io.Reader), p)
 	n += k
 	if err != nil {
 		return records, n, err
 	}
 	if uint32LE(p) != s {
-		return records, n, errors.New("xz: wrong checsum for index")
+		return nil, n, errors.New("xz: wrong checksum for index")
 	}
 
 	return records, n, nil
