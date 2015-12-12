@@ -2,8 +2,10 @@ package xz
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash"
 	"hash/crc32"
 	"io"
 
@@ -47,6 +49,22 @@ func verifyFlags(flags byte) error {
 	default:
 		return errInvalidFlags
 	}
+}
+
+// newHashFunc returns a function that creates hash instances for the
+// hash method encoded in flags.
+func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
+	switch flags {
+	case fCRC32:
+		newHash = newCRC32
+	case fCRC64:
+		newHash = newCRC64
+	case fSHA256:
+		newHash = sha256.New
+	default:
+		err = errInvalidFlags
+	}
+	return
 }
 
 // header provides the actual content of the xz file header: the flags.
@@ -680,8 +698,8 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 		}
 	}
 
-	if k = (n+1)%4; k > 0 {
-		k = 4-k
+	if k = (n + 1) % 4; k > 0 {
+		k = 4 - k
 	}
 	p := make([]byte, k, 4)
 	k, err = io.ReadFull(br.(io.Reader), p)

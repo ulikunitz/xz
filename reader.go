@@ -3,6 +3,7 @@ package xz
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"hash"
 	"hash/crc64"
 	"io"
@@ -24,6 +25,11 @@ const (
 )
 
 type Reader struct {
+	xz      io.Reader
+	err     error
+	br      *blockReader
+	newHash func() hash.Hash
+	h       header
 }
 
 func NewReader(xz io.Reader) (r *Reader, err error) {
@@ -31,8 +37,91 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 }
 
 func NewReaderParams(xz io.Reader, params ReaderParameters) (r *Reader, err error) {
-	r = &Reader{}
+	r = &Reader{
+		xz: xz,
+	}
+	p := make([]byte, headerLen)
+	if _, err = io.ReadFull(r.xz, p); err != nil {
+		if err == io.EOF {
+			err = errUnexpectedEOF
+		}
+		return nil, err
+	}
+	if err = r.h.UnmarshalBinary(p); err != nil {
+		return nil, err
+	}
+	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
+		return nil, err
+	}
 	return r, nil
+}
+
+func (r *Reader) readTail() error {
+	_, n, err := readIndexBody(r.xz)
+	if err != nil {
+		if err == io.EOF {
+			err = errUnexpectedEOF
+		}
+		return err
+	}
+	p := make([]byte, footerLen)
+	if _, err = io.ReadFull(r.xz, p); err != nil {
+		if err == io.EOF {
+			err = errUnexpectedEOF
+		}
+		return err
+	}
+	var f footer
+	if err = f.UnmarshalBinary(p); err != nil {
+		return err
+	}
+	if f.flags != r.h.flags {
+		return errors.New("xz: footer flags incorrect")
+	}
+	if f.indexSize != int64(n)+1 {
+		return errors.New("xz: index size in footer wrong")
+	}
+	return nil
+}
+
+func (r *Reader) read(p []byte) (n int, err error) {
+	for n < len(p) {
+		if r.br == nil {
+			bh, _, err := readBlockHeader(r.xz)
+			if err != nil {
+				if err == errIndexIndicator {
+					if err = r.readTail(); err != nil {
+						return n, err
+					}
+					return n, io.EOF
+				}
+				return n, err
+			}
+			r.br, err = newBlockReader(r.xz, r.newHash, bh)
+			if err != nil {
+				return n, err
+			}
+		}
+		k, err := r.br.Read(p[n:])
+		n += k
+		if err != nil {
+			if err == io.EOF {
+				r.br = nil
+			} else {
+				return n, err
+			}
+		}
+	}
+	return n, nil
+}
+
+func (r *Reader) Read(p []byte) (n int, err error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	n, err = r.read(p)
+	r.err = err
+	return n, err
 }
 
 type blockReader struct {
@@ -128,6 +217,7 @@ func (br *blockReader) read(p []byte) (n int, err error) {
 
 func (br *blockReader) Read(p []byte) (n int, err error) {
 	if br.err != nil {
+		fmt.Printf("Repeated block read %d error %v\n", 0, br.err)
 		return 0, br.err
 	}
 	n, err = br.read(p)
