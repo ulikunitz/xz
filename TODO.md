@@ -2,16 +2,18 @@
 
 ## Release v0.4
 
-1. Implement package lzma2 (see below)
-2. Implement the xz code using the lzma2 package. Check xz documentation
+1. Implement the xz code using the lzma2 package. Check xz documentation
    for the code filters. Implement them only if they are created by xz
    without special flags.
-3. Write the first version of xzgo. It should be able to decode and
+2. Clean interfaces
+    - NewWriter without errors
+    - remove clutter
+2. Write the first version of xzgo. It should be able to decode and
    encode xz files.
-4. Add test for xzgo
-5. Add example for using the xz package to the README. The binary should
+3. Add test for xzgo
+4. Add example for using the xz package to the README. The binary should
    be put into the background.
-6. Add Silesia corpus to the tests
+5. Add Silesia corpus to the tests
 
 ## Release v0.5
 
@@ -40,6 +42,7 @@
 
 - Rename EncoderDict and DecoderDict into EncoderBuffer and
   DecoderBuffer.
+- NewWriter must not return an error.
 
 ### Release v0.5
 
@@ -57,7 +60,7 @@
   exported interfaces will be better in the long term. (TODO: We need to
   think about it.)
 - We need an example to explain how to use Reader and Writer.
-
+- NewWriter must not return an error.
 
 ## Optimizations
 
