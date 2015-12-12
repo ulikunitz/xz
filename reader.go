@@ -5,18 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"hash/crc64"
 	"io"
 
 	"github.com/ulikunitz/xz/lzma2"
 )
 
+// errUnexpectedEOF indicates an unexpected end of file.
 var errUnexpectedEOF = errors.New("xz: unexpected end of file")
 
+// ReaderParameters define the parameters for the reader.
 type ReaderParameters struct {
 	flags byte
 }
 
+// ReaderDefaults provide the default parameters for an xz reader
+// instance.
 var ReaderDefaults = ReaderParameters{}
 
 // Flags for the reader parameters.
@@ -24,6 +27,7 @@ const (
 	Serial = 1 << iota
 )
 
+// Reader decodes xz files.
 type Reader struct {
 	xz      io.Reader
 	err     error
@@ -32,10 +36,12 @@ type Reader struct {
 	h       header
 }
 
+// NewReader creates a new xz reader.
 func NewReader(xz io.Reader) (r *Reader, err error) {
 	return NewReaderParams(xz, ReaderDefaults)
 }
 
+// NewReaderParams supports the parametrization of the xz file reader.
 func NewReaderParams(xz io.Reader, params ReaderParameters) (r *Reader, err error) {
 	r = &Reader{
 		xz: xz,
@@ -56,6 +62,7 @@ func NewReaderParams(xz io.Reader, params ReaderParameters) (r *Reader, err erro
 	return r, nil
 }
 
+// readTail reads the index body and the xz footer.
 func (r *Reader) readTail() error {
 	_, n, err := readIndexBody(r.xz)
 	if err != nil {
@@ -84,6 +91,7 @@ func (r *Reader) readTail() error {
 	return nil
 }
 
+// read reads actual data from the xz stream.
 func (r *Reader) read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.br == nil {
@@ -115,6 +123,7 @@ func (r *Reader) read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Read decompresses the data of the xz stream.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
@@ -124,6 +133,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// blockReader is used to read data from a single block.
 type blockReader struct {
 	r     io.Reader
 	lzma2 io.Reader
@@ -133,8 +143,7 @@ type blockReader struct {
 	err   error
 }
 
-var crc64Table = crc64.MakeTable(crc64.ECMA)
-
+// newBlockReader creates a new block reader.
 func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader) (br *blockReader, err error) {
 	// some consistency checks
 	if len(bh.filters) != 1 {
@@ -178,8 +187,11 @@ func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader) (br 
 	return br, nil
 }
 
+// errBlockSize indicates that the size of the block in the block header
+// is wrong.
 var errBlockSize = errors.New("xz: wrong uncompressed size for block")
 
+// read reads data from the block and checks the checksum at the end.
 func (br *blockReader) read(p []byte) (n int, err error) {
 	n, err = br.lzma2.Read(p)
 	br.count += int64(n)
@@ -215,6 +227,7 @@ func (br *blockReader) read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
+// Read reads uncompressed data from the block.
 func (br *blockReader) Read(p []byte) (n int, err error) {
 	if br.err != nil {
 		fmt.Printf("Repeated block read %d error %v\n", 0, br.err)

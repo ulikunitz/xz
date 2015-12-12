@@ -27,7 +27,7 @@ func putUint64LE(p []byte, x uint64) {
 	p[7] = byte(x >> 56)
 }
 
-// uint32LE converts a little endian representation to a uint32 value.
+// uint32LE converts a little endian representation to an uint32 value.
 func uint32LE(p []byte) uint32 {
 	return uint32(p[0]) | uint32(p[1])<<8 | uint32(p[2])<<16 |
 		uint32(p[3])<<24
