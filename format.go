@@ -22,6 +22,16 @@ func allZeros(p []byte) bool {
 	return true
 }
 
+// padLen returns the length of the padding required for the given
+// argument.
+func padLen(n int64) int {
+	k := int(n % 4)
+	if k > 0 {
+		k = 4 - k
+	}
+	return k
+}
+
 /*** Header ***/
 
 // headerMagic stores the magic bytes for the header
@@ -32,9 +42,9 @@ const headerLen = 12
 
 // Constants for the checksum methods supported by xz.
 const (
-	fCRC32  byte = 0x1
-	fCRC64       = 0x4
-	fSHA256      = 0xa
+	CRC32  byte = 0x1
+	CRC64       = 0x4
+	SHA256      = 0xa
 )
 
 // errInvalidFlags indicates that flags are invalid.
@@ -44,7 +54,7 @@ var errInvalidFlags = errors.New("xz: invalid flags")
 // invalid.
 func verifyFlags(flags byte) error {
 	switch flags {
-	case fCRC32, fCRC64, fSHA256:
+	case CRC32, CRC64, SHA256:
 		return nil
 	default:
 		return errInvalidFlags
@@ -55,11 +65,11 @@ func verifyFlags(flags byte) error {
 // hash method encoded in flags.
 func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
 	switch flags {
-	case fCRC32:
+	case CRC32:
 		newHash = newCRC32
-	case fCRC64:
+	case CRC64:
 		newHash = newCRC64
-	case fSHA256:
+	case SHA256:
 		newHash = sha256.New
 	default:
 		err = errInvalidFlags
@@ -401,11 +411,9 @@ func (h *blockHeader) MarshalBinary() (data []byte, err error) {
 		buf.Write(fp)
 	}
 
-	k := buf.Len() % 4
-	if k > 0 {
-		for i := k; i < 4; i++ {
-			buf.WriteByte(0)
-		}
+	// padding
+	for i := padLen(int64(buf.Len())); i > 0; i-- {
+		buf.WriteByte(0)
 	}
 
 	// crc place holder
@@ -590,13 +598,13 @@ func (rec *record) MarshalBinary() (data []byte, err error) {
 }
 
 // writeIndex writes the index, a sequence of records.
-func writeIndex(w io.Writer, index []record) (n int, err error) {
+func writeIndex(w io.Writer, index []record) (n int64, err error) {
 	crc := crc32.NewIEEE()
 	mw := io.MultiWriter(w, crc)
 
 	// index indicator
 	k, err := mw.Write([]byte{0})
-	n += k
+	n += int64(k)
 	if err != nil {
 		return n, err
 	}
@@ -605,7 +613,7 @@ func writeIndex(w io.Writer, index []record) (n int, err error) {
 	p := make([]byte, 10)
 	k = putUvarint(p, uint64(len(index)))
 	k, err = mw.Write(p[:k])
-	n += k
+	n += int64(k)
 	if err != nil {
 		return n, err
 	}
@@ -617,25 +625,23 @@ func writeIndex(w io.Writer, index []record) (n int, err error) {
 			return n, err
 		}
 		k, err = mw.Write(p)
-		n += k
+		n += int64(k)
 		if err != nil {
 			return n, err
 		}
 	}
 
 	// index padding
-	if k = n % 4; k > 0 {
-		k, err = mw.Write(make([]byte, 4-k))
-		n += k
-		if err != nil {
-			return n, err
-		}
+	k, err = mw.Write(make([]byte, padLen(int64(n))))
+	n += int64(k)
+	if err != nil {
+		return n, err
 	}
 
 	// crc32 checksum
 	putUint32LE(p, crc.Sum32())
 	k, err = w.Write(p[:4])
-	n += k
+	n += int64(k)
 
 	return n, err
 }
@@ -670,7 +676,7 @@ func byteReader(r io.Reader) io.ByteReader {
 
 // readIndexBody reads the index from the reader. It assumes that the
 // index indicator has already been read.
-func readIndexBody(r io.Reader) (records []record, n int, err error) {
+func readIndexBody(r io.Reader) (records []record, n int64, err error) {
 	crc := crc32.NewIEEE()
 	// index indicator
 	crc.Write([]byte{0})
@@ -679,7 +685,7 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 
 	// number of records
 	u, k, err := readUvarint(br)
-	n += k
+	n += int64(k)
 	if err != nil {
 		return nil, n, err
 	}
@@ -692,18 +698,15 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 	records = make([]record, recLen)
 	for i := range records {
 		records[i], k, err = readRecord(br)
-		n += k
+		n += int64(k)
 		if err != nil {
 			return nil, n, err
 		}
 	}
 
-	if k = (n + 1) % 4; k > 0 {
-		k = 4 - k
-	}
-	p := make([]byte, k, 4)
+	p := make([]byte, padLen(int64(n+1)), 4)
 	k, err = io.ReadFull(br.(io.Reader), p)
-	n += k
+	n += int64(k)
 	if err != nil {
 		return nil, n, err
 	}
@@ -715,7 +718,7 @@ func readIndexBody(r io.Reader) (records []record, n int, err error) {
 	s := crc.Sum32()
 	p = p[:4]
 	k, err = io.ReadFull(br.(io.Reader), p)
-	n += k
+	n += int64(k)
 	if err != nil {
 		return records, n, err
 	}

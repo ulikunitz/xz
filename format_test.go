@@ -6,7 +6,7 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	h := header{flags: fCRC32}
+	h := header{flags: CRC32}
 	data, err := h.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
@@ -21,7 +21,7 @@ func TestHeader(t *testing.T) {
 }
 
 func TestFooter(t *testing.T) {
-	f := footer{indexSize: 64, flags: fCRC32}
+	f := footer{indexSize: 64, flags: CRC32}
 	data, err := f.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
@@ -68,7 +68,7 @@ func TestIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("writeIndex error %s", err)
 	}
-	if n != buf.Len() {
+	if n != int64(buf.Len()) {
 		t.Fatalf("writeIndex returned %d; want %d", n, buf.Len())
 	}
 
