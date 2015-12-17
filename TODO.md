@@ -7,10 +7,10 @@
    without special flags.
 2. Clean interfaces
     - NewWriter without errors
-    - remove clutter
-2. Write the first version of xzgo. It should be able to decode and
+    - remove clutter; see package specific comments below
+2. Write the first version of gxz. It should be able to decode and
    encode xz files.
-3. Add test for xzgo
+3. Add test for gxz
 4. Add example for using the xz package to the README. The binary should
    be put into the background.
 5. Add Silesia corpus to the tests
@@ -23,8 +23,8 @@
 
 ## Release v1.0
 
-1. Full functioning xzgo
-2. Support by xzgo tool. It will not support lzma in the same binary.
+1. Full functioning gxz
+2. Support by gxz tool. It will not support lzma in the same binary.
     - xz
     - xzcat
     - unxz
@@ -42,6 +42,12 @@
 
 - Rename EncoderDict and DecoderDict into EncoderBuffer and
   DecoderBuffer.
+- NewWriter and NewReader expose parameters as part of the Writer and
+  Reader structure. Changes before the first Write or Read are taken
+  into account.
+- For the encoder bufSize gives the size of the lookahead buffer.
+  Decoder doesn't support the parameter. One can always extend dictCap.
+- Rename NewStateClone to CloneState
 - NewWriter must not return an error.
 
 ### Release v0.5
@@ -55,18 +61,21 @@
 
 ## Package lzma2
 
-- Put the package in the lzma. This way we prevent the Encoder, Decoder,
-  EncoderDict and DecoderDict types to be exported. Limiting the
-  exported interfaces will be better in the long term. (TODO: We need to
-  think about it.)
 - We need an example to explain how to use Reader and Writer.
-- NewWriter must not return an error.
+- NewWriter doesn't return an error.
+- Use the same approach for parameters as lzma.
+- Add a Properties field to Reader and Writer.
 
 ## Optimizations
 
+- There may be a lot of false sharing in lzma.State; check whether this
+  can be improved by reorganizing the internal structure of it.
+- Check whether batching encoding and decoding improves speed.
+
 ### DAG optimizations
 
-Use full buffer to create minimal bit-length above range encoder.
+- Use full buffer to create minimal bit-length above range encoder.
+- Might be too slow (see v0.4)
 
 ### Different match finders
 
@@ -78,7 +87,7 @@ Use full buffer to create minimal bit-length above range encoder.
 
 ## Release Procedure
 
-- execute goch -l for all packages
+- execute goch -l for all packages; probably with lower param like 0.5.
 - check orthography with gospell
 - Write release notes in doc/relnotes.
 - Update README.md
