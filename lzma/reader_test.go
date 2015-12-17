@@ -252,10 +252,8 @@ func newCodeReader(r io.Reader) *io.PipeReader {
 	pr, pw := io.Pipe()
 	go func() {
 		bw := bufio.NewWriter(pw)
-		lw, err := NewWriter(bw)
-		if err != nil {
-			log.Fatalf("NewWriter() error %s", err)
-		}
+		lw := NewWriter(bw)
+		var err error
 		if _, err = io.Copy(lw, r); err != nil {
 			log.Fatalf("io.Copy error %s", err)
 		}

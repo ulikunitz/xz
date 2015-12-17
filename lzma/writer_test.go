@@ -20,10 +20,7 @@ import (
 func TestWriterCycle(t *testing.T) {
 	orig := readOrigFile(t)
 	buf := new(bytes.Buffer)
-	w, err := NewWriter(buf)
-	if err != nil {
-		t.Fatalf("NewWriter: error %s", err)
-	}
+	w := NewWriter(buf)
 	n, err := w.Write(orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
@@ -71,12 +68,8 @@ func TestWriterLongData(t *testing.T) {
 		t.Fatalf("ReadAll read %d bytes; want %d", len(txt), size)
 	}
 	buf := &bytes.Buffer{}
-	params := Default
-	params.DictCap = 0x4000
-	w, err := NewWriterParams(buf, &params)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(buf)
+	w.DictCap = 0x4000
 	n, err := w.Write(txt)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
@@ -110,11 +103,9 @@ func Example_writer() {
 	pr, pw := io.Pipe()
 	go func() {
 		bw := bufio.NewWriter(pw)
-		w, err := NewWriter(bw)
-		if err != nil {
-			log.Fatal(err)
-		}
+		w := NewWriter(bw)
 		input := []byte("The quick brown fox jumps over the lazy dog.")
+		var err error
 		if _, err = w.Write(input); err != nil {
 			log.Fatal(err)
 		}
@@ -139,14 +130,10 @@ func Example_writer() {
 }
 
 func TestWriter_Size(t *testing.T) {
-	p := Default
-	p.Size = 10
-	p.EOSMarker = true
 	buf := new(bytes.Buffer)
-	w, err := NewWriterParams(buf, &p)
-	if err != nil {
-		t.Fatalf("NewWriterParams errors %s", err)
-	}
+	w := NewWriter(buf)
+	w.Size = 10
+	w.EOSMarker = true
 	q := []byte{'a'}
 	for i := 0; i < 9; i++ {
 		n, err := w.Write(q)
@@ -158,7 +145,7 @@ func TestWriter_Size(t *testing.T) {
 		}
 		q[0]++
 	}
-	if err = w.Close(); err != errSize {
+	if err := w.Close(); err != errSize {
 		t.Fatalf("expected errSize, but got %v", err)
 	}
 	n, err := w.Write(q)
@@ -198,12 +185,8 @@ func BenchmarkReader(b *testing.B) {
 		b.Fatalf("ReadAll error %s", err)
 	}
 	buf := &bytes.Buffer{}
-	params := Default
-	params.DictCap = 0x4000
-	w, err := NewWriterParams(buf, &params)
-	if err != nil {
-		b.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(buf)
+	w.DictCap = 0x4000
 	if _, err = w.Write(txt); err != nil {
 		b.Fatalf("w.Write error %s", err)
 	}
@@ -242,12 +225,8 @@ func BenchmarkWriter(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
-		params := Default
-		params.DictCap = 0x4000
-		w, err := NewWriterParams(buf, &params)
-		if err != nil {
-			b.Fatalf("NewWriter error %s", err)
-		}
+		w := NewWriter(buf)
+		w.DictCap = 0x4000
 		if _, err = w.Write(txt); err != nil {
 			b.Fatalf("w.Write error %s", err)
 		}

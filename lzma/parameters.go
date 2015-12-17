@@ -89,38 +89,6 @@ func (p *Parameters) normalizeReader() {
 	}
 }
 
-// normalizeWriter normalizes the parameter for the LZMA writer.
-func (p *Parameters) normalizeWriter() {
-	if p.DictCap < MinDictCap {
-		p.DictCap = MinDictCap
-	}
-	if p.Size < 0 {
-		p.EOSMarker = true
-	}
-	if p.BufSize < maxMatchLen {
-		p.BufSize = p.DictCap + 4096
-	}
-}
-
-// verifyWriter verifies parameters for the LZMA writer. It must be
-// called after values have been normalized.
-func (p *Parameters) verifyWriter() error {
-	if p == nil {
-		return errors.New("LZMA parameters must be non-nil")
-	}
-	if err := p.Properties.Verify(); err != nil {
-		return err
-	}
-	if !(MinDictCap <= p.DictCap && p.DictCap <= MaxDictCap) {
-		return errors.New("dictionary capacity out of range")
-	}
-	if p.BufSize < maxMatchLen {
-		return fmt.Errorf("buffer size must be at least %d "+
-			"bytes", maxMatchLen)
-	}
-	return nil
-}
-
 // readHeader reads the classic LZMA header.
 func readHeader(r io.Reader) (p *Parameters, err error) {
 	b := make([]byte, 13)
