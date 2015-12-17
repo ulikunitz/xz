@@ -13,16 +13,21 @@ const (
 	MaxDictCap = 1<<32 - 1
 )
 
-// Writer compresses data in the classic LZMA format.
+// Writer compresses data in the classic LZMA format. The public fields
+// may be changed before calling the first Write method.
 type Writer struct {
 	Properties Properties
-	DictCap    int
-	Size       int64
-	BufSize    int
-	EOSMarker  bool
-	bw         io.ByteWriter
-	buf        *bufio.Writer
-	e          *Encoder
+	// dictionary capacity
+	DictCap int
+	// Size of the stream
+	Size int64
+	// size of the lookahead buffer
+	BufSize int
+	// EOS marker requested
+	EOSMarker bool
+	bw        io.ByteWriter
+	buf       *bufio.Writer
+	e         *Encoder
 }
 
 // NewWriter creates a new writer for the classic LZMA format.
@@ -45,6 +50,7 @@ func NewWriter(lzma io.Writer) *Writer {
 	return w
 }
 
+// writeHeader writes the LZMA header into the stream.
 func (w *Writer) writeHeader() error {
 	p := make([]byte, 13)
 	p[0] = w.Properties.Code()
@@ -60,6 +66,8 @@ func (w *Writer) writeHeader() error {
 	return err
 }
 
+// init initializes the encoder for the writer and writes the stream
+// header.
 func (w *Writer) init() error {
 	if w.e != nil {
 		panic("w.e expected to be nil")
