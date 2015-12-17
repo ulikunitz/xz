@@ -42,13 +42,11 @@
 
 - Rename EncoderDict and DecoderDict into EncoderBuffer and
   DecoderBuffer.
-- NewWriter and NewReader expose parameters as part of the Writer and
-  Reader structure. Changes before the first Write or Read are taken
-  into account.
+-  NewReader expose parameters as part of the Reader structure.
+   Changes before the first Read are taken into account.
 - For the encoder bufSize gives the size of the lookahead buffer.
   Decoder doesn't support the parameter. One can always extend dictCap.
 - Rename NewStateClone to CloneState
-- NewWriter must not return an error.
 
 ### Release v0.5
 
