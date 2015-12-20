@@ -40,8 +40,6 @@
 
 ## Package lzma
 
-- Rename EncoderDict and DecoderDict into EncoderBuffer and
-  DecoderBuffer.
 -  NewReader expose parameters as part of the Reader structure.
    Changes before the first Read are taken into account.
 - For the encoder bufSize gives the size of the lookahead buffer.
