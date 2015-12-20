@@ -16,11 +16,8 @@ const (
 // Writer compresses data in the classic LZMA format. The public fields
 // may be changed before calling the first Write method.
 type Writer struct {
-	Properties Properties
-	// dictionary capacity
-	DictCap int
-	// Size of the stream
-	Size int64
+	// Header parameters
+	Header
 	// size of the lookahead buffer
 	BufSize int
 	// EOS marker requested
@@ -33,11 +30,13 @@ type Writer struct {
 // NewWriter creates a new writer for the classic LZMA format.
 func NewWriter(lzma io.Writer) *Writer {
 	w := &Writer{
-		Properties: Properties{LC: 3, LP: 0, PB: 2},
-		DictCap:    8 * 1024 * 1024,
-		Size:       -1,
-		BufSize:    4096,
-		EOSMarker:  true,
+		Header: Header{
+			Properties: Properties{LC: 3, LP: 0, PB: 2},
+			DictCap:    8 * 1024 * 1024,
+			Size:       -1,
+		},
+		BufSize:   4096,
+		EOSMarker: true,
 	}
 
 	var ok bool
@@ -52,17 +51,11 @@ func NewWriter(lzma io.Writer) *Writer {
 
 // writeHeader writes the LZMA header into the stream.
 func (w *Writer) writeHeader() error {
-	p := make([]byte, 13)
-	p[0] = w.Properties.Code()
-	putUint32LE(p[1:5], uint32(w.DictCap))
-	var l uint64
-	if w.Size >= 0 {
-		l = uint64(w.Size)
-	} else {
-		l = noHeaderLen
+	data, err := w.Header.marshalBinary()
+	if err != nil {
+		return err
 	}
-	putUint64LE(p[5:], l)
-	_, err := w.bw.(io.Writer).Write(p)
+	_, err = w.bw.(io.Writer).Write(data)
 	return err
 }
 

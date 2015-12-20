@@ -10,54 +10,6 @@ import (
 	"io"
 )
 
-// uint32LE reads an uint32 integer from a byte slize
-func uint32LE(b []byte) uint32 {
-	x := uint32(b[3]) << 24
-	x |= uint32(b[2]) << 16
-	x |= uint32(b[1]) << 8
-	x |= uint32(b[0])
-	return x
-}
-
-// uint64LE converts the uint64 value stored as little endian to an uint64
-// value.
-func uint64LE(b []byte) uint64 {
-	x := uint64(b[7]) << 56
-	x |= uint64(b[6]) << 48
-	x |= uint64(b[5]) << 40
-	x |= uint64(b[4]) << 32
-	x |= uint64(b[3]) << 24
-	x |= uint64(b[2]) << 16
-	x |= uint64(b[1]) << 8
-	x |= uint64(b[0])
-	return x
-}
-
-// putUint32LE puts an uint32 integer into a byte slice that must have at least
-// a lenght of 4 bytes.
-func putUint32LE(b []byte, x uint32) {
-	b[0] = byte(x)
-	b[1] = byte(x >> 8)
-	b[2] = byte(x >> 16)
-	b[3] = byte(x >> 24)
-}
-
-// putUint64LE puts the uint64 value into the byte slice as little endian
-// value. The byte slice b must have at least place for 8 bytes.
-func putUint64LE(b []byte, x uint64) {
-	b[0] = byte(x)
-	b[1] = byte(x >> 8)
-	b[2] = byte(x >> 16)
-	b[3] = byte(x >> 24)
-	b[4] = byte(x >> 32)
-	b[5] = byte(x >> 40)
-	b[6] = byte(x >> 48)
-	b[7] = byte(x >> 56)
-}
-
-// noHeaderLen defines the value of the length field in the LZMA header.
-const noHeaderLen uint64 = 1<<64 - 1
-
 // Parameters provides the Parameters of an LZMA reader and LZMA writer.
 type Parameters struct {
 	Properties Properties
@@ -112,7 +64,7 @@ func readHeader(r io.Reader) (p *Parameters, err error) {
 	}
 	p.BufSize = p.DictCap
 	u := uint64LE(b[5:])
-	if u == noHeaderLen {
+	if u == noHeaderSize {
 		p.EOSMarker = true
 	} else {
 		p.Size = int64(u)
@@ -141,7 +93,7 @@ func writeHeader(w io.Writer, p *Parameters) error {
 	if p.Size >= 0 {
 		l = uint64(p.Size)
 	} else {
-		l = noHeaderLen
+		l = noHeaderSize
 	}
 	putUint64LE(b[5:], l)
 	_, err := w.Write(b)
