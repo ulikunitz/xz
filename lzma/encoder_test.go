@@ -62,7 +62,7 @@ func cycle(t *testing.T, n int) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d len(orig) %d", buf.Len(), len(orig))
-	decoderDict, err := NewDecoderDict(dictCap, dictCap)
+	decoderDict, err := NewDecoderDict(dictCap)
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
@@ -119,7 +119,7 @@ func TestEncoderCycle2(t *testing.T) {
 	}
 	n := w.Compressed()
 	txt = txt[:n]
-	decoderDict, err := NewDecoderDict(dictCap, dictCap)
+	decoderDict, err := NewDecoderDict(dictCap)
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}

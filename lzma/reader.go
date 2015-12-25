@@ -75,7 +75,7 @@ func (r *Reader) init() error {
 
 	state := NewState(r.h.Properties)
 
-	dict, err := NewDecoderDict(r.h.DictCap, r.h.DictCap)
+	dict, err := NewDecoderDict(r.h.DictCap)
 	if err != nil {
 		return err
 	}

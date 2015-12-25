@@ -9,30 +9,22 @@ import (
 // Read and a Write function to support the handling of uncompressed
 // data.
 type DecoderDict struct {
-	buf      buffer
-	head     int64
-	capacity int
+	buf  buffer
+	head int64
 }
 
-// NewDecoderDict creates a new decoder dictionary. The size of the
-// allocated buffer will be the maximum of dictCap and bufSize. So
-// bufSize indicates a minimum size for the buffer.
-func NewDecoderDict(dictCap, bufSize int) (d *DecoderDict, err error) {
+// NewDecoderDict creates a new decoder dictionary. The whole dictionary
+// will be used as reader buffer.
+func NewDecoderDict(dictCap int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New("NewDecoderDict: dictCap out of range")
 	}
-	if dictCap > bufSize {
-		bufSize = dictCap
-	}
-	buf, err := newBuffer(bufSize)
+	buf, err := newBuffer(dictCap)
 	if err != nil {
 		return nil, err
 	}
-	d = &DecoderDict{
-		buf:      *buf,
-		capacity: dictCap,
-	}
+	d = &DecoderDict{buf: *buf}
 	return d, nil
 }
 
@@ -57,8 +49,9 @@ func (d *DecoderDict) pos() int64 { return d.head }
 
 // dictLen returns the actual length of the dictionary.
 func (d *DecoderDict) dictLen() int {
-	if d.head >= int64(d.capacity) {
-		return d.capacity
+	capacity := d.buf.Cap()
+	if d.head >= int64(capacity) {
+		return capacity
 	}
 	return int(d.head)
 }

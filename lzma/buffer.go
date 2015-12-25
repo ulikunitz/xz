@@ -22,6 +22,11 @@ func newBuffer(size int) (b *buffer, err error) {
 	return &buffer{data: make([]byte, size+1)}, nil
 }
 
+// Cap returns the capacity of the buffer.
+func (b *buffer) Cap() int {
+	return len(b.data) - 1
+}
+
 // Resets the buffer. The front and rear index are set to zero.
 func (b *buffer) Reset() {
 	b.front = 0

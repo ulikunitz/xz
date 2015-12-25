@@ -31,7 +31,7 @@ func TestDecoder(t *testing.T) {
 		}
 		state := NewState(props)
 		const capacity = 0x800000
-		dict, err := NewDecoderDict(capacity, capacity)
+		dict, err := NewDecoderDict(capacity)
 		if err != nil {
 			t.Fatalf("NewDecoderDict: error %s", err)
 		}
