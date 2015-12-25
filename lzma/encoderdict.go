@@ -26,7 +26,8 @@ type matcher interface {
 }
 
 // EncoderDict buffers all encoded data and detected operations and
-// includes the complete dictionary.
+// includes the complete dictionary. It consists of a lookahead buffer
+// and the dictionary.
 type EncoderDict struct {
 	buf buffer
 	// start of the operation buffer
@@ -46,7 +47,7 @@ type EncoderDict struct {
 // NewEncoderDict creates a new encoder dictionary. The initial position
 // and length of the dictionary will be zero. The argument dictCap
 // provides the capacity of the dictionary. The argument bufSize gives
-// the size of the write buffer.
+// the size of the lookahead buffer.
 func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 	if !(1 <= dictCap && dictCap <= MaxDictCap) {
 		return nil, errors.New(

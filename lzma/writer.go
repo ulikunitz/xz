@@ -81,7 +81,7 @@ func (w *Writer) init() error {
 	}
 
 	state := NewState(w.Properties)
-	dict, err := NewEncoderDict(w.DictCap, w.DictCap+w.BufSize)
+	dict, err := NewEncoderDict(w.DictCap, w.BufSize)
 	if err != nil {
 		return err
 	}
