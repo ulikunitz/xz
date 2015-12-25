@@ -7,17 +7,6 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParameters declares the parameters for an LZMA2 reader.
-type ReaderParameters struct {
-	// buffer size
-	BufSize int
-}
-
-// ReaderDefaults define the defaults for the LZMA2 reader parameters.
-var ReaderDefaults = ReaderParameters{
-	BufSize: 4096,
-}
-
 // breader converts a reader into a byte reader.
 type breader struct {
 	io.Reader
@@ -56,12 +45,6 @@ type Reader struct {
 // NewReader creates a reader for an LZMA2 chunk sequence with the given
 // dictionary capacity. It uses the defaults for the reader.
 func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
-	return NewReaderParams(lzma2, dictCap, ReaderDefaults)
-}
-
-// NewReaderParams creates a new reader using the given parameters.
-func NewReaderParams(lzma2 io.Reader, dictCap int, params ReaderParameters) (r *Reader, err error) {
-
 	if lzma2 == nil {
 		return nil, errors.New("lzma2: reader must be non-nil")
 	}
@@ -70,7 +53,7 @@ func NewReaderParams(lzma2 io.Reader, dictCap int, params ReaderParameters) (r *
 		r:      lzma2,
 		cstate: start,
 	}
-	r.dict, err = lzma.NewDecoderDict(dictCap, params.BufSize)
+	r.dict, err = lzma.NewDecoderDict(dictCap)
 	if err != nil {
 		return nil, err
 	}
