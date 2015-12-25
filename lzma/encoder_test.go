@@ -34,7 +34,7 @@ func cycle(t *testing.T, n int) {
 		t.Fatalf("cycle: n=%d larger than len(testString)=%d", n,
 			len(testString))
 	}
-	const dictCap = minDictCap
+	const dictCap = MinDictCap
 	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +95,7 @@ func TestEncoderCycle2(t *testing.T) {
 	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
 	txt := buf.String()
 	buf.Reset()
-	const dictCap = minDictCap
+	const dictCap = MinDictCap
 	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
 		t.Fatal(err)

@@ -5,13 +5,6 @@ import (
 	"fmt"
 )
 
-// Minimum and maximum values for the dictionary capacity that is called
-// dictionary size by the LZMA specification.
-const (
-	minDictCap = 4096
-	maxDictCap = 1<<32 - 1
-)
-
 // DecoderDict provides the dictionary to the Decoder. It provides a
 // Read and a Write function to support the handling of uncompressed
 // data.
@@ -26,7 +19,7 @@ type DecoderDict struct {
 // bufSize indicates a minimum size for the buffer.
 func NewDecoderDict(dictCap, bufSize int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
-	if !(1 <= dictCap && int64(dictCap) <= maxDictCap) {
+	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New("NewDecoderDict: dictCap out of range")
 	}
 	if dictCap > bufSize {
