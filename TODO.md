@@ -52,9 +52,6 @@
 ## Package lzma2
 
 - We need an example to explain how to use Reader and Writer.
-- NewWriter doesn't return an error.
-- Use the same approach for parameters as lzma.
-- Add a Properties field to Reader and Writer.
 
 ## Optimizations
 
