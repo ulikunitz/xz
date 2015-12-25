@@ -67,10 +67,13 @@ func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
 	return r, nil
 }
 
+// uncompressed tests whether the chunk type specifies an uncompressed
+// chunk.
 func uncompressed(ctype chunkType) bool {
 	return ctype == cU || ctype == cUD
 }
 
+// startChunk parses a new chunk.
 func (r *Reader) startChunk() error {
 	r.chunkReader = nil
 	header, err := readChunkHeader(r.r)
@@ -154,6 +157,7 @@ func (r *Reader) EOS() bool {
 	return r.cstate == stop
 }
 
+// uncompressedReader is used to read uncompressed chunks.
 type uncompressedReader struct {
 	lr   io.LimitedReader
 	Dict *lzma.DecoderDict
@@ -161,6 +165,7 @@ type uncompressedReader struct {
 	err  error
 }
 
+// newUncompressedReader initializes a new uncompressedReader.
 func newUncompressedReader(r io.Reader, dict *lzma.DecoderDict, size int64) *uncompressedReader {
 	ur := &uncompressedReader{
 		lr:   io.LimitedReader{R: r, N: size},
@@ -169,11 +174,13 @@ func newUncompressedReader(r io.Reader, dict *lzma.DecoderDict, size int64) *unc
 	return ur
 }
 
+// Reopen reinitializes an uncompressed reader.
 func (ur *uncompressedReader) Reopen(r io.Reader, size int64) {
 	ur.eof = false
 	ur.lr = io.LimitedReader{R: r, N: size}
 }
 
+// fill reads uncompressed data into the dictionary.
 func (ur *uncompressedReader) fill() error {
 	if !ur.eof {
 		n, err := io.CopyN(ur.Dict, &ur.lr, int64(ur.Dict.Available()))
@@ -191,6 +198,7 @@ func (ur *uncompressedReader) fill() error {
 	return io.EOF
 }
 
+// Read reads uncompressed data from the limited reader.
 func (ur *uncompressedReader) Read(p []byte) (n int, err error) {
 	if ur.err != nil {
 		return 0, ur.err
