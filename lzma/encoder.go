@@ -25,7 +25,7 @@ type EncoderFlags uint32
 
 // Flags for the encoder.
 const (
-	// Requests that an EOSMarker is written.
+	// EOSMarker requests an EOS marker to be written.
 	EOSMarker EncoderFlags = 1 << iota
 )
 

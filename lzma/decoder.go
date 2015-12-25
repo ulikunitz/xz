@@ -43,7 +43,7 @@ func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (
 	return d, nil
 }
 
-// Reopens the decoder with a new byte reader and a new size. Reopen
+// Reopen restarts the decoder with a new byte reader and a new size. Reopen
 // resets the Decompressed counter to zero.
 func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
 	var err error
