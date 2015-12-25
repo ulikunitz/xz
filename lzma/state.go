@@ -87,7 +87,7 @@ func (s *State) deepcopy(src *State) {
 	s.Properties = src.Properties
 }
 
-// NewStateClone creates a new clone of the give state.
+// CloneState creates a new clone of the give state.
 func CloneState(src *State) *State {
 	s := new(State)
 	s.deepcopy(src)
