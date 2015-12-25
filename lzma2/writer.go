@@ -84,8 +84,7 @@ func NewWriterParams(lzma2 io.Writer, params WriterParameters) (w *Writer, err e
 	if err != nil {
 		return nil, err
 	}
-	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.NewStateClone(w.start),
-		d, 0)
+	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.CloneState(w.start), d, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +234,7 @@ func (w *Writer) flushChunk() error {
 		return err
 	}
 	w.ctype = w.cstate.defaultChunkType()
-	w.start = lzma.NewStateClone(w.encoder.State)
+	w.start = lzma.CloneState(w.encoder.State)
 	return nil
 }
 

@@ -88,7 +88,7 @@ func (s *State) deepcopy(src *State) {
 }
 
 // NewStateClone creates a new clone of the give state.
-func NewStateClone(src *State) *State {
+func CloneState(src *State) *State {
 	s := new(State)
 	s.deepcopy(src)
 	return s
