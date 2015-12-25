@@ -93,3 +93,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 	return r.d.Read(p)
 }
+
+// EOSMarker indicates when an end-of-stream marker has been encountered.
+func (r *Reader) EOSMarker() bool {
+	if r.d == nil {
+		return false
+	}
+	return r.d.eosMarker
+}

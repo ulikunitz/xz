@@ -20,8 +20,10 @@ type Decoder struct {
 	start int64
 	// size of uncompressed data
 	size int64
-	// eos found
+	// end-of-stream encountered
 	eos bool
+	// EOS marker found
+	eosMarker bool
 }
 
 // NewDecoder creates a new decoder value. The parameter size provides
@@ -114,6 +116,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 			return nil, err
 		}
 		if d.State.rep[0] == eosDist {
+			d.eosMarker = true
 			return nil, errEOS
 		}
 		op = match{n: int(n) + minMatchLen,
