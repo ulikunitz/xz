@@ -40,12 +40,6 @@
 
 ## Package lzma
 
--  NewReader expose parameters as part of the Reader structure.
-   Changes before the first Read are taken into account.
-- For the encoder bufSize gives the size of the lookahead buffer.
-  Decoder doesn't support the parameter. One can always extend dictCap.
-- Rename NewStateClone to CloneState
-
 ### Release v0.5
 
 - Rewrite Encoder into a simple greedy one-op-at-a-time encoder
