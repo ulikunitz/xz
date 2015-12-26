@@ -8,28 +8,21 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// WriterParameters defines the parameters for an LZMA2 writer.
-type WriterParameters struct {
-	Properties lzma.Properties
-	DictCap    int
-	// size of lookahead buffer
-	BufSize int
-}
-
-// WriterDefaults provide the default parameters for an LZMA2 writer.
-var WriterDefaults = WriterParameters{
-	Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
-	DictCap:    8 * 1024 * 1024,
-	BufSize:    4096,
-}
-
 // Writer supports the creation of an LZMA2 stream. But note that
 // written data is buffered, so call Flush or Close to write data to the
 // underlying writer. The Close method writes the end-of-stream marker
 // to the stream. So you may be able to concatenate the output of two
 // writers as long the output of the first writer has only been flushed
 // but not closed.
+//
+// Any change to the fields Properties, DictCap must be done before the
+// first call to Write, Flush or Close.
 type Writer struct {
+	Properties lzma.Properties
+	DictCap    int
+	// size of lookahead buffer
+	BufSize int
+
 	w io.Writer
 
 	start   *lzma.State
@@ -44,8 +37,16 @@ type Writer struct {
 
 // NewWriter creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter(lzma2 io.Writer) (w *Writer, err error) {
-	return NewWriterParams(lzma2, WriterDefaults)
+func NewWriter(lzma2 io.Writer) *Writer {
+	w := &Writer{
+		Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
+		DictCap:    8 * 1024 * 1024,
+		BufSize:    4096,
+		w:          lzma2,
+		cstate:     start,
+		ctype:      start.defaultChunkType(),
+	}
+	return w
 }
 
 // verifyProps checks the properties including the LZMA2 specific test
@@ -60,39 +61,37 @@ func verifyProps(p lzma.Properties) error {
 	return nil
 }
 
-// NewWriterParams creates a new writer using the given parameters.
-func NewWriterParams(lzma2 io.Writer, params WriterParameters) (w *Writer, err error) {
-
-	if lzma2 == nil {
-		return nil, errors.New("lzma2: writer must not be nil")
+func (w *Writer) init() error {
+	if w.encoder != nil {
+		return nil
 	}
 
-	props := params.Properties
-	if err = verifyProps(props); err != nil {
-		return nil, err
+	if w.w == nil {
+		return errors.New("lzma2: writer must be nil")
 	}
 
-	w = &Writer{
-		w:      lzma2,
-		cstate: start,
-		ctype:  start.defaultChunkType(),
-		start:  lzma.NewState(props),
+	if err := verifyProps(w.Properties); err != nil {
+		return err
 	}
+	w.start = lzma.NewState(w.Properties)
 	w.buf.Grow(maxCompressed)
 	w.lbw = lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := lzma.NewEncoderDict(params.DictCap, params.BufSize)
+	d, err := lzma.NewEncoderDict(w.DictCap, w.BufSize)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.CloneState(w.start), d, 0)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return w, nil
+	return nil
 }
 
 // written returns the number of bytes written to the current chunk
 func (w *Writer) written() int {
+	if w.encoder == nil {
+		return 0
+	}
 	return int(w.encoder.Compressed()) + w.encoder.Dict.Buffered()
 }
 
@@ -105,6 +104,11 @@ var errClosed = errors.New("lzma2: writer closed")
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.cstate == stop {
 		return 0, errClosed
+	}
+	if w.encoder == nil {
+		if err = w.init(); err != nil {
+			return 0, err
+		}
 	}
 	for n < len(p) {
 		m := maxUncompressed - w.written()
@@ -244,6 +248,11 @@ func (w *Writer) Flush() error {
 	if w.cstate == stop {
 		return errClosed
 	}
+	if w.encoder == nil {
+		if err := w.init(); err != nil {
+			return err
+		}
+	}
 	for w.written() > 0 {
 		if err := w.flushChunk(); err != nil {
 			return err
@@ -260,14 +269,10 @@ func (w *Writer) Close() error {
 	if err := w.Flush(); err != nil {
 		return nil
 	}
-	// write zero byte
-	n, err := w.w.Write([]byte{0})
+	// write zero byte EOS chunk
+	_, err := w.w.Write([]byte{0})
 	if err != nil {
-		return nil
-	}
-	if n == 0 {
-		return errors.New(
-			"lzma2: end-of-stream chunk hasn't been written")
+		return err
 	}
 	w.cstate = stop
 	return nil

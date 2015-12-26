@@ -12,10 +12,7 @@ import (
 
 func TestWriter(t *testing.T) {
 	var buf bytes.Buffer
-	w, err := NewWriter(&buf)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(&buf)
 	n, err := w.Write([]byte{'a'})
 	if err != nil {
 		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
@@ -42,10 +39,7 @@ func TestWriter(t *testing.T) {
 
 func TestCycle1(t *testing.T) {
 	var buf bytes.Buffer
-	w, err := NewWriter(&buf)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(&buf)
 	n, err := w.Write([]byte{'a'})
 	if err != nil {
 		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
@@ -56,7 +50,7 @@ func TestCycle1(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
-	r, err := NewReader(&buf, WriterDefaults.DictCap)
+	r, err := NewReader(&buf, w.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -72,10 +66,7 @@ func TestCycle2(t *testing.T) {
 	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
 	txt := buf.String()
 	buf.Reset()
-	w, err := NewWriter(buf)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(buf)
 	n, err := io.Copy(w, strings.NewReader(txt))
 	if err != nil {
 		t.Fatalf("Compressing copy error %s", err)
@@ -87,7 +78,7 @@ func TestCycle2(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader(buf, WriterDefaults.DictCap)
+	r, err := NewReader(buf, w.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
