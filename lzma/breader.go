@@ -5,14 +5,15 @@ import (
 	"io"
 )
 
-// breader converts a reader into a byte reader.
+// breader provides the ReadByte function for a Reader. It doesn't read
+// more data from the reader than absolutely necessary.
 type breader struct {
 	io.Reader
-	// helper slice
+	// helper slice to save allocations
 	p []byte
 }
 
-// ByteReader converts a reader into a ByteReader.
+// ByteReader converts an io.Reader into an io.ByteReader.
 func ByteReader(r io.Reader) io.ByteReader {
 	br, ok := r.(io.ByteReader)
 	if !ok {

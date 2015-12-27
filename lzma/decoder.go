@@ -26,7 +26,7 @@ type Decoder struct {
 	eosMarker bool
 }
 
-// NewDecoder creates a new decoder value. The parameter size provides
+// NewDecoder creates a new decoder instance. The parameter size provides
 // the expected byte size of the decompressed data. If the size is
 // unknown use a negative value. In that case the decoder will look for
 // a terminating end-of-stream marker.

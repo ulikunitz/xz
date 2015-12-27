@@ -5,9 +5,8 @@ import (
 	"fmt"
 )
 
-// DecoderDict provides the dictionary to the Decoder. It provides a
-// Read and a Write function to support the handling of uncompressed
-// data.
+// DecoderDict provides the dictionary for the Decoder. The whole
+// dictionary is used as reader buffer.
 type DecoderDict struct {
 	buf  buffer
 	head int64
