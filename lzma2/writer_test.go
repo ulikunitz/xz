@@ -11,8 +11,12 @@ import (
 )
 
 func TestWriter(t *testing.T) {
+	const dictCap = 4096
 	var buf bytes.Buffer
-	w := NewWriter(&buf)
+	w, err := NewWriter(&buf, dictCap)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
 	n, err := w.Write([]byte{'a'})
 	if err != nil {
 		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
@@ -38,8 +42,12 @@ func TestWriter(t *testing.T) {
 }
 
 func TestCycle1(t *testing.T) {
+	const dictCap = 4096
 	var buf bytes.Buffer
-	w := NewWriter(&buf)
+	w, err := NewWriter(&buf, dictCap)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
 	n, err := w.Write([]byte{'a'})
 	if err != nil {
 		t.Fatalf("w.Write([]byte{'a'}) error %s", err)
@@ -60,13 +68,17 @@ func TestCycle1(t *testing.T) {
 }
 
 func TestCycle2(t *testing.T) {
+	const dictCap = 4096
 	buf := new(bytes.Buffer)
-	const txtlen = 2100000
+	w, err := NewWriter(buf, dictCap)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
 	// const txtlen = 1024
+	const txtlen = 2100000
 	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
 	txt := buf.String()
 	buf.Reset()
-	w := NewWriter(buf)
 	n, err := io.Copy(w, strings.NewReader(txt))
 	if err != nil {
 		t.Fatalf("Compressing copy error %s", err)

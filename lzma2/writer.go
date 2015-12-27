@@ -35,18 +35,33 @@ type Writer struct {
 	lbw lzma.LimitedByteWriter
 }
 
+// verifyDictCap verifies whether the dictionary capacity is in range
+func verifyDictCap(dictCap int) error {
+	if !(1 <= dictCap && int64(dictCap) <= lzma.MaxDictCap) {
+		return errors.New("lzma2: dictionary capacity is out of range")
+	}
+	return nil
+}
+
 // NewWriter creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter(lzma2 io.Writer) *Writer {
-	w := &Writer{
+func NewWriter(lzma2 io.Writer, dictCap int) (w *Writer, err error) {
+	if lzma2 == nil {
+		return nil, errors.New("lzma2 writer argument is nil")
+	}
+	if err = verifyDictCap(dictCap); err != nil {
+		return nil, err
+	}
+
+	w = &Writer{
 		Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
-		DictCap:    8 * 1024 * 1024,
+		DictCap:    dictCap,
 		BufSize:    4096,
 		w:          lzma2,
 		cstate:     start,
 		ctype:      start.defaultChunkType(),
 	}
-	return w
+	return w, nil
 }
 
 // verifyProps checks the properties including the LZMA2 specific test
@@ -61,16 +76,18 @@ func verifyProps(p lzma.Properties) error {
 	return nil
 }
 
+// init initializes the decoder using the parameters Properties, DictCap
+// and BufSize.
 func (w *Writer) init() error {
 	if w.encoder != nil {
 		return nil
 	}
 
-	if w.w == nil {
-		return errors.New("lzma2: writer must be nil")
+	var err error
+	if err = verifyDictCap(w.DictCap); err != nil {
+		return err
 	}
-
-	if err := verifyProps(w.Properties); err != nil {
+	if err = verifyProps(w.Properties); err != nil {
 		return err
 	}
 	w.start = lzma.NewState(w.Properties)
@@ -81,10 +98,7 @@ func (w *Writer) init() error {
 		return err
 	}
 	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.CloneState(w.start), d, 0)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // written returns the number of bytes written to the current chunk

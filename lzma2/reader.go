@@ -30,6 +30,11 @@ func (r breader) ReadByte() (c byte, err error) {
 // chunk a properties reset. The chunk sequence may not be terminated by
 // an end-of-stream chunk.
 type Reader struct {
+	DictCap int
+
+	// informational field
+	Properties lzma.Properties
+
 	r   io.Reader
 	err error
 
@@ -48,23 +53,33 @@ func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
 	if lzma2 == nil {
 		return nil, errors.New("lzma2: reader must be non-nil")
 	}
+	if err = verifyDictCap(dictCap); err != nil {
+		return nil, err
+	}
 
 	r = &Reader{
-		r:      lzma2,
-		cstate: start,
-	}
-	r.dict, err = lzma.NewDecoderDict(dictCap)
-	if err != nil {
-		return nil, err
-	}
-	if err = r.startChunk(); err != nil {
-		if err == io.EOF {
-			r.err = err
-			return r, nil
-		}
-		return nil, err
+		DictCap: dictCap,
+		r:       lzma2,
+		cstate:  start,
 	}
 	return r, nil
+}
+
+// init initializes the dictionary and calls startChunk.
+func (r *Reader) init() error {
+	if r.dict != nil {
+		return nil
+	}
+	var err error
+	if err = verifyDictCap(r.DictCap); err != nil {
+		return err
+	}
+	r.dict, err = lzma.NewDecoderDict(r.DictCap)
+	if err != nil {
+		return err
+	}
+	err = r.startChunk()
+	return err
 }
 
 // uncompressed tests whether the chunk type specifies an uncompressed
@@ -83,6 +98,7 @@ func (r *Reader) startChunk() error {
 		}
 		return err
 	}
+	r.Properties = header.props
 	if err = r.cstate.next(header.ctype); err != nil {
 		return err
 	}
@@ -133,6 +149,12 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
 	}
+	if r.dict == nil {
+		if err = r.init(); err != nil {
+			r.err = err
+			return 0, err
+		}
+	}
 	for n < len(p) {
 		var k int
 		k, err = r.chunkReader.Read(p[n:])
@@ -145,7 +167,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			return n, err
 		}
 		if k == 0 {
-			return n, errors.New("lzma2: Reader doesn't get data")
+			r.err = errors.New("lzma2: Reader doesn't get data")
+			return n, r.err
 		}
 	}
 	return n, nil
