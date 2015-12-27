@@ -1,3 +1,10 @@
+// Package lzma2 provides a reader and a writer for the LZMA2 encoding.
+// LZMA2 is a framing format for LZMA raw streams to support flushing,
+// parallel compression and uncompressed segments.
+//
+// The Reader and Writer allows the reading and writing of LZMA2 chunk
+// sequences. They can be used to parallel compress or decompress LZMA2
+// streams.
 package lzma2
 
 import (
