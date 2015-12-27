@@ -1,3 +1,4 @@
+// Package xz supports the compression and decompression of xz files.
 package xz
 
 import (
