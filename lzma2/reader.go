@@ -20,7 +20,6 @@ import (
 // an end-of-stream chunk.
 type Reader struct {
 	DictCap int
-
 	// informational field
 	Properties lzma.Properties
 
@@ -131,9 +130,7 @@ func (r *Reader) startChunk() error {
 	return nil
 }
 
-// Read reads data from the LZMA2 chunk sequence. If an end-of-stream
-// chunk is encountered EOS is returned, it the sequence stops without
-// an end-of-stream chunk io.EOF is returned.
+// Read reads data from the LZMA2 chunk sequence.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
