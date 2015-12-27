@@ -14,24 +14,6 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// breader converts a reader into a byte reader.
-type breader struct {
-	io.Reader
-}
-
-// ReadByte read byte function.
-func (r breader) ReadByte() (c byte, err error) {
-	var p [1]byte
-	n, err := r.Reader.Read(p[:])
-	if n < 1 {
-		if err == nil {
-			err = errors.New("lzma2: no data while reading")
-		}
-		return 0, err
-	}
-	return p[0], nil
-}
-
 // Reader supports the reading of LZMA2 chunk sequences. Note that the
 // first chunk should have a dictionary reset and the first compressed
 // chunk a properties reset. The chunk sequence may not be terminated by
@@ -125,7 +107,7 @@ func (r *Reader) startChunk() error {
 		r.chunkReader = r.ur
 		return nil
 	}
-	br := breader{io.LimitReader(r.r, int64(header.compressed)+1)}
+	br := lzma.ByteReader(io.LimitReader(r.r, int64(header.compressed)+1))
 	if r.decoder == nil {
 		state := lzma.NewState(header.props)
 		r.decoder, err = lzma.NewDecoder(br, state, r.dict, size)

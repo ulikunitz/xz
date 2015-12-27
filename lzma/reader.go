@@ -15,24 +15,6 @@ type Reader struct {
 	d    *Decoder
 }
 
-// breader converts a reader into a byte reader.
-type breader struct {
-	io.Reader
-}
-
-// ReadByte read byte function.
-func (r breader) ReadByte() (c byte, err error) {
-	var p [1]byte
-	n, err := r.Reader.Read(p[:])
-	if n < 1 {
-		if err == nil {
-			err = errors.New("ReadByte: no data")
-		}
-		return 0, err
-	}
-	return p[0], nil
-}
-
 // NewReader creates a new reader for an LZMA stream using the classic
 // format.
 func NewReader(lzma io.Reader) (r *Reader, err error) {
@@ -68,11 +50,7 @@ func (r *Reader) init() error {
 	}
 	r.Header = r.h
 
-	br, ok := r.lzma.(io.ByteReader)
-	if !ok {
-		br = breader{r.lzma}
-	}
-
+	br := ByteReader(r.lzma)
 	state := NewState(r.h.Properties)
 
 	dict, err := NewDecoderDict(r.h.DictCap)
