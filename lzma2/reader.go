@@ -20,8 +20,6 @@ import (
 // an end-of-stream chunk.
 type Reader struct {
 	DictCap int
-	// informational field
-	Properties lzma.Properties
 
 	r   io.Reader
 	err error
@@ -86,7 +84,6 @@ func (r *Reader) startChunk() error {
 		}
 		return err
 	}
-	r.Properties = header.props
 	if err = r.cstate.next(header.ctype); err != nil {
 		return err
 	}
@@ -164,6 +161,15 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 // end-of-stream chunk.
 func (r *Reader) EOS() bool {
 	return r.cstate == stop
+}
+
+// Properties returns the last properties used by the reader. Note that
+// there may be no properties if data hasn't been compressed.
+func (r *Reader) Properties() (lzma.Properties, bool) {
+	if r.decoder == nil {
+		return lzma.Properties{}, false
+	}
+	return r.decoder.State.Properties, true
 }
 
 // uncompressedReader is used to read uncompressed chunks.
