@@ -8,28 +8,18 @@ import (
 	"hash"
 	"io"
 
+	"github.com/ulikunitz/xz/lzma"
 	"github.com/ulikunitz/xz/lzma2"
 )
 
 // errUnexpectedEOF indicates an unexpected end of file.
 var errUnexpectedEOF = errors.New("xz: unexpected end of file")
 
-// ReaderParameters define the parameters for the reader.
-type ReaderParameters struct {
-	flags byte
-}
-
-// ReaderDefaults provide the default parameters for an xz reader
-// instance.
-var ReaderDefaults = ReaderParameters{}
-
-// Flags for the reader parameters.
-const (
-	Serial = 1 << iota
-)
-
 // Reader decodes xz files.
 type Reader struct {
+	DictCap int
+
+	dictCap int
 	xz      io.Reader
 	err     error
 	br      *blockReader
@@ -39,14 +29,10 @@ type Reader struct {
 
 // NewReader creates a new xz reader.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	return NewReaderParams(xz, ReaderDefaults)
-}
-
-// NewReaderParams supports the parametrization of the xz file reader.
-func NewReaderParams(xz io.Reader, params ReaderParameters) (r *Reader, err error) {
-	r = &Reader{
-		xz: xz,
+	if xz == nil {
+		return nil, errors.New("xz: reader must be not nil")
 	}
+	r = &Reader{DictCap: 8 * 1024 * 1024, xz: xz}
 	p := make([]byte, headerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
 		if err == io.EOF {
@@ -106,7 +92,8 @@ func (r *Reader) read(p []byte) (n int, err error) {
 				}
 				return n, err
 			}
-			r.br, err = newBlockReader(r.xz, r.newHash, bh)
+			r.br, err = newBlockReader(r.xz, r.newHash, bh,
+				r.DictCap)
 			if err != nil {
 				return n, err
 			}
@@ -145,7 +132,7 @@ type blockReader struct {
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader) (br *blockReader, err error) {
+func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader, dictCap int) (br *blockReader, err error) {
 	// some consistency checks
 	if len(bh.filters) != 1 {
 		return nil, errors.New("xz: multiple filters are unsupported")
@@ -170,10 +157,13 @@ func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader) (br 
 		br.size = bh.uncompressedSize
 	}
 
-	dc := f.(*lzmaFilter).dictCap
-	dictCap := int(dc)
-	if int64(dictCap) != dc {
+	udc := f.(*lzmaFilter).dictCap
+	dc := int(udc)
+	if int64(dc) != udc {
 		return nil, errors.New("xz: DictCap overflow")
+	}
+	if dc < dictCap {
+		dictCap = dc
 	}
 
 	br.lzma2, err = lzma2.NewReader(r, dictCap)
@@ -186,6 +176,15 @@ func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader) (br 
 	br.lzma2 = io.TeeReader(br.lzma2, br.hash)
 
 	return br, nil
+}
+
+// Properties returns the properties currently used for decoding.
+func (r *Reader) Properties() (props lzma.Properties, ok bool) {
+	if r.br == nil || r.br.lzma2 == nil {
+		return lzma.Properties{}, false
+	}
+	lr := r.br.lzma2.(*lzma2.Reader)
+	return lr.Properties()
 }
 
 // errBlockSize indicates that the size of the block in the block header
