@@ -21,11 +21,16 @@ type Reader struct {
 	br      *blockReader
 	newHash func() hash.Hash
 	h       header
+	index   []record
 }
 
 // NewReader creates a new xz reader.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	r = &Reader{DictCap: 8 * 1024 * 1024, xz: xz}
+	r = &Reader{
+		DictCap: 8 * 1024 * 1024,
+		xz:      xz,
+		index:   make([]record, 0, 4),
+	}
 	p := make([]byte, headerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
 		if err == io.EOF {
@@ -39,19 +44,30 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err
 	}
+	r.index = make([]record, 0, 4)
 	return r, nil
 }
 
+var errIndex = errors.New("xz: error in xz file index")
+
 // readTail reads the index body and the xz footer.
 func (r *Reader) readTail() error {
-	_, n, err := readIndexBody(r.xz)
+	index, n, err := readIndexBody(r.xz)
 	if err != nil {
 		if err == io.EOF {
 			err = errUnexpectedEOF
 		}
 		return err
 	}
-	// TODO: check records
+	if len(index) != len(r.index) {
+		return errIndex
+	}
+	for i, rec := range r.index {
+		if rec != index[i] {
+			return errIndex
+		}
+	}
+
 	p := make([]byte, footerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
 		if err == io.EOF {
@@ -76,7 +92,7 @@ func (r *Reader) readTail() error {
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.br == nil {
-			bh, _, err := readBlockHeader(r.xz)
+			bh, hlen, err := readBlockHeader(r.xz)
 			if err != nil {
 				if err == errIndexIndicator {
 					if err = r.readTail(); err != nil {
@@ -86,7 +102,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				}
 				return n, err
 			}
-			r.br, err = newBlockReader(r.xz, bh, r.newHash(),
+			r.br, err = newBlockReader(r.xz, bh, hlen, r.newHash(),
 				r.DictCap)
 			if err != nil {
 				return n, err
@@ -96,6 +112,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		n += k
 		if err != nil {
 			if err == io.EOF {
+				r.index = append(r.index, r.br.record())
 				r.br = nil
 			} else {
 				return n, err
@@ -120,20 +137,22 @@ func (lr *lenReader) Read(p []byte) (n int, err error) {
 
 // blockReader supports the reading of a block.
 type blockReader struct {
-	lxz    lenReader
-	header *blockHeader
-	n      int64
-	hash   hash.Hash
-	r      io.Reader
-	err    error
+	lxz       lenReader
+	header    *blockHeader
+	headerLen int
+	n         int64
+	hash      hash.Hash
+	r         io.Reader
+	err       error
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(xz io.Reader, h *blockHeader, hash hash.Hash, dictCap int) (br *blockReader, err error) {
+func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash, dictCap int) (br *blockReader, err error) {
 	br = &blockReader{
-		lxz:    lenReader{r: xz},
-		header: h,
-		hash:   hash,
+		lxz:       lenReader{r: xz},
+		header:    h,
+		headerLen: hlen,
+		hash:      hash,
 	}
 
 	f := h.filters[0].(*lzmaFilter)
@@ -163,6 +182,19 @@ func (br *blockReader) compressedSize() int64 {
 	return br.lxz.n
 }
 
+// unpaddedSize computes the unpadded size for the block.
+func (br *blockReader) unpaddedSize() int64 {
+	n := int64(br.headerLen)
+	n += br.compressedSize()
+	n += int64(br.hash.Size())
+	return n
+}
+
+// record returns the index record for the current block.
+func (br *blockReader) record() record {
+	return record{br.unpaddedSize(), br.uncompressedSize()}
+}
+
 // errBlockSize indicates that the size of the block in the block header
 // is wrong.
 var errBlockSize = errors.New("xz: wrong uncompressed size for block")
@@ -171,20 +203,22 @@ var errBlockSize = errors.New("xz: wrong uncompressed size for block")
 func (br *blockReader) Read(p []byte) (n int, err error) {
 	n, err = br.r.Read(p)
 	br.n += int64(n)
-	if br.header.uncompressedSize >= 0 &&
-		br.n > br.header.uncompressedSize {
-		return n, errBlockSize
+
+	u := br.header.uncompressedSize
+	if u >= 0 && br.uncompressedSize() > u {
+		return n, errors.New("xz: wrong uncompressed size for block")
+	}
+	c := br.header.compressedSize
+	if c >= 0 && br.compressedSize() > c {
+		return n, errors.New("xz: wrong compressed size for block")
 	}
 	if err != io.EOF {
 		return n, err
 	}
-	if br.n < br.header.uncompressedSize {
+	if br.uncompressedSize() < u || br.compressedSize() < c {
 		return n, errUnexpectedEOF
 	}
-	if br.header.compressedSize >= 0 &&
-		br.lxz.n != br.header.compressedSize {
-		return n, errUnexpectedEOF
-	}
+
 	s := br.hash.Size()
 	k := padLen(br.n)
 	q := make([]byte, k+s, k+2*s)
