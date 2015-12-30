@@ -9,6 +9,7 @@ import (
 	"hash/crc32"
 	"io"
 
+	"github.com/ulikunitz/xz/lzma"
 	"github.com/ulikunitz/xz/lzma2"
 )
 
@@ -496,7 +497,7 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 // readFilter reads a block filter from the block header. At this point
 // in time only the LZMA2 filter is supported.
 func readFilter(r io.Reader) (f filter, err error) {
-	br := byteReader(r)
+	br := lzma.ByteReader(r)
 
 	// index
 	id, _, err := readUvarint(br)
@@ -646,34 +647,6 @@ func writeIndex(w io.Writer, index []record) (n int64, err error) {
 	return n, err
 }
 
-// bReader provides the ReadByte function for a reader.
-type bReader struct {
-	io.Reader
-	p []byte
-}
-
-// ReadByte reads a single byte from the reader.
-func (br *bReader) ReadByte() (c byte, err error) {
-	n, err := br.Read(br.p)
-	if n == 1 {
-		return br.p[0], nil
-	}
-	if err == nil {
-		return 0, errors.New("xz: no data")
-	}
-	return 0, err
-}
-
-// byteReader converts the reader into a ByteReader. If the reader
-// supports the ByteReader interface directly it will be used otherwise
-// a wrapper will be used.
-func byteReader(r io.Reader) io.ByteReader {
-	if br, ok := r.(io.ByteReader); ok {
-		return br
-	}
-	return &bReader{r, make([]byte, 1)}
-}
-
 // readIndexBody reads the index from the reader. It assumes that the
 // index indicator has already been read.
 func readIndexBody(r io.Reader) (records []record, n int64, err error) {
@@ -681,7 +654,7 @@ func readIndexBody(r io.Reader) (records []record, n int64, err error) {
 	// index indicator
 	crc.Write([]byte{0})
 
-	br := byteReader(io.TeeReader(r, crc))
+	br := lzma.ByteReader(io.TeeReader(r, crc))
 
 	// number of records
 	u, k, err := readUvarint(br)
