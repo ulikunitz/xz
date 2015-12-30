@@ -4,11 +4,9 @@ package xz
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma"
 	"github.com/ulikunitz/xz/lzma2"
 )
 
@@ -19,9 +17,7 @@ var errUnexpectedEOF = errors.New("xz: unexpected end of file")
 type Reader struct {
 	DictCap int
 
-	dictCap int
 	xz      io.Reader
-	err     error
 	br      *blockReader
 	newHash func() hash.Hash
 	h       header
@@ -29,9 +25,6 @@ type Reader struct {
 
 // NewReader creates a new xz reader.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	if xz == nil {
-		return nil, errors.New("xz: reader must be not nil")
-	}
 	r = &Reader{DictCap: 8 * 1024 * 1024, xz: xz}
 	p := make([]byte, headerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
@@ -58,6 +51,7 @@ func (r *Reader) readTail() error {
 		}
 		return err
 	}
+	// TODO: check records
 	p := make([]byte, footerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
 		if err == io.EOF {
@@ -79,7 +73,7 @@ func (r *Reader) readTail() error {
 }
 
 // read reads actual data from the xz stream.
-func (r *Reader) read(p []byte) (n int, err error) {
+func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.br == nil {
 			bh, _, err := readBlockHeader(r.xz)
@@ -92,7 +86,7 @@ func (r *Reader) read(p []byte) (n int, err error) {
 				}
 				return n, err
 			}
-			r.br, err = newBlockReader(r.xz, r.newHash, bh,
+			r.br, err = newBlockReader(r.xz, bh, r.newHash(),
 				r.DictCap)
 			if err != nil {
 				return n, err
@@ -111,106 +105,90 @@ func (r *Reader) read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// Read decompresses the data of the xz stream.
-func (r *Reader) Read(p []byte) (n int, err error) {
-	if r.err != nil {
-		return 0, r.err
-	}
-	n, err = r.read(p)
-	r.err = err
+// lenReader counts the number of bytes read.
+type lenReader struct {
+	r io.Reader
+	n int64
+}
+
+// Read reads data from the wrapped reader and adds it to the n field.
+func (lr *lenReader) Read(p []byte) (n int, err error) {
+	n, err = lr.r.Read(p)
+	lr.n += int64(n)
 	return n, err
 }
 
-// blockReader is used to read data from a single block.
+// blockReader supports the reading of a block.
 type blockReader struct {
-	r     io.Reader
-	lzma2 io.Reader
-	hash  hash.Hash
-	count int64
-	size  int64
-	err   error
+	lxz    lenReader
+	header *blockHeader
+	n      int64
+	hash   hash.Hash
+	r      io.Reader
+	err    error
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(r io.Reader, newHash func() hash.Hash, bh *blockHeader, dictCap int) (br *blockReader, err error) {
-	// some consistency checks
-	if len(bh.filters) != 1 {
-		return nil, errors.New("xz: multiple filters are unsupported")
-	}
-	f := bh.filters[0]
-	if f.id() != lzmaFilterID {
-		return nil, errors.New("xz: filter id unsupported")
-	}
-
+func newBlockReader(xz io.Reader, h *blockHeader, hash hash.Hash, dictCap int) (br *blockReader, err error) {
 	br = &blockReader{
-		hash: newHash(),
+		lxz:    lenReader{r: xz},
+		header: h,
+		hash:   hash,
 	}
 
-	if bh.compressedSize < 0 {
-		br.r = r
-	} else {
-		br.r = io.LimitReader(r, bh.compressedSize)
+	f := h.filters[0].(*lzmaFilter)
+	dc := int(f.dictCap)
+	if dc < 0 {
+		return nil, errors.New("xz: dictionary capacity overflow")
 	}
-	if bh.uncompressedSize < 0 {
-		br.size = -1
-	} else {
-		br.size = bh.uncompressedSize
-	}
-
-	udc := f.(*lzmaFilter).dictCap
-	dc := int(udc)
-	if int64(dc) != udc {
-		return nil, errors.New("xz: DictCap overflow")
-	}
-	if dc < dictCap {
+	if dictCap < dc {
 		dictCap = dc
 	}
-
-	br.lzma2, err = lzma2.NewReader(r, dictCap)
+	lr, err := lzma2.NewReader(&br.lxz, dictCap)
 	if err != nil {
-		if err == io.EOF {
-			err = errUnexpectedEOF
-		}
 		return nil, err
 	}
-	br.lzma2 = io.TeeReader(br.lzma2, br.hash)
+	br.r = io.TeeReader(lr, br.hash)
 
 	return br, nil
 }
 
-// Properties returns the properties currently used for decoding.
-func (r *Reader) Properties() (props lzma.Properties, ok bool) {
-	if r.br == nil || r.br.lzma2 == nil {
-		return lzma.Properties{}, false
-	}
-	lr := r.br.lzma2.(*lzma2.Reader)
-	return lr.Properties()
+// uncompressedSize returns the uncompressed size of the block.
+func (br *blockReader) uncompressedSize() int64 {
+	return br.n
+}
+
+// compressedSize returns the compressed size of the block.
+func (br *blockReader) compressedSize() int64 {
+	return br.lxz.n
 }
 
 // errBlockSize indicates that the size of the block in the block header
 // is wrong.
 var errBlockSize = errors.New("xz: wrong uncompressed size for block")
 
-// read reads data from the block and checks the checksum at the end.
-func (br *blockReader) read(p []byte) (n int, err error) {
-	n, err = br.lzma2.Read(p)
-	br.count += int64(n)
-	if br.size >= 0 && br.count > br.size {
+// Read reads data from the block.
+func (br *blockReader) Read(p []byte) (n int, err error) {
+	n, err = br.r.Read(p)
+	br.n += int64(n)
+	if br.header.uncompressedSize >= 0 &&
+		br.n > br.header.uncompressedSize {
 		return n, errBlockSize
 	}
 	if err != io.EOF {
 		return n, err
 	}
-	if br.count < br.size {
+	if br.n < br.header.uncompressedSize {
 		return n, errUnexpectedEOF
 	}
-	k := int(br.count % 4)
-	if k > 0 {
-		k = 4 - k
+	if br.header.compressedSize >= 0 &&
+		br.lxz.n != br.header.compressedSize {
+		return n, errUnexpectedEOF
 	}
 	s := br.hash.Size()
+	k := padLen(br.n)
 	q := make([]byte, k+s, k+2*s)
-	if _, err = io.ReadFull(br.r, q); err != nil {
+	if _, err = io.ReadFull(br.lxz.r, q); err != nil {
 		if err == io.EOF {
 			err = errUnexpectedEOF
 		}
@@ -225,15 +203,4 @@ func (br *blockReader) read(p []byte) (n int, err error) {
 		return n, errors.New("xz: checksum error for block")
 	}
 	return n, io.EOF
-}
-
-// Read reads uncompressed data from the block.
-func (br *blockReader) Read(p []byte) (n int, err error) {
-	if br.err != nil {
-		fmt.Printf("Repeated block read %d error %v\n", 0, br.err)
-		return 0, br.err
-	}
-	n, err = br.read(p)
-	br.err = err
-	return n, err
 }
