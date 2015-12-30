@@ -37,6 +37,7 @@
 
 - Implement the package using the LZMA2 support provided by the lzma
   package.
+- fix reader padding problem
 
 ## Package lzma
 
@@ -48,10 +49,6 @@
     + use the killer byte (requiring matches to get longer, the first
       test should be the byte that would make the match longer)
 
-
-## Package lzma2
-
-- We need an example to explain how to use Reader and Writer.
 
 ## Optimizations
 
