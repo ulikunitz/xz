@@ -27,11 +27,13 @@ index size from the footer and include its own footer in the index.
 
 The padding should allow direct mapping of the CRC values into memory, but it
 wastes bytes bearing no information. This is certainly not optimal for a
-compression format.
+compression format. It is argued alignment makes it faster to read and
+write the checksum values, but the time spent there is much less than on
+encoding and decoding itself.
 
 ## Filters for each block
 
-Filteres should have been defined in front of blocks. This way they
+Filters should have been defined in front of blocks. This way they
 would not need to be repeated.
 
 # LZMA2 
@@ -46,3 +48,8 @@ The encoder has to keep a state variable tracking a dictionary reset in
 an uncompressed chunk to ensure that the flags are added in the first
 compressed chunk to follow. This complicates the implementation of the
 encoder and decoder.
+
+## Dictionary capacity is not encoded
+
+LZMA2 doesn't encode the dictionary capacity, so LZMA2 doesn't work
+standalone.
