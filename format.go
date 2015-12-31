@@ -10,7 +10,6 @@ import (
 	"io"
 
 	"github.com/ulikunitz/xz/lzma"
-	"github.com/ulikunitz/xz/lzma2"
 )
 
 // allZeros checks whether a given byte slice has only zeros.
@@ -450,48 +449,11 @@ type filter interface {
 	id() uint64
 	UnmarshalBinary(data []byte) error
 	MarshalBinary() (data []byte, err error)
-}
-
-// LZMA filter constants.
-const (
-	lzmaFilterID  = 0x21
-	lzmaFilterLen = 3
-)
-
-// lzmaFilter declares the LZMA2 filter information stored in an xz
-// block header.
-type lzmaFilter struct {
-	dictCap int64
-}
-
-// id returns the ID for the LZMA2 filter.
-func (f lzmaFilter) id() uint64 { return lzmaFilterID }
-
-// MarshalBinary converts the lzmaFilter in its encoded representation.
-func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
-	c := lzma2.EncodeDictCap(f.dictCap)
-	return []byte{lzmaFilterID, 1, c}, nil
-}
-
-// UnmarshalBinary unmarshals the given data representation of the LZMA2
-// filter.
-func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
-	if len(data) != lzmaFilterLen {
-		return errors.New("xz: data for LZMA2 filter has wrong length")
-	}
-	if data[0] != lzmaFilterID {
-		return errors.New("xz: wrong LZMA2 filter id")
-	}
-	if data[1] != 1 {
-		return errors.New("xz: wrong LZMA2 filter size")
-	}
-	dc, err := lzma2.DecodeDictCap(data[2])
-	if err != nil {
-		return errors.New("xz: wrong LZMA2 dictionary size property")
-	}
-
-	f.dictCap = dc
-	return nil
+	reader(r io.Reader, p *ReaderParams) (fr io.Reader, err error)
+	writeCloser(w io.WriteCloser, p *WriterParams) (fw io.WriteCloser,
+		err error)
+	// filter must be last filter
+	last() bool
 }
 
 // readFilter reads a block filter from the block header. At this point
