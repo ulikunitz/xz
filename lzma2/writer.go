@@ -8,6 +8,55 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
+// WriterParams describes the parameters for the LZMA2 writer.
+type WriterParams struct {
+	Properties lzma.Properties
+	DictCap    int
+	// size of lookahead buffer
+	BufSize int
+}
+
+// Verify verifies LZMA2 writer parameters for correctness.
+func (p *WriterParams) Verify() error {
+	var err error
+
+	// dictionary capacity
+	if err = verifyDictCap(p.DictCap); err != nil {
+		return err
+	}
+
+	// properties
+	if err = p.Properties.Verify(); err != nil {
+		return err
+	}
+	if p.Properties.LC+p.Properties.LP > 4 {
+		return errors.New("lzma2: sum of lc and lp exceeds 4")
+	}
+
+	// buffer size
+	if p.BufSize < 1 {
+		return errors.New(
+			"lzma2: lookahead buffer size must be larger than zero")
+	}
+
+	return nil
+}
+
+// WriterDefaults defines the defaults for the LZMA2 writer parameters.
+var WriterDefaults = WriterParams{
+	Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
+	DictCap:    8 * 1024 * 1024,
+	BufSize:    4096,
+}
+
+// verifyDictCap verifies values for the dictionary capacity.
+func verifyDictCap(dictCap int) error {
+	if !(1 <= dictCap && int64(dictCap) <= lzma.MaxDictCap) {
+		return errors.New("lzma2: dictionary capacity is out of range")
+	}
+	return nil
+}
+
 // Writer supports the creation of an LZMA2 stream. But note that
 // written data is buffered, so call Flush or Close to write data to the
 // underlying writer. The Close method writes the end-of-stream marker
@@ -18,11 +67,6 @@ import (
 // Any change to the fields Properties, DictCap must be done before the
 // first call to Write, Flush or Close.
 type Writer struct {
-	Properties lzma.Properties
-	DictCap    int
-	// size of lookahead buffer
-	BufSize int
-
 	w io.Writer
 
 	start   *lzma.State
@@ -35,70 +79,40 @@ type Writer struct {
 	lbw lzma.LimitedByteWriter
 }
 
-// verifyDictCap verifies whether the dictionary capacity is in range
-func verifyDictCap(dictCap int) error {
-	if !(1 <= dictCap && int64(dictCap) <= lzma.MaxDictCap) {
-		return errors.New("lzma2: dictionary capacity is out of range")
-	}
-	return nil
-}
-
 // NewWriter creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter(lzma2 io.Writer, dictCap int) (w *Writer, err error) {
-	if lzma2 == nil {
-		return nil, errors.New("lzma2 writer argument is nil")
+func NewWriter(lzma2 io.Writer) *Writer {
+	w, err := NewWriterParams(lzma2, &WriterDefaults)
+	if err != nil {
+		panic(err)
 	}
-	if err = verifyDictCap(dictCap); err != nil {
+	return w
+}
+
+// NewWriterParams creates a new LZMA2 chunk sequence writer using the
+// given parameters. The parameters will be verified for correctness.
+func NewWriterParams(lzma2 io.Writer, params *WriterParams) (w *Writer, err error) {
+	if err = params.Verify(); err != nil {
 		return nil, err
 	}
 
 	w = &Writer{
-		Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
-		DictCap:    dictCap,
-		BufSize:    4096,
-		w:          lzma2,
-		cstate:     start,
-		ctype:      start.defaultChunkType(),
+		w:      lzma2,
+		start:  lzma.NewState(params.Properties),
+		cstate: start,
+		ctype:  start.defaultChunkType(),
 	}
-	return w, nil
-}
-
-// verifyProps checks the properties including the LZMA2 specific test
-// that the sum of lc and lp doesn't exceed 4.
-func verifyProps(p lzma.Properties) error {
-	if err := p.Verify(); err != nil {
-		return err
-	}
-	if p.LC+p.LP > 4 {
-		return errors.New("lzma2: sum of lc and lp exceeds 4")
-	}
-	return nil
-}
-
-// init initializes the decoder using the parameters Properties, DictCap
-// and BufSize.
-func (w *Writer) init() error {
-	if w.encoder != nil {
-		return nil
-	}
-
-	var err error
-	if err = verifyDictCap(w.DictCap); err != nil {
-		return err
-	}
-	if err = verifyProps(w.Properties); err != nil {
-		return err
-	}
-	w.start = lzma.NewState(w.Properties)
 	w.buf.Grow(maxCompressed)
 	w.lbw = lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := lzma.NewEncoderDict(w.DictCap, w.BufSize)
+	d, err := lzma.NewEncoderDict(params.DictCap, params.BufSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.CloneState(w.start), d, 0)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return w, nil
 }
 
 // written returns the number of bytes written to the current chunk
@@ -118,11 +132,6 @@ var errClosed = errors.New("lzma2: writer closed")
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.cstate == stop {
 		return 0, errClosed
-	}
-	if w.encoder == nil {
-		if err = w.init(); err != nil {
-			return 0, err
-		}
 	}
 	for n < len(p) {
 		m := maxUncompressed - w.written()
@@ -261,11 +270,6 @@ func (w *Writer) flushChunk() error {
 func (w *Writer) Flush() error {
 	if w.cstate == stop {
 		return errClosed
-	}
-	if w.encoder == nil {
-		if err := w.init(); err != nil {
-			return err
-		}
 	}
 	for w.written() > 0 {
 		if err := w.flushChunk(); err != nil {

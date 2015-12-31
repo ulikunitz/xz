@@ -11,9 +11,10 @@ import (
 )
 
 func TestWriter(t *testing.T) {
-	const dictCap = 4096
+	params := WriterDefaults
+	params.DictCap = 4096
 	var buf bytes.Buffer
-	w, err := NewWriter(&buf, dictCap)
+	w, err := NewWriterParams(&buf, &params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -42,9 +43,10 @@ func TestWriter(t *testing.T) {
 }
 
 func TestCycle1(t *testing.T) {
-	const dictCap = 4096
+	params := WriterDefaults
+	params.DictCap = 4096
 	var buf bytes.Buffer
-	w, err := NewWriter(&buf, dictCap)
+	w, err := NewWriterParams(&buf, &params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -58,7 +60,7 @@ func TestCycle1(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
-	r, err := NewReader(&buf, w.DictCap)
+	r, err := NewReader(&buf, params.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -68,9 +70,10 @@ func TestCycle1(t *testing.T) {
 }
 
 func TestCycle2(t *testing.T) {
-	const dictCap = 4096
+	params := WriterDefaults
+	params.DictCap = 4096
 	buf := new(bytes.Buffer)
-	w, err := NewWriter(buf, dictCap)
+	w, err := NewWriterParams(buf, &params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -90,7 +93,7 @@ func TestCycle2(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader(buf, w.DictCap)
+	r, err := NewReader(buf, params.DictCap)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
