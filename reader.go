@@ -10,12 +10,22 @@ import (
 	"github.com/ulikunitz/xz/lzma2"
 )
 
+// ReaderParams defines the parameters for the xz reader.
+type ReaderParams struct {
+	lzma2.ReaderParams
+}
+
+// ReaderDefaults defines the defaults for the xz reader.
+var ReaderDefaults = ReaderParams{
+	ReaderParams: lzma2.ReaderDefaults,
+}
+
 // errUnexpectedEOF indicates an unexpected end of file.
 var errUnexpectedEOF = errors.New("xz: unexpected end of file")
 
 // Reader decodes xz files.
 type Reader struct {
-	DictCap int
+	ReaderParams
 
 	xz      io.Reader
 	br      *blockReader
@@ -27,9 +37,8 @@ type Reader struct {
 // NewReader creates a new xz reader.
 func NewReader(xz io.Reader) (r *Reader, err error) {
 	r = &Reader{
-		DictCap: 8 * 1024 * 1024,
-		xz:      xz,
-		index:   make([]record, 0, 4),
+		xz:    xz,
+		index: make([]record, 0, 4),
 	}
 	p := make([]byte, headerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
@@ -48,6 +57,7 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 	return r, nil
 }
 
+// errIndex indicates an error with the xz file index.
 var errIndex = errors.New("xz: error in xz file index")
 
 // readTail reads the index body and the xz footer.
