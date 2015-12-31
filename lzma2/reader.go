@@ -14,13 +14,26 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
+// ReaderParams defines the LZMA2 reader parameters.
+type ReaderParams struct {
+	DictCap int
+}
+
+// ReaderDefaults define the defaults for the reader parameters.
+var ReaderDefaults = ReaderParams{
+	DictCap: 8 * 1024 * 1024,
+}
+
+// Verify verifies the LZMA2 reader parameters for correctness.
+func (p *ReaderParams) Verify() error {
+	return verifyDictCap(p.DictCap)
+}
+
 // Reader supports the reading of LZMA2 chunk sequences. Note that the
 // first chunk should have a dictionary reset and the first compressed
 // chunk a properties reset. The chunk sequence may not be terminated by
 // an end-of-stream chunk.
 type Reader struct {
-	DictCap int
-
 	r   io.Reader
 	err error
 
@@ -34,38 +47,31 @@ type Reader struct {
 }
 
 // NewReader creates a reader for an LZMA2 chunk sequence with the given
-// dictionary capacity. It uses the defaults for the reader.
+// dictionary capacity.
 func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
-	if lzma2 == nil {
-		return nil, errors.New("lzma2: reader must be non-nil")
-	}
-	if err = verifyDictCap(dictCap); err != nil {
-		return nil, err
-	}
-
-	r = &Reader{
-		DictCap: dictCap,
-		r:       lzma2,
-		cstate:  start,
-	}
-	return r, nil
+	params := ReaderDefaults
+	params.DictCap = dictCap
+	return NewReaderParams(lzma2, &params)
 }
 
-// init initializes the dictionary and calls startChunk.
-func (r *Reader) init() error {
-	if r.dict != nil {
-		return nil
+// NewReaderParams creates a new LZMA2 reader using the given
+// parameters.
+func NewReaderParams(lzma2 io.Reader, params *ReaderParams) (r *Reader, err error) {
+	if err = params.Verify(); err != nil {
+		return nil, err
 	}
-	var err error
-	if err = verifyDictCap(r.DictCap); err != nil {
-		return err
+	r = &Reader{
+		r:      lzma2,
+		cstate: start,
 	}
-	r.dict, err = lzma.NewDecoderDict(r.DictCap)
+	r.dict, err = lzma.NewDecoderDict(params.DictCap)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	err = r.startChunk()
-	return err
+	if err = r.startChunk(); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 // uncompressed tests whether the chunk type specifies an uncompressed
@@ -132,12 +138,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
 	}
-	if r.dict == nil {
-		if err = r.init(); err != nil {
-			r.err = err
-			return 0, err
-		}
-	}
 	for n < len(p) {
 		var k int
 		k, err = r.chunkReader.Read(p[n:])
@@ -161,15 +161,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 // end-of-stream chunk.
 func (r *Reader) EOS() bool {
 	return r.cstate == stop
-}
-
-// Properties returns the last properties used by the reader. Note that
-// there may be no properties if data hasn't been compressed.
-func (r *Reader) Properties() (lzma.Properties, bool) {
-	if r.decoder == nil {
-		return lzma.Properties{}, false
-	}
-	return r.decoder.State.Properties, true
 }
 
 // uncompressedReader is used to read uncompressed chunks.
