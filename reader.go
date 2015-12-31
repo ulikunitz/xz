@@ -4,6 +4,7 @@ package xz
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 
@@ -13,6 +14,10 @@ import (
 // ReaderParams defines the parameters for the xz reader.
 type ReaderParams struct {
 	lzma2.ReaderParams
+}
+
+func (p *ReaderParams) Verify() error {
+	return p.ReaderParams.Verify()
 }
 
 // ReaderDefaults defines the defaults for the xz reader.
@@ -34,20 +39,29 @@ type Reader struct {
 	index   []record
 }
 
-// NewReader creates a new xz reader.
+// NewReader creates a new xz reader using the default parameters.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	r = &Reader{
-		xz:    xz,
-		index: make([]record, 0, 4),
+	return NewReaderParams(xz, &ReaderDefaults)
+}
+
+// NewReaderParams creates a new xz reader using the given parameters.
+func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
+	if err = p.Verify(); err != nil {
+		return nil, err
 	}
-	p := make([]byte, headerLen)
-	if _, err = io.ReadFull(r.xz, p); err != nil {
+	r = &Reader{
+		ReaderParams: *p,
+		xz:           xz,
+		index:        make([]record, 0, 4),
+	}
+	data := make([]byte, headerLen)
+	if _, err = io.ReadFull(r.xz, data); err != nil {
 		if err == io.EOF {
 			err = errUnexpectedEOF
 		}
 		return nil, err
 	}
-	if err = r.h.UnmarshalBinary(p); err != nil {
+	if err = r.h.UnmarshalBinary(data); err != nil {
 		return nil, err
 	}
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
@@ -70,11 +84,13 @@ func (r *Reader) readTail() error {
 		return err
 	}
 	if len(index) != len(r.index) {
-		return errIndex
+		return fmt.Errorf("xz: index length is %d; want %d",
+			len(r.index), len(index))
 	}
 	for i, rec := range r.index {
 		if rec != index[i] {
-			return errIndex
+			return fmt.Errorf("xz: record %d is %v; want %v",
+				i, rec, index[i])
 		}
 	}
 
@@ -113,7 +129,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				return n, err
 			}
 			r.br, err = newBlockReader(r.xz, bh, hlen, r.newHash(),
-				r.DictCap)
+				&r.ReaderParams)
 			if err != nil {
 				return n, err
 			}
@@ -157,7 +173,9 @@ type blockReader struct {
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash, dictCap int) (br *blockReader, err error) {
+func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
+	p *ReaderParams) (br *blockReader, err error) {
+
 	br = &blockReader{
 		lxz:       lenReader{r: xz},
 		header:    h,
@@ -165,19 +183,11 @@ func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash, dict
 		hash:      hash,
 	}
 
-	f := h.filters[0].(*lzmaFilter)
-	dc := int(f.dictCap)
-	if dc < 0 {
-		return nil, errors.New("xz: dictionary capacity overflow")
-	}
-	if dictCap < dc {
-		dictCap = dc
-	}
-	lr, err := lzma2.NewReader(&br.lxz, dictCap)
+	fr, err := newFilterReader(&br.lxz, h.filters, p)
 	if err != nil {
 		return nil, err
 	}
-	br.r = io.TeeReader(lr, br.hash)
+	br.r = io.TeeReader(fr, br.hash)
 
 	return br, nil
 }
@@ -247,4 +257,21 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 		return n, errors.New("xz: checksum error for block")
 	}
 	return n, io.EOF
+}
+
+func newFilterReader(r io.Reader, f []filter, p *ReaderParams,
+) (fr io.Reader, err error) {
+
+	if err = verifyFilters(f); err != nil {
+		return nil, err
+	}
+
+	fr = r
+	for i := len(f) - 1; i >= 0; i-- {
+		fr, err = f[i].reader(fr, p)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return fr, nil
 }
