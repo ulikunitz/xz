@@ -17,7 +17,7 @@ type DecoderDict struct {
 func NewDecoderDict(dictCap int) (d *DecoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
-		return nil, errors.New("NewDecoderDict: dictCap out of range")
+		return nil, errors.New("lzma: dictCap out of range")
 	}
 	buf, err := newBuffer(dictCap)
 	if err != nil {
@@ -78,10 +78,10 @@ func (d *DecoderDict) byteAt(dist int) byte {
 // first.
 func (d *DecoderDict) writeMatch(dist int, length int) error {
 	if !(0 < dist && dist <= d.dictLen()) {
-		return errors.New("WriteMatch: distance out of range")
+		return errors.New("writeMatch: distance out of range")
 	}
 	if !(0 < length && length <= maxMatchLen) {
-		return errors.New("WriteMatch: length out of range")
+		return errors.New("writeMatch: length out of range")
 	}
 	if length > d.buf.Available() {
 		return ErrNoSpace
@@ -105,7 +105,7 @@ func (d *DecoderDict) writeMatch(dist int, length int) error {
 			p = p[:length]
 		}
 		if _, err := d.buf.Write(p); err != nil {
-			panic(fmt.Errorf("Write returned error %s", err))
+			panic(fmt.Errorf("d.buf.Write returned error %s", err))
 		}
 		length -= len(p)
 	}

@@ -27,7 +27,7 @@ func (r *breader) ReadByte() (c byte, err error) {
 	n, err := r.Reader.Read(r.p)
 	if n < 1 {
 		if err == nil {
-			err = errors.New("ReadByte: no data")
+			err = errors.New("breader.ReadByte: no data")
 		}
 		return 0, err
 	}

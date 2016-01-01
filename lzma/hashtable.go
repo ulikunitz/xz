@@ -234,7 +234,7 @@ func (t *hashTable) WordLen() int {
 func (t *hashTable) Matches(p []byte, positions []int64) int {
 	if len(p) != t.wordLen {
 		panic(fmt.Errorf(
-			"Matches: byte slice must have length %d", t.wordLen))
+			"byte slice must have length %d", t.wordLen))
 	}
 	h := t.hash(p)
 	return t.getMatches(h, positions)

@@ -77,7 +77,7 @@ func lBits(l uint32) int {
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
 	if l > maxMatchLen-minMatchLen {
-		return errors.New("Encode: l out of range")
+		return errors.New("lengthCodec.Encode: l out of range")
 	}
 	if l < 8 {
 		if err = lc.choice[0].Encode(e, 0); err != nil {

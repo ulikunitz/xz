@@ -109,7 +109,7 @@ func (b *buffer) Discard(n int) (discarded int, err error) {
 
 // ErrNoSpace indicates that there is insufficient space for the Write
 // operation.
-var ErrNoSpace = errors.New("Write: insufficient space")
+var ErrNoSpace = errors.New("insufficient space")
 
 // Write puts data into the  buffer. If less bytes are written than
 // requested ErrNoSpace is returned.

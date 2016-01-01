@@ -51,11 +51,11 @@ type EncoderDict struct {
 func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 	if !(1 <= dictCap && dictCap <= MaxDictCap) {
 		return nil, errors.New(
-			"NewEncoderDict: dictionary capacity out of range")
+			"lzma: dictionary capacity out of range")
 	}
 	if bufSize < 1 {
 		return nil, errors.New(
-			"NewEncoderDict: buffer size must be larger then zero")
+			"lzma: buffer size must be larger then zero")
 	}
 	m, err := newHashTable(dictCap, 4)
 	if err != nil {
