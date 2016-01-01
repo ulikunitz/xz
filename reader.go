@@ -16,6 +16,7 @@ type ReaderParams struct {
 	lzma2.ReaderParams
 }
 
+// Verify checks the Reader parameters for errors.
 func (p *ReaderParams) Verify() error {
 	return p.ReaderParams.Verify()
 }
