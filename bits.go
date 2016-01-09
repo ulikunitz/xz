@@ -36,7 +36,7 @@ func uint32LE(p []byte) uint32 {
 // putUvarint puts a uvarint represenation of x into the byte slice.
 func putUvarint(p []byte, x uint64) int {
 	i := 0
-	for x >= 80 {
+	for x >= 0x80 {
 		p[i] = byte(x) | 0x80
 		x >>= 7
 		i++
