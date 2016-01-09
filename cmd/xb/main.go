@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Command xb supports the xz for Go project builds.
 package main
 
 //go:generate xb version-file -o version.go
