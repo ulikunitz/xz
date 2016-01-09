@@ -68,7 +68,6 @@ func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err
 	}
-	r.index = make([]record, 0, 4)
 	return r, nil
 }
 
@@ -86,7 +85,7 @@ func (r *Reader) readTail() error {
 	}
 	if len(index) != len(r.index) {
 		return fmt.Errorf("xz: index length is %d; want %d",
-			len(r.index), len(index))
+			len(index), len(r.index))
 	}
 	for i, rec := range r.index {
 		if rec != index[i] {
