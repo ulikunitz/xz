@@ -234,7 +234,7 @@ func (cw *cntWriter) Write(p []byte) (n int, err error) {
 
 // blockWriter is writes a single block.
 type blockWriter struct {
-	cxz       cntWriter
+	cxz cntWriter
 	// mw combines io.WriteCloser w and the hash.
 	mw        io.Writer
 	w         io.WriteCloser
