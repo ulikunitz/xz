@@ -216,14 +216,14 @@ func (w *Writer) Close() error {
 	return nil
 }
 
-// cntWriter is a writer that counts all data written to it.
-type cntWriter struct {
+// countingWriter is a writer that counts all data written to it.
+type countingWriter struct {
 	w io.Writer
 	n int64
 }
 
-// Write writes data to the cntWriter.
-func (cw *cntWriter) Write(p []byte) (n int, err error) {
+// Write writes data to the countingWriter.
+func (cw *countingWriter) Write(p []byte) (n int, err error) {
 	n, err = cw.w.Write(p)
 	cw.n += int64(n)
 	if err == nil && cw.n < 0 {
@@ -234,7 +234,7 @@ func (cw *cntWriter) Write(p []byte) (n int, err error) {
 
 // blockWriter is writes a single block.
 type blockWriter struct {
-	cxz cntWriter
+	cxz countingWriter
 	// mw combines io.WriteCloser w and the hash.
 	mw        io.Writer
 	w         io.WriteCloser
@@ -251,7 +251,7 @@ type blockWriter struct {
 func newBlockWriter(xz io.Writer, hash hash.Hash, p *WriterParams,
 ) (bw *blockWriter, err error) {
 	bw = &blockWriter{
-		cxz:       cntWriter{w: xz},
+		cxz:       countingWriter{w: xz},
 		blockSize: p.BlockSize,
 		filters:   p.filters(),
 		hash:      hash,

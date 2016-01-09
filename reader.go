@@ -148,14 +148,14 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// lenReader counts the number of bytes read.
-type lenReader struct {
+// countingReader is a reader that counts the bytes read.
+type countingReader struct {
 	r io.Reader
 	n int64
 }
 
 // Read reads data from the wrapped reader and adds it to the n field.
-func (lr *lenReader) Read(p []byte) (n int, err error) {
+func (lr *countingReader) Read(p []byte) (n int, err error) {
 	n, err = lr.r.Read(p)
 	lr.n += int64(n)
 	return n, err
@@ -163,7 +163,7 @@ func (lr *lenReader) Read(p []byte) (n int, err error) {
 
 // blockReader supports the reading of a block.
 type blockReader struct {
-	lxz       lenReader
+	lxz       countingReader
 	header    *blockHeader
 	headerLen int
 	n         int64
@@ -177,7 +177,7 @@ func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
 	p *ReaderParams) (br *blockReader, err error) {
 
 	br = &blockReader{
-		lxz:       lenReader{r: xz},
+		lxz:       countingReader{r: xz},
 		header:    h,
 		headerLen: hlen,
 		hash:      hash,
