@@ -240,7 +240,7 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	}
 
 	s := br.hash.Size()
-	k := padLen(br.n)
+	k := padLen(br.lxz.n)
 	q := make([]byte, k+s, k+2*s)
 	if _, err = io.ReadFull(br.lxz.r, q); err != nil {
 		if err == io.EOF {
