@@ -25,27 +25,17 @@ type compressor interface {
 
 const lzmaSuffix = ".lzma"
 
-// parameters converts the lzmago executable flags to lzma parameters.
-//
-// I cannot use the preset config from the Tukaani project directly,
-// because I don't have two algorithm modes and can't support parameters
-// like nice_len or depth. So at this point in time I stay with the
-// dictionary sizes the default combination of (LC,LP,LB) = (3,0,2).
-// The default preset is 6.
-// Following list provides exponents of two for the dictionary sizes:
-// 18, 20, 21, 22, 22, 23, 23, 24, 25, 26.
-func parameters(preset int) lzma.Parameters {
-	dictCapExps := []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
-	dictCap := 1 << dictCapExps[preset]
-	p := lzma.Parameters{
-		LC:        3,
-		LP:        0,
-		PB:        2,
-		DictCap:   dictCap,
-		Size:      -1,
-		EOSMarker: true,
-	}
-	return p
+// dictCapExps maps preset values to exponent for dictionary capacity
+// sizes.
+var dictCapExps = []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
+
+// setParameters sets the parameters for the lzma writer using the given
+// preset.
+func setParameters(w *lzma.Writer, preset int) {
+	w.Properties = lzma.Properties{LC: 3, LP: 0, PB: 2}
+	w.DictCap = 1 << dictCapExps[preset]
+	w.Size = -1
+	w.EOSMarker = true
 }
 
 type lzmaCompressor struct{}
@@ -75,12 +65,9 @@ func (p lzmaCompressor) compress(w io.Writer, r io.Reader, preset int) (n int64,
 	if r == nil {
 		panic("reader r is nil")
 	}
-	params := parameters(preset)
 	bw := bufio.NewWriter(w)
-	lw, err := lzma.NewWriterParams(bw, &params)
-	if err != nil {
-		return
-	}
+	lw := lzma.NewWriter(bw)
+	setParameters(lw, preset)
 	n, err = io.Copy(lw, r)
 	if err != nil {
 		return
