@@ -21,6 +21,7 @@ func (p *WriterParams) filters() []filter {
 	return []filter{&lzmaFilter{int64(p.DictCap)}}
 }
 
+// Verify checks the writer parameters for invalid values.
 func (p *WriterParams) Verify() error {
 	var err error
 	if err = p.WriterParams.Verify(); err != nil {
@@ -99,6 +100,7 @@ func nopWriteCloser(w io.Writer) io.WriteCloser {
 	return nopWCloser{w}
 }
 
+// Writer compresses data written to it. It is an io.WriteCloser.
 type Writer struct {
 	WriterParams
 
@@ -110,6 +112,7 @@ type Writer struct {
 	closed  bool
 }
 
+// newBlockWriter creates a new block writer writes the header out.
 func (w *Writer) newBlockWriter() error {
 	var err error
 	w.bw, err = newBlockWriter(w.xz, w.newHash(), &w.WriterParams)
@@ -122,6 +125,8 @@ func (w *Writer) newBlockWriter() error {
 	return nil
 }
 
+// closeBlockWriter closes a block writer and records the sizes in the
+// index.
 func (w *Writer) closeBlockWriter() error {
 	var err error
 	if err = w.bw.Close(); err != nil {
@@ -131,6 +136,7 @@ func (w *Writer) closeBlockWriter() error {
 	return nil
 }
 
+// NewWriter creates a new Writer using the default writer parameters.
 func NewWriter(xz io.Writer) *Writer {
 	w, err := NewWriterParams(xz, &WriterDefaults)
 	if err != nil {
@@ -139,6 +145,7 @@ func NewWriter(xz io.Writer) *Writer {
 	return w
 }
 
+// NewWriter creates a new Writer using the given parameters.
 func NewWriterParams(xz io.Writer, p *WriterParams) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err
@@ -163,6 +170,7 @@ func NewWriterParams(xz io.Writer, p *WriterParams) (w *Writer, err error) {
 
 }
 
+// Write compresses the uncompressed data provided.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
 		return 0, errClosed
@@ -182,6 +190,8 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	}
 }
 
+// Close closes the writer and adds the footer to the Writer. Close
+// doesn't close the underlying writer.
 func (w *Writer) Close() error {
 	if w.closed {
 		return errClosed
@@ -212,6 +222,7 @@ type cntWriter struct {
 	n int64
 }
 
+// Write writes data to the cntWriter.
 func (cw *cntWriter) Write(p []byte) (n int, err error) {
 	n, err = cw.w.Write(p)
 	cw.n += int64(n)
@@ -221,8 +232,10 @@ func (cw *cntWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
+// blockWriter is writes a single block.
 type blockWriter struct {
 	cxz       cntWriter
+	// mw combines io.WriteCloser w and the hash.
 	mw        io.Writer
 	w         io.WriteCloser
 	n         int64
@@ -234,6 +247,7 @@ type blockWriter struct {
 	hash    hash.Hash
 }
 
+// newBlockWriter creates a new block writer.
 func newBlockWriter(xz io.Writer, hash hash.Hash, p *WriterParams,
 ) (bw *blockWriter, err error) {
 	bw = &blockWriter{
@@ -250,6 +264,8 @@ func newBlockWriter(xz io.Writer, hash hash.Hash, p *WriterParams,
 	return bw, nil
 }
 
+// writeHeader writes the header. If the function is called after Close
+// the commpressedSize and uncompressedSize fields will be filled.
 func (bw *blockWriter) writeHeader(w io.Writer) error {
 	h := blockHeader{
 		compressedSize:   -1,
@@ -271,14 +287,20 @@ func (bw *blockWriter) writeHeader(w io.Writer) error {
 	return nil
 }
 
+// compressed size returns the amount of data written to the underlying
+// stream.
 func (bw *blockWriter) compressedSize() int64 {
 	return bw.cxz.n
 }
 
+// uncompressedSize returns the number of data written to the
+// blockWriter
 func (bw *blockWriter) uncompressedSize() int64 {
 	return bw.n
 }
 
+// unpaddedSize returns the sum of the header length, the uncompressed
+// size of the block and the hash size.
 func (bw *blockWriter) unpaddedSize() int64 {
 	if bw.headerLen <= 0 {
 		panic("xz: block header not written")
@@ -289,6 +311,8 @@ func (bw *blockWriter) unpaddedSize() int64 {
 	return n
 }
 
+// record returns the record for the current stream. Call Close before
+// calling this method.
 func (bw *blockWriter) record() record {
 	return record{bw.unpaddedSize(), bw.uncompressedSize()}
 }
@@ -297,6 +321,7 @@ var errClosed = errors.New("xz: writer already closed")
 
 var errNoSpace = errors.New("xz: no space")
 
+// Write writes uncompressed data to the block writer.
 func (bw *blockWriter) Write(p []byte) (n int, err error) {
 	if bw.closed {
 		return 0, errClosed
@@ -317,6 +342,7 @@ func (bw *blockWriter) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Close closes the writer.
 func (bw *blockWriter) Close() error {
 	if bw.closed {
 		return errClosed
