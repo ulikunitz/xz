@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	lzmaExt  = ".lzma"
 	usageStr = `Usage: lzmago [OPTION]... [FILE]...
 Compress or uncompress FILEs in the .lzma format (by default, compress FILES
 in place).
