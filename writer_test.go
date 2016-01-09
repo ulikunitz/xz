@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"math/rand"
-	"os"
 	"testing"
 
 	"github.com/ulikunitz/xz/randtxt"
@@ -39,7 +38,7 @@ func TestWriter(t *testing.T) {
 }
 
 func TestWriter2(t *testing.T) {
-	const txtlen = 59
+	const txtlen = 1023
 	var buf bytes.Buffer
 	io.CopyN(&buf, randtxt.NewReader(rand.NewSource(41)), txtlen)
 	txt := buf.String()
@@ -56,9 +55,6 @@ func TestWriter2(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("Close error %s", err)
 	}
-	f, _ := os.Create("test.xz")
-	f.Write(buf.Bytes())
-	f.Close()
 	t.Logf("buf.Len() %d", buf.Len())
 	r, err := NewReader(&buf)
 	if err != nil {
