@@ -2,15 +2,9 @@
 
 ## Release v0.4
 
-1. Implement the xz code using the lzma2 package. Check xz documentation
-   for the code filters. Implement them only if they are created by xz
-   without special flags.
-2. Clean interfaces
-    - NewWriter without errors
-    - remove clutter; see package specific comments below
-2. Write the first version of gxz. It should be able to decode and
-   encode xz files.
-3. Add test for gxz
+1. Introduce the -f/--format option to lzmago.
+2. Rename lzmago to gxz
+3. Test gxz with lzma and xz.
 4. Add example for using the xz package to the README. The binary should
    be put into the background.
 5. Add Silesia corpus to the tests
@@ -18,26 +12,37 @@
 ## Release v0.5
 
 1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
-1. Do the signal handling correctly.
-2. Add Go documentation for commands.
+2. Do the signal handling correctly.
+3. Add Go documentation for commands.
+
+## Release v0.6
+
+1. Support parallel go routines for writing and reading xz files.
+2. Support a ReaderAt interface for xz files with small block sizes.
+
+## Release v0.7
+
+1. Optimize code
+2. Do statistical analysis to get linear presets.
+3. Fuzz optimized code.
+
+## Release v0.8
+
+1. Improve compatibility between gxz and xz
+2. Provide manual page for gxz
+
+## Release v0.9
+
+1. Improve documentation
+2. Fuzz again
 
 ## Release v1.0
 
 1. Full functioning gxz
-2. Support by gxz tool. It will not support lzma in the same binary.
-    - xz
-    - xzcat
-    - unxz
-3. Provide a manual page
-4. Create Release Notes
-5. Add godoc URL to README.md (godoc.org)
-6. Resolve all issues.
-
-## Package xz
-
-- Implement the package using the LZMA2 support provided by the lzma
-  package.
-- fix reader padding problem
+2. Add godoc URL to README.md (godoc.org)
+3. Resolve all issues.
+4. Define release candidates.
+5. Public announcement.
 
 ## Package lzma
 
@@ -87,6 +92,11 @@
 - git push
 
 ## Log
+
+### 2016-01-10
+
+I have the first working implementation of an xz reader and writer. I'm
+happy about reaching this milestone.
 
 ### 2015-12-02
 
