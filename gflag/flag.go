@@ -41,6 +41,7 @@ var CommandLine = NewFlagSet(os.Args[0], ExitOnError)
 // ErrorHandling defines how flag parsing errors are handled.
 type ErrorHandling int
 
+// The constants define how errors should be handled.
 const (
 	ContinueOnError ErrorHandling = iota
 	ExitOnError
@@ -51,6 +52,8 @@ const (
 // supported.
 type HasArg int
 
+// The constants define whether a flag argument is required, not
+// supported or optional.
 const (
 	RequiredArg HasArg = iota
 	NoArg
@@ -402,7 +405,7 @@ func (f *FlagSet) out() io.Writer {
 	return f.output
 }
 
-// SetOuput sets the default output writer for the flag set.
+// SetOutput sets the default output writer for the flag set.
 func (f *FlagSet) SetOutput(w io.Writer) {
 	f.output = w
 }
@@ -763,6 +766,105 @@ func (f *FlagSet) Int(name string, value int, usage string) *int {
 // stores the value of the flag.
 func Int(name string, value int, usage string) *int {
 	return CommandLine.Int(name, value, usage)
+}
+
+// The stringValue will store a string option.
+type stringValue struct {
+	s     string
+	value string
+}
+
+// newStringValue will create a new stringValue.
+func newStringValue(val string, p *string) *stringValue {
+	return &stringValue{val, val}
+}
+
+// Get returns the string stored in the stringValue.
+func (s *stringValue) Get() interface{} {
+	return s.s
+}
+
+// Set sets the string value.
+func (s *stringValue) Set(str string) error {
+	s.s = str
+	return nil
+}
+
+// Update resets the string value to its default.
+func (s *stringValue) Update() {
+	s.s = s.value
+}
+
+// String returns simply the string stored in the value.
+func (s *stringValue) String() string {
+	return s.s
+}
+
+// stringLine creates a usage line.
+func stringLine(name, shorthands, value, usage string) line {
+	return line{lineFlags(name, shorthands, value), usage}
+}
+
+// StringVarP defines an string flag with specified name, shorthands, default
+// value and usage string. The argument p points to a string variable in
+// which to store the value of the flag.
+func (f *FlagSet) StringVarP(p *string, name, shorthands, value, usage string) {
+	f.addLine(stringLine(name, shorthands, value, usage))
+	f.VarP(newStringValue(value, p), name, shorthands, RequiredArg)
+}
+
+// StringVarP defines an string flag with specified name, shorthands, default
+// value and usage string. The argument p points to a string variable in
+// which to store the value of the flag.
+func StringVarP(p *string, name, shorthands, value, usage string) {
+	CommandLine.StringVarP(p, name, shorthands, value, usage)
+}
+
+// StringP defines a string flag with specified name, shorthands, default
+// value and usage string. The return value is the address of a string
+// variable that stores the value of the flag.
+func (f *FlagSet) StringP(name, shorthands, value, usage string) *string {
+	p := new(string)
+	f.StringVarP(p, name, shorthands, value, usage)
+	return p
+}
+
+// StringP defines a string flag with specified name, shorthands, default
+// value and usage string. The return value is the address of a string
+// variable that stores the value of the flag.
+func StringP(name, shorthands, value, usage string) *string {
+	return CommandLine.StringP(name, shorthands, value, usage)
+}
+
+// StringVar defines a string flag with specified name, default value and
+// usage string. The argument p points to a string variable in which to
+// store the value of the flag.
+func (f *FlagSet) StringVar(p *string, name, value, usage string) {
+	f.addLine(stringLine(name, "", value, usage))
+	f.Var(newStringValue(value, p), name, RequiredArg)
+}
+
+// StringVar defines a string flag with specified name, default value and
+// usage string. The argument p points to a string variable in which to
+// store the value of the flag.
+func StringVar(p *string, name, value, usage string) {
+	CommandLine.StringVar(p, name, value, usage)
+}
+
+// String defines a string flag with specified name, default value and
+// usage string. The return value is the address of a string variable that
+// stores the value of the flag.
+func (f *FlagSet) String(name, value, usage string) *string {
+	p := new(string)
+	f.StringVar(p, name, value, usage)
+	return p
+}
+
+// String defines a string flag with specified name, default value and
+// usage string. The return value is the address of a string variable that
+// stores the value of the flag.
+func String(name, value, usage string) *string {
+	return CommandLine.String(name, value, usage)
 }
 
 // presetValue represents an integer value that can be set with multiple
