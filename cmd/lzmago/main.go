@@ -29,6 +29,12 @@ in place).
   -c, --stdout      write to standard output and don't delete input files
   -d, --decompress  force decompression
   -f, --force       force overwrite of output file and compress links
+  -F, --format <format>
+                    Specify the file format to compress or decompress.
+    auto            Default format for compression is xz. For decompression
+	            the file content is used to identify the format.
+    xz              The xz file format.
+    lzma, alone     Compress to the .lzma file format.
   -h, --help        give this help
   -k, --keep        keep (don't delete) input files
   -L, --license     display software license
@@ -83,6 +89,7 @@ type options struct {
 	stdout     bool
 	decompress bool
 	force      bool
+	format     string
 	keep       bool
 	license    bool
 	version    bool
@@ -99,6 +106,7 @@ func (o *options) Init() {
 	gflag.BoolVarP(&o.stdout, "stdout", "c", false, "")
 	gflag.BoolVarP(&o.decompress, "decompress", "d", false, "")
 	gflag.BoolVarP(&o.force, "force", "f", false, "")
+	gflag.StringVarP(&o.format, "format", "F", "auto", "")
 	gflag.BoolVarP(&o.keep, "keep", "k", false, "")
 	gflag.BoolVarP(&o.license, "license", "L", false, "")
 	gflag.BoolVarP(&o.version, "version", "V", false, "")
