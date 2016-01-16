@@ -22,7 +22,7 @@ type Reader struct {
 }
 
 // NewReader creates a new reader for an LZMA stream using the classic
-// format. NewReader reads the header of the the LZMA stream.
+// format. NewReader reads and checks the header of the the LZMA stream.
 func NewReader(lzma io.Reader) (r *Reader, err error) {
 	data := make([]byte, headerLen)
 	if _, err = io.ReadFull(lzma, data); err != nil {
