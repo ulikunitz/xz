@@ -41,11 +41,13 @@ type Reader struct {
 }
 
 // NewReader creates a new xz reader using the default parameters.
+// NewReader reads the header of the XZ stream.
 func NewReader(xz io.Reader) (r *Reader, err error) {
 	return NewReaderParams(xz, &ReaderDefaults)
 }
 
 // NewReaderParams creates a new xz reader using the given parameters.
+// NewReaderParams reads the header of the XZ stream.
 func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err
