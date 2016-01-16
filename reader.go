@@ -116,7 +116,7 @@ func (r *Reader) readTail() error {
 	return nil
 }
 
-// read reads actual data from the xz stream.
+// Read reads actual data from the xz stream.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.br == nil {
