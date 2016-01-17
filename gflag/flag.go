@@ -770,34 +770,35 @@ func Int(name string, value int, usage string) *int {
 
 // The stringValue will store a string option.
 type stringValue struct {
-	s     string
+	p     *string
 	value string
 }
 
 // newStringValue will create a new stringValue.
 func newStringValue(val string, p *string) *stringValue {
-	return &stringValue{val, val}
+	*p = val
+	return &stringValue{p, val}
 }
 
 // Get returns the string stored in the stringValue.
 func (s *stringValue) Get() interface{} {
-	return s.s
+	return *s.p
 }
 
 // Set sets the string value.
 func (s *stringValue) Set(str string) error {
-	s.s = str
+	*s.p = str
 	return nil
 }
 
 // Update resets the string value to its default.
 func (s *stringValue) Update() {
-	s.s = s.value
+	*s.p = s.value
 }
 
 // String returns simply the string stored in the value.
 func (s *stringValue) String() string {
-	return s.s
+	return *s.p
 }
 
 // stringLine creates a usage line.

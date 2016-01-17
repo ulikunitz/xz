@@ -103,6 +103,24 @@ func TestFlagSet_Int(t *testing.T) {
 	}
 }
 
+func TestFlagSet_String(t *testing.T) {
+	f := NewFlagSet("String", ContinueOnError)
+	a := f.StringP("test-s", "s", "test", "")
+	err := f.Parse([]string{})
+	if err != nil {
+		t.Fatalf("f.Parse error %s", err)
+	}
+	if *a != "test" {
+		t.Fatalf("*a is %q; want %q", *a, "test")
+	}
+	if err = f.Parse([]string{"--test-s=s"}); err != nil {
+		t.Fatalf("f.Parse error %s", err)
+	}
+	if *a != "s" {
+		t.Fatalf("*a is %q; want %q", *a, "s")
+	}
+}
+
 func TestFlagSet_Usage(t *testing.T) {
 	f := NewFlagSet("test", ContinueOnError)
 	f.IntP("test-a", "a", 3, "tests a")
