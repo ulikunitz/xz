@@ -115,6 +115,24 @@ func (o *options) Init() {
 	gflag.PresetVar(&o.preset, 0, 9, 6, "")
 }
 
+// normalizeFormat normalizes the format field of options. If the
+// function completes without error the format field will be "xz",
+// "lzma" or "auto". The latter only if the option decompress is true.
+func normalizeFormat(o *options) error {
+	switch o.format {
+	case "xz", "lzma":
+	case "auto":
+		if !o.decompress {
+			o.format = "xz"
+		}
+	case "alone":
+		o.format = "lzma"
+	default:
+		return fmt.Errorf("format %q unsupported", o.format)
+	}
+	return nil
+}
+
 func main() {
 	// setup logger
 	cmdName := filepath.Base(os.Args[0])
@@ -172,6 +190,10 @@ func main() {
 		flags |= xlog.Lnoprint | xlog.Lnowarn | xlog.Lnodebug
 	}
 	xlog.SetFlags(flags)
+
+	if err := normalizeFormat(&opts); err != nil {
+		xlog.Fatal(err)
+	}
 
 	var args []string
 	if gflag.NArg() == 0 {
