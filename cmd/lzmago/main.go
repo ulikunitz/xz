@@ -128,10 +128,18 @@ func main() {
 	opts.Init()
 
 	switch cmdName {
-	case "lzcat":
+	case "lzma", "glzma":
+		opts.format = "lzma"
+	case "lzcat", "glzcat":
+		opts.format = "lzma"
+		fallthrough
+	case "xzcat", "gxzcat":
 		opts.stdout = true
 		opts.decompress = true
-	case "unlzma", "unlzmago":
+	case "unlzma", "unglzma":
+		opts.format = "lzma"
+		fallthrough
+	case "unxz", "ungxz":
 		opts.decompress = true
 	}
 	gflag.Parse()
