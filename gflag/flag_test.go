@@ -72,7 +72,7 @@ func TestFlagSet_Counter_2(t *testing.T) {
 }
 
 func TestFlagSet_Int(t *testing.T) {
-	f := NewFlagSet("Bool", ContinueOnError)
+	f := NewFlagSet("Int", ContinueOnError)
 	a := f.Int("test-a", 0, "")
 	b := f.IntP("test-b", "b", 0, "")
 	c := f.Int("c", 0, "")
