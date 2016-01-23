@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Command lzmago supports the compression and decompression of LZMA files.
+// Command gxz supports the compression and decompression of LZMA files.
 package main
 
 //go:generate xb cat -o licenses.go xzLicense:github.com/ulikunitz/xz/LICENSE goLicense:~/go/LICENSE
@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	usageStr = `Usage: lzmago [OPTION]... [FILE]...
+	usageStr = `Usage: gxz [OPTION]... [FILE]...
 Compress or uncompress FILEs in the .lzma format (by default, compress FILES
 in place).
 
@@ -64,7 +64,7 @@ github.com/ulikunitz/xz -- xz for Go
 Go Programming Language
 =======================
 
-The lzmago program contains the packages gflag and xlog that are
+The gxz program contains the packages gflag and xlog that are
 extensions of packages from the Go standard library. The packages may
 contain code from those packages.
 
@@ -206,7 +206,7 @@ func main() {
 	if opts.stdout && !opts.decompress && !opts.force &&
 		term.IsTerminal(os.Stdout.Fd()) {
 		xlog.Fatal(`Compressed data will not be written to a terminal
-Use -f to force compression. For help type lzmago -h.`)
+Use -f to force compression. For help type gxz -h.`)
 	}
 
 	exit := 0

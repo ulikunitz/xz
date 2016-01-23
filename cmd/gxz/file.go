@@ -378,10 +378,10 @@ func (e *userPathError) Error() string {
 }
 
 // userError converts path error to an error message that is
-// acceptable for lzmago users. PathError provides information about the
+// acceptable for gxz users. PathError provides information about the
 // command that has created an error. For instance Lstat informs that
 // lstat detected that a file didn't exist this information is not
-// relevant for users of the lzmago program. This function converts a
+// relevant for users of the gxz program. This function converts a
 // path error into a generic error removing the operation information.
 func userError(err error) error {
 	pe, ok := err.(*os.PathError)
