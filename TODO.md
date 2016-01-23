@@ -2,7 +2,6 @@
 
 ## Release v0.4
 
-1. Rename lzmago to gxz
 2. Test gxz with lzma and xz.
 3. Add example for using the xz package to the README. The binary should
    be used as well.
