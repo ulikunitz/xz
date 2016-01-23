@@ -20,6 +20,9 @@ import (
 	"github.com/ulikunitz/xz/xlog"
 )
 
+// signalHandler establishes the signal handler for SIGTERM(1) and
+// handles it in its own go routine. The returned quit channel must be
+// closed to terminate the signal handler go routine.
 func signalHandler(w *writer) chan<- struct{} {
 	quit := make(chan struct{})
 	sigch := make(chan os.Signal, 1)
@@ -37,6 +40,8 @@ func signalHandler(w *writer) chan<- struct{} {
 	return quit
 }
 
+// format defines the newCompressor and newDecompressor functions for a
+// compression format.
 type format struct {
 	newCompressor func(w io.Writer, opts *options) (c io.WriteCloser,
 		err error)
@@ -48,6 +53,7 @@ type format struct {
 // sizes.
 var lzmaDictCapExps = []uint{18, 20, 21, 22, 22, 23, 23, 24, 25, 26}
 
+// formats contains the formats supported by gxz.
 var formats = map[string]*format{
 	"lzma": &format{
 		newCompressor: func(w io.Writer, opts *options,
@@ -85,6 +91,8 @@ var formats = map[string]*format{
 	},
 }
 
+// targetName finds the correct target name taking the options into
+// account.
 func targetName(path string, opts *options) (target string, err error) {
 	if path == "-" {
 		panic("path name - not supported")
@@ -107,6 +115,8 @@ func targetName(path string, opts *options) (target string, err error) {
 	return path, nil
 }
 
+// tmpName converts the path string into a temporary name by appending
+// .decompress or .compress to the file path.
 func tmpName(path string, decompress bool) string {
 	var ext string
 	if decompress {
@@ -117,6 +127,8 @@ func tmpName(path string, decompress bool) string {
 	return path + ext
 }
 
+// writer is used as file writer for decompression and file compressor
+// for compression.
 type writer struct {
 	f    *os.File
 	name string
@@ -126,6 +138,7 @@ type writer struct {
 	success bool
 }
 
+// writerFormat select the writer format.
 func writerFormat(opts *options) (f *format, err error) {
 	var ok bool
 	if f, ok = formats[opts.format]; !ok {
@@ -135,6 +148,7 @@ func writerFormat(opts *options) (f *format, err error) {
 	return f, nil
 }
 
+// newCompressor creates a compressor for the given writer.
 func newCompressor(w io.Writer, opts *options) (cmp io.WriteCloser, err error) {
 	if opts.decompress {
 		panic("no compressor needed")
@@ -149,6 +163,8 @@ func newCompressor(w io.Writer, opts *options) (cmp io.WriteCloser, err error) {
 	return cmp, nil
 }
 
+// newWriter creates a new file writer. Note that options must contain
+// the actual compression format supported and not just auto.
 func newWriter(path string, perm os.FileMode, opts *options,
 ) (w *writer, err error) {
 	w = &writer{name: path}
@@ -190,10 +206,13 @@ func newWriter(path string, perm os.FileMode, opts *options,
 	return w, nil
 }
 
+// isStdout checks whether the parameter refers to stdout.
 func isStdout(f *os.File) bool {
 	return f.Fd() == uintptr(syscall.Stdout)
 }
 
+// Close closes the writer. Note that the behaviour depends whether
+// success has been set for the writer.
 func (w *writer) Close() error {
 	var err error
 	if !w.success {
@@ -228,12 +247,16 @@ func (w *writer) Close() error {
 	return nil
 }
 
+// removeTmpFile removes the temporary file for the writer. It is used
+// by the signal handler goroutine.
 func (w *writer) removeTmpFile() {
 	os.Remove(w.f.Name())
 }
 
+// SetSuccess sets the success variable to true.
 func (w *writer) SetSuccess() { w.success = true }
 
+// reader is used as a file reader.
 type reader struct {
 	f *os.File
 	io.Reader
@@ -241,10 +264,13 @@ type reader struct {
 	keep    bool
 }
 
+// errNoRefular indicates that a file is not regular.
 var errNoRegular = errors.New("no regular file")
 
+// specialBits contain the special bits, which are not supported by gxz.
 const specialBits = os.ModeSetuid | os.ModeSetgid | os.ModeSticky
 
+// openFile opens the given path with the given options.
 func openFile(path string, opts *options) (f *os.File, err error) {
 	if path == "-" {
 		return os.Stdin, nil
@@ -277,6 +303,10 @@ func openFile(path string, opts *options) (f *os.File, err error) {
 	return f, nil
 }
 
+// readerFormat tries to determine the type of a file. Currently it
+// checks for the XZ header magic and if it is not present assumes that
+// the file has been encoded by LZMA. The format field in options is
+// updated.
 func readerFormat(br *bufio.Reader, opts *options) (f *format, err error) {
 	var ok bool
 	if f, ok = formats[opts.format]; ok {
@@ -298,6 +328,7 @@ func readerFormat(br *bufio.Reader, opts *options) (f *format, err error) {
 	return formats[opts.format], nil
 }
 
+// newDecompressor creates a new decompressor.
 func newDecompressor(br *bufio.Reader, opts *options) (dec io.Reader,
 	err error) {
 	if !opts.decompress {
@@ -313,6 +344,7 @@ func newDecompressor(br *bufio.Reader, opts *options) (dec io.Reader,
 	return dec, nil
 }
 
+// newReader creates a new reader for files.
 func newReader(path string, opts *options) (r *reader, err error) {
 	f, err := openFile(path, opts)
 	if err != nil {
@@ -331,10 +363,13 @@ func newReader(path string, opts *options) (r *reader, err error) {
 	return r, nil
 }
 
+// isStdin checks whether the given file reference is stdin.
 func isStdin(f *os.File) bool {
 	return f.Fd() == uintptr(syscall.Stdin)
 }
 
+// Close closes the reader. The behaviour can be influences by the
+// success attribute of reader.
 func (r *reader) Close() error {
 	if isStdin(r.f) {
 		return nil
