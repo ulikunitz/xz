@@ -2,12 +2,15 @@
 
 ## Release v0.4
 
-1. Introduce the -f/--format option to lzmago.
-2. Rename lzmago to gxz
-3. Test gxz with lzma and xz.
-4. Add example for using the xz package to the README. The binary should
-   be put into the background.
-5. Add Silesia corpus to the tests
+1. Rename lzmago to gxz
+2. Test gxz with lzma and xz.
+3. Add example for using the xz package to the README. The binary should
+   be used as well.
+4. Add Silesia corpus to the tests
+5. Review package structure.
+   - Integrate lzma2 with lzma.
+   - Make gflag, hash, randtxt and xlog internal
+   - Remove term
 
 ## Release v0.5
 
