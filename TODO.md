@@ -2,11 +2,10 @@
 
 ## Release v0.4
 
-2. Test gxz with lzma and xz.
-3. Add example for using the xz package to the README. The binary should
+1. Add example for using the xz package to the README. The binary should
    be used as well.
-4. Add Silesia corpus to the tests
-5. Review package structure.
+2. Add Silesia corpus to the tests
+3. Review package structure.
    - Integrate lzma2 with lzma.
    - Make gflag, hash, randtxt and xlog internal
    - Remove term
