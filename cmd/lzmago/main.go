@@ -209,7 +209,11 @@ func main() {
 Use -f to force compression. For help type lzmago -h.`)
 	}
 
+	exit := 0
 	for _, arg := range args {
-		processFile(arg, &opts)
+		if err := processFile(arg, &opts); err != nil {
+			exit = 1
+		}
 	}
+	os.Exit(exit)
 }
