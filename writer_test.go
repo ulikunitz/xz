@@ -39,19 +39,20 @@ func TestWriter(t *testing.T) {
 	}
 }
 
-func ExampleWriter() {
+func Example() {
 	const text = "The quick brown fox jumps over the lazy dog."
-	var (
-		buf bytes.Buffer
-		err error
-	)
+	var buf bytes.Buffer
+
+	// compress text
 	w := NewWriter(&buf)
-	if _, err = io.WriteString(w, text); err != nil {
+	if _, err := io.WriteString(w, text); err != nil {
 		log.Fatalf("WriteString error %s", err)
 	}
-	if err = w.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		log.Fatalf("w.Close error %s", err)
 	}
+
+	// decompress buffer and write result to stdout
 	r, err := NewReader(&buf)
 	if err != nil {
 		log.Fatalf("NewReader error %s", err)
@@ -59,6 +60,7 @@ func ExampleWriter() {
 	if _, err = io.Copy(os.Stdout, r); err != nil {
 		log.Fatalf("io.Copy error %s", err)
 	}
+
 	// Output:
 	// The quick brown fox jumps over the lazy dog.
 }
