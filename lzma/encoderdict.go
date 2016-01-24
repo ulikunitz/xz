@@ -49,7 +49,7 @@ type EncoderDict struct {
 // provides the capacity of the dictionary. The argument bufSize gives
 // the size of the lookahead buffer.
 func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
-	if !(1 <= dictCap && dictCap <= MaxDictCap) {
+	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New(
 			"lzma: dictionary capacity out of range")
 	}

@@ -76,8 +76,8 @@ func (d *DecoderDict) byteAt(dist int) byte {
 // The error value ErrNoSpace indicates that no space is available in
 // the dictionary for writing. You need to read from the dictionary
 // first.
-func (d *DecoderDict) writeMatch(dist int, length int) error {
-	if !(0 < dist && dist <= d.dictLen()) {
+func (d *DecoderDict) writeMatch(dist int64, length int) error {
+	if !(0 < dist && dist <= int64(d.dictLen())) {
 		return errors.New("writeMatch: distance out of range")
 	}
 	if !(0 < length && length <= maxMatchLen) {
@@ -88,7 +88,7 @@ func (d *DecoderDict) writeMatch(dist int, length int) error {
 	}
 	d.head += int64(length)
 
-	i := d.buf.front - dist
+	i := d.buf.front - int(dist)
 	if i < 0 {
 		i += len(d.buf.data)
 	}

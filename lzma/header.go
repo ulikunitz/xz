@@ -73,7 +73,7 @@ func (h *Header) marshalBinary() (data []byte, err error) {
 	if err = h.Properties.Verify(); err != nil {
 		return nil, err
 	}
-	if !(0 <= h.DictCap && h.DictCap <= MaxDictCap) {
+	if !(0 <= h.DictCap && int64(h.DictCap) <= MaxDictCap) {
 		return nil, fmt.Errorf("lzma: DictCap %d out of range",
 			h.DictCap)
 	}

@@ -25,7 +25,7 @@ func bestOp(d *EncoderDict, distances []int) operation {
 				continue
 			}
 		}
-		m := match{distance: distance, n: n}
+		m := match{distance: int64(distance), n: n}
 		v := weight(n, d.reps.opBits(m))
 		if v > w {
 			w = v

@@ -19,7 +19,7 @@ type operation interface {
 // rep represents a repetition at the given distance and the given length
 type match struct {
 	// supports all possible distance values, including the eos marker
-	distance int
+	distance int64
 	// length
 	n int
 }

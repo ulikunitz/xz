@@ -120,7 +120,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 			return nil, errEOS
 		}
 		op = match{n: int(n) + minMatchLen,
-			distance: int(d.State.rep[0]) + minDistance}
+			distance: int64(d.State.rep[0]) + minDistance}
 		return op, nil
 	}
 	b, err = d.State.isRepG0[state].Decode(d.rd)
@@ -136,7 +136,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 		}
 		if b == 0 {
 			d.State.updateStateShortRep()
-			op = match{n: 1, distance: int(dist) + minDistance}
+			op = match{n: 1, distance: int64(dist) + minDistance}
 			return op, nil
 		}
 	} else {
@@ -167,7 +167,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 		return nil, err
 	}
 	d.State.updateStateRep()
-	op = match{n: int(n) + minMatchLen, distance: int(dist) + minDistance}
+	op = match{n: int(n) + minMatchLen, distance: int64(dist) + minDistance}
 	return op, nil
 }
 
