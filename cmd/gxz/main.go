@@ -3,6 +3,8 @@
 // license that can be found in the LICENSE file.
 
 // Command gxz supports the compression and decompression of LZMA files.
+//
+// Use gxz -h to get information about supported flags.
 package main
 
 //go:generate xb cat -o licenses.go xzLicense:github.com/ulikunitz/xz/LICENSE goLicense:~/go/LICENSE
