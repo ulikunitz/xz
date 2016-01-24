@@ -17,14 +17,16 @@ func bestOp(d *EncoderDict, distances []int) operation {
 	w := weight(1, d.reps.opBits(op))
 	for _, distance := range distances {
 		n := d.matchLen(distance)
-		switch n {
-		case 0:
+		if n < 2 {
 			continue
+		}
+		/* buggy with buffer because uncompressed chunk resets
+		 * state:
 		case 1:
 			if uint32(distance-minDistance) != d.reps[0] {
 				continue
 			}
-		}
+		*/
 		m := match{distance: int64(distance), n: n}
 		v := weight(n, d.reps.opBits(m))
 		if v > w {

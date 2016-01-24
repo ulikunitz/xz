@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -63,6 +64,7 @@ func NewEncoder(bw io.ByteWriter, state *State, dict *EncoderDict,
 		start:   dict.pos(),
 		margin:  opLenMargin,
 	}
+	e.Dict.reps = e.State.rep
 	if e.marker {
 		e.margin += 5
 	}
@@ -133,7 +135,9 @@ func (e *Encoder) writeMatch(m match) error {
 	dist := uint32(m.distance - minDistance)
 	if !(minMatchLen <= m.n && m.n <= maxMatchLen) &&
 		!(dist == e.State.rep[0] && m.n == 1) {
-		panic("match length out of range")
+		panic(fmt.Errorf(
+			"match length %d out of range; dist %d rep[0] %d",
+			m.n, dist, e.State.rep[0]))
 	}
 	state, state2, posState := e.State.states(e.Dict.pos())
 	if err = e.State.isMatch[state2].Encode(e.re, 1); err != nil {
