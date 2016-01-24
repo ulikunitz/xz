@@ -211,10 +211,18 @@ func isStdout(f *os.File) bool {
 	return f.Fd() == uintptr(syscall.Stdout)
 }
 
+var errInval = errors.New("invalid value")
+
 // Close closes the writer. Note that the behaviour depends whether
 // success has been set for the writer.
 func (w *writer) Close() error {
 	var err error
+
+	if w.f == nil {
+		return errInval
+	}
+	defer func() { w.f = nil }()
+
 	if !w.success {
 		if isStdout(w.f) {
 			return nil
@@ -371,6 +379,10 @@ func isStdin(f *os.File) bool {
 // Close closes the reader. The behaviour can be influences by the
 // success attribute of reader.
 func (r *reader) Close() error {
+	if r.f == nil {
+		return errInval
+	}
+	defer func() { r.f = nil }()
 	if isStdin(r.f) {
 		return nil
 	}
@@ -440,33 +452,29 @@ func processFile(path string, opts *options) (err error) {
 		printErr(err)
 		return
 	}
+	defer r.Close()
 	w, err := newWriter(path, r.Perm(), opts)
 	if err != nil {
 		printErr(err)
-		r.Close()
 		return
 	}
+	defer w.Close()
 	quitSignalHandler := signalHandler(w)
 	if _, err = io.Copy(w, r); err != nil {
+		close(quitSignalHandler)
 		printErr(err)
-	} else {
-		w.SetSuccess()
+		return err
 	}
 	close(quitSignalHandler)
-	if e := w.Close(); e != nil {
-		printErr(e)
-		if err == nil {
-			err = e
-		}
+	w.SetSuccess()
+	if err = w.Close(); err != nil {
+		printErr(err)
+		return err
 	}
-	if err == nil {
-		r.SetSuccess()
+	r.SetSuccess()
+	if err = r.Close(); err != nil {
+		printErr(err)
+		return err
 	}
-	if e := r.Close(); e != nil {
-		printErr(e)
-		if err == nil {
-			err = e
-		}
-	}
-	return
+	return nil
 }
