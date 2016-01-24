@@ -3,7 +3,9 @@ package xz
 import (
 	"bytes"
 	"io"
+	"log"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/ulikunitz/xz/randtxt"
@@ -35,6 +37,30 @@ func TestWriter(t *testing.T) {
 	if s != text {
 		t.Fatalf("reader decompressed to %q; want %q", s, text)
 	}
+}
+
+func ExampleWriter() {
+	const text = "The quick brown fox jumps over the lazy dog."
+	var (
+		buf bytes.Buffer
+		err error
+	)
+	w := NewWriter(&buf)
+	if _, err = io.WriteString(w, text); err != nil {
+		log.Fatalf("WriteString error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		log.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(&buf)
+	if err != nil {
+		log.Fatalf("NewReader error %s", err)
+	}
+	if _, err = io.Copy(os.Stdout, r); err != nil {
+		log.Fatalf("io.Copy error %s", err)
+	}
+	// Output:
+	// The quick brown fox jumps over the lazy dog.
 }
 
 func TestWriter2(t *testing.T) {
