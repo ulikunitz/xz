@@ -3,6 +3,8 @@
 ## Release v0.4
 
 1. Add Silesia corpus to the tests
+   - fix bug decompressing samba.xz and mozilla.xz from the Silesia
+     corpus.
 2. Review package structure.
    - Integrate lzma2 with lzma.
    - Make gflag, hash, randtxt and xlog internal
@@ -11,8 +13,9 @@
 ## Release v0.5
 
 1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
-2. Do the signal handling correctly.
-3. Add Go documentation for commands.
+2. Compare compression ratio with xz tool using comparable parameters.
+3. Do the signal handling correctly.
+4. Add Go documentation for commands.
 
 ## Release v0.6
 
