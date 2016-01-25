@@ -2,14 +2,11 @@
 
 ## Release v0.4
 
-1. Add Silesia corpus to the tests
-   - fix bug decompressing samba.xz and mozilla.xz from the Silesia
-     corpus.
-2. Review package structure.
+1. Review package structure.
    - Integrate lzma2 with lzma.
    - Make gflag, hash, randtxt and xlog internal
    - Remove term
-3. Check xz behaviour and make gxz compatible
+2. Check xz behaviour and make gxz compatible
    - compressing already compressed files (with .xz extension, wihtout
      .xz)
    - decompressing uncompressed files
