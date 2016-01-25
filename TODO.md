@@ -9,6 +9,10 @@
    - Integrate lzma2 with lzma.
    - Make gflag, hash, randtxt and xlog internal
    - Remove term
+3. Check xz behaviour and make gxz compatible
+   - compressing already compressed files (with .xz extension, wihtout
+     .xz)
+   - decompressing uncompressed files
 
 ## Release v0.5
 
