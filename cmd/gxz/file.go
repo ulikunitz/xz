@@ -206,7 +206,7 @@ func newWriter(path string, perm os.FileMode, opts *options,
 				return nil, err
 			}
 		}
-		tmp := tmpName(path, opts.decompress)
+		tmp := tmpName(name, opts.decompress)
 		if w.f, err = os.OpenFile(tmp,
 			os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm); err != nil {
 			return nil, err
