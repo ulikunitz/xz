@@ -2,11 +2,7 @@
 
 ## Release v0.4
 
-1. Review package structure.
-   - Integrate lzma2 with lzma.
-   - Make gflag, hash, randtxt and xlog internal
-   - Remove term
-2. Check xz behaviour and make gxz compatible
+1. Check xz behaviour and make gxz compatible
    - compressing already compressed files (with .xz extension, wihtout
      .xz)
    - decompressing uncompressed files
