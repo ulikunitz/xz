@@ -101,16 +101,36 @@ func targetName(path string, opts *options) (target string, err error) {
 		return "", errors.New("empty file name not supported")
 	}
 	ext := "." + opts.format
+	tarExt := ".txz"
+	if opts.format == "lzma" {
+		tarExt = ".tlz"
+	}
 	if !opts.decompress {
+		if strings.HasSuffix(path, ext) {
+			return "", fmt.Errorf(
+				"%s: file has already %s suffix", path, ext)
+		}
+		if strings.HasSuffix(path, tarExt) {
+			return "", fmt.Errorf(
+				"%s: file has already %s suffix", path, tarExt)
+		}
 		return path + ext, nil
 	}
 	if strings.HasSuffix(path, ext) {
 		target = path[:len(path)-len(ext)]
 		if len(target) == 0 {
 			return "", fmt.Errorf(
-				"file name %s has no base part", path)
+				"%s: file name has no base part", path)
 		}
 		return target, nil
+	}
+	if strings.HasSuffix(path, tarExt) {
+		target = path[:len(path)-len(tarExt)]
+		if len(target) == 0 {
+			return "", fmt.Errorf(
+				"%s: file name has no base part", path)
+		}
+		return target + ".tar", nil
 	}
 	return path, nil
 }
