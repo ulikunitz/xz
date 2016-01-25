@@ -182,6 +182,7 @@ func newUncompressedReader(r io.Reader, dict *lzma.DecoderDict, size int64) *unc
 
 // Reopen reinitializes an uncompressed reader.
 func (ur *uncompressedReader) Reopen(r io.Reader, size int64) {
+	ur.err = nil
 	ur.eof = false
 	ur.lr = io.LimitedReader{R: r, N: size}
 }
