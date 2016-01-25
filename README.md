@@ -6,7 +6,11 @@ decompressing data. The package is completely written in Go and doesn't
 have any dependency on any C code.
 
 The package is currently under development. There might be bugs and APIs
-might change.
+are not considered stable. At this time the package cannot compete with
+the xz tool regarding compression speed and size. The algorithms there
+have been developed over a long time and are highly optimized. However
+there are a number of improvements planned and I'm very optimistic about
+parallel compression and decompression. Stay tuned!
 
 # Using the API
 
@@ -64,8 +68,3 @@ To decompress it use the following command.
 
     $ gxz -d bigfile.xz
 
-At this time the utility cannot compete with the xz tool. The algorithms
-in this tools have been developed over a long time and are highly
-optimized. However there are a number of improvements planned and I'm
-very optimistic about parallel compression and decompression. Stay
-tuned!
