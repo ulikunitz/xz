@@ -18,9 +18,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ulikunitz/xz/gflag"
-	"github.com/ulikunitz/xz/term"
-	"github.com/ulikunitz/xz/xlog"
+	"github.com/ulikunitz/xz/internal/gflag"
+	"github.com/ulikunitz/xz/internal/term"
+	"github.com/ulikunitz/xz/internal/xlog"
 )
 
 const (
