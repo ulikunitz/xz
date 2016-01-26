@@ -142,7 +142,7 @@ func (r *Reader2) Read(p []byte) (n int, err error) {
 			return n, err
 		}
 		if k == 0 {
-			r.err = errors.New("lzma2: Reader doesn't get data")
+			r.err = errors.New("lzma: Reader2 doesn't get data")
 			return n, r.err
 		}
 	}

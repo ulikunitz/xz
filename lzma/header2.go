@@ -69,7 +69,7 @@ const (
 
 // errHeaderByte indicates an unsupported value for the chunk header
 // byte. These bytes starts the variable-length chunk header.
-var errHeaderByte = errors.New("lzma2: unsupported chunk header byte")
+var errHeaderByte = errors.New("lzma: unsupported chunk header byte")
 
 // headerChunkType converts the header byte into a chunk type. It
 // ignores the uncompressed size bits in the chunk header byte.
@@ -265,8 +265,8 @@ const (
 
 // errors for the chunk state handling
 var (
-	errChunkType = errors.New("lzma2: unexpected chunk type")
-	errState     = errors.New("wrong state")
+	errChunkType = errors.New("lzma: unexpected chunk type")
+	errState     = errors.New("lzma: wrong chunk state")
 )
 
 // next tranisitions state based on chunk type input
@@ -368,7 +368,7 @@ func DecodeDictCap(c byte) (n int64, err error) {
 		if c == maxDictCapCode {
 			return maxDictCap, nil
 		}
-		return 0, errors.New("lzma2: invalid dictionary size code")
+		return 0, errors.New("lzma: invalid dictionary size code")
 	}
 	return decodeDictCap(c), nil
 }
