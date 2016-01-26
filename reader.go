@@ -8,22 +8,22 @@ import (
 	"hash"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma2"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // ReaderParams defines the parameters for the xz reader.
 type ReaderParams struct {
-	lzma2.ReaderParams
+	lzma.Reader2Params
 }
 
 // Verify checks the Reader parameters for errors.
 func (p *ReaderParams) Verify() error {
-	return p.ReaderParams.Verify()
+	return p.Reader2Params.Verify()
 }
 
 // ReaderDefaults defines the defaults for the xz reader.
 var ReaderDefaults = ReaderParams{
-	ReaderParams: lzma2.ReaderDefaults,
+	Reader2Params: lzma.Reader2Defaults,
 }
 
 // errUnexpectedEOF indicates an unexpected end of file.

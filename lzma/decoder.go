@@ -6,13 +6,13 @@ import (
 	"io"
 )
 
-// Decoder decodes a raw LZMA stream without any header.
-type Decoder struct {
+// decoder decodes a raw LZMA stream without any header.
+type decoder struct {
 	// dictionary; the rear pointer of the buffer will be used for
 	// reading the data.
-	Dict *DecoderDict
+	Dict *decoderDict
 	// decoder state
-	State *State
+	State *state
 	// range decoder
 	rd *rangeDecoder
 	// start stores the head value of the dictionary for the LZMA
@@ -26,16 +26,16 @@ type Decoder struct {
 	eosMarker bool
 }
 
-// NewDecoder creates a new decoder instance. The parameter size provides
+// newDecoder creates a new decoder instance. The parameter size provides
 // the expected byte size of the decompressed data. If the size is
 // unknown use a negative value. In that case the decoder will look for
 // a terminating end-of-stream marker.
-func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (d *Decoder, err error) {
+func newDecoder(br io.ByteReader, state *state, dict *decoderDict, size int64) (d *decoder, err error) {
 	rd, err := newRangeDecoder(br)
 	if err != nil {
 		return nil, err
 	}
-	d = &Decoder{
+	d = &decoder{
 		State: state,
 		Dict:  dict,
 		rd:    rd,
@@ -47,7 +47,7 @@ func NewDecoder(br io.ByteReader, state *State, dict *DecoderDict, size int64) (
 
 // Reopen restarts the decoder with a new byte reader and a new size. Reopen
 // resets the Decompressed counter to zero.
-func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
+func (d *decoder) Reopen(br io.ByteReader, size int64) error {
 	var err error
 	if d.rd, err = newRangeDecoder(br); err != nil {
 		return err
@@ -59,7 +59,7 @@ func (d *Decoder) Reopen(br io.ByteReader, size int64) error {
 }
 
 // decodeLiteral decodes a single literal from the LZMA stream.
-func (d *Decoder) decodeLiteral() (op operation, err error) {
+func (d *decoder) decodeLiteral() (op operation, err error) {
 	litState := d.State.litState(d.Dict.byteAt(1), d.Dict.head)
 	match := d.Dict.byteAt(int(d.State.rep[0]) + 1)
 	s, err := d.State.litCodec.Decode(d.rd, d.State.state, match, litState)
@@ -75,7 +75,7 @@ var errEOS = errors.New("EOS marker found")
 // readOp decodes the next operation from the compressed stream. It
 // returns the operation. If an explicit end of stream marker is
 // identified the eos error is returned.
-func (d *Decoder) readOp() (op operation, err error) {
+func (d *decoder) readOp() (op operation, err error) {
 	// Value of the end of stream (EOS) marker
 	const eosDist = 1<<32 - 1
 
@@ -172,7 +172,7 @@ func (d *Decoder) readOp() (op operation, err error) {
 }
 
 // apply takes the operation and transforms the decoder dictionary accordingly.
-func (d *Decoder) apply(op operation) error {
+func (d *decoder) apply(op operation) error {
 	var err error
 	switch x := op.(type) {
 	case match:
@@ -188,7 +188,7 @@ func (d *Decoder) apply(op operation) error {
 // decompress fills the dictionary unless no space for new data is
 // available. If the end of the LZMA stream has been reached io.EOF will
 // be returned.
-func (d *Decoder) decompress() error {
+func (d *decoder) decompress() error {
 	if d.eos {
 		return io.EOF
 	}
@@ -246,7 +246,7 @@ var (
 
 // Read reads data from the buffer. If no more data is available io.EOF is
 // returned.
-func (d *Decoder) Read(p []byte) (n int, err error) {
+func (d *decoder) Read(p []byte) (n int, err error) {
 	var k int
 	for {
 		// Read of decoder dict never returns an error.
@@ -268,6 +268,6 @@ func (d *Decoder) Read(p []byte) (n int, err error) {
 }
 
 // Decompressed returns the number of bytes decompressed by the decoder.
-func (d *Decoder) Decompressed() int64 {
+func (d *decoder) Decompressed() int64 {
 	return d.Dict.pos() - d.start
 }

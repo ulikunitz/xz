@@ -25,10 +25,10 @@ type matcher interface {
 	Reset()
 }
 
-// EncoderDict buffers all encoded data and detected operations and
+// encoderDict buffers all encoded data and detected operations and
 // includes the complete dictionary. It consists of a lookahead buffer
 // and the dictionary.
-type EncoderDict struct {
+type encoderDict struct {
 	buf buffer
 	// start of the operation buffer
 	cursor int
@@ -44,11 +44,11 @@ type EncoderDict struct {
 	positions []int64
 }
 
-// NewEncoderDict creates a new encoder dictionary. The initial position
+// newEncoderDict creates a new encoder dictionary. The initial position
 // and length of the dictionary will be zero. The argument dictCap
 // provides the capacity of the dictionary. The argument bufSize gives
 // the size of the lookahead buffer.
-func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
+func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New(
 			"lzma: dictionary capacity out of range")
@@ -69,7 +69,7 @@ func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 	if err != nil {
 		return nil, err
 	}
-	d = &EncoderDict{
+	d = &encoderDict{
 		buf:      *buf,
 		ops:      *opbuf,
 		m:        m,
@@ -79,7 +79,7 @@ func NewEncoderDict(dictCap, bufSize int) (d *EncoderDict, err error) {
 }
 
 // Reset clears the dictionary.
-func (d *EncoderDict) Reset() {
+func (d *encoderDict) Reset() {
 	d.buf.Reset()
 	d.cursor = 0
 	d.ops.reset()
@@ -90,18 +90,18 @@ func (d *EncoderDict) Reset() {
 
 // Available returns the number of bytes that can be written by a
 // following Write call.
-func (d *EncoderDict) available() int {
+func (d *encoderDict) available() int {
 	return d.buf.Available() - d.dictLen()
 }
 
 // Buffered gives the number of bytes in front of the dictionary.
-func (d *EncoderDict) Buffered() int {
+func (d *encoderDict) Buffered() int {
 	return d.buf.Buffered()
 }
 
 // bufferedAtFront returns the number of bytes in the buffer in front of
 // the cursor.
-func (d *EncoderDict) bufferedAtFront() int {
+func (d *encoderDict) bufferedAtFront() int {
 	delta := d.buf.front - d.cursor
 	if delta < 0 {
 		delta += len(d.buf.data)
@@ -110,7 +110,7 @@ func (d *EncoderDict) bufferedAtFront() int {
 }
 
 // write puts new data into the dictionary.
-func (d *EncoderDict) write(p []byte) (n int, err error) {
+func (d *encoderDict) write(p []byte) (n int, err error) {
 	n = len(p)
 	m := d.available()
 	if n > m {
@@ -126,7 +126,7 @@ func (d *EncoderDict) write(p []byte) (n int, err error) {
 }
 
 // peek returns data from the cursor, but doesn't move it.
-func (d *EncoderDict) peek(p []byte) (n int, err error) {
+func (d *encoderDict) peek(p []byte) (n int, err error) {
 	m := d.bufferedAtFront()
 	n = len(p)
 	if m < n {
@@ -142,7 +142,7 @@ func (d *EncoderDict) peek(p []byte) (n int, err error) {
 
 // writeOp puts an operation into the operation buffer and the matcher.
 // The cursor will be advanced.
-func (d *EncoderDict) writeOp(op operation) error {
+func (d *encoderDict) writeOp(op operation) error {
 	n := op.Len()
 	if n > d.bufferedAtFront() {
 		return ErrNoSpace
@@ -178,11 +178,11 @@ func (d *EncoderDict) writeOp(op operation) error {
 	return nil
 }
 
-func (d *EncoderDict) peekOp() (op operation, err error) {
+func (d *encoderDict) peekOp() (op operation, err error) {
 	return d.ops.peekOp()
 }
 
-func (d *EncoderDict) discardOp() error {
+func (d *encoderDict) discardOp() error {
 	op, err := d.ops.readOp()
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (d *EncoderDict) discardOp() error {
 
 // matches finds potential distances. The number of distances put into
 // the slice are returned.
-func (d *EncoderDict) matches(distances []int) int {
+func (d *encoderDict) matches(distances []int) int {
 	w := d.m.WordLen()
 	if d.bufferedAtFront() < w {
 		return 0
@@ -232,7 +232,7 @@ func (d *EncoderDict) matches(distances []int) int {
 }
 
 // opsLen returns the number of bytes covered by the operation buffer.
-func (d *EncoderDict) opsLen() int {
+func (d *encoderDict) opsLen() int {
 	delta := d.cursor - d.buf.rear
 	if delta < 0 {
 		delta += len(d.buf.data)
@@ -241,7 +241,7 @@ func (d *EncoderDict) opsLen() int {
 }
 
 // cursorLen returns the length of the dictionary starting at the cursor
-func (d *EncoderDict) cursorDictLen() int {
+func (d *encoderDict) cursorDictLen() int {
 	head := d.head + int64(d.opsLen())
 	if head < int64(d.capacity) {
 		return int(head)
@@ -251,7 +251,7 @@ func (d *EncoderDict) cursorDictLen() int {
 
 // matchLen computes the length of the match at the given distance with
 // the bytes at the cursor. The function returns zero if no match is found.
-func (d *EncoderDict) matchLen(dist int) int {
+func (d *encoderDict) matchLen(dist int) int {
 	if !(0 < dist && dist <= d.cursorDictLen()) {
 		return 0
 	}
@@ -261,7 +261,7 @@ func (d *EncoderDict) matchLen(dist int) int {
 
 // literal returns the the byte at the cursor. It returns 0 if there is
 // no data buffered.
-func (d *EncoderDict) literal() byte {
+func (d *encoderDict) literal() byte {
 	if d.cursor == d.buf.front {
 		return 0
 	}
@@ -269,13 +269,13 @@ func (d *EncoderDict) literal() byte {
 }
 
 // DictCap returns the dictionary capacity.
-func (d *EncoderDict) dictCap() int {
+func (d *encoderDict) dictCap() int {
 	return d.capacity
 }
 
 // DictLen returns the current number of bytes in the dictionary. The
 // number has dictionary capacity as upper limit.
-func (d *EncoderDict) dictLen() int {
+func (d *encoderDict) dictLen() int {
 	if d.head < int64(d.capacity) {
 		return int(d.head)
 	}
@@ -284,7 +284,7 @@ func (d *EncoderDict) dictLen() int {
 
 // Len returns the size of the data available after the head of the
 // dictionary.
-func (d *EncoderDict) Len() int {
+func (d *encoderDict) Len() int {
 	n := d.buf.Available()
 	if int64(n) > d.head {
 		return int(d.head)
@@ -293,14 +293,14 @@ func (d *EncoderDict) Len() int {
 }
 
 // Pos returns the current position of the dictionary head.
-func (d *EncoderDict) pos() int64 {
+func (d *encoderDict) pos() int64 {
 	return d.head
 }
 
 // ByteAt returns a byte from the dictionary. The distance is the
 // positive difference from the current head. A distance of 1 will
 // return the top-most byte in the dictionary.
-func (d *EncoderDict) byteAt(distance int) byte {
+func (d *encoderDict) byteAt(distance int) byte {
 	if !(0 < distance && distance <= d.dictLen()) {
 		return 0
 	}
@@ -313,7 +313,7 @@ func (d *EncoderDict) byteAt(distance int) byte {
 
 // CopyN copies the n topmost bytes after the header. The maximum for n
 // is given by the Len() method.
-func (d *EncoderDict) CopyN(w io.Writer, n int) (written int, err error) {
+func (d *encoderDict) CopyN(w io.Writer, n int) (written int, err error) {
 	if n <= 0 {
 		return 0, nil
 	}

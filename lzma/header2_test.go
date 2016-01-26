@@ -1,11 +1,9 @@
-package lzma2
+package lzma
 
 import (
 	"bytes"
 	"fmt"
 	"testing"
-
-	"github.com/ulikunitz/xz/lzma"
 )
 
 func TestChunkTypeString(t *testing.T) {
@@ -76,7 +74,7 @@ func TestHeaderLen(t *testing.T) {
 }
 
 func chunkHeaderSamples(t *testing.T) []chunkHeader {
-	props := lzma.Properties{LC: 3, LP: 0, PB: 2}
+	props := Properties{LC: 3, LP: 0, PB: 2}
 	headers := make([]chunkHeader, 0, 12)
 	for c := cEOS; c <= cLRND; c++ {
 		var h chunkHeader
@@ -144,7 +142,7 @@ func TestReadEOS(t *testing.T) {
 	if h.uncompressed != 0 {
 		t.Errorf("uncompressed got %d; want %d", h.uncompressed, 0)
 	}
-	wantProps := lzma.Properties{}
+	wantProps := Properties{}
 	if h.props != wantProps {
 		t.Errorf("props got %v; want %v", h.props, wantProps)
 	}

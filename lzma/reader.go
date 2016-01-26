@@ -1,6 +1,6 @@
 // Package lzma supports the decoding and encoding of LZMA streams.
-// Reader and Writer support the classic LZMA header format. Encoder and
-// Decoder allow the decoding and encoding of LZMA raw streams.
+// Reader and Writer support the classic LZMA format. Reader2 and
+// Writer2 support the decoding and encoding of LZMA2 streams.
 //
 // The package is written completely in Go and doesn't rely on any external
 // library.
@@ -18,7 +18,7 @@ type Reader struct {
 	Header
 	lzma io.Reader
 	h    Header
-	d    *Decoder
+	d    *decoder
 }
 
 // NewReader creates a new reader for an LZMA stream using the classic
@@ -57,14 +57,14 @@ func (r *Reader) init() error {
 	r.Header = r.h
 
 	br := ByteReader(r.lzma)
-	state := NewState(r.h.Properties)
+	state := newState(r.h.Properties)
 
-	dict, err := NewDecoderDict(r.h.DictCap)
+	dict, err := newDecoderDict(r.h.DictCap)
 	if err != nil {
 		return err
 	}
 
-	r.d, err = NewDecoder(br, state, dict, r.h.Size)
+	r.d, err = newDecoder(br, state, dict, r.h.Size)
 	return err
 }
 

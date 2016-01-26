@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma2"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // LZMA filter constants.
@@ -24,7 +24,7 @@ func (f lzmaFilter) id() uint64 { return lzmaFilterID }
 
 // MarshalBinary converts the lzmaFilter in its encoded representation.
 func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
-	c := lzma2.EncodeDictCap(f.dictCap)
+	c := lzma.EncodeDictCap(f.dictCap)
 	return []byte{lzmaFilterID, 1, c}, nil
 }
 
@@ -40,7 +40,7 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 	if data[1] != 1 {
 		return errors.New("xz: wrong LZMA2 filter size")
 	}
-	dc, err := lzma2.DecodeDictCap(data[2])
+	dc, err := lzma.DecodeDictCap(data[2])
 	if err != nil {
 		return errors.New("xz: wrong LZMA2 dictionary size property")
 	}
@@ -53,7 +53,7 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 	err error) {
 
-	params := p.ReaderParams
+	params := p.Reader2Params
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
@@ -63,7 +63,7 @@ func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 		params.DictCap = dc
 	}
 
-	fr, err = lzma2.NewReaderParams(r, &params)
+	fr, err = lzma.NewReader2Params(r, &params)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
 ) (fw io.WriteCloser, err error) {
 
-	params := p.WriterParams
+	params := p.Writer2Params
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
@@ -84,7 +84,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
 		params.DictCap = dc
 	}
 
-	fw, err = lzma2.NewWriterParams(w, &params)
+	fw, err = lzma.NewWriter2Params(w, &params)
 	if err != nil {
 		return nil, err
 	}

@@ -1,11 +1,9 @@
-package lzma2
+package lzma
 
 import (
 	"errors"
 	"fmt"
 	"io"
-
-	"github.com/ulikunitz/xz/lzma"
 )
 
 const (
@@ -129,7 +127,7 @@ type chunkHeader struct {
 	ctype        chunkType
 	uncompressed uint32
 	compressed   uint16
-	props        lzma.Properties
+	props        Properties
 }
 
 // String returns a string representation of the chunk header.
@@ -173,7 +171,7 @@ func (h *chunkHeader) UnmarshalBinary(data []byte) error {
 		return nil
 	}
 
-	h.props, err = lzma.PropertiesForCode(data[5])
+	h.props, err = PropertiesForCode(data[5])
 	return err
 }
 

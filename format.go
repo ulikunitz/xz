@@ -37,7 +37,7 @@ func padLen(n int64) int {
 // headerMagic stores the magic bytes for the header
 var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
 
-// headerLen defines the length of the stream header.
+// HeaderLen provides the length of the xz file header.
 const HeaderLen = 12
 
 // Constants for the checksum methods supported by xz.

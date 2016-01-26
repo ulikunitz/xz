@@ -5,12 +5,12 @@ import (
 	"hash"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma2"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // WriterParams describe the parameters for a writer.
 type WriterParams struct {
-	lzma2.WriterParams
+	lzma.Writer2Params
 	BlockSize int64
 	// checksum method: CRC32, CRC64 or SHA256
 	CheckSum byte
@@ -24,7 +24,7 @@ func (p *WriterParams) filters() []filter {
 // Verify checks the writer parameters for invalid values.
 func (p *WriterParams) Verify() error {
 	var err error
-	if err = p.WriterParams.Verify(); err != nil {
+	if err = p.Writer2Params.Verify(); err != nil {
 		return err
 	}
 	if p.BlockSize <= 0 {
@@ -41,9 +41,9 @@ const maxInt64 = 1<<63 - 1
 
 // WriterDefaults defines the defaults for the Writer parameters.
 var WriterDefaults = WriterParams{
-	WriterParams: lzma2.WriterDefaults,
-	BlockSize:    maxInt64,
-	CheckSum:     CRC64,
+	Writer2Params: lzma.Writer2Defaults,
+	BlockSize:     maxInt64,
+	CheckSum:      CRC64,
 }
 
 // verifyFilters checks the filter list for the length and the right
@@ -145,7 +145,7 @@ func NewWriter(xz io.Writer) *Writer {
 	return w
 }
 
-// NewWriter creates a new Writer using the given parameters.
+// NewWriterParams creates a new Writer using the given parameters.
 func NewWriterParams(xz io.Writer, p *WriterParams) (w *Writer, err error) {
 	if err = p.Verify(); err != nil {
 		return nil, err

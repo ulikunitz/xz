@@ -35,7 +35,7 @@ func cycle(t *testing.T, n int) {
 			len(testString))
 	}
 	const dictCap = MinDictCap
-	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
+	encoderDict, err := newEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,9 +43,9 @@ func cycle(t *testing.T, n int) {
 	if err := props.Verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
-	state := NewState(props)
+	state := newState(props)
 	var buf bytes.Buffer
-	w, err := NewEncoder(&buf, state, encoderDict, EOSMarker)
+	w, err := newEncoder(&buf, state, encoderDict, eosMarker)
 	if err != nil {
 		t.Fatalf("NewEncoder error %s", err)
 	}
@@ -62,12 +62,12 @@ func cycle(t *testing.T, n int) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d len(orig) %d", buf.Len(), len(orig))
-	decoderDict, err := NewDecoderDict(dictCap)
+	decoderDict, err := newDecoderDict(dictCap)
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
 	state.Reset()
-	r, err := NewDecoder(&buf, state, decoderDict, -1)
+	r, err := newDecoder(&buf, state, decoderDict, -1)
 	if err != nil {
 		t.Fatalf("Init error %s", err)
 	}
@@ -96,7 +96,7 @@ func TestEncoderCycle2(t *testing.T) {
 	txt := buf.String()
 	buf.Reset()
 	const dictCap = MinDictCap
-	encoderDict, err := NewEncoderDict(dictCap, dictCap+1024)
+	encoderDict, err := newEncoderDict(dictCap, dictCap+1024)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,9 +104,9 @@ func TestEncoderCycle2(t *testing.T) {
 	if err := props.Verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
-	state := NewState(props)
+	state := newState(props)
 	lbw := &LimitedByteWriter{BW: buf, N: 100}
-	w, err := NewEncoder(lbw, state, encoderDict, 0)
+	w, err := newEncoder(lbw, state, encoderDict, 0)
 	if err != nil {
 		t.Fatalf("NewEncoder error %s", err)
 	}
@@ -119,12 +119,12 @@ func TestEncoderCycle2(t *testing.T) {
 	}
 	n := w.Compressed()
 	txt = txt[:n]
-	decoderDict, err := NewDecoderDict(dictCap)
+	decoderDict, err := newDecoderDict(dictCap)
 	if err != nil {
 		t.Fatalf("NewDecoderDict error %s", err)
 	}
 	state.Reset()
-	r, err := NewDecoder(buf, state, decoderDict, n)
+	r, err := newDecoder(buf, state, decoderDict, n)
 	if err != nil {
 		t.Fatalf("NewDecoder error %s", err)
 	}

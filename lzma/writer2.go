@@ -1,23 +1,21 @@
-package lzma2
+package lzma
 
 import (
 	"bytes"
 	"errors"
 	"io"
-
-	"github.com/ulikunitz/xz/lzma"
 )
 
-// WriterParams describes the parameters for the LZMA2 writer.
-type WriterParams struct {
-	Properties lzma.Properties
+// Writer2Params describes the parameters for the LZMA2 writer.
+type Writer2Params struct {
+	Properties Properties
 	DictCap    int
 	// size of lookahead buffer
 	BufSize int
 }
 
 // Verify verifies LZMA2 writer parameters for correctness.
-func (p *WriterParams) Verify() error {
+func (p *Writer2Params) Verify() error {
 	var err error
 
 	// dictionary capacity
@@ -30,34 +28,34 @@ func (p *WriterParams) Verify() error {
 		return err
 	}
 	if p.Properties.LC+p.Properties.LP > 4 {
-		return errors.New("lzma2: sum of lc and lp exceeds 4")
+		return errors.New("lzma: sum of lc and lp exceeds 4")
 	}
 
 	// buffer size
 	if p.BufSize < 1 {
 		return errors.New(
-			"lzma2: lookahead buffer size must be larger than zero")
+			"lzma: lookahead buffer size must be larger than zero")
 	}
 
 	return nil
 }
 
-// WriterDefaults defines the defaults for the LZMA2 writer parameters.
-var WriterDefaults = WriterParams{
-	Properties: lzma.Properties{LC: 3, LP: 0, PB: 2},
+// Writer2Defaults defines the defaults for the LZMA2 writer parameters.
+var Writer2Defaults = Writer2Params{
+	Properties: Properties{LC: 3, LP: 0, PB: 2},
 	DictCap:    8 * 1024 * 1024,
 	BufSize:    4096,
 }
 
 // verifyDictCap verifies values for the dictionary capacity.
 func verifyDictCap(dictCap int) error {
-	if !(1 <= dictCap && int64(dictCap) <= lzma.MaxDictCap) {
-		return errors.New("lzma2: dictionary capacity is out of range")
+	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
 	}
 	return nil
 }
 
-// Writer supports the creation of an LZMA2 stream. But note that
+// Writer2 supports the creation of an LZMA2 stream. But note that
 // written data is buffered, so call Flush or Close to write data to the
 // underlying writer. The Close method writes the end-of-stream marker
 // to the stream. So you may be able to concatenate the output of two
@@ -66,49 +64,49 @@ func verifyDictCap(dictCap int) error {
 //
 // Any change to the fields Properties, DictCap must be done before the
 // first call to Write, Flush or Close.
-type Writer struct {
+type Writer2 struct {
 	w io.Writer
 
-	start   *lzma.State
-	encoder *lzma.Encoder
+	start   *state
+	encoder *encoder
 
 	cstate chunkState
 	ctype  chunkType
 
 	buf bytes.Buffer
-	lbw lzma.LimitedByteWriter
+	lbw LimitedByteWriter
 }
 
-// NewWriter creates an LZMA2 chunk sequence writer with the default
+// NewWriter2 creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter(lzma2 io.Writer) *Writer {
-	w, err := NewWriterParams(lzma2, &WriterDefaults)
+func NewWriter2(lzma2 io.Writer) *Writer2 {
+	w, err := NewWriter2Params(lzma2, &Writer2Defaults)
 	if err != nil {
 		panic(err)
 	}
 	return w
 }
 
-// NewWriterParams creates a new LZMA2 chunk sequence writer using the
+// NewWriter2Params creates a new LZMA2 chunk sequence writer using the
 // given parameters. The parameters will be verified for correctness.
-func NewWriterParams(lzma2 io.Writer, params *WriterParams) (w *Writer, err error) {
+func NewWriter2Params(lzma2 io.Writer, params *Writer2Params) (w *Writer2, err error) {
 	if err = params.Verify(); err != nil {
 		return nil, err
 	}
 
-	w = &Writer{
+	w = &Writer2{
 		w:      lzma2,
-		start:  lzma.NewState(params.Properties),
+		start:  newState(params.Properties),
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}
 	w.buf.Grow(maxCompressed)
-	w.lbw = lzma.LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := lzma.NewEncoderDict(params.DictCap, params.BufSize)
+	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
+	d, err := newEncoderDict(params.DictCap, params.BufSize)
 	if err != nil {
 		return nil, err
 	}
-	w.encoder, err = lzma.NewEncoder(&w.lbw, lzma.CloneState(w.start), d, 0)
+	w.encoder, err = newEncoder(&w.lbw, cloneState(w.start), d, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -116,27 +114,27 @@ func NewWriterParams(lzma2 io.Writer, params *WriterParams) (w *Writer, err erro
 }
 
 // written returns the number of bytes written to the current chunk
-func (w *Writer) written() int {
+func (w *Writer2) written() int {
 	if w.encoder == nil {
 		return 0
 	}
-	return int(w.encoder.Compressed()) + w.encoder.Dict.Buffered()
+	return int(w.encoder.Compressed()) + w.encoder.dict.Buffered()
 }
 
 // errClosed indicates that the writer is closed.
-var errClosed = errors.New("lzma2: writer closed")
+var errClosed = errors.New("lzma: writer closed")
 
 // Writes data to LZMA2 stream. Note that written data will be buffered.
 // Use Flush or Close to ensure that data is written to the underlying
 // writer.
-func (w *Writer) Write(p []byte) (n int, err error) {
+func (w *Writer2) Write(p []byte) (n int, err error) {
 	if w.cstate == stop {
 		return 0, errClosed
 	}
 	for n < len(p) {
 		m := maxUncompressed - w.written()
 		if m <= 0 {
-			panic("lzma2: maxUncompressed reached")
+			panic("lzma: maxUncompressed reached")
 		}
 		var q []byte
 		if n+m < len(p) {
@@ -146,10 +144,10 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		}
 		k, err := w.encoder.Write(q)
 		n += k
-		if err != nil && err != lzma.ErrLimit {
+		if err != nil && err != ErrLimit {
 			return n, err
 		}
-		if err == lzma.ErrLimit || k == m {
+		if err == ErrLimit || k == m {
 			if err = w.flushChunk(); err != nil {
 				return n, err
 			}
@@ -160,10 +158,10 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 
 // writeUncompressedChunk writes an uncomressed chunk to the LZMA2
 // stream.
-func (w *Writer) writeUncompressedChunk() error {
+func (w *Writer2) writeUncompressedChunk() error {
 	u := w.encoder.Compressed()
 	if u <= 0 {
-		return errors.New("lzma2: can't write empty uncompressed chunk")
+		return errors.New("lzma: can't write empty uncompressed chunk")
 	}
 	if u > maxUncompressed {
 		panic("overrun of uncompressed data limit")
@@ -174,7 +172,7 @@ func (w *Writer) writeUncompressedChunk() error {
 	default:
 		w.ctype = cU
 	}
-	w.encoder.State = w.start
+	w.encoder.state = w.start
 
 	header := chunkHeader{
 		ctype:        w.ctype,
@@ -187,13 +185,13 @@ func (w *Writer) writeUncompressedChunk() error {
 	if _, err = w.w.Write(hdata); err != nil {
 		return err
 	}
-	_, err = w.encoder.Dict.CopyN(w.w, int(u))
+	_, err = w.encoder.dict.CopyN(w.w, int(u))
 	return err
 }
 
 // writeCompressedChunk writes a compressed chunk to the underlying
 // writer.
-func (w *Writer) writeCompressedChunk() error {
+func (w *Writer2) writeCompressedChunk() error {
 	if w.ctype == cU || w.ctype == cUD {
 		panic("chunk type uncompressed")
 	}
@@ -216,7 +214,7 @@ func (w *Writer) writeCompressedChunk() error {
 		ctype:        w.ctype,
 		uncompressed: uint32(u - 1),
 		compressed:   uint16(c - 1),
-		props:        w.encoder.State.Properties,
+		props:        w.encoder.state.Properties,
 	}
 	hdata, err := header.MarshalBinary()
 	if err != nil {
@@ -230,7 +228,7 @@ func (w *Writer) writeCompressedChunk() error {
 }
 
 // writes a single chunk to the underlying writer.
-func (w *Writer) writeChunk() error {
+func (w *Writer2) writeChunk() error {
 	u := int(uncompressedHeaderLen + w.encoder.Compressed())
 	c := headerLen(w.ctype) + w.buf.Len()
 	if u < c {
@@ -241,7 +239,7 @@ func (w *Writer) writeChunk() error {
 
 // flushChunk terminates the current chunk. The encoder will be reset
 // to support the next chunk.
-func (w *Writer) flushChunk() error {
+func (w *Writer2) flushChunk() error {
 	if w.written() == 0 {
 		return nil
 	}
@@ -261,13 +259,13 @@ func (w *Writer) flushChunk() error {
 		return err
 	}
 	w.ctype = w.cstate.defaultChunkType()
-	w.start = lzma.CloneState(w.encoder.State)
+	w.start = cloneState(w.encoder.state)
 	return nil
 }
 
 // Flush writes all buffered data out to the underlying stream. This
 // could result in multiple chunks to be created.
-func (w *Writer) Flush() error {
+func (w *Writer2) Flush() error {
 	if w.cstate == stop {
 		return errClosed
 	}
@@ -280,7 +278,7 @@ func (w *Writer) Flush() error {
 }
 
 // Close terminates the LZMA2 stream with an EOS chunk.
-func (w *Writer) Close() error {
+func (w *Writer2) Close() error {
 	if w.cstate == stop {
 		return errClosed
 	}

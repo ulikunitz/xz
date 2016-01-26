@@ -5,16 +5,16 @@ import (
 	"fmt"
 )
 
-// DecoderDict provides the dictionary for the Decoder. The whole
+// decoderDict provides the dictionary for the decoder. The whole
 // dictionary is used as reader buffer.
-type DecoderDict struct {
+type decoderDict struct {
 	buf  buffer
 	head int64
 }
 
-// NewDecoderDict creates a new decoder dictionary. The whole dictionary
+// newDecoderDict creates a new decoder dictionary. The whole dictionary
 // will be used as reader buffer.
-func NewDecoderDict(dictCap int) (d *DecoderDict, err error) {
+func newDecoderDict(dictCap int) (d *decoderDict, err error) {
 	// lower limit supports easy test cases
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New("lzma: dictCap out of range")
@@ -23,19 +23,19 @@ func NewDecoderDict(dictCap int) (d *DecoderDict, err error) {
 	if err != nil {
 		return nil, err
 	}
-	d = &DecoderDict{buf: *buf}
+	d = &decoderDict{buf: *buf}
 	return d, nil
 }
 
 // Reset clears the dictionary. The read buffer is not changed, so the
 // buffered data can still be read.
-func (d *DecoderDict) Reset() {
+func (d *decoderDict) Reset() {
 	d.head = 0
 }
 
 // WriteByte writes a single byte into the dictionary. It is used to
 // write literals into the dictionary.
-func (d *DecoderDict) WriteByte(c byte) error {
+func (d *decoderDict) WriteByte(c byte) error {
 	if err := d.buf.WriteByte(c); err != nil {
 		return err
 	}
@@ -44,10 +44,10 @@ func (d *DecoderDict) WriteByte(c byte) error {
 }
 
 // pos returns the position of the dictionary head.
-func (d *DecoderDict) pos() int64 { return d.head }
+func (d *decoderDict) pos() int64 { return d.head }
 
 // dictLen returns the actual length of the dictionary.
-func (d *DecoderDict) dictLen() int {
+func (d *decoderDict) dictLen() int {
 	capacity := d.buf.Cap()
 	if d.head >= int64(capacity) {
 		return capacity
@@ -58,7 +58,7 @@ func (d *DecoderDict) dictLen() int {
 // byteAt returns a byte stored in the dictionary. If the distance is
 // non-positive or exceeds the current length of the dictionary the zero
 // byte is returned.
-func (d *DecoderDict) byteAt(dist int) byte {
+func (d *decoderDict) byteAt(dist int) byte {
 	if !(0 < dist && dist <= d.dictLen()) {
 		return 0
 	}
@@ -76,7 +76,7 @@ func (d *DecoderDict) byteAt(dist int) byte {
 // The error value ErrNoSpace indicates that no space is available in
 // the dictionary for writing. You need to read from the dictionary
 // first.
-func (d *DecoderDict) writeMatch(dist int64, length int) error {
+func (d *decoderDict) writeMatch(dist int64, length int) error {
 	if !(0 < dist && dist <= int64(d.dictLen())) {
 		return errors.New("writeMatch: distance out of range")
 	}
@@ -114,7 +114,7 @@ func (d *DecoderDict) writeMatch(dist int64, length int) error {
 
 // Write writes the given bytes into the dictionary and advances the
 // head.
-func (d *DecoderDict) Write(p []byte) (n int, err error) {
+func (d *decoderDict) Write(p []byte) (n int, err error) {
 	n, err = d.buf.Write(p)
 	d.head += int64(n)
 	return n, err
@@ -122,14 +122,14 @@ func (d *DecoderDict) Write(p []byte) (n int, err error) {
 
 // Available returns the number of available bytes for writing into the
 // decoder dictionary.
-func (d *DecoderDict) Available() int { return d.buf.Available() }
+func (d *decoderDict) Available() int { return d.buf.Available() }
 
 // Read reads data from the buffer contained in the decoder dictionary.
-func (d *DecoderDict) Read(p []byte) (n int, err error) { return d.buf.Read(p) }
+func (d *decoderDict) Read(p []byte) (n int, err error) { return d.buf.Read(p) }
 
 // Buffered returns the number of bytes currently buffered in the
 // decoder dictionary.
-func (d *DecoderDict) buffered() int { return d.buf.Buffered() }
+func (d *decoderDict) buffered() int { return d.buf.Buffered() }
 
 // Peek gets data from the buffer without advancing the rear index.
-func (d *DecoderDict) peek(p []byte) (n int, err error) { return d.buf.Peek(p) }
+func (d *decoderDict) peek(p []byte) (n int, err error) { return d.buf.Peek(p) }

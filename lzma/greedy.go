@@ -12,7 +12,7 @@ func weight(n, bits int) int {
 
 // bestMatch provides the longest match reachable over the list of
 // provided dists
-func bestOp(d *EncoderDict, distances []int) operation {
+func bestOp(d *encoderDict, distances []int) operation {
 	op := operation(lit{d.literal()})
 	w := weight(1, d.reps.opBits(op))
 	for _, distance := range distances {
@@ -38,7 +38,7 @@ func bestOp(d *EncoderDict, distances []int) operation {
 }
 
 // findOp finds a single operation at the current head of the hash dictionary.
-func findOp(d *EncoderDict, distances []int) operation {
+func findOp(d *encoderDict, distances []int) operation {
 	n := d.matches(distances)
 	distances = distances[:n]
 	// add small distances
@@ -47,7 +47,7 @@ func findOp(d *EncoderDict, distances []int) operation {
 	return op
 }
 
-func addOp(d *EncoderDict, op operation) {
+func addOp(d *encoderDict, op operation) {
 	if err := d.writeOp(op); err != nil {
 		panic(err)
 	}
@@ -55,7 +55,7 @@ func addOp(d *EncoderDict, op operation) {
 
 // greedy creates operations until the buffer is full. The function
 // returns true if the end of the buffer has been reached.
-func greedy(d *EncoderDict, f compressFlags) (end bool) {
+func greedy(d *encoderDict, f compressFlags) (end bool) {
 	if d.bufferedAtFront() == 0 {
 		return true
 	}

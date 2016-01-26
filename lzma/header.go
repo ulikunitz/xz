@@ -57,7 +57,7 @@ func putUint64LE(b []byte, x uint64) {
 // noHeaderSize defines the value of the length field in the LZMA header.
 const noHeaderSize uint64 = 1<<64 - 1
 
-// maximum header length
+// HeaderLen provides the length of the LZMA file header.
 const HeaderLen = 13
 
 // Header represents the header of an LZMA file.
@@ -151,7 +151,7 @@ func validDictCap(dictcap int) bool {
 	return false
 }
 
-// Validheader checks for a valid LZMA file header. It allows only
+// ValidHeader checks for a valid LZMA file header. It allows only
 // dictionary sizes of 2^n or 2^n+2^(n-1) with n >= 10 or 2^32-1. If
 // there is an explicit size it must not exceed 256 GiB. The length of
 // the data argument must be HeaderLen.

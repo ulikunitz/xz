@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func peek(d *DecoderDict) []byte {
+func peek(d *decoderDict) []byte {
 	p := make([]byte, d.buffered())
 	k, err := d.peek(p)
 	if err != nil {
@@ -20,10 +20,10 @@ func peek(d *DecoderDict) []byte {
 }
 
 func TestNewDecoderDict(t *testing.T) {
-	if _, err := NewDecoderDict(0); err == nil {
+	if _, err := newDecoderDict(0); err == nil {
 		t.Fatalf("no error for zero dictionary capacity")
 	}
-	if _, err := NewDecoderDict(8); err != nil {
+	if _, err := newDecoderDict(8); err != nil {
 		t.Fatalf("error %s", err)
 	}
 }

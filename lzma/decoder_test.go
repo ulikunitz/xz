@@ -29,9 +29,9 @@ func TestDecoder(t *testing.T) {
 		if err != nil {
 			t.Fatalf("p[0] error %s", err)
 		}
-		state := NewState(props)
+		state := newState(props)
 		const capacity = 0x800000
-		dict, err := NewDecoderDict(capacity)
+		dict, err := newDecoderDict(capacity)
 		if err != nil {
 			t.Fatalf("NewDecoderDict: error %s", err)
 		}
@@ -40,7 +40,7 @@ func TestDecoder(t *testing.T) {
 			size = int64(len(want))
 		}
 		br := bufio.NewReader(f)
-		r, err := NewDecoder(br, state, dict, size)
+		r, err := newDecoder(br, state, dict, size)
 		if err != nil {
 			t.Fatalf("NewDecoder error %s", err)
 		}

@@ -1,70 +1,61 @@
-// Package lzma2 provides a reader and a writer for the LZMA2 encoding.
-// LZMA2 is a framing format for LZMA raw streams to support flushing,
-// parallel compression and uncompressed segments.
-//
-// The Reader and Writer allows the reading and writing of LZMA2 chunk
-// sequences. They can be used to parallel compress or decompress LZMA2
-// streams.
-package lzma2
+package lzma
 
 import (
 	"errors"
 	"io"
-
-	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParams defines the LZMA2 reader parameters.
-type ReaderParams struct {
+// Reader2Params defines the LZMA2 reader parameters.
+type Reader2Params struct {
 	DictCap int
 }
 
-// ReaderDefaults define the defaults for the reader parameters.
-var ReaderDefaults = ReaderParams{
+// Reader2Defaults define the defaults for the reader parameters.
+var Reader2Defaults = Reader2Params{
 	DictCap: 8 * 1024 * 1024,
 }
 
 // Verify verifies the LZMA2 reader parameters for correctness.
-func (p *ReaderParams) Verify() error {
+func (p *Reader2Params) Verify() error {
 	return verifyDictCap(p.DictCap)
 }
 
-// Reader supports the reading of LZMA2 chunk sequences. Note that the
+// Reader2 supports the reading of LZMA2 chunk sequences. Note that the
 // first chunk should have a dictionary reset and the first compressed
 // chunk a properties reset. The chunk sequence may not be terminated by
 // an end-of-stream chunk.
-type Reader struct {
+type Reader2 struct {
 	r   io.Reader
 	err error
 
-	dict        *lzma.DecoderDict
+	dict        *decoderDict
 	ur          *uncompressedReader
-	decoder     *lzma.Decoder
+	decoder     *decoder
 	chunkReader io.Reader
 
 	cstate chunkState
 	ctype  chunkType
 }
 
-// NewReader creates a reader for an LZMA2 chunk sequence with the given
+// NewReader2 creates a reader for an LZMA2 chunk sequence with the given
 // dictionary capacity.
-func NewReader(lzma2 io.Reader, dictCap int) (r *Reader, err error) {
-	params := ReaderDefaults
+func NewReader2(lzma2 io.Reader, dictCap int) (r *Reader2, err error) {
+	params := Reader2Defaults
 	params.DictCap = dictCap
-	return NewReaderParams(lzma2, &params)
+	return NewReader2Params(lzma2, &params)
 }
 
-// NewReaderParams creates a new LZMA2 reader using the given
+// NewReader2Params creates a new LZMA2 reader using the given
 // parameters.
-func NewReaderParams(lzma2 io.Reader, params *ReaderParams) (r *Reader, err error) {
+func NewReader2Params(lzma2 io.Reader, params *Reader2Params) (r *Reader2, err error) {
 	if err = params.Verify(); err != nil {
 		return nil, err
 	}
-	r = &Reader{
+	r = &Reader2{
 		r:      lzma2,
 		cstate: start,
 	}
-	r.dict, err = lzma.NewDecoderDict(params.DictCap)
+	r.dict, err = newDecoderDict(params.DictCap)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +72,7 @@ func uncompressed(ctype chunkType) bool {
 }
 
 // startChunk parses a new chunk.
-func (r *Reader) startChunk() error {
+func (r *Reader2) startChunk() error {
 	r.chunkReader = nil
 	header, err := readChunkHeader(r.r)
 	if err != nil {
@@ -109,10 +100,10 @@ func (r *Reader) startChunk() error {
 		r.chunkReader = r.ur
 		return nil
 	}
-	br := lzma.ByteReader(io.LimitReader(r.r, int64(header.compressed)+1))
+	br := ByteReader(io.LimitReader(r.r, int64(header.compressed)+1))
 	if r.decoder == nil {
-		state := lzma.NewState(header.props)
-		r.decoder, err = lzma.NewDecoder(br, state, r.dict, size)
+		state := newState(header.props)
+		r.decoder, err = newDecoder(br, state, r.dict, size)
 		if err != nil {
 			return err
 		}
@@ -123,7 +114,7 @@ func (r *Reader) startChunk() error {
 	case cLR:
 		r.decoder.State.Reset()
 	case cLRN, cLRND:
-		r.decoder.State = lzma.NewState(header.props)
+		r.decoder.State = newState(header.props)
 	}
 	err = r.decoder.Reopen(br, size)
 	if err != nil {
@@ -134,7 +125,7 @@ func (r *Reader) startChunk() error {
 }
 
 // Read reads data from the LZMA2 chunk sequence.
-func (r *Reader) Read(p []byte) (n int, err error) {
+func (r *Reader2) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
 	}
@@ -159,20 +150,20 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 // EOS returns whether the LZMA2 stream has been terminated by an
 // end-of-stream chunk.
-func (r *Reader) EOS() bool {
+func (r *Reader2) EOS() bool {
 	return r.cstate == stop
 }
 
 // uncompressedReader is used to read uncompressed chunks.
 type uncompressedReader struct {
 	lr   io.LimitedReader
-	Dict *lzma.DecoderDict
+	Dict *decoderDict
 	eof  bool
 	err  error
 }
 
 // newUncompressedReader initializes a new uncompressedReader.
-func newUncompressedReader(r io.Reader, dict *lzma.DecoderDict, size int64) *uncompressedReader {
+func newUncompressedReader(r io.Reader, dict *decoderDict, size int64) *uncompressedReader {
 	ur := &uncompressedReader{
 		lr:   io.LimitedReader{R: r, N: size},
 		Dict: dict,

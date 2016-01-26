@@ -24,7 +24,7 @@ type Writer struct {
 	EOSMarker bool
 	bw        io.ByteWriter
 	buf       *bufio.Writer
-	e         *Encoder
+	e         *encoder
 }
 
 // NewWriter creates a new writer for the classic LZMA format.
@@ -80,16 +80,16 @@ func (w *Writer) init() error {
 			"lzma.Writer: lookahead buffer size too small")
 	}
 
-	state := NewState(w.Properties)
-	dict, err := NewEncoderDict(w.DictCap, w.BufSize)
+	state := newState(w.Properties)
+	dict, err := newEncoderDict(w.DictCap, w.BufSize)
 	if err != nil {
 		return err
 	}
-	var flags EncoderFlags
+	var flags encoderFlags
 	if w.EOSMarker {
-		flags = EOSMarker
+		flags = eosMarker
 	}
-	if w.e, err = NewEncoder(w.bw, state, dict, flags); err != nil {
+	if w.e, err = newEncoder(w.bw, state, dict, flags); err != nil {
 		return err
 	}
 
@@ -106,7 +106,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	}
 	if w.Size >= 0 {
 		m := w.Size
-		m -= w.e.Compressed() + int64(w.e.Dict.Buffered())
+		m -= w.e.Compressed() + int64(w.e.dict.Buffered())
 		if m < 0 {
 			m = 0
 		}
@@ -131,7 +131,7 @@ func (w *Writer) Close() error {
 		}
 	}
 	if w.Size >= 0 {
-		n := w.e.Compressed() + int64(w.e.Dict.Buffered())
+		n := w.e.Compressed() + int64(w.e.dict.Buffered())
 		if n != w.Size {
 			return errSize
 		}
