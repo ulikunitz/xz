@@ -14,7 +14,7 @@ type compressFlags uint32
 
 // Values for compressFlags.
 const (
-	// all data should be compresed, even if compression is not
+	// all data should be compressed, even if compression is not
 	// optimal.
 	all compressFlags = 1 << iota
 )
@@ -232,7 +232,7 @@ func (e *encoder) writeOps() error {
 }
 
 // compress compressed data from the dictionary buffer. If the flag all
-// is set, all data in the dictionay buffer will be compressed. The
+// is set, all data in the dictionary buffer will be compressed. The
 // function returns ErrLimit if the underlying writer has reached its
 // limit.
 func (e *encoder) compress(flags compressFlags) error {

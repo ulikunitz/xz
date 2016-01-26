@@ -17,7 +17,7 @@ type WriterParams struct {
 	CheckSum byte
 }
 
-// filters creates the filte list for the given parameters.
+// filters creates the filter list for the given parameters.
 func (p *WriterParams) filters() []filter {
 	return []filter{&lzmaFilter{int64(p.DictCap)}}
 }

@@ -97,6 +97,6 @@ func TestWriter2(t *testing.T) {
 		t.Fatalf("Decompression data length %d; want %d", k, txtlen)
 	}
 	if txt != out.String() {
-		t.Fatal("decompressed data differes from original")
+		t.Fatal("decompressed data differs from original")
 	}
 }

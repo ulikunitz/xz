@@ -279,7 +279,7 @@ func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 		return nil, n, err
 	}
 
-	// unmarshall block header
+	// unmarshal block header
 	h = new(blockHeader)
 	if err = h.UnmarshalBinary(buf.Bytes()); err != nil {
 		return nil, n, err
