@@ -6,12 +6,12 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -47,6 +47,7 @@ type format struct {
 		err error)
 	newDecompressor func(r io.Reader, opts *options) (d io.Reader,
 		err error)
+	validHeader func(br *bufio.Reader) bool
 }
 
 // dictCapExps maps preset values to exponent for dictionary capacity
@@ -74,6 +75,13 @@ var formats = map[string]*format{
 			lz.DictCap = 1 << lzmaDictCapExps[opts.preset]
 			return lz, err
 		},
+		validHeader: func(br *bufio.Reader) bool {
+			h, err := br.Peek(lzma.HeaderLen)
+			if err != nil {
+				return false
+			}
+			return lzma.ValidHeader(h)
+		},
 	},
 	"xz": &format{
 		newCompressor: func(w io.Writer, opts *options,
@@ -88,8 +96,17 @@ var formats = map[string]*format{
 			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
 			return xz.NewReaderParams(r, &p)
 		},
+		validHeader: func(br *bufio.Reader) bool {
+			h, err := br.Peek(xz.HeaderLen)
+			if err != nil {
+				return false
+			}
+			return xz.ValidHeader(h)
+		},
 	},
 }
+
+var errBase = errors.New("name has no base part")
 
 // targetName finds the correct target name taking the options into
 // account.
@@ -118,17 +135,15 @@ func targetName(path string, opts *options) (target string, err error) {
 	}
 	if strings.HasSuffix(path, ext) {
 		target = path[:len(path)-len(ext)]
-		if len(target) == 0 {
-			return "", fmt.Errorf(
-				"%s: file name has no base part", path)
+		if filepath.Base(target) == "" {
+			return "", &userPathError{path, errBase}
 		}
 		return target, nil
 	}
 	if strings.HasSuffix(path, tarExt) {
 		target = path[:len(path)-len(tarExt)]
-		if len(target) == 0 {
-			return "", fmt.Errorf(
-				"%s: file name has no base part", path)
+		if filepath.Base(target) == "" {
+			return "", &userPathError{path, errBase}
 		}
 		return target + ".tar", nil
 	}
@@ -220,7 +235,7 @@ func newWriter(path string, perm os.FileMode, opts *options,
 	}
 	w.cmp, err = newCompressor(w.bw, opts)
 	if err != nil {
-		return nil, err
+		return nil, &userPathError{w.name, err}
 	}
 	w.Writer = w.cmp
 	return w, nil
@@ -331,6 +346,8 @@ func openFile(path string, opts *options) (f *os.File, err error) {
 	return f, nil
 }
 
+var errInvalidFormat = errors.New("file format not recognized")
+
 // readerFormat tries to determine the type of a file. Currently it
 // checks for the XZ header magic and if it is not present assumes that
 // the file has been encoded by LZMA. The format field in options is
@@ -338,22 +355,22 @@ func openFile(path string, opts *options) (f *os.File, err error) {
 func readerFormat(br *bufio.Reader, opts *options) (f *format, err error) {
 	var ok bool
 	if f, ok = formats[opts.format]; ok {
+		if !f.validHeader(br) {
+			return nil, errInvalidFormat
+		}
 		return f, nil
 	}
 	if opts.format != "auto" {
-		return nil, errors.New("compression format not supported")
+		return nil, fmt.Errorf("compression format %s not supported",
+			opts.format)
 	}
-	var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
-	p, err := br.Peek(len(headerMagic))
-	if err != nil {
-		return nil, err
+	for format, f := range formats {
+		if f.validHeader(br) {
+			opts.format = format
+			return f, nil
+		}
 	}
-	if bytes.Equal(p, headerMagic) {
-		opts.format = "xz"
-	} else {
-		opts.format = "lzma"
-	}
-	return formats[opts.format], nil
+	return nil, errInvalidFormat
 }
 
 // newDecompressor creates a new decompressor.
@@ -385,7 +402,7 @@ func newReader(path string, opts *options) (r *reader, err error) {
 	}
 	dec, err := newDecompressor(br, opts)
 	if err != nil {
-		return nil, err
+		return nil, &userPathError{path, err}
 	}
 	r = &reader{f: f, Reader: dec, keep: opts.keep || opts.stdout}
 	return r, nil
