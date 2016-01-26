@@ -38,7 +38,7 @@ func padLen(n int64) int {
 var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
 
 // headerLen defines the length of the stream header.
-const headerLen = 12
+const HeaderLen = 12
 
 // Constants for the checksum methods supported by xz.
 const (
@@ -88,10 +88,18 @@ var (
 	errHeaderMagic = errors.New("xz: invalid header magic bytes")
 )
 
+// ValidHeader checks whether data is a correct xz file header. The
+// length of data must be HeaderLen.
+func ValidHeader(data []byte) bool {
+	var h header
+	err := h.UnmarshalBinary(data)
+	return err == nil
+}
+
 // UnmarshalBinary reads header from the provided data slice.
 func (h *header) UnmarshalBinary(data []byte) error {
 	// header length
-	if len(data) != headerLen {
+	if len(data) != HeaderLen {
 		return errors.New("xz: wrong file header length")
 	}
 

@@ -57,7 +57,7 @@ func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 		xz:           xz,
 		index:        make([]record, 0, 4),
 	}
-	data := make([]byte, headerLen)
+	data := make([]byte, HeaderLen)
 	if _, err = io.ReadFull(r.xz, data); err != nil {
 		if err == io.EOF {
 			err = errUnexpectedEOF
