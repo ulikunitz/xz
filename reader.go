@@ -11,7 +11,8 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParams defines the parameters for the xz reader.
+// ReaderParams defines the parameters for the xz reader. The defaults
+// are defined by ReaderDefaults.
 type ReaderParams struct {
 	lzma.Reader2Params
 }

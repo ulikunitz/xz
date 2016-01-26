@@ -5,7 +5,8 @@ import (
 	"io"
 )
 
-// Reader2Params defines the LZMA2 reader parameters.
+// Reader2Params defines the LZMA2 reader parameters. The defaults are
+// defined by Reader2Defaults.
 type Reader2Params struct {
 	DictCap int
 }

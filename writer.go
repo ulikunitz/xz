@@ -8,7 +8,8 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// WriterParams describe the parameters for a writer.
+// WriterParams describe the parameters for a writer. The defaults are
+// provided by WriterDefaults.
 type WriterParams struct {
 	lzma.Writer2Params
 	BlockSize int64

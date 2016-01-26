@@ -6,7 +6,8 @@ import (
 	"io"
 )
 
-// Writer2Params describes the parameters for the LZMA2 writer.
+// Writer2Params describes the parameters for the LZMA2 writer. The
+// defaults are defined by Writer2Defaults.
 type Writer2Params struct {
 	Properties Properties
 	DictCap    int
