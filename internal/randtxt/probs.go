@@ -154,9 +154,9 @@ func (c comap) trigram(g2 string, p float64) string {
 
 var (
 	// CDF for normal probabilities
-	pcdf probs = pCDFOfLM(englm3)
+	pcdf = pCDFOfLM(englm3)
 	// map of two letter conditionals
-	cmap comap = comapOfLM(englm3)
+	cmap = comapOfLM(englm3)
 )
 
 // Reader generates a stream of text of uppercase letters with trigrams
