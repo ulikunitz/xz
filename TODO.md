@@ -2,9 +2,7 @@
 
 ## Release v0.4
 
-1. Check xz behaviour and make gxz compatible
-   - decompressing uncompressed files
-2. Handling of the lzma2 interface issue.
+1. Handling of the lzma2 interface issue.
    - Move lzma2 into internal.
    - Move all the basis code for Encoder and Decoder into lzma2.
    - Create same style lzma.Reader and lzma.Writer.
