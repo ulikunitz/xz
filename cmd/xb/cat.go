@@ -119,6 +119,7 @@ func (gp *gopath) find(arg string) (p cpair, err error) {
 	return
 }
 
+// Gofile is used with the template gofileTmpl.
 type Gofile struct {
 	Pkg  string
 	Cmap map[string]string
