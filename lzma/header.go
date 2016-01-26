@@ -58,7 +58,7 @@ func putUint64LE(b []byte, x uint64) {
 const noHeaderSize uint64 = 1<<64 - 1
 
 // maximum header length
-const headerLen = 13
+const HeaderLen = 13
 
 // Header represents the header of an LZMA file.
 type Header struct {
@@ -100,7 +100,7 @@ func (h *Header) marshalBinary() (data []byte, err error) {
 
 // unmarshalBinary unmarshals the header.
 func (h *Header) unmarshalBinary(data []byte) error {
-	if len(data) != headerLen {
+	if len(data) != HeaderLen {
 		return errors.New("lzma.unmarshalBinary: data has wrong length")
 	}
 
@@ -132,4 +132,36 @@ func (h *Header) unmarshalBinary(data []byte) error {
 	}
 
 	return nil
+}
+
+// validDictCap checks whether the dictionary capacity is correct. This
+// is used to weed out wrong file headers.
+func validDictCap(dictcap int) bool {
+	if dictcap == MaxDictCap {
+		return true
+	}
+	for n := uint(10); n < 32; n++ {
+		if dictcap == 1<<n {
+			return true
+		}
+		if dictcap == 1<<n+1<<(n-1) {
+			return true
+		}
+	}
+	return false
+}
+
+// Validheader checks for a valid LZMA file header. It allows only
+// dictionary sizes of 2^n or 2^n+2^(n-1) with n >= 10 or 2^32-1. If
+// there is an explicit size it must not exceed 256 GiB. The length of
+// the data argument must be HeaderLen.
+func ValidHeader(data []byte) bool {
+	var h Header
+	if err := h.unmarshalBinary(data); err != nil {
+		return false
+	}
+	if !validDictCap(h.DictCap) {
+		return false
+	}
+	return h.Size < 0 || h.Size <= 1<<38
 }
