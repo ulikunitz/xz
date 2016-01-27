@@ -1,7 +1,3 @@
-// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package main
 
 const goLicense = `Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -32,7 +28,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 `
-const xzLicense = `Copyright (c) 2014, 2015,  Ulrich Kunitz
+const xzLicense = `Copyright (c) 2014-2016  Ulrich Kunitz
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
