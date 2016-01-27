@@ -165,7 +165,7 @@ func NewFlagSet(name string, errorHandling ErrorHandling) *FlagSet {
 	return f
 }
 
-// Arg returns the argumenet number i after parsing has been successful.
+// Arg returns the argument number i after parsing has been successful.
 func (f *FlagSet) Arg(i int) string {
 	if !(0 <= i && i < len(f.args)) {
 		return ""
@@ -209,7 +209,7 @@ func Parse() {
 	CommandLine.Parse(os.Args[1:])
 }
 
-// lookupLongOption looksup a long option flag.
+// lookupLongOption looks up a long option flag.
 func (f *FlagSet) lookupLongOption(name string) (flag *Flag, err error) {
 	if len(name) < 2 {
 		f.panicf("%s is not a long option", name)
@@ -410,7 +410,7 @@ func (f *FlagSet) SetOutput(w io.Writer) {
 	f.output = w
 }
 
-// panicf printfs a formatted error message and panics.
+// panicf prints a formatted error message and panics.
 func (f *FlagSet) panicf(format string, values ...interface{}) {
 	var msg string
 	if f.name == "" {
