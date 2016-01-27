@@ -248,7 +248,7 @@ func isStdout(f *os.File) bool {
 
 var errInval = errors.New("invalid value")
 
-// Close closes the writer. Note that the behaviour depends whether
+// Close closes the writer. Note that the behavior depends whether
 // success has been set for the writer.
 func (w *writer) Close() error {
 	var err error
@@ -307,7 +307,7 @@ type reader struct {
 	keep    bool
 }
 
-// errNoRefular indicates that a file is not regular.
+// errNoRegular indicates that a file is not regular.
 var errNoRegular = errors.New("no regular file")
 
 // specialBits contain the special bits, which are not supported by gxz.
@@ -413,7 +413,7 @@ func isStdin(f *os.File) bool {
 	return f.Fd() == uintptr(syscall.Stdin)
 }
 
-// Close closes the reader. The behaviour can be influences by the
+// Close closes the reader. The behavior can be influences by the
 // success attribute of reader.
 func (r *reader) Close() error {
 	if r.f == nil {
