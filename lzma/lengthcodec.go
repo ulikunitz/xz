@@ -27,7 +27,7 @@ type lengthCodec struct {
 	high   treeCodec
 }
 
-// deepcopy initalizes the lc value as deep copy of the source value.
+// deepcopy initializes the lc value as deep copy of the source value.
 func (lc *lengthCodec) deepcopy(src *lengthCodec) {
 	if lc == src {
 		return

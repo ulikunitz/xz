@@ -103,7 +103,7 @@ func headerChunkType(h byte) (c chunkType, err error) {
 	return
 }
 
-// uncompressedHeaderLen provides the lenght of an uncompressed header
+// uncompressedHeaderLen provides the length of an uncompressed header
 const uncompressedHeaderLen = 3
 
 // headerLen returns the length of the LZMA2 header for a given chunk
@@ -269,7 +269,7 @@ var (
 	errState     = errors.New("lzma: wrong chunk state")
 )
 
-// next tranisitions state based on chunk type input
+// next transitions state based on chunk type input
 func (c *chunkState) next(ctype chunkType) error {
 	switch *c {
 	// start state
@@ -352,7 +352,7 @@ func (c chunkState) defaultChunkType() chunkType {
 // LZMA2 dictionary capacity encoding.
 const maxDictCap = 1<<32 - 1
 
-// maxDictCapCode defines the maximum dictionary capactiy code.
+// maxDictCapCode defines the maximum dictionary capacity code.
 const maxDictCapCode = 40
 
 // The function decodes the dictionary capacity byte, but doesn't change

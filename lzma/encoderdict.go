@@ -13,8 +13,7 @@ const maxMatches = 16
 // matches for words with a constant length greater or equal 2.
 //
 // The absolute offset of potential matches are provided by the
-// Matches method. The current position of the matcher is provided by
-// the Pos method.
+// Matches method.
 //
 // The Reset method clears the matcher completely but starts new data
 // at the given position.
@@ -273,7 +272,7 @@ func (d *encoderDict) dictCap() int {
 	return d.capacity
 }
 
-// DictLen returns the current number of bytes in the dictionary. The
+// dictLen returns the current number of bytes in the dictionary. The
 // number has dictionary capacity as upper limit.
 func (d *encoderDict) dictLen() int {
 	if d.head < int64(d.capacity) {
@@ -297,7 +296,7 @@ func (d *encoderDict) pos() int64 {
 	return d.head
 }
 
-// ByteAt returns a byte from the dictionary. The distance is the
+// byteAt returns a byte from the dictionary. The distance is the
 // positive difference from the current head. A distance of 1 will
 // return the top-most byte in the dictionary.
 func (d *encoderDict) byteAt(distance int) byte {

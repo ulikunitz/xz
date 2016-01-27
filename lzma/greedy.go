@@ -10,8 +10,8 @@ func weight(n, bits int) int {
 	return (n << 20) / bits
 }
 
-// bestMatch provides the longest match reachable over the list of
-// provided dists
+// bestOp provides the operation that requires the encoding of the
+// fewest bits.
 func bestOp(d *encoderDict, distances []int) operation {
 	op := operation(lit{d.literal()})
 	w := weight(1, d.reps.opBits(op))

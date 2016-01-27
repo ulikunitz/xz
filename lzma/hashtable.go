@@ -102,12 +102,6 @@ func (t *hashTable) Reset() {
 	t.hr = newRoller(t.wordLen)
 }
 
-// Pos returns the number of all byte written already to the matcher. We
-// call it in the code also absolute position.
-func (t *hashTable) Pos() int64 {
-	return t.hoff + int64(t.wordLen)
-}
-
 // buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
 	n := t.hoff + 1

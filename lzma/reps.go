@@ -6,7 +6,7 @@ package lzma
 
 import "errors"
 
-// reps represents the repetion table in the LZMA state.
+// reps represents the repetition table in the LZMA state.
 type reps [4]uint32
 
 // index maps the given dist value to the correct index into the reps

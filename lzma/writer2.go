@@ -157,7 +157,7 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// writeUncompressedChunk writes an uncomressed chunk to the LZMA2
+// writeUncompressedChunk writes an uncompressed chunk to the LZMA2
 // stream.
 func (w *Writer2) writeUncompressedChunk() error {
 	u := w.encoder.Compressed()

@@ -66,7 +66,7 @@ func newState(p Properties) *state {
 	return s
 }
 
-// deepcopy initalizes s as a deep copy of the source.
+// deepcopy initializes s as a deep copy of the source.
 func (s *state) deepcopy(src *state) {
 	if s == src {
 		return
@@ -87,7 +87,7 @@ func (s *state) deepcopy(src *state) {
 	s.Properties = src.Properties
 }
 
-// CloneState creates a new clone of the give state.
+// cloneState creates a new clone of the give state.
 func cloneState(src *state) *state {
 	s := new(state)
 	s.deepcopy(src)

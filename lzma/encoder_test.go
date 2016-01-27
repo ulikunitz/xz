@@ -47,7 +47,7 @@ func cycle(t *testing.T, n int) {
 	var buf bytes.Buffer
 	w, err := newEncoder(&buf, state, encoderDict, eosMarker)
 	if err != nil {
-		t.Fatalf("NewEncoder error %s", err)
+		t.Fatalf("newEncoder error %s", err)
 	}
 	orig := []byte(testString)[:n]
 	t.Logf("len(orig) %d", len(orig))
@@ -64,12 +64,12 @@ func cycle(t *testing.T, n int) {
 	t.Logf("buf.Len() %d len(orig) %d", buf.Len(), len(orig))
 	decoderDict, err := newDecoderDict(dictCap)
 	if err != nil {
-		t.Fatalf("NewDecoderDict error %s", err)
+		t.Fatalf("newDecoderDict error %s", err)
 	}
 	state.Reset()
 	r, err := newDecoder(&buf, state, decoderDict, -1)
 	if err != nil {
-		t.Fatalf("Init error %s", err)
+		t.Fatalf("newDecoder error %s", err)
 	}
 	decoded, err := ioutil.ReadAll(r)
 	if err != nil {

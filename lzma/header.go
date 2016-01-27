@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-// uint32LE reads an uint32 integer from a byte slize
+// uint32LE reads an uint32 integer from a byte slice
 func uint32LE(b []byte) uint32 {
 	x := uint32(b[3]) << 24
 	x |= uint32(b[2]) << 16
@@ -33,7 +33,7 @@ func uint64LE(b []byte) uint64 {
 }
 
 // putUint32LE puts an uint32 integer into a byte slice that must have at least
-// a lenght of 4 bytes.
+// a length of 4 bytes.
 func putUint32LE(b []byte, x uint32) {
 	b[0] = byte(x)
 	b[1] = byte(x >> 8)

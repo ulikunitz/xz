@@ -23,7 +23,7 @@ func TestDecoder(t *testing.T) {
 		p := make([]byte, 13)
 		_, err = io.ReadFull(f, p)
 		if err != nil {
-			t.Fatalf("io.Readfull error %s", err)
+			t.Fatalf("io.ReadFull error %s", err)
 		}
 		props, err := PropertiesForCode(p[0])
 		if err != nil {
@@ -33,7 +33,7 @@ func TestDecoder(t *testing.T) {
 		const capacity = 0x800000
 		dict, err := newDecoderDict(capacity)
 		if err != nil {
-			t.Fatalf("NewDecoderDict: error %s", err)
+			t.Fatalf("newDecoderDict: error %s", err)
 		}
 		size := int64(-1)
 		if i > 0 {
@@ -42,7 +42,7 @@ func TestDecoder(t *testing.T) {
 		br := bufio.NewReader(f)
 		r, err := newDecoder(br, state, dict, size)
 		if err != nil {
-			t.Fatalf("NewDecoder error %s", err)
+			t.Fatalf("newDecoder error %s", err)
 		}
 		bytes, err := ioutil.ReadAll(r)
 		if err != nil {

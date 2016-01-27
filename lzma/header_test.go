@@ -43,6 +43,6 @@ func TestValidHeader(t *testing.T) {
 	}
 	const a = "1234567890123"
 	if ValidHeader([]byte(a)) {
-		t.Errorf("VerifyHead returns true for %s; want false", a)
+		t.Errorf("ValidHeader returns true for %s; want false", a)
 	}
 }
