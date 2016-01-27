@@ -137,7 +137,7 @@ func (h *Header) unmarshalBinary(data []byte) error {
 // validDictCap checks whether the dictionary capacity is correct. This
 // is used to weed out wrong file headers.
 func validDictCap(dictcap int) bool {
-	if dictcap == MaxDictCap {
+	if int64(dictcap) == MaxDictCap {
 		return true
 	}
 	for n := uint(10); n < 32; n++ {
