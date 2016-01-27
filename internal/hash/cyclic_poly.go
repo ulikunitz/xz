@@ -18,7 +18,7 @@ func ror(x uint64, s uint) uint64 {
 }
 
 // NewCyclicPoly creates a new instance of the CyclicPoly structure. The
-// argument n gives the number of bytes for which a hash will be exectuted.
+// argument n gives the number of bytes for which a hash will be executed.
 // This number must be positive; the method panics if this isn't the case.
 func NewCyclicPoly(n int) *CyclicPoly {
 	if n < 1 {
