@@ -1,4 +1,4 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,16 +14,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ulikunitz/xz/randtxt"
+	"github.com/ulikunitz/xz/internal/randtxt"
 )
 
 func TestWriterCycle(t *testing.T) {
 	orig := readOrigFile(t)
 	buf := new(bytes.Buffer)
-	w, err := NewWriter(buf)
-	if err != nil {
-		t.Fatalf("NewWriter: error %s", err)
-	}
+	w := NewWriter(buf)
 	n, err := w.Write(orig)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
@@ -71,12 +68,8 @@ func TestWriterLongData(t *testing.T) {
 		t.Fatalf("ReadAll read %d bytes; want %d", len(txt), size)
 	}
 	buf := &bytes.Buffer{}
-	params := Default
-	params.DictSize = 0x4000
-	w, err := NewWriterParams(buf, params)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
+	w := NewWriter(buf)
+	w.DictCap = 0x4000
 	n, err := w.Write(txt)
 	if err != nil {
 		t.Fatalf("w.Write error %s", err)
@@ -110,11 +103,9 @@ func Example_writer() {
 	pr, pw := io.Pipe()
 	go func() {
 		bw := bufio.NewWriter(pw)
-		w, err := NewWriter(bw)
-		if err != nil {
-			log.Fatal(err)
-		}
+		w := NewWriter(bw)
 		input := []byte("The quick brown fox jumps over the lazy dog.")
+		var err error
 		if _, err = w.Write(input); err != nil {
 			log.Fatal(err)
 		}
@@ -139,15 +130,10 @@ func Example_writer() {
 }
 
 func TestWriter_Size(t *testing.T) {
-	p := Default
-	p.SizeInHeader = true
-	p.Size = 10
-	p.EOS = true
 	buf := new(bytes.Buffer)
-	w, err := NewWriterParams(buf, p)
-	if err != nil {
-		t.Fatalf("NewWriterParams errors %s", err)
-	}
+	w := NewWriter(buf)
+	w.Size = 10
+	w.EOSMarker = true
 	q := []byte{'a'}
 	for i := 0; i < 9; i++ {
 		n, err := w.Write(q)
@@ -159,8 +145,8 @@ func TestWriter_Size(t *testing.T) {
 		}
 		q[0]++
 	}
-	if err = w.Close(); err != errEarlyClose {
-		t.Fatalf("w.Close unexpected error %s", err)
+	if err := w.Close(); err != errSize {
+		t.Fatalf("expected errSize, but got %v", err)
 	}
 	n, err := w.Write(q)
 	if err != nil {
@@ -172,7 +158,7 @@ func TestWriter_Size(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)
 	}
-	t.Logf("packed size %d", buf.Len())
+	t.Logf("compressed size %d", buf.Len())
 	r, err := NewReader(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
@@ -188,83 +174,64 @@ func TestWriter_Size(t *testing.T) {
 	}
 }
 
-func TestWriter_WriteByte(t *testing.T) {
-	p := Default
-	p.SizeInHeader = true
-	p.Size = 3
-	buf := new(bytes.Buffer)
-	w, err := NewWriterParams(buf, p)
-	if err != nil {
-		t.Fatalf("NewWriterP error %s", err)
-	}
-	for i := int64(0); i < p.Size; i++ {
-		if err = w.WriteByte('a' + byte(i)); err != nil {
-			t.Fatalf("w.WriteByte error %s", err)
-		}
-	}
-	if err = w.Close(); err != nil {
-		t.Fatalf("w.Close error %s", err)
-	}
-	r, err := NewReader(buf)
-	if err != nil {
-		t.Fatalf("NewReader error %s", err)
-	}
-	out := new(bytes.Buffer)
-	if _, err := io.Copy(out, r); err != nil {
-		t.Fatalf("io.Copy error %s", err)
-	}
-	s := out.String()
-	want := "abc"
-	if s != want {
-		t.Fatalf("got %q; want %q", s, want)
-	}
-}
-
-func TestWriter_ReadFrom(t *testing.T) {
+func BenchmarkReader(b *testing.B) {
 	const (
 		seed = 49
-		size = 82237
+		size = 50000
 	)
 	r := io.LimitReader(randtxt.NewReader(rand.NewSource(seed)), size)
 	txt, err := ioutil.ReadAll(r)
 	if err != nil {
-		t.Fatalf("ReadAll error %s", err)
+		b.Fatalf("ReadAll error %s", err)
 	}
-	if len(txt) != size {
-		t.Fatalf("ReadAll read %d bytes; want %d", len(txt), size)
-	}
-	br := bytes.NewReader(txt)
 	buf := &bytes.Buffer{}
-	params := Default
-	params.DictSize = 0x4000
-	w, err := NewWriterParams(buf, params)
-	if err != nil {
-		t.Fatalf("NewWriter error %s", err)
-	}
-	n, err := w.ReadFrom(br)
-	if err != nil {
-		t.Fatalf("w.ReadFrom error %s", err)
-	}
-	if n != int64(len(txt)) {
-		t.Fatalf("w.Write wrote %d bytes; want %d", n, size)
+	w := NewWriter(buf)
+	w.DictCap = 0x4000
+	if _, err = w.Write(txt); err != nil {
+		b.Fatalf("w.Write error %s", err)
 	}
 	if err = w.Close(); err != nil {
-		t.Fatalf("w.Close error %s", err)
+		b.Fatalf("w.Close error %s", err)
 	}
-	t.Logf("compressed length %d", buf.Len())
-	lr, err := NewReader(buf)
+	data, err := ioutil.ReadAll(buf)
 	if err != nil {
-		t.Fatalf("NewReader error %s", err)
+		b.Fatalf("ReadAll error %s", err)
 	}
-	txtRead, err := ioutil.ReadAll(lr)
+	b.SetBytes(int64(len(txt)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		lr, err := NewReader(bytes.NewReader(data))
+		if err != nil {
+			b.Fatalf("NewReader error %s", err)
+		}
+		if _, err = ioutil.ReadAll(lr); err != nil {
+			b.Fatalf("ReadAll(lr) error %s", err)
+		}
+	}
+}
+
+func BenchmarkWriter(b *testing.B) {
+	const (
+		seed = 49
+		size = 50000
+	)
+	r := io.LimitReader(randtxt.NewReader(rand.NewSource(seed)), size)
+	txt, err := ioutil.ReadAll(r)
 	if err != nil {
-		t.Fatalf("ReadAll(lr) error %s", err)
+		b.Fatalf("ReadAll error %s", err)
 	}
-	if len(txtRead) != size {
-		t.Fatalf("ReadAll(lr) returned %d bytes; want %d",
-			len(txtRead), size)
-	}
-	if !bytes.Equal(txtRead, txt) {
-		t.Fatal("ReadAll(lr) returned txt differs from origin")
+	buf := &bytes.Buffer{}
+	b.SetBytes(int64(len(txt)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		w := NewWriter(buf)
+		w.DictCap = 0x4000
+		if _, err = w.Write(txt); err != nil {
+			b.Fatalf("w.Write error %s", err)
+		}
+		if err = w.Close(); err != nil {
+			b.Fatalf("w.Close error %s", err)
+		}
 	}
 }

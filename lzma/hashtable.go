@@ -1,33 +1,23 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package lzma
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/ulikunitz/xz/basics/u32"
-	"github.com/ulikunitz/xz/hash"
+	"github.com/ulikunitz/xz/internal/hash"
 )
 
-/* For compression we need to find byte sequences that match the current byte
- * byte sequences in the available dictionary.
- *
- * The simplest way to achieve that are hash tables. While the hash table
- * implementation shouldn't know that, it will support hashes for two-byte and
- * four-byte strings. A hash is a uint64 number and the hash table maps that to
- * a uint32 value.
+/* For compression we need to find byte sequences that match the byte
+ * sequence at the dictionary head. A hash table is a simple method to
+ * provide this capability.
  */
 
-// slotEntries gives the number of entries in one slot of the hash table. If
-// slotEntries is larger than 128 the representation of fields i_ and j_ in
-// slot must be reworked.
-const slotEntries = 24
-
-// The minTableExponent give the minimum and maximum for the table exponent.
-// The minimum is somehow arbitrary but the maximum is defined by the number of
-// bits in the hash value.
+// The minimum is somehow arbitrary but the maximum is limited by the
+// memory requirements of the hash table.
 const (
 	minTableExponent = 9
 	maxTableExponent = 20
@@ -37,86 +27,34 @@ const (
 // hash.Roller.
 var newRoller = func(n int) hash.Roller { return hash.NewCyclicPoly(n) }
 
-// slot defines the data structure for a slot in the hash table. The number of
-// entries is given by slotEntries constant.
-type slot struct {
-	entries [slotEntries]uint32
-	// start index; bit 7 set if non-empty
-	a uint8
-	// next entry to overwrite
-	b uint8
-}
-
-const slotFull uint8 = 0x80
-
-// start returns the start index of the slot
-func (s *slot) start() int {
-	return int(s.a &^ slotFull)
-}
-
-// end returns the end index of the slot
-func (s *slot) end() int {
-	return int(s.b)
-}
-
-// empty returns true if nothing is stored in the slot
-func (s *slot) empty() bool {
-	return s.a&slotFull == 0
-}
-
-// getEntries returns all entries of a slot in the sequence that they have been
-// entered.
-func (s *slot) getEntries() []uint32 {
-	if s.empty() {
-		return nil
-	}
-	r := make([]uint32, 0, slotEntries)
-	a, b := s.start(), s.end()
-	if a >= b {
-		r = append(r, s.entries[a:]...)
-		r = append(r, s.entries[:b]...)
-	} else {
-		r = append(r, s.entries[a:b]...)
-	}
-	return r
-}
-
-// putEntry puts an entry into a slot.
-func (s *slot) putEntry(u uint32) {
-	a, b := s.start(), s.end()
-	s.entries[b] = u
-	bp1 := (b + 1) % slotEntries
-	if a == b && !s.empty() {
-		a, b = bp1, bp1
-	} else {
-		b = bp1
-	}
-	s.a = slotFull | uint8(a)
-	s.b = uint8(b)
-}
-
-// resets puts the slot back into a pristine condition.
-func (s *slot) reset() {
-	s.a, s.b = 0, 0
-}
-
 // hashTable stores the hash table including the rolling hash method.
+//
+// We implement chained hashing into a circular buffer. Each entry in
+// the circular buffer stores the delta distance to the next position with a
+// word that has the same hash value.
 type hashTable struct {
-	t []slot
-	// exponent used to compute the hash table size
-	exp  int
+	// actual hash table
+	t []int64
+	// circular list data with the offset to the next word
+	data  []uint32
+	front int
+	// mask for computing the index for the hash table
 	mask uint64
-	// historySize
-	hlen int64
-	// hashOffset
+	// hash offset; initial value is -int64(wordLen)
 	hoff int64
-	wr   hash.Roller
-	hr   hash.Roller
+	// length of the hashed word
+	wordLen int
+	// hash roller for computing the hash values for the Write
+	// method
+	wr hash.Roller
+	// hash roller for computing arbitrary hashes
+	hr hash.Roller
 }
 
-// hashTableExponent derives the hash table exponent from the history length.
+// hashTableExponent derives the hash table exponent from the dictionary
+// capacity.
 func hashTableExponent(n uint32) int {
-	e := 30 - u32.NLZ(n)
+	e := 30 - nlz32(n)
 	switch {
 	case e < minTableExponent:
 		e = minTableExponent
@@ -126,56 +64,90 @@ func hashTableExponent(n uint32) int {
 	return e
 }
 
-// newHashTable creates a new hash table for n-byte sequences.
-func newHashTable(historySize int64, n int) (t *hashTable, err error) {
-	if historySize < 1 {
-		return nil, lzmaError{fmt.Sprintf("historySize (%d) must be larger than one", historySize)}
+// newHashTable creates a new hash table for words of length wordLen
+func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
+	if !(0 < capacity) {
+		return nil, errors.New(
+			"newHashTable: capacity must not be negative")
 	}
-	if historySize > MaxDictSize {
-		return nil, lzmaError{fmt.Sprintf("historySize (%d) must be less than 2^32", historySize)}
+	exp := hashTableExponent(uint32(capacity))
+	if !(1 <= wordLen && wordLen <= 4) {
+		return nil, errors.New("newHashTable: " +
+			"argument wordLen out of range")
 	}
-	exp := hashTableExponent(uint32(historySize))
-	if !(1 <= n && n <= 4) {
-		return nil, lzmaError{"argument n out of range"}
-	}
-	slotLen := int(1) << uint(exp)
-	if slotLen <= 0 {
-		return nil, lzmaError{"exponent is too large"}
+	n := 1 << uint(exp)
+	if n <= 0 {
+		panic("newHashTable: exponent is too large")
 	}
 	t = &hashTable{
-		t:    make([]slot, slotLen),
-		exp:  exp,
-		mask: (uint64(1) << uint(exp)) - 1,
-		hlen: historySize,
-		hoff: -int64(n),
-		wr:   newRoller(n),
-		hr:   newRoller(n),
+		t:       make([]int64, n),
+		data:    make([]uint32, capacity),
+		mask:    (uint64(1) << uint(exp)) - 1,
+		hoff:    -int64(wordLen),
+		wordLen: wordLen,
+		wr:      newRoller(wordLen),
+		hr:      newRoller(wordLen),
 	}
 	return t, nil
 }
 
-// reset puts hashTable back into a pristine condition.
-func (t *hashTable) reset() {
-	n := t.SliceLen()
+// Reset puts hashTable back into a pristine condition.
+func (t *hashTable) Reset() {
 	for i := range t.t {
-		t.t[i].reset()
+		t.t[i] = 0
 	}
-	t.hoff = -int64(n)
-	t.wr = newRoller(n)
-	t.hr = newRoller(n)
+	t.front = 0
+	t.hoff = -int64(t.wordLen)
+	t.wr = newRoller(t.wordLen)
+	t.hr = newRoller(t.wordLen)
 }
 
-// SliceLen returns the slice length.
-func (t *hashTable) SliceLen() int { return t.wr.Len() }
-
-// putEntry puts an entry into the hash table using the given hash.
-func (t *hashTable) putEntry(h uint64, u uint32) {
-	t.t[h&t.mask].putEntry(u)
+// buffered returns the number of bytes that are currently hashed.
+func (t *hashTable) buffered() int {
+	n := t.hoff + 1
+	switch {
+	case n <= 0:
+		return 0
+	case n >= int64(len(t.data)):
+		return len(t.data)
+	}
+	return int(n)
 }
 
-// getEntries returns all the values that cant be found in the hash table.
-func (t *hashTable) getEntries(h uint64) []uint32 {
-	return t.t[h&t.mask].getEntries()
+// addIndex adds n to an index ensuring that is stays inside the
+// circular buffer for the hash chain.
+func (t *hashTable) addIndex(i, n int) int {
+	i += n - len(t.data)
+	if i < 0 {
+		i += len(t.data)
+	}
+	return i
+}
+
+// putDelta puts the delta instance at the current front of the circular
+// chain buffer.
+func (t *hashTable) putDelta(delta uint32) {
+	t.data[t.front] = delta
+	t.front = t.addIndex(t.front, 1)
+}
+
+// putEntry puts a new entry into the hash table. If there is already a
+// value stored it is moved into the circular chain buffer.
+func (t *hashTable) putEntry(h uint64, pos int64) {
+	if pos < 0 {
+		return
+	}
+	i := h & t.mask
+	old := t.t[i] - 1
+	t.t[i] = pos + 1
+	var delta int64
+	if old >= 0 {
+		delta = pos - old
+		if delta > 1<<32-1 || delta > int64(t.buffered()) {
+			delta = 0
+		}
+	}
+	t.putDelta(uint32(delta))
 }
 
 // WriteByte converts a single byte into a hash and puts them into the hash
@@ -183,9 +155,7 @@ func (t *hashTable) getEntries(h uint64) []uint32 {
 func (t *hashTable) WriteByte(b byte) error {
 	h := t.wr.RollByte(b)
 	t.hoff++
-	if t.hoff >= 0 {
-		t.putEntry(h, uint32(t.hoff))
-	}
+	t.putEntry(h, t.hoff)
 	return nil
 }
 
@@ -194,42 +164,51 @@ func (t *hashTable) WriteByte(b byte) error {
 // error.
 func (t *hashTable) Write(p []byte) (n int, err error) {
 	for _, b := range p {
+		// WriteByte doesn't generate an error.
 		t.WriteByte(b)
 	}
 	return len(p), nil
 }
 
-// getOffsets returns potential offsets for the given hash value.
-func (t *hashTable) getOffsets(h uint64) []int64 {
-	e := t.getEntries(h)
-	if len(e) == 0 {
-		return nil
+// getMatches the matches for a specific hash. The functions returns the
+// number of positions found.
+func (t *hashTable) getMatches(h uint64, positions []int64) (n int) {
+	if t.hoff < 0 || len(positions) == 0 {
+		return 0
 	}
-	offsets := make([]int64, 0, len(e))
-	base := t.hoff &^ (1<<32 - 1)
-	start := t.hoff + int64(t.SliceLen()) - t.hlen
-	if start < 0 {
-		start = 0
+	buffered := t.buffered()
+	tailPos := t.hoff + 1 - int64(buffered)
+	rear := t.front - buffered
+	if rear >= 0 {
+		rear -= len(t.data)
 	}
-	for _, u := range e {
-		o := base | int64(u)
-		if o > t.hoff {
-			o -= 1 << 32
+	// get the slot for the hash
+	pos := t.t[h&t.mask] - 1
+	delta := pos - tailPos
+	for {
+		if delta < 0 {
+			return n
 		}
-		if o < start {
-			continue
+		positions[n] = tailPos + delta
+		n++
+		if n >= len(positions) {
+			return n
 		}
-		offsets = append(offsets, o)
+		i := rear + int(delta)
+		if i < 0 {
+			i += len(t.data)
+		}
+		u := t.data[i]
+		if u == 0 {
+			return n
+		}
+		delta -= int64(u)
 	}
-	return offsets
 }
 
-// hash computes the rolling hash for p, which must have the same length as
-// SliceLen() returns.
+// hash computes the rolling hash for the word stored in p. For correct
+// results its length must be equal to t.wordLen.
 func (t *hashTable) hash(p []byte) uint64 {
-	if len(p) != t.hr.Len() {
-		panic("p has an incorrect length")
-	}
 	var h uint64
 	for _, b := range p {
 		h = t.hr.RollByte(b)
@@ -237,15 +216,20 @@ func (t *hashTable) hash(p []byte) uint64 {
 	return h
 }
 
-// Offset returns the current head offset.
-func (t *hashTable) Offset() int64 {
-	return t.hoff + int64(t.SliceLen())
+// WordLen returns the length of the words supported by the Matches
+// function.
+func (t *hashTable) WordLen() int {
+	return t.wordLen
 }
 
-// Offsets returns all potential offsets for the byte slice. The function
-// panics if p doesn't have the right length.
-func (t *hashTable) Offsets(p []byte) []int64 {
+// Matches fills the positions slice with potential matches. The
+// functions returns the number of positions filled into positions. The
+// byte slice p must have word length of the hash table.
+func (t *hashTable) Matches(p []byte, positions []int64) int {
+	if len(p) != t.wordLen {
+		panic(fmt.Errorf(
+			"byte slice must have length %d", t.wordLen))
+	}
 	h := t.hash(p)
-	offs := t.getOffsets(h)
-	return offs
+	return t.getMatches(h, positions)
 }

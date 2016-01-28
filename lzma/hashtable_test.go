@@ -1,4 +1,4 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,33 +9,12 @@ import (
 	"testing"
 )
 
-func TestSlot(t *testing.T) {
-	e := make([]uint32, slotEntries+10)
-	for i := range e {
-		e[i] = uint32(i * i)
-	}
-	var s slot
-	for _, p := range e {
-		s.putEntry(p)
-	}
-	r := s.getEntries()
-	if len(r) != slotEntries {
-		t.Fatalf("len(r) %d; want %d", len(r), slotEntries)
-	}
-	d := e[len(e)-slotEntries:]
-	for i, p := range r {
-		q := d[i]
-		if p != q {
-			t.Fatalf("r[%d]=%d unexpected; want %d", i, p, q)
-		}
-	}
-}
-
 func TestHashTable(t *testing.T) {
 	ht, err := newHashTable(32, 2)
 	if err != nil {
 		t.Fatalf("newHashTable: error %s", err)
 	}
+	//    01234567890123456
 	s := "abcabcdefghijklmn"
 	n, err := ht.Write([]byte(s))
 	if err != nil {
@@ -48,15 +27,19 @@ func TestHashTable(t *testing.T) {
 		s string
 		w string
 	}{
-		{"ab", "[0 3]"},
-		{"bc", "[1 4]"},
+		{"ab", "[3 0]"},
+		{"bc", "[4 1]"},
 		{"ca", "[2]"},
 		{"xx", "[]"},
 		{"gh", "[9]"},
+		{"mn", "[15]"},
 	}
+	distances := make([]int64, 20)
 	for _, c := range tests {
-		offs := ht.Offsets([]byte(c.s))
-		o := fmt.Sprintf("%v", offs)
+		distances := distances[:20]
+		k := ht.Matches([]byte(c.s), distances)
+		distances = distances[:k]
+		o := fmt.Sprintf("%v", distances)
 		if o != c.w {
 			t.Errorf("%s: offsets %s; want %s", c.s, o, c.w)
 		}

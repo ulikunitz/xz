@@ -1,4 +1,4 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -252,10 +252,8 @@ func newCodeReader(r io.Reader) *io.PipeReader {
 	pr, pw := io.Pipe()
 	go func() {
 		bw := bufio.NewWriter(pw)
-		lw, err := NewWriter(bw)
-		if err != nil {
-			log.Fatalf("NewWriter() error %s", err)
-		}
+		lw := NewWriter(bw)
+		var err error
 		if _, err = io.Copy(lw, r); err != nil {
 			log.Fatalf("io.Copy error %s", err)
 		}
@@ -308,100 +306,5 @@ func TestReaderErrAgain(t *testing.T) {
 		if k != n {
 			t.Errorf("Read %d bytes; want %d", k, n)
 		}
-	}
-}
-
-func TestReader_WriteTo(t *testing.T) {
-	orig := readOrigFile(t)
-	pathname := filepath.Join(dirname, "a.lzma")
-	f, err := os.Open(pathname)
-	if err != nil {
-		t.Fatalf("Open(%q): %s", pathname, err)
-	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			t.Fatalf("f.Close() error %s", err)
-		}
-	}()
-	l, err := NewReader(bufio.NewReader(f))
-	if err != nil {
-		t.Fatalf("NewReader: %s", err)
-	}
-	buf := new(bytes.Buffer)
-	n, err := l.WriteTo(buf)
-	if err != nil {
-		t.Fatalf("l.WriteTo error %s", err)
-	}
-	if n != int64(len(orig)) {
-		t.Fatalf("l.WriteTo read %d bytes; want %d", n, len(orig))
-	}
-	if !bytes.Equal(buf.Bytes(), orig) {
-		t.Fatalf("l.WriteTo wrote wrong bytes")
-	}
-}
-
-func TestReader_ReadByte(t *testing.T) {
-	orig := readOrigFile(t)
-	pathname := filepath.Join(dirname, "a.lzma")
-	f, err := os.Open(pathname)
-	if err != nil {
-		t.Fatalf("Open(%q): %s", pathname, err)
-	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			t.Fatalf("f.Close() error %s", err)
-		}
-	}()
-	l, err := NewReader(bufio.NewReader(f))
-	if err != nil {
-		t.Fatalf("NewReader: %s", err)
-	}
-	b := make([]byte, 0, 128)
-	for {
-		c, err := l.ReadByte()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			t.Fatalf("l.ReadByte error %s", err)
-		}
-		b = append(b, c)
-	}
-	if len(b) != len(orig) {
-		t.Fatalf("read %d bytes; want %d", len(b), len(orig))
-	}
-	if !bytes.Equal(b, orig) {
-		t.Fatalf("decoded bytes and original bytes differ")
-	}
-}
-
-func TestReader_Size(t *testing.T) {
-	pathname := filepath.Join(dirname, "a.lzma")
-	f, err := os.Open(pathname)
-	if err != nil {
-		t.Fatalf("Open(%q): %s", pathname, err)
-	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			t.Fatalf("f.Close() error %s", err)
-		}
-	}()
-	l, err := NewReader(bufio.NewReader(f))
-	if err != nil {
-		t.Fatalf("NewReader: %s", err)
-	}
-	b := make([]byte, 0, 128)
-	for l.Size() < 4 {
-		c, err := l.ReadByte()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			t.Fatalf("l.ReadByte error %s", err)
-		}
-		b = append(b, c)
-	}
-	if len(b) != 4 {
-		t.Fatalf("read %d bytes; want %d", len(b), 4)
 	}
 }

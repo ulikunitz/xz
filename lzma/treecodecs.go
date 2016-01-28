@@ -1,4 +1,4 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,6 +14,11 @@ type treeCodec struct {
 // [1,32].
 func makeTreeCodec(bits int) treeCodec {
 	return treeCodec{makeProbTree(bits)}
+}
+
+// deepcopy initializes tc as a deep copy of the source.
+func (tc *treeCodec) deepcopy(src *treeCodec) {
+	tc.probTree.deepcopy(&src.probTree)
 }
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
@@ -47,6 +52,12 @@ func (tc *treeCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 // the start of the probability tree.
 type treeReverseCodec struct {
 	probTree
+}
+
+// deepcopy initializes the treeReverseCodec as a deep copy of the
+// source.
+func (tc *treeReverseCodec) deepcopy(src *treeReverseCodec) {
+	tc.probTree.deepcopy(&src.probTree)
 }
 
 // makeTreeReverseCodec creates treeReverseCodec value. The bits argument must
@@ -89,6 +100,16 @@ func (tc *treeReverseCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 type probTree struct {
 	probs []prob
 	bits  byte
+}
+
+// deepcopy initializes the probTree value as a deep copy of the source.
+func (t *probTree) deepcopy(src *probTree) {
+	if t == src {
+		return
+	}
+	t.probs = make([]prob, len(src.probs))
+	copy(t.probs, src.probs)
+	t.bits = src.bits
 }
 
 // makeProbTree initializes a probTree structure.

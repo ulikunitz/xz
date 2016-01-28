@@ -1,4 +1,4 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -119,6 +119,7 @@ func (gp *gopath) find(arg string) (p cpair, err error) {
 	return
 }
 
+// Gofile is used with the template gofileTmpl.
 type Gofile struct {
 	Pkg  string
 	Cmap map[string]string

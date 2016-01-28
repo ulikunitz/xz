@@ -1,7 +1,8 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Command xb supports the xz for Go project builds.
 package main
 
 //go:generate xb version-file -o version.go

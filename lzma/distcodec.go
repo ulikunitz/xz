@@ -1,10 +1,8 @@
-// Copyright 2015 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package lzma
-
-import "github.com/ulikunitz/xz/basics/u32"
 
 // Constants used by the distance codec.
 const (
@@ -33,6 +31,20 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
+// deepcopy initializes dc as deep copy of the source.
+func (dc *distCodec) deepcopy(src *distCodec) {
+	if dc == src {
+		return
+	}
+	for i := range dc.posSlotCodecs {
+		dc.posSlotCodecs[i].deepcopy(&src.posSlotCodecs[i])
+	}
+	for i := range dc.posModel {
+		dc.posModel[i].deepcopy(&src.posModel[i])
+	}
+	dc.alignCodec.deepcopy(&src.alignCodec)
+}
+
 // distBits returns the number of bits required to encode dist.
 func distBits(dist uint32) int {
 	if dist < startPosModel {
@@ -44,7 +56,7 @@ func distBits(dist uint32) int {
 	// bits(d) = 32-nlz32(d)
 	// s>>1=31-nlz32(d)
 	// n = 5 + (s>>1) = 36 - nlz32(d)
-	return 36 - u32.NLZ(dist)
+	return 36 - nlz32(dist)
 }
 
 // newDistCodec creates a new distance codec.
@@ -79,7 +91,7 @@ func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) 
 	if dist < startPosModel {
 		posSlot = dist
 	} else {
-		bits = uint32(30 - u32.NLZ(dist))
+		bits = uint32(30 - nlz32(dist))
 		posSlot = startPosModel - 2 + (bits << 1)
 		posSlot += (dist >> uint(bits)) & 1
 	}

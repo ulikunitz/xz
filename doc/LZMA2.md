@@ -30,7 +30,7 @@ exponent. The smallest dictionary size is 4 KiB and the biggest is 4 GiB
 |       39 |        3 |       30 |       3072 MiB |
 |       40 |        2 |       31 |  4096 MiB - 1B |
 
-For test purposes we add the dictionary size byte as first byte of a
+For test purposes we add the dictionary size byte as first byte of an
 LZMA2 stream.
 
 ## Chunks
@@ -46,29 +46,30 @@ Chunk header         | Description
 `00000000`           | End of LZMA2 stream
 `00000001 U U`       | Uncompressed chunk, reset dictionary
 `00000010 U U`       | Uncompressed chunk, no reset of dictionary
-`100uuuuu U U P P`   | LZMA, no reset
-`101uuuuu U U P P`   | LZMA, reset state
-`110uuuuu U U P P S` | LZMA, reset state, new properties
-`111uuuuu U U P P S` | LZMA, reset state, new properties, reset dictionary
+`100uuuuu U U C C`   | LZMA, no reset
+`101uuuuu U U C C`   | LZMA, reset state
+`110uuuuu U U C C S` | LZMA, reset state, new properties
+`111uuuuu U U C C S` | LZMA, reset state, new properties, reset dictionary
 
 The symbols used are described by following table.
 
 Symbol | Description
-:----- | :-----------------
-u      | unpacked size bit
-U      | unpacked size byte
-P      | packed size byte
+:----- | :--------------------
+u      | uncompressed size bit
+U      | uncompressed size byte
+C      | uncompressed size byte
 S      | properties byte
 
 A dictionary reset requires always new properties. If this is an
 uncompressed chunk the properties need to be provided in the next
 compressed chunk. New properties require a reset of the state.
 
-Uncompressed data is written into the dictionary.
+A dictionary reset puts the current position to zero. Uncompressed data
+is written into the dictionary.
 
-The unpacked size and packed size are given in big-endian byte order.
+The uncompressed size and compressed size are given in big-endian byte order.
 The values need to be incremented for the actual size. So a chunk with 1
-byte unpacked data will store size 0 in the unpacked byte.
+byte uncompressed data will store size 0 in the uncompressed bits and bytes.
 
 The properties byte provides the parameters pb, lc, lp using following
 formula:
