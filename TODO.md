@@ -1,9 +1,5 @@
 # TODO list
 
-## Release v0.4
-
-1. Prepare release
-
 ## Release v0.5
 
 1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
@@ -83,11 +79,16 @@
 - Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
 - Update TODO.md - write short log entry
 - git checkout master && git merge dev
-- Check go get for xz package in separate GOPATH
 - git tag -a <version>
 - git push
 
 ## Log
+
+### 2016-01-28
+
+The release v0.4 is ready. It provides a working xz implementation,
+which is rather slow, but works and is interoperable with the xz tool.
+It is an important milestone.
 
 ### 2016-01-10
 
