@@ -88,7 +88,7 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 			matchBit := (m >> 7) & 1
 			m <<= 1
 			i := ((1 + matchBit) << 8) | symbol
-			bit, err := probs[i].Decode(d)
+			bit, err := d.DecodeBit(&probs[i])
 			if err != nil {
 				return 0, err
 			}
@@ -102,7 +102,7 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 		}
 	}
 	for symbol < 0x100 {
-		bit, err := probs[symbol].Decode(d)
+		bit, err := d.DecodeBit(&probs[symbol])
 		if err != nil {
 			return 0, err
 		}

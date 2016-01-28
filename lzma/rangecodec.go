@@ -75,11 +75,7 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		e.nrange -= bound
 		p.dec()
 	}
-	if err := e.normalize(); err != nil {
-		return err
-	}
-
-	return nil
+	return e.normalize()
 }
 
 // Close writes a complete copy of the low value.
@@ -200,16 +196,19 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	d.code -= d.nrange
 	t := 0 - (d.code >> 31)
 	d.code += d.nrange & t
+	b = (t + 1) & 1
 
 	// d.code will stay less then d.nrange
 
-	if err = d.normalize(); err != nil {
-		return 0, err
+	// normalize
+	// assume d.code < d.nrange
+	const top = 1 << 24
+	if d.nrange >= top {
+		return b, nil
 	}
-
-	b = (t + 1) & 1
-
-	return b, nil
+	d.nrange <<= 8
+	// d.code < d.nrange will be maintained
+	return b, d.updateCode()
 }
 
 // decodeBit decodes a single bit. The bit will be returned at the
@@ -227,14 +226,15 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 		p.dec()
 		b = 1
 	}
-
-	// d.code will stay less then d.nrange
-
-	if err = d.normalize(); err != nil {
-		return 0, err
+	// normalize
+	// assume d.code < d.nrange
+	const top = 1 << 24
+	if d.nrange >= top {
+		return b, nil
 	}
-
-	return b, nil
+	d.nrange <<= 8
+	// d.code < d.nrange will be maintained
+	return b, d.updateCode()
 }
 
 // updateCode reads a new byte into the code.
@@ -244,19 +244,5 @@ func (d *rangeDecoder) updateCode() error {
 		return err
 	}
 	d.code = (d.code << 8) | uint32(b)
-	return nil
-}
-
-// normalize the top value and update the code value.
-func (d *rangeDecoder) normalize() error {
-	// assume d.code < d.nrange
-	const top = 1 << 24
-	if d.nrange < top {
-		d.nrange <<= 8
-		// d.code < d.nrange will be maintained
-		if err := d.updateCode(); err != nil {
-			return err
-		}
-	}
 	return nil
 }
