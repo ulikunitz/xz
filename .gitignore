@@ -9,6 +9,9 @@ lzma/reader.txt
 cmd/gxz/gxz
 cmd/xb/xb
 
+# test executables
+*.test
+
 # profile files
 *.out
 
