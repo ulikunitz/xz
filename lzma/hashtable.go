@@ -160,7 +160,7 @@ func (t *hashTable) WriteByte(b byte) error {
 }
 
 // Write converts the bytes provided into hash tables and stores the
-// abbreviated offsets into the hash table. The function will never return an
+// abbreviated offsets into the hash table. The method will never return an
 // error.
 func (t *hashTable) Write(p []byte) (n int, err error) {
 	for _, b := range p {

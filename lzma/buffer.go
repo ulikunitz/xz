@@ -4,7 +4,9 @@
 
 package lzma
 
-import "errors"
+import (
+	"errors"
+)
 
 // buffer provides a circular buffer of bytes. If the front index equals
 // the rear index the buffer is empty. As a consequence front cannot be
@@ -17,13 +19,8 @@ type buffer struct {
 }
 
 // newBuffer creates a buffer with the given size.
-func newBuffer(size int) (b *buffer, err error) {
-	// second condition checks for overflow
-	if !(0 < size && 0 < size+1) {
-		return nil, errors.New(
-			"lzma: buffer size out of range")
-	}
-	return &buffer{data: make([]byte, size+1)}, nil
+func newBuffer(size int) *buffer {
+	return &buffer{data: make([]byte, size+1)}
 }
 
 // Cap returns the capacity of the buffer.
@@ -158,17 +155,19 @@ func (b *buffer) EqualBytes(x, y, max int) int {
 	if max <= 0 {
 		return 0
 	}
+
+	n := len(b.data)
 	i := b.front - x
 	if i < 0 {
-		i += len(b.data)
+		i += n
 	}
 	j := b.front - y
 	if j < 0 {
-		j += len(b.data)
+		j += n
 	}
-	n := len(b.data)
+	d := b.data
 	for k := 0; k < max; k++ {
-		if b.data[i] != b.data[j] {
+		if d[i] != d[j] {
 			return k
 		}
 		i = (i + 1) % n

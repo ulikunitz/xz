@@ -85,7 +85,7 @@ func cycle(t *testing.T, n int) {
 	}
 }
 
-func TestEncoderCycle(t *testing.T) {
+func TestEncoderCycle1(t *testing.T) {
 	cycle(t, len(testString))
 }
 

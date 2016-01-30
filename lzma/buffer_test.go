@@ -10,13 +10,7 @@ import (
 )
 
 func TestBuffer_Write(t *testing.T) {
-	buf, err := newBuffer(-1)
-	if err == nil {
-		t.Fatalf("newBuffer(-1): want error")
-	}
-	if buf, err = newBuffer(10); err != nil {
-		t.Fatalf("newBuffer error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("1234567890")
 	for i := range b {
 		n, err := buf.Write(b[i : i+1])
@@ -60,11 +54,9 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Buffered_Available(t *testing.T) {
-	buf, err := newBuffer(19)
-	if err != nil {
-		t.Fatalf("newBuffer(19) error %s", err)
-	}
+	buf := newBuffer(19)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -83,11 +75,9 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 }
 
 func TestBuffer_Read(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -139,11 +129,9 @@ func TestBuffer_Read(t *testing.T) {
 }
 
 func TestBuffer_Discard(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -177,10 +165,7 @@ func TestBuffer_Discard(t *testing.T) {
 }
 
 func TestBuffer_Discard_error(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	n, err := buf.Discard(-1)
 	if err == nil {
 		t.Fatal("buf.Discard(-1) didn't return an error")

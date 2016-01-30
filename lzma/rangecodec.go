@@ -47,7 +47,7 @@ func (e *rangeEncoder) Available() int64 {
 // the underlying writer doesn't return an error.
 func (e *rangeEncoder) writeByte(c byte) error {
 	if e.Available() < 1 {
-		return ErrNoSpace
+		return ErrLimit
 	}
 	return e.lbw.WriteByte(c)
 }

@@ -6,6 +6,7 @@ package lzma
 
 import (
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -28,6 +29,7 @@ type matcher interface {
 	Reset()
 }
 
+/*
 // encoderDict buffers all encoded data and detected operations and
 // includes the complete dictionary. It consists of a lookahead buffer
 // and the dictionary.
@@ -64,16 +66,12 @@ func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
 	if err != nil {
 		return nil, err
 	}
-	buf, err := newBuffer(dictCap + bufSize)
-	if err != nil {
-		return nil, err
-	}
 	opbuf, err := newOpBuffer(bufSize)
 	if err != nil {
 		return nil, err
 	}
 	d = &encoderDict{
-		buf:      *buf,
+		buf:      *newBuffer(dictCap + bufSize),
 		ops:      *opbuf,
 		m:        m,
 		capacity: dictCap,
@@ -345,3 +343,180 @@ func (d *encoderDict) CopyN(w io.Writer, n int) (written int, err error) {
 	}
 	return written, err
 }
+*/
+
+type encoderDict struct {
+	buf        buffer
+	m          matcher
+	head       int64
+	capacity   int
+	shortDists int
+	p          []int64
+	distances  []int
+	word       []byte
+	data       []byte
+}
+
+func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
+	const (
+		shortDists = 8
+		wordSize   = 4
+	)
+
+	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
+		return nil, errors.New(
+			"lzma: dictionary capacity out of range")
+	}
+	if bufSize < 1 {
+		return nil, errors.New(
+			"lzma: buffer size must be larger than zero")
+	}
+	d = &encoderDict{
+		buf:        *newBuffer(dictCap + bufSize),
+		capacity:   dictCap,
+		p:          make([]int64, maxMatches),
+		distances:  make([]int, 0, maxMatches+shortDists),
+		shortDists: shortDists,
+		word:       make([]byte, wordSize),
+		data:       make([]byte, maxMatchLen),
+	}
+	if d.m, err = newHashTable(dictCap, wordSize); err != nil {
+		return nil, err
+	}
+	return d, nil
+}
+
+func (d *encoderDict) NextOp(rep0 uint32) operation {
+	// get positions
+	n, _ := d.buf.Peek(d.word)
+	p := d.p
+	if n < len(d.word) {
+		p = p[:0]
+	} else {
+		n = d.m.Matches(d.word, p[:maxMatches])
+		p = p[:n]
+	}
+
+	// convert positions in potential distances
+	head := d.head
+	dists := append(d.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
+	for _, pos := range p {
+		dis := int(head - pos)
+		if dis > d.shortDists {
+			dists = append(dists, dis)
+		}
+	}
+
+	// check distances
+	b := d.buf.Buffered()
+	var m match
+	dictLen := d.DictLen()
+	for _, dist := range dists {
+		if dist > dictLen {
+			continue
+		}
+		n := d.buf.EqualBytes(b+dist, b, maxMatchLen)
+		switch n {
+		case 0:
+			continue
+		case 1:
+			if uint32(dist-minDistance) != rep0 {
+				continue
+			}
+		}
+		if n > m.n {
+			m = match{int64(dist), n}
+		}
+	}
+	if m.n == 0 {
+		return lit{d.word[0]}
+	}
+	return m
+}
+
+func (d *encoderDict) DiscardOp(op operation) {
+	n := op.Len()
+	p := d.data[:n]
+	k, _ := d.buf.Read(p)
+	if k < n {
+		panic(fmt.Errorf("lzma: wrong op %v", op))
+	}
+	d.head += int64(n)
+	d.m.Write(p)
+}
+
+func (d *encoderDict) Len() int {
+	n := d.buf.Available()
+	if int64(n) > d.head {
+		return int(d.head)
+	}
+	return n
+}
+
+func (d *encoderDict) DictLen() int {
+	if d.head < int64(d.capacity) {
+		return int(d.head)
+	}
+	return d.capacity
+}
+
+// Available returns the number of bytes that can be written by a
+// following Write call.
+func (d *encoderDict) Available() int {
+	return d.buf.Available() - d.DictLen()
+}
+
+func (d *encoderDict) Write(p []byte) (n int, err error) {
+	m := d.Available()
+	if len(p) > m {
+		p = p[:m]
+		err = ErrNoSpace
+	}
+	var e error
+	if n, e = d.buf.Write(p); e != nil {
+		err = e
+	}
+	return n, err
+}
+
+func (d *encoderDict) Pos() int64 { return d.head }
+
+func (d *encoderDict) ByteAt(distance int) byte {
+	if !(0 < distance && distance <= d.Len()) {
+		return 0
+	}
+	i := d.buf.rear - distance
+	if i < 0 {
+		i += len(d.buf.data)
+	}
+	return d.buf.data[i]
+}
+
+func (d *encoderDict) CopyN(w io.Writer, n int) (written int, err error) {
+	if n <= 0 {
+		return 0, nil
+	}
+	m := d.Len()
+	if n > m {
+		n = m
+		err = ErrNoSpace
+	}
+	i := d.buf.rear - n
+	var e error
+	if i < 0 {
+		i += len(d.buf.data)
+		if written, e = w.Write(d.buf.data[i:]); e != nil {
+			return written, e
+		}
+		i = 0
+	}
+	var k int
+	k, e = w.Write(d.buf.data[i:d.buf.rear])
+	written += k
+	if e != nil {
+		err = e
+	}
+	return written, err
+}
+
+func (d *encoderDict) Buffered() int { return d.buf.Buffered() }
