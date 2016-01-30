@@ -2,18 +2,17 @@
 
 ## Release v0.5
 
-1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
-2. Find a way to profile gxz
-3. Do some optimizations
+1. Find a way to profile gxz
+2. Do some optimizations
     - rename operation action and make it a simple type of size 8
     - use the killer byte for finding the best match
     - optimize EqualBytes
     - make maxMatches, wordSize parameters
     - stop searching after a certain length is found (parameter sweetLen)
-4. Compare compression ratio with xz tool using comparable parameters
+3. Compare compression ratio with xz tool using comparable parameters
    and optimize parameters
-5. Do the signal handling correctly.
-6. Add Go documentation for commands.
+4. Do the signal handling correctly.
+5. Add Go documentation for commands.
 
 ## Release v0.6
 
@@ -91,6 +90,14 @@
 - git push
 
 ## Log
+
+### 2016-01-30
+
+I simplified the encoder. Speed and compression rate increased
+dramatically. A high compression rate affects also the decompression
+speed. The approach with the buffer and optimizing for operation
+compression rate has not been successful. Going for the maximum length
+appears to be the best approach.
 
 ### 2016-01-28
 
