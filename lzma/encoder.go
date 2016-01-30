@@ -202,6 +202,9 @@ func (e *encoder) writeMatch(m match) error {
 	return e.state.repLenCodec.Encode(e.re, n, posState)
 }
 
+// writeOp writes a single operation to the range encoder. The function
+// checks whether there is enough space available to close the LZMA
+// stream.
 func (e *encoder) writeOp(op operation) error {
 	if e.re.Available() < int64(e.margin) {
 		return ErrLimit
