@@ -56,11 +56,14 @@ func (e *rangeEncoder) writeByte(c byte) error {
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 	e.nrange >>= 1
 	e.low += uint64(e.nrange) & (0 - (uint64(b) & 1))
-	if err := e.normalize(); err != nil {
-		return err
-	}
 
-	return nil
+	// normalize
+	const top = 1 << 24
+	if e.nrange >= top {
+		return nil
+	}
+	e.nrange <<= 8
+	return e.shiftLow()
 }
 
 // EncodeBit encodes the least significant bit of b. The p value will be
@@ -75,7 +78,14 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 		e.nrange -= bound
 		p.dec()
 	}
-	return e.normalize()
+
+	// normalize
+	const top = 1 << 24
+	if e.nrange >= top {
+		return nil
+	}
+	e.nrange <<= 8
+	return e.shiftLow()
 }
 
 // Close writes a complete copy of the low value.
@@ -112,16 +122,6 @@ func (e *rangeEncoder) shiftLow() error {
 	e.cacheLen++
 	e.low = uint64(uint32(e.low) << 8)
 	return nil
-}
-
-// normalize handles shifts of nrange and low.
-func (e *rangeEncoder) normalize() error {
-	const top = 1 << 24
-	if e.nrange >= top {
-		return nil
-	}
-	e.nrange <<= 8
-	return e.shiftLow()
 }
 
 // rangeDecoder decodes single bits of the range encoding stream.
