@@ -217,9 +217,6 @@ func newWriter(path string, perm os.FileMode, opts *options,
 					Path: name,
 					Err:  errors.New("file exists")}
 			}
-			if err = os.Remove(name); err != nil {
-				return nil, err
-			}
 		}
 		tmp := tmpName(name, opts.decompress)
 		if w.f, err = os.OpenFile(tmp,
