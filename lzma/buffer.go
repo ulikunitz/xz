@@ -141,37 +141,31 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
-// EqualBytes checks how many bytes are equal comparing two positions in
-// the buffer. The arguments x and y give the distance of the positions
-// from the front index. The argument max gives an upper limit of
-// positions tested.
-func (b *buffer) EqualBytes(x, y, max int) int {
-	if x < max {
-		max = x
+// prefixLen returns the length of the common prefix of a and b.
+func prefixLen(a, b []byte) int {
+	if len(a) > len(b) {
+		a, b = b, a
 	}
-	if y < max {
-		max = y
-	}
-	if max <= 0 {
-		return 0
-	}
-
-	n := len(b.data)
-	i := b.front - x
-	if i < 0 {
-		i += n
-	}
-	j := b.front - y
-	if j < 0 {
-		j += n
-	}
-	d := b.data
-	for k := 0; k < max; k++ {
-		if d[i] != d[j] {
-			return k
+	for i, c := range a {
+		if b[i] != c {
+			return i
 		}
-		i = (i + 1) % n
-		j = (j + 1) % n
 	}
-	return max
+	return len(a)
+}
+
+// matchLen returns the length of the common prefix for the given
+// distance from the rear and the byte slice p.
+func (b *buffer) matchLen(distance int, p []byte) int {
+	var n int
+	i := b.rear - distance
+	if i < 0 {
+		if n = prefixLen(p, b.data[len(b.data)+i:]); n < -i {
+			return n
+		}
+		p = p[n:]
+		i = 0
+	}
+	n += prefixLen(p, b.data[i:])
+	return n
 }

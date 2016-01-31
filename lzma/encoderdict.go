@@ -40,7 +40,7 @@ type encoderDict struct {
 	// preallocated arrays
 	p         []int64
 	distances []int
-	word      []byte
+	wordSize  int
 	data      []byte
 }
 
@@ -66,7 +66,7 @@ func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
 		p:          make([]int64, maxMatches),
 		distances:  make([]int, 0, maxMatches+shortDists),
 		shortDists: shortDists,
-		word:       make([]byte, wordSize),
+		wordSize:   wordSize,
 		data:       make([]byte, maxMatchLen),
 	}
 	if d.m, err = newHashTable(dictCap, wordSize); err != nil {
@@ -79,12 +79,14 @@ func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
 // always the longest match.
 func (d *encoderDict) NextOp(rep0 uint32) operation {
 	// get positions
-	n, _ := d.buf.Peek(d.word)
+	data := d.data[:maxMatchLen]
+	n, _ := d.buf.Peek(data)
+	data = data[:n]
 	p := d.p
-	if n < len(d.word) {
+	if n < d.wordSize {
 		p = p[:0]
 	} else {
-		n = d.m.Matches(d.word, p[:maxMatches])
+		n = d.m.Matches(data[:d.wordSize], p[:maxMatches])
 		p = p[:n]
 	}
 
@@ -99,14 +101,30 @@ func (d *encoderDict) NextOp(rep0 uint32) operation {
 	}
 
 	// check distances
-	b := d.buf.Buffered()
 	var m match
 	dictLen := d.DictLen()
 	for _, dist := range dists {
 		if dist > dictLen {
 			continue
 		}
-		n := d.buf.EqualBytes(b+dist, b, maxMatchLen)
+
+		// Here comes a trick. We are only interested in matches
+		// that are longer than the matches we have been found
+		// before. So before we test the whole byte sequence at
+		// the given distance, we test the first byte that would
+		// make the match longer. If it doesn't match the byte
+		// to match, we don't to care any longer.
+		i := d.buf.rear - dist + m.n
+		if i < 0 {
+			i += len(d.buf.data)
+		}
+		if d.buf.data[i] != data[m.n] {
+			// We can't get a longer match. Jump to the next
+			// distance.
+			continue
+		}
+
+		n := d.buf.matchLen(dist, data)
 		switch n {
 		case 0:
 			continue
@@ -117,10 +135,14 @@ func (d *encoderDict) NextOp(rep0 uint32) operation {
 		}
 		if n > m.n {
 			m = match{int64(dist), n}
+			if n == len(data) {
+				// No better match will be found.
+				break
+			}
 		}
 	}
 	if m.n == 0 {
-		return lit{d.word[0]}
+		return lit{data[0]}
 	}
 	return m
 }
