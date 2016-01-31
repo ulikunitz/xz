@@ -12,6 +12,7 @@ import (
 	"hash"
 	"io"
 
+	"github.com/ulikunitz/xz/internal/xlog"
 	"github.com/ulikunitz/xz/lzma"
 )
 
@@ -72,6 +73,7 @@ func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	if err = r.h.UnmarshalBinary(data); err != nil {
 		return nil, err
 	}
+	xlog.Debugf("xz header %v", r.h)
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err
 	}
@@ -112,6 +114,7 @@ func (r *Reader) readTail() error {
 	if err = f.UnmarshalBinary(p); err != nil {
 		return err
 	}
+	xlog.Debugf("xz footer %v", f)
 	if f.flags != r.h.flags {
 		return errors.New("xz: footer flags incorrect")
 	}
@@ -135,6 +138,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				}
 				return n, err
 			}
+			xlog.Debugf("block %v", *bh)
 			r.br, err = newBlockReader(r.xz, bh, hlen, r.newHash(),
 				&r.ReaderParams)
 			if err != nil {
