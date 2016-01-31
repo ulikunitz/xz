@@ -2,15 +2,16 @@
 
 ## Release v0.5
 
-1. Find a way to profile gxz
-2. Do some optimizations
+1. Add a mode where all xz packets and LZMA2 chunks are printed to
+   stderr.
+1. Do some optimizations
     - rename operation action and make it a simple type of size 8
     - make maxMatches, wordSize parameters
     - stop searching after a certain length is found (parameter sweetLen)
-3. Compare compression ratio with xz tool using comparable parameters
+2. Compare compression ratio with xz tool using comparable parameters
    and optimize parameters
-4. Do the signal handling correctly.
-5. Add Go documentation for commands.
+3. Do the signal handling correctly.
+4. Add Go documentation for commands.
 
 ## Release v0.6
 
