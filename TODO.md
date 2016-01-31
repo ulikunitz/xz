@@ -5,8 +5,6 @@
 1. Find a way to profile gxz
 2. Do some optimizations
     - rename operation action and make it a simple type of size 8
-    - use the killer byte for finding the best match
-    - optimize EqualBytes
     - make maxMatches, wordSize parameters
     - stop searching after a certain length is found (parameter sweetLen)
 3. Compare compression ratio with xz tool using comparable parameters
@@ -90,6 +88,14 @@
 - git push
 
 ## Log
+
+### 2016-01-31
+
+Another compression rate increase by checking the byte at length of the
+best match first, before checking the whole prefix. This makes the
+compressor even faster. We have now a large time budget to beat the
+compression ratio of the xz tool. For enwik8 we have now over 40 seconds
+to reduce the compressed file size for another 7 MiB.
 
 ### 2016-01-30
 
