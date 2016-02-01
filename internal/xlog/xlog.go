@@ -34,17 +34,18 @@ import (
 //   2009-01-23 01:23:23.123123 /a/b/c/d.go:23: message
 //
 const (
-	Ldate         = 1 << iota     // the date: 2009-01-23
-	Ltime                         // the time: 01:23:23
-	Lmicroseconds                 // microsecond resolution: 01:23:23.123123
-	Llongfile                     // full file name and line number: /a/b/c/d.go:23
-	Lshortfile                    // final file name element and line number: d.go:23
-	Lnopanic                      // suppresses output from Panic[f|ln] but not the panic call
-	Lnofatal                      // suppresses output from Fatal[f|ln] but not the exit
-	Lnowarn                       // suppresses output from Warn[f|ln]
-	Lnoprint                      // suppresses output from Print[f|ln]
-	Lnodebug                      // suppresses output from Debug[f|ln]
-	Lstdflags     = Ldate | Ltime // initial values for the standard logger
+	Ldate         = 1 << iota // the date: 2009-01-23
+	Ltime                     // the time: 01:23:23
+	Lmicroseconds             // microsecond resolution: 01:23:23.123123
+	Llongfile                 // full file name and line number: /a/b/c/d.go:23
+	Lshortfile                // final file name element and line number: d.go:23
+	Lnopanic                  // suppresses output from Panic[f|ln] but not the panic call
+	Lnofatal                  // suppresses output from Fatal[f|ln] but not the exit
+	Lnowarn                   // suppresses output from Warn[f|ln]
+	Lnoprint                  // suppresses output from Print[f|ln]
+	Lnodebug                  // suppresses output from Debug[f|ln]
+	// initial values for the standard logger
+	Lstdflags = Ldate | Ltime | Lnodebug
 )
 
 // A Logger represents an active logging object that generates lines of
