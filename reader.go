@@ -73,7 +73,7 @@ func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	if err = r.h.UnmarshalBinary(data); err != nil {
 		return nil, err
 	}
-	xlog.Debugf("xz header %v", r.h)
+	xlog.Debugf("xz header %s", r.h)
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err
 	}

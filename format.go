@@ -65,6 +65,22 @@ func verifyFlags(flags byte) error {
 	}
 }
 
+// flagstrings maps flag values to strings.
+var flagstrings = map[byte]string{
+	CRC32:  "CRC-32",
+	CRC64:  "CRC-64",
+	SHA256: "SHA-256",
+}
+
+// flagString returns the string representation for the given flags.
+func flagString(flags byte) string {
+	s, ok := flagstrings[flags]
+	if !ok {
+		return "invalid"
+	}
+	return s
+}
+
 // newHashFunc returns a function that creates hash instances for the
 // hash method encoded in flags.
 func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
@@ -98,6 +114,11 @@ func ValidHeader(data []byte) bool {
 	var h header
 	err := h.UnmarshalBinary(data)
 	return err == nil
+}
+
+// String returns a string representation of the flags.
+func (h header) String() string {
+	return flagString(h.flags)
 }
 
 // UnmarshalBinary reads header from the provided data slice.
