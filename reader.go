@@ -114,7 +114,7 @@ func (r *Reader) readTail() error {
 	if err = f.UnmarshalBinary(p); err != nil {
 		return err
 	}
-	xlog.Debugf("xz footer %v", f)
+	xlog.Debugf("xz footer %s", f)
 	if f.flags != r.h.flags {
 		return errors.New("xz: footer flags incorrect")
 	}

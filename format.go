@@ -184,6 +184,11 @@ type footer struct {
 	flags     byte
 }
 
+// String prints a string representation of the footer structure.
+func (f footer) String() string {
+	return fmt.Sprintf("%s index size %d", flagString(f.flags), f.indexSize)
+}
+
 // Minimum and maximum for the size of the index (backward size).
 const (
 	minIndexSize = 4
