@@ -26,7 +26,7 @@ import (
 func signalHandler(w *writer) chan<- struct{} {
 	quit := make(chan struct{})
 	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, os.Interrupt)
+	signal.Notify(sigch, os.Interrupt, syscall.SIGPIPE)
 	go func() {
 		select {
 		case <-quit:
