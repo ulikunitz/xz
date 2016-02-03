@@ -7,6 +7,8 @@ package lzma
 import (
 	"errors"
 	"io"
+
+	"github.com/ulikunitz/xz/internal/xlog"
 )
 
 // Reader2Params defines the LZMA2 reader parameters. The defaults are
@@ -86,6 +88,7 @@ func (r *Reader2) startChunk() error {
 		}
 		return err
 	}
+	xlog.Debugf("chunk header %v", header)
 	if err = r.cstate.next(header.ctype); err != nil {
 		return err
 	}

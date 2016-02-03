@@ -6,6 +6,7 @@ package xz
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/ulikunitz/xz/lzma"
@@ -21,6 +22,11 @@ const (
 // block header.
 type lzmaFilter struct {
 	dictCap int64
+}
+
+// String returns a representation of the LZMA filter.
+func (f lzmaFilter) String() string {
+	return fmt.Sprintf("LZMA dict cap %#x", f.dictCap)
 }
 
 // id returns the ID for the LZMA2 filter.

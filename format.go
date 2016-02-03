@@ -272,6 +272,31 @@ type blockHeader struct {
 	filters          []filter
 }
 
+// String converts the block header into a string.
+func (h blockHeader) String() string {
+	var buf bytes.Buffer
+	first := true
+	if h.compressedSize >= 0 {
+		fmt.Fprintf(&buf, "compressed size %d", h.compressedSize)
+		first = false
+	}
+	if h.uncompressedSize >= 0 {
+		if !first {
+			buf.WriteString(" ")
+		}
+		fmt.Fprintf(&buf, "uncompressed size %d", h.uncompressedSize)
+		first = false
+	}
+	for _, f := range h.filters {
+		if !first {
+			buf.WriteString(" ")
+		}
+		fmt.Fprintf(&buf, "filter %s", f)
+		first = false
+	}
+	return buf.String()
+}
+
 // Masks for the block flags.
 const (
 	filterCountMask         = 0x03
