@@ -11,7 +11,8 @@
 2. Compare compression ratio with xz tool using comparable parameters
    and optimize parameters
 3. Do the signal handling correctly.
-4. Add Go documentation for commands.
+4. Support concatenated files.
+5. Add Go documentation for commands.
 
 ## Release v0.6
 
