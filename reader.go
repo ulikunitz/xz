@@ -13,6 +13,7 @@ import (
 	"io"
 
 	"github.com/ulikunitz/xz/internal/xlog"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // ReaderParams defines the parameters for the xz reader. The defaults
@@ -21,6 +22,7 @@ type ReaderParams struct {
 	DictCap int
 }
 
+// fillReaderParams fills all zero/nil fields of reader parameters.
 func fillReaderParams(p *ReaderParams) *ReaderParams {
 	if p == nil {
 		p = new(ReaderParams)
@@ -31,7 +33,17 @@ func fillReaderParams(p *ReaderParams) *ReaderParams {
 	return p
 }
 
-func (p *ReaderParams) verify() error { return nil }
+// Verify checks the reader parameters for Validity.
+func (p *ReaderParams) Verify() error {
+	if p == nil {
+		return errors.New("xz: reader parameters are nil")
+	}
+	lp := lzma.ReaderParams{DictCap: p.DictCap}
+	if err := lp.Verify(); err != nil {
+		return err
+	}
+	return nil
+}
 
 // errUnexpectedEOF indicates an unexpected end of file.
 var errUnexpectedEOF = errors.New("xz: unexpected end of file")
@@ -57,7 +69,7 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 // NewReaderParams reads and checks the header of the XZ stream.
 func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	p = fillReaderParams(p)
-	if err = p.verify(); err != nil {
+	if err = p.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{

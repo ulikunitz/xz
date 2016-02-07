@@ -15,6 +15,7 @@ type WriterParams struct {
 	BufSize int
 }
 
+// fillWriterParams sets the nil/zero fields of the writer parameters.
 func fillWriterParams(p *WriterParams) *WriterParams {
 	if p == nil {
 		p = new(WriterParams)
@@ -39,7 +40,8 @@ func verifyDictCap(dictCap int) error {
 	return nil
 }
 
-func (p *WriterParams) verify() error {
+// Verify checks the writer parameters for the use with LZMA.
+func (p *WriterParams) Verify() error {
 	var err error
 
 	if p == nil {
@@ -64,8 +66,9 @@ func (p *WriterParams) verify() error {
 	return nil
 }
 
-func (p *WriterParams) verifyLZMA2() error {
-	if err := p.verify(); err != nil {
+// VerifyLZMA2 checks the writer parameters for the use with LZMA2.
+func (p *WriterParams) VerifyLZMA2() error {
+	if err := p.Verify(); err != nil {
 		return err
 	}
 	if p.Properties.LC+p.Properties.LP > 4 {
@@ -79,6 +82,7 @@ type ReaderParams struct {
 	DictCap int
 }
 
+// fillReaderParams fills the zero/nil fields of the reader parameters.
 func fillReaderParams(p *ReaderParams) *ReaderParams {
 	if p == nil {
 		p = new(ReaderParams)
@@ -89,7 +93,7 @@ func fillReaderParams(p *ReaderParams) *ReaderParams {
 	return p
 }
 
-// verify verifies the LZMA2 reader parameters for correctness.
-func (p *ReaderParams) verify() error {
+// Verify verifies the reader parameters for validity.
+func (p *ReaderParams) Verify() error {
 	return verifyDictCap(p.DictCap)
 }

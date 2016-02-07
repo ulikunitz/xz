@@ -46,7 +46,7 @@ func NewWriter2(lzma2 io.Writer) *Writer2 {
 // given parameters. The parameters will be verified for correctness.
 func NewWriter2Params(lzma2 io.Writer, params *WriterParams) (w *Writer2, err error) {
 	params = fillWriterParams(params)
-	if err = params.verifyLZMA2(); err != nil {
+	if err = params.VerifyLZMA2(); err != nil {
 		return nil, err
 	}
 

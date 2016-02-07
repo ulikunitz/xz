@@ -38,7 +38,7 @@ func NewReader2(lzma2 io.Reader, dictCap int) (r *Reader2, err error) {
 // parameters.
 func NewReader2Params(lzma2 io.Reader, params *ReaderParams) (r *Reader2, err error) {
 	params = fillReaderParams(params)
-	if err = params.verify(); err != nil {
+	if err = params.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader2{r: lzma2, cstate: start}

@@ -49,6 +49,14 @@ func (p *WriterParams) verify() error {
 	if p == nil {
 		return errors.New("xz: writer params are nil")
 	}
+	lp := lzma.WriterParams{
+		Properties: p.Properties,
+		DictCap:    p.DictCap,
+		BufSize:    p.BufSize,
+	}
+	if err := lp.VerifyLZMA2(); err != nil {
+		return err
+	}
 	if p.BlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
