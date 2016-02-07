@@ -33,8 +33,8 @@ func fillReaderParams(p *ReaderParams) *ReaderParams {
 	return p
 }
 
-// Verify checks the reader parameters for Validity.
-func (p *ReaderParams) Verify() error {
+// verify checks the reader parameters for Validity.
+func (p *ReaderParams) verify() error {
 	if p == nil {
 		return errors.New("xz: reader parameters are nil")
 	}
@@ -69,7 +69,7 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 // NewReaderParams reads and checks the header of the XZ stream.
 func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 	p = fillReaderParams(p)
-	if err = p.Verify(); err != nil {
+	if err = p.verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
