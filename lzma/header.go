@@ -70,7 +70,7 @@ type Header struct {
 
 // marshalBinary marshals the header.
 func (h *Header) marshalBinary() (data []byte, err error) {
-	if err = h.Properties.Verify(); err != nil {
+	if err = h.Properties.verify(); err != nil {
 		return nil, err
 	}
 	if !(0 <= h.DictCap && int64(h.DictCap) <= MaxDictCap) {

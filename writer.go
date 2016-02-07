@@ -15,10 +15,47 @@ import (
 // WriterParams describe the parameters for a writer. The defaults are
 // provided by WriterDefaults.
 type WriterParams struct {
-	lzma.Writer2Params
-	BlockSize int64
+	Properties *lzma.Properties
+	DictCap    int
+	BufSize    int
+	BlockSize  int64
 	// checksum method: CRC32, CRC64 or SHA256
 	CheckSum byte
+}
+
+func fillWriterParams(p *WriterParams) *WriterParams {
+	if p == nil {
+		p = new(WriterParams)
+	}
+	if p.Properties == nil {
+		p.Properties = &lzma.Properties{LC: 3, LP: 0, PB: 2}
+	}
+	if p.DictCap == 0 {
+		p.DictCap = 8 * 1024 * 1024
+	}
+	if p.BufSize == 0 {
+		p.BufSize = 4096
+	}
+	if p.BlockSize == 0 {
+		p.BlockSize = maxInt64
+	}
+	if p.CheckSum == 0 {
+		p.CheckSum = CRC64
+	}
+	return p
+}
+
+func (p *WriterParams) verify() error {
+	if p == nil {
+		return errors.New("xz: writer params are nil")
+	}
+	if p.BlockSize <= 0 {
+		return errors.New("xz: block size out of range")
+	}
+	if err := verifyFlags(p.CheckSum); err != nil {
+		return err
+	}
+	return nil
 }
 
 // filters creates the filter list for the given parameters.
@@ -26,30 +63,8 @@ func (p *WriterParams) filters() []filter {
 	return []filter{&lzmaFilter{int64(p.DictCap)}}
 }
 
-// Verify checks the writer parameters for invalid values.
-func (p *WriterParams) Verify() error {
-	var err error
-	if err = p.Writer2Params.Verify(); err != nil {
-		return err
-	}
-	if p.BlockSize <= 0 {
-		return errors.New("xz: block size out of range")
-	}
-	if err = verifyFlags(p.CheckSum); err != nil {
-		return err
-	}
-	return nil
-}
-
 // maxInt64 defines the maximum 64-bit signed integer.
 const maxInt64 = 1<<63 - 1
-
-// WriterDefaults defines the defaults for the Writer parameters.
-var WriterDefaults = WriterParams{
-	Writer2Params: lzma.Writer2Defaults,
-	BlockSize:     maxInt64,
-	CheckSum:      CRC64,
-}
 
 // verifyFilters checks the filter list for the length and the right
 // sequence of filters.
@@ -143,7 +158,7 @@ func (w *Writer) closeBlockWriter() error {
 
 // NewWriter creates a new Writer using the default writer parameters.
 func NewWriter(xz io.Writer) *Writer {
-	w, err := NewWriterParams(xz, &WriterDefaults)
+	w, err := NewWriterParams(xz, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -152,7 +167,8 @@ func NewWriter(xz io.Writer) *Writer {
 
 // NewWriterParams creates a new Writer using the given parameters.
 func NewWriterParams(xz io.Writer, p *WriterParams) (w *Writer, err error) {
-	if err = p.Verify(); err != nil {
+	p = fillWriterParams(p)
+	if err = p.verify(); err != nil {
 		return nil, err
 	}
 	w = &Writer{

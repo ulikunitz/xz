@@ -86,15 +86,15 @@ var formats = map[string]*format{
 	"xz": &format{
 		newCompressor: func(w io.Writer, opts *options,
 		) (c io.WriteCloser, err error) {
-			p := xz.WriterDefaults
+			p := new(xz.WriterParams)
 			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewWriterParams(w, &p)
+			return xz.NewWriterParams(w, p)
 		},
 		newDecompressor: func(r io.Reader, opts *options,
 		) (d io.Reader, err error) {
-			p := xz.ReaderDefaults
+			p := new(xz.ReaderParams)
 			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewReaderParams(r, &p)
+			return xz.NewReaderParams(r, p)
 		},
 		validHeader: func(br *bufio.Reader) bool {
 			h, err := br.Peek(xz.HeaderLen)

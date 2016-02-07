@@ -15,10 +15,8 @@ import (
 )
 
 func TestWriter2(t *testing.T) {
-	params := Writer2Defaults
-	params.DictCap = 4096
 	var buf bytes.Buffer
-	w, err := NewWriter2Params(&buf, &params)
+	w, err := NewWriter2Params(&buf, &WriterParams{DictCap: 4096})
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -47,10 +45,9 @@ func TestWriter2(t *testing.T) {
 }
 
 func TestCycle1(t *testing.T) {
-	params := Writer2Defaults
-	params.DictCap = 4096
 	var buf bytes.Buffer
-	w, err := NewWriter2Params(&buf, &params)
+	params := &WriterParams{DictCap: 4096}
+	w, err := NewWriter2Params(&buf, params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -74,10 +71,9 @@ func TestCycle1(t *testing.T) {
 }
 
 func TestCycle2(t *testing.T) {
-	params := Writer2Defaults
-	params.DictCap = 4096
 	buf := new(bytes.Buffer)
-	w, err := NewWriter2Params(buf, &params)
+	params := &WriterParams{DictCap: 4096}
+	w, err := NewWriter2Params(buf, params)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}

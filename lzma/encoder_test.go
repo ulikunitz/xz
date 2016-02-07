@@ -40,7 +40,7 @@ func cycle(t *testing.T, n int) {
 		t.Fatal(err)
 	}
 	props := Properties{2, 0, 2}
-	if err := props.Verify(); err != nil {
+	if err := props.verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
 	state := newState(props)
@@ -101,7 +101,7 @@ func TestEncoderCycle2(t *testing.T) {
 		t.Fatal(err)
 	}
 	props := Properties{3, 0, 2}
-	if err := props.Verify(); err != nil {
+	if err := props.verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
 	state := newState(props)

@@ -63,7 +63,10 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 	err error) {
 
-	params := p.Reader2Params
+	params := new(lzma.ReaderParams)
+	if p != nil {
+		params.DictCap = p.DictCap
+	}
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
@@ -73,7 +76,7 @@ func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 		params.DictCap = dc
 	}
 
-	fr, err = lzma.NewReader2Params(r, &params)
+	fr, err = lzma.NewReader2Params(r, params)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +86,15 @@ func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 // writeCloser creates a io.WriteCloser for the LZMA2 filter.
 func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
 ) (fw io.WriteCloser, err error) {
+	params := new(lzma.WriterParams)
+	if p != nil {
+		*params = lzma.WriterParams{
+			Properties: p.Properties,
+			DictCap:    p.DictCap,
+			BufSize:    p.BufSize,
+		}
+	}
 
-	params := p.Writer2Params
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
@@ -94,7 +104,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
 		params.DictCap = dc
 	}
 
-	fw, err = lzma.NewWriter2Params(w, &params)
+	fw, err = lzma.NewWriter2Params(w, params)
 	if err != nil {
 		return nil, err
 	}

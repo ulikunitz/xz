@@ -70,7 +70,7 @@ func (w *Writer) init() error {
 		panic("w.e expected to be nil")
 	}
 	var err error
-	if err = w.Properties.Verify(); err != nil {
+	if err = w.Properties.verify(); err != nil {
 		return err
 	}
 	if !(MinDictCap <= w.DictCap && int64(w.DictCap) <= MaxDictCap) {

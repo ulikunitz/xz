@@ -10,56 +10,6 @@ import (
 	"io"
 )
 
-// Writer2Params describes the parameters for the LZMA2 writer. The
-// defaults are defined by Writer2Defaults.
-type Writer2Params struct {
-	Properties Properties
-	DictCap    int
-	// size of lookahead buffer
-	BufSize int
-}
-
-// Verify verifies LZMA2 writer parameters for correctness.
-func (p *Writer2Params) Verify() error {
-	var err error
-
-	// dictionary capacity
-	if err = verifyDictCap(p.DictCap); err != nil {
-		return err
-	}
-
-	// properties
-	if err = p.Properties.Verify(); err != nil {
-		return err
-	}
-	if p.Properties.LC+p.Properties.LP > 4 {
-		return errors.New("lzma: sum of lc and lp exceeds 4")
-	}
-
-	// buffer size
-	if p.BufSize < 1 {
-		return errors.New(
-			"lzma: lookahead buffer size must be larger than zero")
-	}
-
-	return nil
-}
-
-// Writer2Defaults defines the defaults for the LZMA2 writer parameters.
-var Writer2Defaults = Writer2Params{
-	Properties: Properties{LC: 3, LP: 0, PB: 2},
-	DictCap:    8 * 1024 * 1024,
-	BufSize:    4096,
-}
-
-// verifyDictCap verifies values for the dictionary capacity.
-func verifyDictCap(dictCap int) error {
-	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
-		return errors.New("lzma: dictionary capacity is out of range")
-	}
-	return nil
-}
-
 // Writer2 supports the creation of an LZMA2 stream. But note that
 // written data is buffered, so call Flush or Close to write data to the
 // underlying writer. The Close method writes the end-of-stream marker
@@ -85,7 +35,7 @@ type Writer2 struct {
 // NewWriter2 creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
 func NewWriter2(lzma2 io.Writer) *Writer2 {
-	w, err := NewWriter2Params(lzma2, &Writer2Defaults)
+	w, err := NewWriter2Params(lzma2, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -94,14 +44,15 @@ func NewWriter2(lzma2 io.Writer) *Writer2 {
 
 // NewWriter2Params creates a new LZMA2 chunk sequence writer using the
 // given parameters. The parameters will be verified for correctness.
-func NewWriter2Params(lzma2 io.Writer, params *Writer2Params) (w *Writer2, err error) {
-	if err = params.Verify(); err != nil {
+func NewWriter2Params(lzma2 io.Writer, params *WriterParams) (w *Writer2, err error) {
+	params = fillWriterParams(params)
+	if err = params.verifyLZMA2(); err != nil {
 		return nil, err
 	}
 
 	w = &Writer2{
 		w:      lzma2,
-		start:  newState(params.Properties),
+		start:  newState(*params.Properties),
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}

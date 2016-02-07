@@ -11,22 +11,6 @@ import (
 	"github.com/ulikunitz/xz/internal/xlog"
 )
 
-// Reader2Params defines the LZMA2 reader parameters. The defaults are
-// defined by Reader2Defaults.
-type Reader2Params struct {
-	DictCap int
-}
-
-// Reader2Defaults define the defaults for the reader parameters.
-var Reader2Defaults = Reader2Params{
-	DictCap: 8 * 1024 * 1024,
-}
-
-// Verify verifies the LZMA2 reader parameters for correctness.
-func (p *Reader2Params) Verify() error {
-	return verifyDictCap(p.DictCap)
-}
-
 // Reader2 supports the reading of LZMA2 chunk sequences. Note that the
 // first chunk should have a dictionary reset and the first compressed
 // chunk a properties reset. The chunk sequence may not be terminated by
@@ -47,21 +31,17 @@ type Reader2 struct {
 // NewReader2 creates a reader for an LZMA2 chunk sequence with the given
 // dictionary capacity.
 func NewReader2(lzma2 io.Reader, dictCap int) (r *Reader2, err error) {
-	params := Reader2Defaults
-	params.DictCap = dictCap
-	return NewReader2Params(lzma2, &params)
+	return NewReader2Params(lzma2, &ReaderParams{DictCap: dictCap})
 }
 
 // NewReader2Params creates a new LZMA2 reader using the given
 // parameters.
-func NewReader2Params(lzma2 io.Reader, params *Reader2Params) (r *Reader2, err error) {
-	if err = params.Verify(); err != nil {
+func NewReader2Params(lzma2 io.Reader, params *ReaderParams) (r *Reader2, err error) {
+	params = fillReaderParams(params)
+	if err = params.verify(); err != nil {
 		return nil, err
 	}
-	r = &Reader2{
-		r:      lzma2,
-		cstate: start,
-	}
+	r = &Reader2{r: lzma2, cstate: start}
 	r.dict, err = newDecoderDict(params.DictCap)
 	if err != nil {
 		return nil, err
