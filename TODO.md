@@ -21,6 +21,7 @@
 
 1. Optimize code
 2. Do statistical analysis to get linear presets.
+3. Test sync.Pool compatability for xz and lzma Writer and Reader
 3. Fuzz optimized code.
 
 ## Release v0.8
