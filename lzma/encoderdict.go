@@ -40,16 +40,14 @@ type encoderDict struct {
 	// preallocated arrays
 	p         []int64
 	distances []int
-	wordSize  int
 	data      []byte
 }
 
 // newEncoderDict creates the encoder dictionary. The argument bufSize
 // defines the size of the additional buffer.
-func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
+func newEncoderDict(dictCap, bufSize int, m matcher) (d *encoderDict, err error) {
 	const (
 		shortDists = 8
-		wordSize   = 4
 	)
 
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
@@ -66,11 +64,8 @@ func newEncoderDict(dictCap, bufSize int) (d *encoderDict, err error) {
 		p:          make([]int64, maxMatches),
 		distances:  make([]int, 0, maxMatches+shortDists),
 		shortDists: shortDists,
-		wordSize:   wordSize,
 		data:       make([]byte, maxMatchLen),
-	}
-	if d.m, err = newHashTable(dictCap, wordSize); err != nil {
-		return nil, err
+		m:          m,
 	}
 	return d, nil
 }
@@ -83,10 +78,11 @@ func (d *encoderDict) NextOp(rep0 uint32) operation {
 	n, _ := d.buf.Peek(data)
 	data = data[:n]
 	p := d.p
-	if n < d.wordSize {
+	wordSize := d.m.WordLen()
+	if n < wordSize {
 		p = p[:0]
 	} else {
-		n = d.m.Matches(data[:d.wordSize], p[:maxMatches])
+		n = d.m.Matches(data[:wordSize], p[:maxMatches])
 		p = p[:n]
 	}
 

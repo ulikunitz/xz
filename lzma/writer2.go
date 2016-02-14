@@ -58,7 +58,11 @@ func NewWriter2Params(lzma2 io.Writer, params *WriterParams) (w *Writer2, err er
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := newEncoderDict(params.DictCap, params.BufSize)
+	m, err := newHashTable(params.DictCap, 4)
+	if err != nil {
+		return nil, err
+	}
+	d, err := newEncoderDict(params.DictCap, params.BufSize, m)
 	if err != nil {
 		return nil, err
 	}
