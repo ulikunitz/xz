@@ -16,6 +16,14 @@ import (
  * provide this capability.
  */
 
+// maxMatches limits the number of matches requested from the Matches
+// function. This controls the speed of the overall encoding.
+const maxMatches = 16
+
+// shortDists defines the number of short distances supported by the
+// implementation.
+const shortDists = 8
+
 // The minimum is somehow arbitrary but the maximum is limited by the
 // memory requirements of the hash table.
 const (
@@ -49,6 +57,9 @@ type hashTable struct {
 	wr hash.Roller
 	// hash roller for computing arbitrary hashes
 	hr hash.Roller
+	// preallocated slices
+	p         [maxMatches]int64
+	distances [maxMatches + shortDists]int
 }
 
 // hashTableExponent derives the hash table exponent from the dictionary
@@ -161,6 +172,8 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 
 // getMatches the matches for a specific hash. The functions returns the
 // number of positions found.
+//
+// TODO: Make a getDistances because that we are actually interested in.
 func (t *hashTable) getMatches(h uint64, positions []int64) (n int) {
 	if t.hoff < 0 || len(positions) == 0 {
 		return 0
@@ -217,25 +230,29 @@ func (t *hashTable) Matches(p []byte, positions []int64) int {
 	return t.getMatches(h, positions)
 }
 
+// NextOp identifies the next operation using the hash table.
+//
+// TODO: Use all repetitions to find matches.
 func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
 	// get positions
 	data := d.data[:maxMatchLen]
 	n, _ := d.buf.Peek(data)
 	data = data[:n]
-	p := d.p
+	var p []int64
 	if n < t.wordLen {
-		p = p[:0]
+		p = t.p[:0]
 	} else {
-		n = t.Matches(data[:t.wordLen], p[:maxMatches])
+		p = t.p[:maxMatches]
+		n = t.Matches(data[:t.wordLen], p)
 		p = p[:n]
 	}
 
 	// convert positions in potential distances
 	head := d.head
-	dists := append(d.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
+	dists := append(t.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
 	for _, pos := range p {
 		dis := int(head - pos)
-		if dis > d.shortDists {
+		if dis > shortDists {
 			dists = append(dists, dis)
 		}
 	}

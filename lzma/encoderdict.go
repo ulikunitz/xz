@@ -10,10 +10,6 @@ import (
 	"io"
 )
 
-// maxMatches limits the number of matches requested from the Matches
-// function. This controls the speed of the overall encoding.
-const maxMatches = 16
-
 // matcher is an interface that supports the identification of the next
 // operation.
 type matcher interface {
@@ -24,24 +20,17 @@ type matcher interface {
 // encoderDict provides the dictionary of the encoder. It includes an
 // addtional buffer atop of the actual dictionary.
 type encoderDict struct {
-	buf        buffer
-	m          matcher
-	head       int64
-	capacity   int
-	shortDists int
-	// preallocated arrays
-	p         []int64
-	distances []int
-	data      []byte
+	buf      buffer
+	m        matcher
+	head     int64
+	capacity int
+	// preallocated  array
+	data [maxMatchLen]byte
 }
 
 // newEncoderDict creates the encoder dictionary. The argument bufSize
 // defines the size of the additional buffer.
 func newEncoderDict(dictCap, bufSize int, m matcher) (d *encoderDict, err error) {
-	const (
-		shortDists = 8
-	)
-
 	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
 		return nil, errors.New(
 			"lzma: dictionary capacity out of range")
@@ -51,13 +40,9 @@ func newEncoderDict(dictCap, bufSize int, m matcher) (d *encoderDict, err error)
 			"lzma: buffer size must be larger than zero")
 	}
 	d = &encoderDict{
-		buf:        *newBuffer(dictCap + bufSize),
-		capacity:   dictCap,
-		p:          make([]int64, maxMatches),
-		distances:  make([]int, 0, maxMatches+shortDists),
-		shortDists: shortDists,
-		data:       make([]byte, maxMatchLen),
-		m:          m,
+		buf:      *newBuffer(dictCap + bufSize),
+		capacity: dictCap,
+		m:        m,
 	}
 	return d, nil
 }
