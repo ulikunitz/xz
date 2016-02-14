@@ -14,19 +14,11 @@ import (
 // function. This controls the speed of the overall encoding.
 const maxMatches = 16
 
-// matcher is an interface that allows the identification of potential
-// matches for words with a constant length greater or equal 2.
-//
-// The absolute offset of potential matches are provided by the
-// Matches method.
-//
-// The Reset method clears the matcher completely but starts new data
-// at the given position.
+// matcher is an interface that supports the identification of the next
+// operation.
 type matcher interface {
 	io.Writer
-	WordLen() int
-	Matches(word []byte, positions []int64) int
-	Reset()
+	NextOp(d *encoderDict, rep [4]uint32) operation
 }
 
 // encoderDict provides the dictionary of the encoder. It includes an
@@ -68,79 +60,6 @@ func newEncoderDict(dictCap, bufSize int, m matcher) (d *encoderDict, err error)
 		m:          m,
 	}
 	return d, nil
-}
-
-// NextOp computes the next operation for the encoding. It will provide
-// always the longest match.
-func (d *encoderDict) NextOp(rep0 uint32) operation {
-	// get positions
-	data := d.data[:maxMatchLen]
-	n, _ := d.buf.Peek(data)
-	data = data[:n]
-	p := d.p
-	wordSize := d.m.WordLen()
-	if n < wordSize {
-		p = p[:0]
-	} else {
-		n = d.m.Matches(data[:wordSize], p[:maxMatches])
-		p = p[:n]
-	}
-
-	// convert positions in potential distances
-	head := d.head
-	dists := append(d.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
-	for _, pos := range p {
-		dis := int(head - pos)
-		if dis > d.shortDists {
-			dists = append(dists, dis)
-		}
-	}
-
-	// check distances
-	var m match
-	dictLen := d.DictLen()
-	for _, dist := range dists {
-		if dist > dictLen {
-			continue
-		}
-
-		// Here comes a trick. We are only interested in matches
-		// that are longer than the matches we have been found
-		// before. So before we test the whole byte sequence at
-		// the given distance, we test the first byte that would
-		// make the match longer. If it doesn't match the byte
-		// to match, we don't to care any longer.
-		i := d.buf.rear - dist + m.n
-		if i < 0 {
-			i += len(d.buf.data)
-		}
-		if d.buf.data[i] != data[m.n] {
-			// We can't get a longer match. Jump to the next
-			// distance.
-			continue
-		}
-
-		n := d.buf.matchLen(dist, data)
-		switch n {
-		case 0:
-			continue
-		case 1:
-			if uint32(dist-minDistance) != rep0 {
-				continue
-			}
-		}
-		if n > m.n {
-			m = match{int64(dist), n}
-			if n == len(data) {
-				// No better match will be found.
-				break
-			}
-		}
-	}
-	if m.n == 0 {
-		return lit{data[0]}
-	}
-	return m
 }
 
 // Discard discards n bytes. Note that n must not be larger than

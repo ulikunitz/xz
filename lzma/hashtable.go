@@ -91,17 +91,6 @@ func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
 	return t, nil
 }
 
-// Reset puts hashTable back into a pristine condition.
-func (t *hashTable) Reset() {
-	for i := range t.t {
-		t.t[i] = 0
-	}
-	t.front = 0
-	t.hoff = -int64(t.wordLen)
-	t.wr = newRoller(t.wordLen)
-	t.hr = newRoller(t.wordLen)
-}
-
 // buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
 	n := t.hoff + 1
@@ -216,12 +205,6 @@ func (t *hashTable) hash(p []byte) uint64 {
 	return h
 }
 
-// WordLen returns the length of the words supported by the Matches
-// function.
-func (t *hashTable) WordLen() int {
-	return t.wordLen
-}
-
 // Matches fills the positions slice with potential matches. The
 // functions returns the number of positions filled into positions. The
 // byte slice p must have word length of the hash table.
@@ -232,4 +215,74 @@ func (t *hashTable) Matches(p []byte, positions []int64) int {
 	}
 	h := t.hash(p)
 	return t.getMatches(h, positions)
+}
+
+func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
+	// get positions
+	data := d.data[:maxMatchLen]
+	n, _ := d.buf.Peek(data)
+	data = data[:n]
+	p := d.p
+	if n < t.wordLen {
+		p = p[:0]
+	} else {
+		n = t.Matches(data[:t.wordLen], p[:maxMatches])
+		p = p[:n]
+	}
+
+	// convert positions in potential distances
+	head := d.head
+	dists := append(d.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
+	for _, pos := range p {
+		dis := int(head - pos)
+		if dis > d.shortDists {
+			dists = append(dists, dis)
+		}
+	}
+
+	// check distances
+	var m match
+	dictLen := d.DictLen()
+	for _, dist := range dists {
+		if dist > dictLen {
+			continue
+		}
+
+		// Here comes a trick. We are only interested in matches
+		// that are longer than the matches we have been found
+		// before. So before we test the whole byte sequence at
+		// the given distance, we test the first byte that would
+		// make the match longer. If it doesn't match the byte
+		// to match, we don't to care any longer.
+		i := d.buf.rear - dist + m.n
+		if i < 0 {
+			i += len(d.buf.data)
+		}
+		if d.buf.data[i] != data[m.n] {
+			// We can't get a longer match. Jump to the next
+			// distance.
+			continue
+		}
+
+		n := d.buf.matchLen(dist, data)
+		switch n {
+		case 0:
+			continue
+		case 1:
+			if uint32(dist-minDistance) != rep[0] {
+				continue
+			}
+		}
+		if n > m.n {
+			m = match{int64(dist), n}
+			if n == len(data) {
+				// No better match will be found.
+				break
+			}
+		}
+	}
+	if m.n == 0 {
+		return lit{data[0]}
+	}
+	return m
 }

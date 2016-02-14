@@ -229,8 +229,9 @@ func (e *encoder) compress(flags compressFlags) error {
 		n = maxMatchLen - 1
 	}
 	d := e.dict
+	m := d.m
 	for d.Buffered() > n {
-		op := d.NextOp(e.state.rep[0])
+		op := m.NextOp(d, e.state.rep)
 		if err := e.writeOp(op); err != nil {
 			return err
 		}
