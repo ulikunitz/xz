@@ -228,12 +228,13 @@ func (e *encoder) compress(flags compressFlags) error {
 	if flags&all == 0 {
 		n = maxMatchLen - 1
 	}
-	for e.dict.Buffered() > n {
-		op := e.dict.NextOp(e.state.rep[0])
+	d := e.dict
+	for d.Buffered() > n {
+		op := d.NextOp(e.state.rep[0])
 		if err := e.writeOp(op); err != nil {
 			return err
 		}
-		e.dict.DiscardOp(op)
+		d.Discard(op.Len())
 	}
 	return nil
 }

@@ -147,14 +147,13 @@ func (d *encoderDict) NextOp(rep0 uint32) operation {
 	return m
 }
 
-// DiscardOp discard an operation by moving the head forward and writing
-// the data into the matcher.
-func (d *encoderDict) DiscardOp(op operation) {
-	n := op.Len()
+// Discard discards n bytes. Note that n must not be larger than
+// MaxMatchLen.
+func (d *encoderDict) Discard(n int) {
 	p := d.data[:n]
 	k, _ := d.buf.Read(p)
 	if k < n {
-		panic(fmt.Errorf("lzma: wrong op %v", op))
+		panic(fmt.Errorf("lzma: can't discard %d bytes", n))
 	}
 	d.head += int64(n)
 	d.m.Write(p)
