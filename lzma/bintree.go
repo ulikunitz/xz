@@ -408,6 +408,8 @@ func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
 			i := buf.rear - dist + m.n - 1
 			if i < 0 {
 				i += len(buf.data)
+			} else if i >= len(buf.data) {
+				i -= len(buf.data)
 			}
 			if buf.data[i] != t.data[m.n-1] {
 				if p.stopShorter {
