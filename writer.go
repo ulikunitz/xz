@@ -21,6 +21,8 @@ type WriterParams struct {
 	BlockSize  int64
 	// checksum method: CRC32, CRC64 or SHA256
 	CheckSum byte
+	// Matcher method: "bt", "ht" or ""
+	Matcher string
 }
 
 func fillWriterParams(p *WriterParams) *WriterParams {
@@ -53,6 +55,7 @@ func (p *WriterParams) verify() error {
 		Properties: p.Properties,
 		DictCap:    p.DictCap,
 		BufSize:    p.BufSize,
+		Matcher:    p.Matcher,
 	}
 	if err := lp.VerifyLZMA2(); err != nil {
 		return err

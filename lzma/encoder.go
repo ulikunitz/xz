@@ -129,7 +129,7 @@ func iverson(ok bool) uint32 {
 func (e *encoder) writeMatch(m match) error {
 	var err error
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		panic("match distance out of range")
+		panic(fmt.Errorf("match distance %d out of range", m.distance))
 	}
 	dist := uint32(m.distance - minDistance)
 	if !(minMatchLen <= m.n && m.n <= maxMatchLen) &&
@@ -231,7 +231,7 @@ func (e *encoder) compress(flags compressFlags) error {
 	d := e.dict
 	m := d.m
 	for d.Buffered() > n {
-		op := m.NextOp(d, e.state.rep)
+		op := m.NextOp(e.state.rep)
 		if err := e.writeOp(op); err != nil {
 			return err
 		}

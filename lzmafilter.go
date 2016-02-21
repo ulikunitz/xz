@@ -92,6 +92,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
 			Properties: p.Properties,
 			DictCap:    p.DictCap,
 			BufSize:    p.BufSize,
+			Matcher:    p.Matcher,
 		}
 	}
 

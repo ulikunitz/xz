@@ -41,6 +41,7 @@ var newRoller = func(n int) hash.Roller { return hash.NewCyclicPoly(n) }
 // the circular buffer stores the delta distance to the next position with a
 // word that has the same hash value.
 type hashTable struct {
+	dict *encoderDict
 	// actual hash table
 	t []int64
 	// circular list data with the offset to the next word
@@ -101,6 +102,8 @@ func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
 	}
 	return t, nil
 }
+
+func (t *hashTable) SetDict(d *encoderDict) { t.dict = d }
 
 // buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
@@ -233,10 +236,10 @@ func (t *hashTable) Matches(p []byte, positions []int64) int {
 // NextOp identifies the next operation using the hash table.
 //
 // TODO: Use all repetitions to find matches.
-func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
+func (t *hashTable) NextOp(rep [4]uint32) operation {
 	// get positions
-	data := d.data[:maxMatchLen]
-	n, _ := d.buf.Peek(data)
+	data := t.dict.data[:maxMatchLen]
+	n, _ := t.dict.buf.Peek(data)
 	data = data[:n]
 	var p []int64
 	if n < t.wordLen {
@@ -248,7 +251,7 @@ func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
 	}
 
 	// convert positions in potential distances
-	head := d.head
+	head := t.dict.head
 	dists := append(t.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
 	for _, pos := range p {
 		dis := int(head - pos)
@@ -259,7 +262,7 @@ func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
 
 	// check distances
 	var m match
-	dictLen := d.DictLen()
+	dictLen := t.dict.DictLen()
 	for _, dist := range dists {
 		if dist > dictLen {
 			continue
@@ -271,17 +274,17 @@ func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
 		// the given distance, we test the first byte that would
 		// make the match longer. If it doesn't match the byte
 		// to match, we don't to care any longer.
-		i := d.buf.rear - dist + m.n
+		i := t.dict.buf.rear - dist + m.n
 		if i < 0 {
-			i += len(d.buf.data)
+			i += len(t.dict.buf.data)
 		}
-		if d.buf.data[i] != data[m.n] {
+		if t.dict.buf.data[i] != data[m.n] {
 			// We can't get a longer match. Jump to the next
 			// distance.
 			continue
 		}
 
-		n := d.buf.matchLen(dist, data)
+		n := t.dict.buf.matchLen(dist, data)
 		switch n {
 		case 0:
 			continue
@@ -298,6 +301,7 @@ func (t *hashTable) NextOp(d *encoderDict, rep [4]uint32) operation {
 			}
 		}
 	}
+
 	if m.n == 0 {
 		return lit{data[0]}
 	}

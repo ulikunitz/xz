@@ -28,6 +28,7 @@ const wordLen = 4
 //
 // Nodes will be identified by their index into the ring buffer.
 type binTree struct {
+	dict *encoderDict
 	// ring buffer of nodes
 	node []node
 	// absolute offset of the entry for the next node. Position 4
@@ -39,6 +40,8 @@ type binTree struct {
 	root uint32
 	// current x value
 	x uint32
+	// preallocated arrays
+	data []byte
 }
 
 // null represents the nonexistent index. We can't use zero because it
@@ -62,9 +65,12 @@ func newBinTree(capacity int) (t *binTree, err error) {
 		node: make([]node, capacity),
 		hoff: -int64(wordLen),
 		root: null,
+		data: make([]byte, maxMatchLen),
 	}
 	return t, nil
 }
+
+func (t *binTree) SetDict(d *encoderDict) { t.dict = d }
 
 // WriteByte writes a single byte into the binary tree.
 func (t *binTree) WriteByte(c byte) error {
@@ -307,10 +313,21 @@ func (t *binTree) succ(v uint32) uint32 {
 // xval converts the first four bytes of a into an 32-bit unsigned
 // integer in big-endian order.
 func xval(a []byte) uint32 {
-	x := uint32(a[0]) << 24
-	x |= uint32(a[1]) << 16
-	x |= uint32(a[2]) << 8
-	x |= uint32(a[3])
+	var x uint32
+	switch len(a) {
+	default:
+		x |= uint32(a[3])
+		fallthrough
+	case 3:
+		x |= uint32(a[2]) << 8
+		fallthrough
+	case 2:
+		x |= uint32(a[1]) << 16
+		fallthrough
+	case 1:
+		x |= uint32(a[0]) << 24
+	case 0:
+	}
 	return x
 }
 
@@ -355,4 +372,146 @@ func (t *binTree) dump(w io.Writer) error {
 	bw := bufio.NewWriter(w)
 	t.dumpNode(bw, t.root, 0)
 	return bw.Flush()
+}
+
+func (t *binTree) distance(v uint32) int {
+	dist := int(t.front) - int(v)
+	if dist <= 0 {
+		dist += len(t.node)
+	}
+	return dist
+}
+
+type matchParams struct {
+	rep [4]uint32
+	// length when match will be accepted
+	nAccept int
+	// nodes to check
+	check int
+	// finish if length get shorter
+	stopShorter bool
+}
+
+func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
+) (r match, checked int, accepted bool) {
+	buf := &t.dict.buf
+	for {
+		if checked >= p.check {
+			return m, checked, true
+		}
+		dist, ok := distIter()
+		if !ok {
+			return m, checked, false
+		}
+		checked++
+		if m.n > 0 {
+			i := buf.rear - dist + m.n - 1
+			if i < 0 {
+				i += len(buf.data)
+			}
+			if buf.data[i] != t.data[m.n-1] {
+				if p.stopShorter {
+					return m, checked, false
+				}
+				continue
+			}
+		}
+		n := buf.matchLen(dist, t.data)
+		switch n {
+		case 0:
+			if p.stopShorter {
+				return m, checked, false
+			}
+			continue
+		case 1:
+			if uint32(dist-minDistance) != p.rep[0] {
+				continue
+			}
+		}
+		if n < m.n || (n == m.n && int64(dist) >= m.distance) {
+			continue
+		}
+		m = match{int64(dist), n}
+		if n >= p.nAccept {
+			return m, checked, true
+		}
+	}
+}
+
+func (t *binTree) NextOp(rep [4]uint32) operation {
+	// retrieve maxMatchLen data
+	n, _ := t.dict.buf.Peek(t.data[:maxMatchLen])
+	if n == 0 {
+		panic("no data in buffer")
+	}
+	t.data = t.data[:n]
+
+	var (
+		m                  match
+		x, u, v            uint32
+		iterPred, iterSucc func() (int, bool)
+	)
+	p := matchParams{
+		rep:     rep,
+		nAccept: maxMatchLen,
+		check:   32,
+	}
+	i := 4
+	iterSmall := func() (dist int, ok bool) {
+		i--
+		if i <= 0 {
+			return 0, false
+		}
+		return i, true
+	}
+	m, checked, accepted := t.match(m, iterSmall, p)
+	if accepted {
+		goto end
+	}
+	p.check -= checked
+	x = xval(t.data)
+	u, v = t.search(t.root, x)
+	if u == v && len(t.data) == 4 {
+		iter := func() (dist int, ok bool) {
+			if u == null {
+				return 0, false
+			}
+			dist = t.distance(u)
+			u, v = t.search(t.node[u].l, x)
+			if u != v {
+				u = null
+			}
+			return dist, true
+		}
+		m, _, _ = t.match(m, iter, p)
+		goto end
+	}
+	p.stopShorter = true
+	iterSucc = func() (dist int, ok bool) {
+		if v == null {
+			return 0, false
+		}
+		dist = t.distance(v)
+		v = t.succ(v)
+		return dist, true
+	}
+	m, checked, accepted = t.match(m, iterSucc, p)
+	if accepted {
+		goto end
+	}
+	p.check -= checked
+	iterPred = func() (dist int, ok bool) {
+		if u == null {
+			return 0, false
+		}
+		dist = t.distance(u)
+		u = t.pred(u)
+		return dist, true
+	}
+	m, _, _ = t.match(m, iterPred, p)
+end:
+	if m.n == 0 {
+		return lit{t.data[0]}
+	}
+	return m
 }

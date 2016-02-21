@@ -1,8 +1,13 @@
 package lzma
 
 import (
+	"bytes"
 	"io"
+	"math/rand"
+	"strings"
 	"testing"
+
+	"github.com/ulikunitz/xz/internal/randtxt"
 )
 
 func TestBinTree_Find(t *testing.T) {
@@ -52,5 +57,45 @@ func TestBinTree_PredSucc(t *testing.T) {
 	t.Log("")
 	for v := bt.max(bt.root); v != null; v = bt.pred(v) {
 		t.Log(dumpX(bt.node[v].x))
+	}
+}
+
+func TestBinTree_Cycle(t *testing.T) {
+	buf := new(bytes.Buffer)
+	params := &WriterParams{DictCap: 4096, Matcher: "bt"}
+	w, err := NewWriter2Params(buf, params)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	// const txtlen = 1024
+	const txtlen = 10000
+	io.CopyN(buf, randtxt.NewReader(rand.NewSource(42)), txtlen)
+	txt := buf.String()
+	buf.Reset()
+	n, err := io.Copy(w, strings.NewReader(txt))
+	if err != nil {
+		t.Fatalf("Compressing copy error %s", err)
+	}
+	if n != txtlen {
+		t.Fatalf("Compressing data length %d; want %d", n, txtlen)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	t.Logf("buf.Len() %d", buf.Len())
+	r, err := NewReader2(buf, params.DictCap)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out := new(bytes.Buffer)
+	n, err = io.Copy(out, r)
+	if err != nil {
+		t.Fatalf("Decompressing copy error %s after %d bytes", err, n)
+	}
+	if n != txtlen {
+		t.Fatalf("Decompression data length %d; want %d", n, txtlen)
+	}
+	if txt != out.String() {
+		t.Fatal("decompressed data differs from original")
 	}
 }

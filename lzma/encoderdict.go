@@ -14,7 +14,8 @@ import (
 // operation.
 type matcher interface {
 	io.Writer
-	NextOp(d *encoderDict, rep [4]uint32) operation
+	SetDict(d *encoderDict)
+	NextOp(rep [4]uint32) operation
 }
 
 // encoderDict provides the dictionary of the encoder. It includes an
@@ -44,6 +45,7 @@ func newEncoderDict(dictCap, bufSize int, m matcher) (d *encoderDict, err error)
 		capacity: dictCap,
 		m:        m,
 	}
+	m.SetDict(d)
 	return d, nil
 }
 

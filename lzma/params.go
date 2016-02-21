@@ -1,6 +1,9 @@
 package lzma
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // WriterParams describes the parameters for both LZMA writers.
 type WriterParams struct {
@@ -13,6 +16,8 @@ type WriterParams struct {
 	// Size of the lookahead buffer, the it is zero, the value will
 	// be 4096.
 	BufSize int
+	// Matcher method: bt, ht
+	Matcher string
 }
 
 // fillWriterParams sets the nil/zero fields of the writer parameters.
@@ -73,6 +78,12 @@ func (p *WriterParams) VerifyLZMA2() error {
 	}
 	if p.Properties.LC+p.Properties.LP > 4 {
 		return errors.New("lzma: sum of lc and lp exceeds 4")
+	}
+	switch p.Matcher {
+	case "ht", "bt", "":
+		break
+	default:
+		return fmt.Errorf("lzma: unknown matcher method %q", p.Matcher)
 	}
 	return nil
 }
