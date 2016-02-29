@@ -138,10 +138,13 @@ func (r *Reader2) Read(p []byte) (n int, err error) {
 		var k int
 		k, err = r.chunkReader.Read(p[n:])
 		n += k
-		if err == io.EOF {
-			err = r.startChunk()
-		}
 		if err != nil {
+			if err == io.EOF {
+				err = r.startChunk()
+				if err == nil {
+					continue
+				}
+			}
 			r.err = err
 			return n, err
 		}
