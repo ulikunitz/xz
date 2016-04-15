@@ -13,8 +13,8 @@ type WriterParams struct {
 	// The capacity of the dictionary. If DictCap is zero, the value
 	// 8 MiB will be chosen.
 	DictCap int
-	// Size of the lookahead buffer, the it is zero, the value will
-	// be 4096.
+	// Size of the lookahead buffer; value 0 indicates default size
+	// 4096
 	BufSize int
 	// Matcher method: bt, ht
 	Matcher string
