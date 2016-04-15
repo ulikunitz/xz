@@ -2,15 +2,17 @@
 
 ## Release v0.5
 
-1. Do some optimizations
+1. Create lzma.XWriter and lzma.XReader with XWriterParams and
+   XReaderParams interface.
+2. Do some optimizations
     - rename operation action and make it a simple type of size 8
     - make maxMatches, wordSize parameters
     - stop searching after a certain length is found (parameter sweetLen)
-2. Compare compression ratio with xz tool using comparable parameters
+3. Compare compression ratio with xz tool using comparable parameters
    and optimize parameters
-3. Do the signal handling correctly.
-4. Support concatenated files.
-5. Add Go documentation for commands.
+4. Do the signal handling correctly.
+5. Support concatenated files.
+6. Add Go documentation for commands.
 
 ## Release v0.6
 
