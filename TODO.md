@@ -2,22 +2,19 @@
 
 ## Release v0.5
 
-1. Create lzma.XWriter and lzma.XReader with XWriterParams and
-   XReaderParams interface.
-2. Do some optimizations
-    - rename operation action and make it a simple type of size 8
-    - make maxMatches, wordSize parameters
-    - stop searching after a certain length is found (parameter sweetLen)
-3. Compare compression ratio with xz tool using comparable parameters
-   and optimize parameters
-4. Do the signal handling correctly.
-5. Support concatenated files.
-6. Add Go documentation for commands.
+1. lzma: Adapt Reader2 and Writer2 to parameter in object in logic.
+2. Adapt Reader and Writer in xz to simpler interface without Params.
+3. Do the signal handling correctly.
+4. Add Go documentation for commands.
 
 ## Release v0.6
 
-1. Support parallel go routines for writing and reading xz files.
-2. Support a ReaderAt interface for xz files with small block sizes.
+1. Do some optimizations
+    - rename operation action and make it a simple type of size 8
+    - make maxMatches, wordSize parameters
+    - stop searching after a certain length is found (parameter sweetLen)
+2. Compare compression ratio with xz tool using comparable parameters
+   and optimize parameters
 
 ## Release v0.7
 
@@ -28,8 +25,10 @@
 
 ## Release v0.8
 
-1. Improve compatibility between gxz and xz
-2. Provide manual page for gxz
+1. Support parallel go routines for writing and reading xz files.
+2. Support a ReaderAt interface for xz files with small block sizes.
+3. Improve compatibility between gxz and xz
+4. Provide manual page for gxz
 
 ## Release v0.9
 
