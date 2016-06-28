@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package xz supports the compression and decompression of xz files.
+// Package xz supports the compression and decompression of xz files. It
+// supports version 1.0.4 of the specification without the non-LZMA2
+// filters. See http://tukaani.org/xz/xz-file-format-1.0.4.txt
 package xz
 
 import (
