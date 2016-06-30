@@ -4,7 +4,8 @@
 
 1. lzma: Adapt Reader and Writer to Params approach.
 2. Do the signal handling correctly.
-3. Add Go documentation for commands.
+3. provide a real Matcher type with predefined values
+4. Add Go documentation for commands.
 
 ## Release v0.6
 
