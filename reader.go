@@ -18,8 +18,7 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParams defines the parameters for the xz reader. The defaults
-// are defined by ReaderDefaults.
+// ReaderParams defines the parameters for the xz reader.
 type ReaderParams struct {
 	DictCap int
 }

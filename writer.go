@@ -12,8 +12,7 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// WriterParams describe the parameters for a writer. The defaults are
-// provided by WriterDefaults.
+// WriterParams describe the parameters for an xz writer.
 type WriterParams struct {
 	Properties *lzma.Properties
 	DictCap    int
@@ -25,6 +24,7 @@ type WriterParams struct {
 	Matcher string
 }
 
+// fillWriterParams fills the parameters with defaults.
 func fillWriterParams(p *WriterParams) *WriterParams {
 	if p == nil {
 		p = new(WriterParams)
@@ -167,7 +167,7 @@ func (w *Writer) closeBlockWriter() error {
 	return nil
 }
 
-// NewWriter creates a new Writer using the default writer parameters.
+// NewWriter creates a new xz writer using default parameters.
 func NewWriter(xz io.Writer) *Writer {
 	w, err := NewWriterParams(xz, nil)
 	if err != nil {
