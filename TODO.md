@@ -2,10 +2,9 @@
 
 ## Release v0.5
 
-1. lzma: Adapt Reader2 and Writer2 to parameter in object in logic.
-2. Adapt Reader and Writer in xz to simpler interface without Params.
-3. Do the signal handling correctly.
-4. Add Go documentation for commands.
+1. lzma: Adapt Reader and Writer to Params approach.
+2. Do the signal handling correctly.
+3. Add Go documentation for commands.
 
 ## Release v0.6
 
