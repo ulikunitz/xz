@@ -34,6 +34,9 @@ func fillWriterParams(p *WriterParams) *WriterParams {
 	if p.BufSize == 0 {
 		p.BufSize = 4096
 	}
+	if p.Matcher == "" {
+		p.Matcher = "ht"
+	}
 	return p
 }
 
@@ -80,7 +83,7 @@ func (p *WriterParams) VerifyLZMA2() error {
 		return errors.New("lzma: sum of lc and lp exceeds 4")
 	}
 	switch p.Matcher {
-	case "ht", "bt", "":
+	case "ht", "bt":
 		break
 	default:
 		return fmt.Errorf("lzma: unknown matcher method %q", p.Matcher)
