@@ -60,36 +60,36 @@ const noHeaderSize uint64 = 1<<64 - 1
 // HeaderLen provides the length of the LZMA file header.
 const HeaderLen = 13
 
-// Header represents the header of an LZMA file.
-type Header struct {
-	Properties Properties
-	DictCap    int
+// header represents the header of an LZMA file.
+type header struct {
+	properties Properties
+	dictCap    int
 	// uncompressed size; negative value if no size is given
-	Size int64
+	size int64
 }
 
 // marshalBinary marshals the header.
-func (h *Header) marshalBinary() (data []byte, err error) {
-	if err = h.Properties.verify(); err != nil {
+func (h *header) marshalBinary() (data []byte, err error) {
+	if err = h.properties.verify(); err != nil {
 		return nil, err
 	}
-	if !(0 <= h.DictCap && int64(h.DictCap) <= MaxDictCap) {
+	if !(0 <= h.dictCap && int64(h.dictCap) <= MaxDictCap) {
 		return nil, fmt.Errorf("lzma: DictCap %d out of range",
-			h.DictCap)
+			h.dictCap)
 	}
 
 	data = make([]byte, 13)
 
 	// property byte
-	data[0] = h.Properties.Code()
+	data[0] = h.properties.Code()
 
 	// dictionary capacity
-	putUint32LE(data[1:5], uint32(h.DictCap))
+	putUint32LE(data[1:5], uint32(h.dictCap))
 
 	// uncompressed size
 	var s uint64
-	if h.Size > 0 {
-		s = uint64(h.Size)
+	if h.size > 0 {
+		s = uint64(h.size)
 	} else {
 		s = noHeaderSize
 	}
@@ -99,20 +99,20 @@ func (h *Header) marshalBinary() (data []byte, err error) {
 }
 
 // unmarshalBinary unmarshals the header.
-func (h *Header) unmarshalBinary(data []byte) error {
+func (h *header) unmarshalBinary(data []byte) error {
 	if len(data) != HeaderLen {
 		return errors.New("lzma.unmarshalBinary: data has wrong length")
 	}
 
 	// properties
 	var err error
-	if h.Properties, err = PropertiesForCode(data[0]); err != nil {
+	if h.properties, err = PropertiesForCode(data[0]); err != nil {
 		return err
 	}
 
 	// dictionary capacity
-	h.DictCap = int(uint32LE(data[1:]))
-	if h.DictCap < 0 {
+	h.dictCap = int(uint32LE(data[1:]))
+	if h.dictCap < 0 {
 		return errors.New(
 			"LZMA header: dictionary capacity exceeds maximum " +
 				"integer")
@@ -121,10 +121,10 @@ func (h *Header) unmarshalBinary(data []byte) error {
 	// uncompressed size
 	s := uint64LE(data[5:])
 	if s == noHeaderSize {
-		h.Size = -1
+		h.size = -1
 	} else {
-		h.Size = int64(s)
-		if h.Size < 0 {
+		h.size = int64(s)
+		if h.size < 0 {
 			return errors.New(
 				"LZMA header: uncompressed size " +
 					"out of int64 range")
@@ -156,12 +156,12 @@ func validDictCap(dictcap int) bool {
 // there is an explicit size it must not exceed 256 GiB. The length of
 // the data argument must be HeaderLen.
 func ValidHeader(data []byte) bool {
-	var h Header
+	var h header
 	if err := h.unmarshalBinary(data); err != nil {
 		return false
 	}
-	if !validDictCap(h.DictCap) {
+	if !validDictCap(h.dictCap) {
 		return false
 	}
-	return h.Size < 0 || h.Size <= 1<<38
+	return h.size < 0 || h.size <= 1<<38
 }

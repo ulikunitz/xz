@@ -1,3 +1,9 @@
+// Package lzma supports the decoding and encoding of LZMA streams.
+// Reader and Writer support the classic LZMA format. Reader2 and
+// Writer2 support the decoding and encoding of LZMA2 streams.
+//
+// The package is written completely in Go and doesn't rely on any external
+// library.
 package lzma
 
 import (
@@ -29,7 +35,7 @@ func (c *ReaderConfig) verify() error {
 // Reader provides a reader for LZMA files or streams.
 type Reader struct {
 	lzma io.Reader
-	h    Header
+	h    header
 	d    *decoder
 }
 
@@ -58,20 +64,20 @@ func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
 	if err = r.h.unmarshalBinary(data); err != nil {
 		return nil, err
 	}
-	if r.h.DictCap < MinDictCap {
+	if r.h.dictCap < MinDictCap {
 		return nil, errors.New("lzma: dictionary capacity too small")
 	}
-	dictCap := r.h.DictCap
+	dictCap := r.h.dictCap
 	if c.DictCap > dictCap {
 		dictCap = c.DictCap
 	}
 
-	state := newState(r.h.Properties)
+	state := newState(r.h.properties)
 	dict, err := newDecoderDict(dictCap)
 	if err != nil {
 		return nil, err
 	}
-	r.d, err = newDecoder(ByteReader(lzma), state, dict, r.h.Size)
+	r.d, err = newDecoder(ByteReader(lzma), state, dict, r.h.size)
 	if err != nil {
 		return nil, err
 	}

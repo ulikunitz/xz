@@ -82,7 +82,7 @@ func TestBinTree_Cycle(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader2(buf, 4096)
+	r, err := Reader2Config{DictCap: 4096}.NewReader2(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}

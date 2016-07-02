@@ -46,7 +46,6 @@ func TestWriter2(t *testing.T) {
 
 func TestCycle1(t *testing.T) {
 	var buf bytes.Buffer
-	params := &WriterParams{DictCap: 4096}
 	w, err := Writer2Config{DictCap: 4096}.NewWriter2(&buf)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
@@ -61,7 +60,7 @@ func TestCycle1(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
-	r, err := NewReader2(&buf, params.DictCap)
+	r, err := Reader2Config{DictCap: 4096}.NewReader2(&buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -92,7 +91,7 @@ func TestCycle2(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader2(buf, 4096)
+	r, err := Reader2Config{DictCap: 4096}.NewReader2(buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
