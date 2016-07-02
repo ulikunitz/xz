@@ -7,8 +7,70 @@ package lzma
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 )
+
+// Writer2Config is used to create a Writer2 using parameters.
+type Writer2Config struct {
+	// The properties for the encoding. If the it is nil the value
+	// {LC: 3, LP: 0, PB: 2} will be chosen.
+	Properties *Properties
+	// The capacity of the dictionary. If DictCap is zero, the value
+	// 8 MiB will be chosen.
+	DictCap int
+	// Size of the lookahead buffer; value 0 indicates default size
+	// 4096
+	BufSize int
+	// Matcher method: bt, ht
+	Matcher string
+}
+
+// fill replaces zero values with default values.
+func (c *Writer2Config) fill() {
+	if c.Properties == nil {
+		c.Properties = &Properties{LC: 3, LP: 0, PB: 2}
+	}
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
+	if c.BufSize == 0 {
+		c.BufSize = 4096
+	}
+	if c.Matcher == "" {
+		c.Matcher = "ht"
+	}
+}
+
+// verify checks the Writer2Config for correctness. Call fill before.
+func (c *Writer2Config) verify() error {
+	var err error
+	if c == nil {
+		return errors.New("lzma: WriterConfig is nil")
+	}
+	if c.Properties == nil {
+		return errors.New("lzma: WriterConfig has no Properties set")
+	}
+	if err = c.Properties.verify(); err != nil {
+		return err
+	}
+	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
+	}
+	if !(maxMatchLen <= c.BufSize) {
+		return errors.New("lzma: lookahead buffer size too small")
+	}
+	if c.Properties.LC+c.Properties.LP > 4 {
+		return errors.New("lzma: sum of lc and lp exceeds 4")
+	}
+	switch c.Matcher {
+	case "ht", "bt":
+		break
+	default:
+		return fmt.Errorf("lzma: unknown matcher method %q", c.Matcher)
+	}
+	return nil
+}
 
 // Writer2 supports the creation of an LZMA2 stream. But note that
 // written data is buffered, so call Flush or Close to write data to the
@@ -34,41 +96,35 @@ type Writer2 struct {
 
 // NewWriter2 creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter2(lzma2 io.Writer) *Writer2 {
-	w, err := NewWriter2Params(lzma2, nil)
-	if err != nil {
-		panic(err)
-	}
-	return w
+func NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
+	return Writer2Config{}.NewWriter2(lzma2)
 }
 
-// NewWriter2Params creates a new LZMA2 chunk sequence writer using the
-// given parameters. The parameters will be verified for correctness.
-func NewWriter2Params(lzma2 io.Writer, params *WriterParams) (w *Writer2, err error) {
-	params = fillWriterParams(params)
-	if err = params.VerifyLZMA2(); err != nil {
+// NewWriter2 creates a new LZMA2 writer using the given configuration.
+func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
+	c.fill()
+	if err = c.verify(); err != nil {
 		return nil, err
 	}
-
 	w = &Writer2{
 		w:      lzma2,
-		start:  newState(*params.Properties),
+		start:  newState(*c.Properties),
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
 	var m matcher
-	switch params.Matcher {
+	switch c.Matcher {
 	case "bt":
-		m, err = newBinTree(params.DictCap)
+		m, err = newBinTree(c.DictCap)
 	default:
-		m, err = newHashTable(params.DictCap, 4)
+		m, err = newHashTable(c.DictCap, 4)
 	}
 	if err != nil {
 		return nil, err
 	}
-	d, err := newEncoderDict(params.DictCap, params.BufSize, m)
+	d, err := newEncoderDict(c.DictCap, c.BufSize, m)
 	if err != nil {
 		return nil, err
 	}

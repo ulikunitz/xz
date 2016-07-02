@@ -62,8 +62,7 @@ func TestBinTree_PredSucc(t *testing.T) {
 
 func TestBinTree_Cycle(t *testing.T) {
 	buf := new(bytes.Buffer)
-	params := &WriterParams{DictCap: 4096, Matcher: "bt"}
-	w, err := NewWriter2Params(buf, params)
+	w, err := Writer2Config{DictCap: 4096, Matcher: "bt"}.NewWriter2(buf)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -83,7 +82,7 @@ func TestBinTree_Cycle(t *testing.T) {
 		t.Fatalf("w.Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
-	r, err := NewReader2(buf, params.DictCap)
+	r, err := NewReader2(buf, 4096)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
