@@ -5,6 +5,27 @@ import (
 	"io"
 )
 
+// ReaderConfig stores the parameters for the reader of the classic LZMA
+// format.
+type ReaderConfig struct {
+	DictCap int
+}
+
+// fill converts the zero values of the config to the default values.
+func (c *ReaderConfig) fill() {
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
+}
+
+// verify checks the reader configuration for errors.
+func (c *ReaderConfig) verify() error {
+	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
+	}
+	return nil
+}
+
 // Reader provides a reader for LZMA files or streams.
 type Reader struct {
 	lzma io.Reader
@@ -15,15 +36,15 @@ type Reader struct {
 // NewReader creates a new reader for an LZMA stream using the classic
 // format. NewReader reads and checks the header of the LZMA stream.
 func NewReader(lzma io.Reader) (r *Reader, err error) {
-	return NewReaderParams(lzma, nil)
+	return ReaderConfig{}.NewReader(lzma)
 }
 
-// NewReaderParams creates a new reader for an LZMA stream using the classic
-// format. It will use the provided parameters. The function reads and
-// checks the header of the LZMA stream.
-func NewReaderParams(lzma io.Reader, params *ReaderParams) (r *Reader, err error) {
-	params = fillReaderParams(params)
-	if err = params.Verify(); err != nil {
+// NewReader creates a new reader for an LZMA stream in the classic
+// format. The function reads and verifies the the header of the LZMA
+// stream.
+func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
+	c.fill()
+	if err = c.verify(); err != nil {
 		return nil, err
 	}
 	data := make([]byte, HeaderLen)
@@ -41,8 +62,8 @@ func NewReaderParams(lzma io.Reader, params *ReaderParams) (r *Reader, err error
 		return nil, errors.New("lzma: dictionary capacity too small")
 	}
 	dictCap := r.h.DictCap
-	if params.DictCap > dictCap {
-		dictCap = params.DictCap
+	if c.DictCap > dictCap {
+		dictCap = c.DictCap
 	}
 
 	state := newState(r.h.Properties)
