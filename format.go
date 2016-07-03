@@ -103,10 +103,7 @@ type header struct {
 }
 
 // Errors returned by readHeader.
-var (
-	errPadding     = errors.New("xz: found padding")
-	errHeaderMagic = errors.New("xz: invalid header magic bytes")
-)
+var errHeaderMagic = errors.New("xz: invalid header magic bytes")
 
 // ValidHeader checks whether data is a correct xz file header. The
 // length of data must be HeaderLen.
