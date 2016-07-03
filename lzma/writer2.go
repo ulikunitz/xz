@@ -42,8 +42,10 @@ func (c *Writer2Config) fill() {
 	}
 }
 
-// verify checks the Writer2Config for correctness. Call fill before.
-func (c *Writer2Config) verify() error {
+// Verify checks the Writer2Config for correctness. Zero values will be
+// replaced by default values.
+func (c *Writer2Config) Verify() error {
+	c.fill()
 	var err error
 	if c == nil {
 		return errors.New("lzma: WriterConfig is nil")
@@ -102,8 +104,7 @@ func NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
 
 // NewWriter2 creates a new LZMA2 writer using the given configuration.
 func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
-	c.fill()
-	if err = c.verify(); err != nil {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	w = &Writer2{

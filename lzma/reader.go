@@ -24,8 +24,10 @@ func (c *ReaderConfig) fill() {
 	}
 }
 
-// verify checks the reader configuration for errors.
-func (c *ReaderConfig) verify() error {
+// Verify checks the reader configuration for errors. Zero values will
+// be replaced by default values.
+func (c *ReaderConfig) Verify() error {
+	c.fill()
 	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
 		return errors.New("lzma: dictionary capacity is out of range")
 	}
@@ -49,8 +51,7 @@ func NewReader(lzma io.Reader) (r *Reader, err error) {
 // format. The function reads and verifies the the header of the LZMA
 // stream.
 func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
-	c.fill()
-	if err = c.verify(); err != nil {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	data := make([]byte, HeaderLen)

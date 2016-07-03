@@ -24,8 +24,10 @@ func (c *Reader2Config) fill() {
 	}
 }
 
-// verify checks the reader configuration for errors.
-func (c *Reader2Config) verify() error {
+// Verify checks the reader configuration for errors. Zero config values
+// will be replaced by default values.
+func (c *Reader2Config) Verify() error {
+	c.fill()
 	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
 		return errors.New("lzma: dictionary capacity is out of range")
 	}
@@ -56,8 +58,7 @@ func NewReader2(lzma2 io.Reader) (r *Reader2, err error) {
 
 // NewReader2 creates an LZMA2 reader using the given configuration.
 func (c Reader2Config) NewReader2(lzma2 io.Reader) (r *Reader2, err error) {
-	c.fill()
-	if err = c.verify(); err != nil {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader2{r: lzma2, cstate: start}

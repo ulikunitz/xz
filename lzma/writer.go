@@ -60,9 +60,10 @@ func (c *WriterConfig) fill() {
 	}
 }
 
-// verify checks WriterConfig for errors. It is recommended to call fill
-// before this method is called.
-func (c *WriterConfig) verify() error {
+// Verify checks WriterConfig for errors. Verify will replace zero
+// values with default values.
+func (c *WriterConfig) Verify() error {
+	c.fill()
 	var err error
 	if c == nil {
 		return errors.New("lzma: WriterConfig is nil")
@@ -114,11 +115,9 @@ type Writer struct {
 // NewWriter creates a new LZMA writer for the classic format. The
 // method will write the header to the underlying stream.
 func (c WriterConfig) NewWriter(lzma io.Writer) (w *Writer, err error) {
-	c.fill()
-	if err = c.verify(); err != nil {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
-
 	w = &Writer{h: c.header()}
 
 	var ok bool
