@@ -59,21 +59,19 @@ var formats = map[string]*format{
 	"lzma": &format{
 		newCompressor: func(w io.Writer, opts *options,
 		) (c io.WriteCloser, err error) {
-			lz := lzma.NewWriter(w)
-			lz.Properties = lzma.Properties{LC: 3, LP: 0, PB: 2}
-			lz.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			lz.Size = -1
-			lz.EOSMarker = true
-			return lz, nil
+			lc := lzma.WriterConfig{
+				Properties: &lzma.Properties{LC: 3, LP: 0,
+					PB: 2},
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return lc.NewWriter(w)
 		},
 		newDecompressor: func(r io.Reader, opts *options,
 		) (d io.Reader, err error) {
-			lz, err := lzma.NewReader(r)
-			if err != nil {
-				return nil, err
+			lc := lzma.ReaderConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
 			}
-			lz.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return lz, err
+			return lc.NewReader(r)
 		},
 		validHeader: func(br *bufio.Reader) bool {
 			h, err := br.Peek(lzma.HeaderLen)
@@ -86,15 +84,17 @@ var formats = map[string]*format{
 	"xz": &format{
 		newCompressor: func(w io.Writer, opts *options,
 		) (c io.WriteCloser, err error) {
-			p := new(xz.WriterParams)
-			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewWriterParams(w, p)
+			cfg := xz.WriterConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return cfg.NewWriter(w)
 		},
 		newDecompressor: func(r io.Reader, opts *options,
 		) (d io.Reader, err error) {
-			p := new(xz.ReaderParams)
-			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewReaderParams(r, p)
+			cfg := xz.ReaderConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return cfg.NewReader(r)
 		},
 		validHeader: func(br *bufio.Reader) bool {
 			h, err := br.Peek(xz.HeaderLen)
