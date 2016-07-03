@@ -2,7 +2,8 @@
 
 ## Release v0.5
 
-1. lzma: Adapt Reader and Writer to Params approach.
+1. Adapt xz to ReaderConfig and WriterConfig approach.
+2. Fix the multiple streams issue
 2. Do the signal handling correctly.
 3. provide a real Matcher type with predefined values
 4. Add Go documentation for commands.
