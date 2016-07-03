@@ -2,10 +2,9 @@
 
 ## Release v0.5
 
-1. Adapt xz to ReaderConfig and WriterConfig approach.
-2. Fix the multiple streams issue
-2. Do the signal handling correctly.
-3. provide a real Matcher type with predefined values
+1. Do the signal handling correctly.
+2. provide a real Matcher type with predefined values
+3. Add a multiple stream test. Use the file from issue #8.
 4. Add Go documentation for commands.
 
 ## Release v0.6
