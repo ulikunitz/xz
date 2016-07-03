@@ -18,7 +18,10 @@ import (
 func TestWriter(t *testing.T) {
 	const text = "The quick brown fox jumps over the lazy dog."
 	var buf bytes.Buffer
-	w := NewWriter(&buf)
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
 	n, err := io.WriteString(w, text)
 	if err != nil {
 		t.Fatalf("WriteString error %s", err)
@@ -48,7 +51,10 @@ func Example() {
 	var buf bytes.Buffer
 
 	// compress text
-	w := NewWriter(&buf)
+	w, err := NewWriter(&buf)
+	if err != nil {
+		log.Fatalf("NewWriter error %s", err)
+	}
 	if _, err := io.WriteString(w, text); err != nil {
 		log.Fatalf("WriteString error %s", err)
 	}
@@ -76,7 +82,10 @@ func TestWriter2(t *testing.T) {
 	txt := buf.String()
 
 	buf.Reset()
-	w := NewWriter(&buf)
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
 	n, err := io.WriteString(w, txt)
 	if err != nil {
 		t.Fatalf("WriteString error %s", err)

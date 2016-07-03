@@ -18,29 +18,26 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParams defines the parameters for the xz reader.
-type ReaderParams struct {
+// ReaderConfig defines the parameters for the xz reader.
+type ReaderConfig struct {
 	DictCap int
 }
 
-// fillReaderParams fills all zero/nil fields of reader parameters.
-func fillReaderParams(p *ReaderParams) *ReaderParams {
-	if p == nil {
-		p = new(ReaderParams)
+// fill replaces all zero values with their default values.
+func (c *ReaderConfig) fill() {
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
 	}
-	if p.DictCap == 0 {
-		p.DictCap = 8 * 1024 * 1024
-	}
-	return p
 }
 
-// verify checks the reader parameters for Validity.
-func (p *ReaderParams) verify() error {
-	if p == nil {
+// Verify checks the reader parameters for Validity. Zero values will be
+// replaced by default values.
+func (c *ReaderConfig) Verify() error {
+	if c == nil {
 		return errors.New("xz: reader parameters are nil")
 	}
-	lp := lzma.ReaderParams{DictCap: p.DictCap}
-	if err := lp.Verify(); err != nil {
+	lc := lzma.Reader2Config{DictCap: c.DictCap}
+	if err := lc.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -51,7 +48,7 @@ var errUnexpectedEOF = errors.New("xz: unexpected end of file")
 
 // Reader decodes xz files.
 type Reader struct {
-	ReaderParams
+	ReaderConfig
 
 	xz      io.Reader
 	br      *blockReader
@@ -63,18 +60,17 @@ type Reader struct {
 // NewReader creates a new xz reader using the default parameters.
 // NewReader reads and checks the header of the XZ stream.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	return NewReaderParams(xz, nil)
+	return ReaderConfig{}.NewReader(xz)
 }
 
-// NewReaderParams creates a new xz reader using the given parameters.
-// NewReaderParams reads and checks the header of the XZ stream.
-func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
-	p = fillReaderParams(p)
-	if err = p.verify(); err != nil {
+// NewReader creates a new xz reader using the given configuration
+// paraeters. NewReader reads and checks the header of the xz stream.
+func (c ReaderConfig) NewReader(xz io.Reader) (r *Reader, err error) {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
-		ReaderParams: *p,
+		ReaderConfig: c,
 		xz:           xz,
 		index:        make([]record, 0, 4),
 	}
@@ -154,8 +150,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				return n, err
 			}
 			xlog.Debugf("block %v", *bh)
-			r.br, err = newBlockReader(r.xz, bh, hlen, r.newHash(),
-				&r.ReaderParams)
+			r.br, err = r.ReaderConfig.newBlockReader(r.xz, bh,
+				hlen, r.newHash())
 			if err != nil {
 				return n, err
 			}
@@ -199,8 +195,8 @@ type blockReader struct {
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
-	p *ReaderParams) (br *blockReader, err error) {
+func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
+	hlen int, hash hash.Hash) (br *blockReader, err error) {
 
 	br = &blockReader{
 		lxz:       countingReader{r: xz},
@@ -209,7 +205,7 @@ func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
 		hash:      hash,
 	}
 
-	fr, err := newFilterReader(&br.lxz, h.filters, p)
+	fr, err := c.newFilterReader(&br.lxz, h.filters)
 	if err != nil {
 		return nil, err
 	}
@@ -285,8 +281,8 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
-func newFilterReader(r io.Reader, f []filter, p *ReaderParams,
-) (fr io.Reader, err error) {
+func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
+	err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
@@ -294,7 +290,7 @@ func newFilterReader(r io.Reader, f []filter, p *ReaderParams,
 
 	fr = r
 	for i := len(f) - 1; i >= 0; i-- {
-		fr, err = f[i].reader(fr, p)
+		fr, err = f[i].reader(fr, c)
 		if err != nil {
 			return nil, err
 		}

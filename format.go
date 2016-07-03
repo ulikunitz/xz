@@ -512,9 +512,8 @@ type filter interface {
 	id() uint64
 	UnmarshalBinary(data []byte) error
 	MarshalBinary() (data []byte, err error)
-	reader(r io.Reader, p *ReaderParams) (fr io.Reader, err error)
-	writeCloser(w io.WriteCloser, p *WriterParams) (fw io.WriteCloser,
-		err error)
+	reader(r io.Reader, c *ReaderConfig) (fr io.Reader, err error)
+	writeCloser(w io.WriteCloser, c *WriterConfig) (fw io.WriteCloser, err error)
 	// filter must be last filter
 	last() bool
 }
