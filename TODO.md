@@ -2,10 +2,9 @@
 
 ## Release v0.5
 
-1. Do the signal handling correctly.
-2. provide a real Matcher type with predefined values
-3. Add a multiple stream test. Use the file from issue #8.
-4. Add Go documentation for commands.
+1. provide a real Matcher type with predefined values
+2. Add a multiple stream test. Use the file from issue #8.
+3. Add Go documentation for commands.
 
 ## Release v0.6
 
