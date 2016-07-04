@@ -2,12 +2,14 @@
 
 ## Release v0.6
 
-1. Do some optimizations
+1. Review encoder and check for lzma improvements under xz.
+2. Fix binary tree matcher.
+3. Compare compression ratio with xz tool using comparable parameters
+   and optimize parameters
+4. Do some optimizations
     - rename operation action and make it a simple type of size 8
     - make maxMatches, wordSize parameters
     - stop searching after a certain length is found (parameter sweetLen)
-2. Compare compression ratio with xz tool using comparable parameters
-   and optimize parameters
 
 ## Release v0.7
 
