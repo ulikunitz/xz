@@ -2,9 +2,8 @@
 
 ## Release v0.5
 
-1. provide a real Matcher type with predefined values
-2. Add a multiple stream test. Use the file from issue #8.
-3. Add Go documentation for commands.
+1. Add a multiple stream test. Use the file from issue #8.
+2. Add Go documentation for commands.
 
 ## Release v0.6
 
