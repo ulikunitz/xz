@@ -19,7 +19,10 @@ func main() {
 	const text = "The quick brown fox jumps over the lazy dog.\n"
 	var buf bytes.Buffer
 	// compress text
-	w := xz.NewWriter(&buf)
+	w, err := xz.NewWriter(&buf)
+	if err != nil {
+		log.Fatalf("xz.NewWriter error %s", err)
+	}
 	if _, err := io.WriteString(w, text); err != nil {
 		log.Fatalf("WriteString error %s", err)
 	}
