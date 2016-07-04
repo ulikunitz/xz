@@ -25,7 +25,7 @@ type encoderDict struct {
 	m        matcher
 	head     int64
 	capacity int
-	// preallocated  array
+	// preallocated array
 	data [maxMatchLen]byte
 }
 

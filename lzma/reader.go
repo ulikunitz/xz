@@ -17,7 +17,7 @@ type ReaderConfig struct {
 	DictCap int
 }
 
-// fill converts the zero values of the config to the default values.
+// fill converts the zero values of the configuration to the default values.
 func (c *ReaderConfig) fill() {
 	if c.DictCap == 0 {
 		c.DictCap = 8 * 1024 * 1024

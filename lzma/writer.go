@@ -24,7 +24,7 @@ type WriterConfig struct {
 	// Size of the lookahead buffer; value 0 indicates default size
 	// 4096
 	BufSize int
-	// Match algorihm
+	// Match algorithm
 	Matcher MatchAlgorithm
 	// SizeInHeader indicates that the header will contain an
 	// explicit size.

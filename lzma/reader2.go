@@ -17,14 +17,14 @@ type Reader2Config struct {
 	DictCap int
 }
 
-// fill converts the zero values of the config to the default values.
+// fill converts the zero values of the configuration to the default values.
 func (c *Reader2Config) fill() {
 	if c.DictCap == 0 {
 		c.DictCap = 8 * 1024 * 1024
 	}
 }
 
-// Verify checks the reader configuration for errors. Zero config values
+// Verify checks the reader configuration for errors. Zero configuration values
 // will be replaced by default values.
 func (c *Reader2Config) Verify() error {
 	c.fill()

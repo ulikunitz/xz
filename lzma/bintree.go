@@ -40,7 +40,7 @@ type binTree struct {
 	root uint32
 	// current x value
 	x uint32
-	// preallocated arrays
+	// preallocated array
 	data []byte
 }
 
