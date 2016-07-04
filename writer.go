@@ -24,7 +24,7 @@ type WriterConfig struct {
 	Matcher lzma.MatchAlgorithm
 }
 
-// fill replaces zero values with defauklt values.
+// fill replaces zero values with default values.
 func (c *WriterConfig) fill() {
 	if c.Properties == nil {
 		c.Properties = &lzma.Properties{LC: 3, LP: 0, PB: 2}
@@ -47,7 +47,7 @@ func (c *WriterConfig) fill() {
 // replaced by default values.
 func (c *WriterConfig) Verify() error {
 	if c == nil {
-		return errors.New("xz: writer params are nil")
+		return errors.New("xz: writer configuration is nil")
 	}
 	c.fill()
 	lc := lzma.Writer2Config{
@@ -170,7 +170,7 @@ func NewWriter(xz io.Writer) (w *Writer, err error) {
 	return WriterConfig{}.NewWriter(xz)
 }
 
-// NewWriter creates a new Writer using the given config parameters.
+// NewWriter creates a new Writer using the given configuration parameters.
 func (c WriterConfig) NewWriter(xz io.Writer) (w *Writer, err error) {
 	if err = c.Verify(); err != nil {
 		return nil, err

@@ -46,7 +46,7 @@ func (c *ReaderConfig) Verify() error {
 	return nil
 }
 
-// Reader supports the reaeding of one or multiple xz streams.
+// Reader supports the reading of one or multiple xz streams.
 type Reader struct {
 	ReaderConfig
 
@@ -132,7 +132,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 var errPadding = errors.New("xz: padding (4 zero bytes) encountered")
 
 // newStreamReader creates a new xz stream reader using the given configuration
-// paraeters. NewReader reads and checks the header of the xz stream.
+// parameters. NewReader reads and checks the header of the xz stream.
 func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error) {
 	if err = c.Verify(); err != nil {
 		return nil, err
