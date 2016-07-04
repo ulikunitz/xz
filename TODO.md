@@ -2,8 +2,7 @@
 
 ## Release v0.5
 
-1. Add a multiple stream test. Use the file from issue #8.
-2. Add Go documentation for commands.
+1. Add Go documentation for commands.
 
 ## Release v0.6
 
