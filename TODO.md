@@ -2,7 +2,7 @@
 
 ## Release v0.5
 
-1. Add Go documentation for commands.
+1. Make release!
 
 ## Release v0.6
 
