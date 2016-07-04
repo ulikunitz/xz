@@ -7,7 +7,6 @@ package lzma
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -22,8 +21,8 @@ type Writer2Config struct {
 	// Size of the lookahead buffer; value 0 indicates default size
 	// 4096
 	BufSize int
-	// Matcher method: bt, ht
-	Matcher string
+	// Match algorithm
+	Matcher MatchAlgorithm
 }
 
 // fill replaces zero values with default values.
@@ -36,9 +35,6 @@ func (c *Writer2Config) fill() {
 	}
 	if c.BufSize == 0 {
 		c.BufSize = 4096
-	}
-	if c.Matcher == "" {
-		c.Matcher = "ht"
 	}
 }
 
@@ -65,11 +61,8 @@ func (c *Writer2Config) Verify() error {
 	if c.Properties.LC+c.Properties.LP > 4 {
 		return errors.New("lzma: sum of lc and lp exceeds 4")
 	}
-	switch c.Matcher {
-	case "ht", "bt":
-		break
-	default:
-		return fmt.Errorf("lzma: unknown matcher method %q", c.Matcher)
+	if err = c.Matcher.verify(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -115,13 +108,7 @@ func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	var m matcher
-	switch c.Matcher {
-	case "bt":
-		m, err = newBinTree(c.DictCap)
-	default:
-		m, err = newHashTable(c.DictCap, 4)
-	}
+	m, err := c.Matcher.new(c.DictCap)
 	if err != nil {
 		return nil, err
 	}

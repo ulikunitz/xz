@@ -20,8 +20,8 @@ type WriterConfig struct {
 	BlockSize  int64
 	// checksum method: CRC32, CRC64 or SHA256
 	CheckSum byte
-	// Matcher method: "bt", "ht" or ""
-	Matcher string
+	// match algorithm
+	Matcher lzma.MatchAlgorithm
 }
 
 // fill replaces zero values with defauklt values.
@@ -40,9 +40,6 @@ func (c *WriterConfig) fill() {
 	}
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC64
-	}
-	if c.Matcher == "" {
-		c.Matcher = "ht"
 	}
 }
 
