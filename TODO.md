@@ -42,7 +42,7 @@
 
 ## Package lzma
 
-### Release v0.5
+### Release v0.6
 
 - Rewrite Encoder into a simple greedy one-op-at-a-time encoder
   including
