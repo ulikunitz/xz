@@ -65,6 +65,22 @@ func verifyFlags(flags byte) error {
 	}
 }
 
+// flagstrings maps flag values to strings.
+var flagstrings = map[byte]string{
+	CRC32:  "CRC-32",
+	CRC64:  "CRC-64",
+	SHA256: "SHA-256",
+}
+
+// flagString returns the string representation for the given flags.
+func flagString(flags byte) string {
+	s, ok := flagstrings[flags]
+	if !ok {
+		return "invalid"
+	}
+	return s
+}
+
 // newHashFunc returns a function that creates hash instances for the
 // hash method encoded in flags.
 func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
@@ -87,10 +103,7 @@ type header struct {
 }
 
 // Errors returned by readHeader.
-var (
-	errPadding     = errors.New("xz: found padding")
-	errHeaderMagic = errors.New("xz: invalid header magic bytes")
-)
+var errHeaderMagic = errors.New("xz: invalid header magic bytes")
 
 // ValidHeader checks whether data is a correct xz file header. The
 // length of data must be HeaderLen.
@@ -98,6 +111,11 @@ func ValidHeader(data []byte) bool {
 	var h header
 	err := h.UnmarshalBinary(data)
 	return err == nil
+}
+
+// String returns a string representation of the flags.
+func (h header) String() string {
+	return flagString(h.flags)
 }
 
 // UnmarshalBinary reads header from the provided data slice.
@@ -161,6 +179,11 @@ var footerMagic = []byte{'Y', 'Z'}
 type footer struct {
 	indexSize int64
 	flags     byte
+}
+
+// String prints a string representation of the footer structure.
+func (f footer) String() string {
+	return fmt.Sprintf("%s index size %d", flagString(f.flags), f.indexSize)
 }
 
 // Minimum and maximum for the size of the index (backward size).
@@ -244,6 +267,31 @@ type blockHeader struct {
 	compressedSize   int64
 	uncompressedSize int64
 	filters          []filter
+}
+
+// String converts the block header into a string.
+func (h blockHeader) String() string {
+	var buf bytes.Buffer
+	first := true
+	if h.compressedSize >= 0 {
+		fmt.Fprintf(&buf, "compressed size %d", h.compressedSize)
+		first = false
+	}
+	if h.uncompressedSize >= 0 {
+		if !first {
+			buf.WriteString(" ")
+		}
+		fmt.Fprintf(&buf, "uncompressed size %d", h.uncompressedSize)
+		first = false
+	}
+	for _, f := range h.filters {
+		if !first {
+			buf.WriteString(" ")
+		}
+		fmt.Fprintf(&buf, "filter %s", f)
+		first = false
+	}
+	return buf.String()
 }
 
 // Masks for the block flags.
@@ -461,9 +509,8 @@ type filter interface {
 	id() uint64
 	UnmarshalBinary(data []byte) error
 	MarshalBinary() (data []byte, err error)
-	reader(r io.Reader, p *ReaderParams) (fr io.Reader, err error)
-	writeCloser(w io.WriteCloser, p *WriterParams) (fw io.WriteCloser,
-		err error)
+	reader(r io.Reader, c *ReaderConfig) (fr io.Reader, err error)
+	writeCloser(w io.WriteCloser, c *WriterConfig) (fw io.WriteCloser, err error)
 	// filter must be last filter
 	last() bool
 }

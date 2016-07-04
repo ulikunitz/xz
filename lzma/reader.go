@@ -15,77 +15,86 @@ import (
 	"io"
 )
 
-// Reader represents a reader for LZMA streams in the classic format.
-// The DictCap field of Header might be increased before the first call
-// to Read.
+// ReaderConfig stores the parameters for the reader of the classic LZMA
+// format.
+type ReaderConfig struct {
+	DictCap int
+}
+
+// fill converts the zero values of the configuration to the default values.
+func (c *ReaderConfig) fill() {
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
+}
+
+// Verify checks the reader configuration for errors. Zero values will
+// be replaced by default values.
+func (c *ReaderConfig) Verify() error {
+	c.fill()
+	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
+	}
+	return nil
+}
+
+// Reader provides a reader for LZMA files or streams.
 type Reader struct {
-	Header
 	lzma io.Reader
-	h    Header
+	h    header
 	d    *decoder
 }
 
 // NewReader creates a new reader for an LZMA stream using the classic
-// format. NewReader reads and checks the header of the the LZMA stream.
+// format. NewReader reads and checks the header of the LZMA stream.
 func NewReader(lzma io.Reader) (r *Reader, err error) {
+	return ReaderConfig{}.NewReader(lzma)
+}
+
+// NewReader creates a new reader for an LZMA stream in the classic
+// format. The function reads and verifies the the header of the LZMA
+// stream.
+func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
+	if err = c.Verify(); err != nil {
+		return nil, err
+	}
 	data := make([]byte, HeaderLen)
-	if _, err = io.ReadFull(lzma, data); err != nil {
+	if _, err := io.ReadFull(lzma, data); err != nil {
 		if err == io.EOF {
 			return nil, errors.New("lzma: unexpected EOF")
 		}
 		return nil, err
 	}
-	r = new(Reader)
+	r = &Reader{lzma: lzma}
 	if err = r.h.unmarshalBinary(data); err != nil {
 		return nil, err
 	}
-	if r.h.DictCap < MinDictCap {
+	if r.h.dictCap < MinDictCap {
 		return nil, errors.New("lzma: dictionary capacity too small")
 	}
-	r.Header = r.h
-	r.lzma = lzma
+	dictCap := r.h.dictCap
+	if c.DictCap > dictCap {
+		dictCap = c.DictCap
+	}
 
+	state := newState(r.h.properties)
+	dict, err := newDecoderDict(dictCap)
+	if err != nil {
+		return nil, err
+	}
+	r.d, err = newDecoder(ByteReader(lzma), state, dict, r.h.size)
+	if err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
-// init initializes the reader allowing the user to increase the
-// dictionary capacity.
-func (r *Reader) init() error {
-	if r.d != nil {
-		return nil
-	}
-
-	if r.Header.DictCap > r.h.DictCap {
-		r.h.DictCap = r.Header.DictCap
-	}
-	r.Header = r.h
-
-	br := ByteReader(r.lzma)
-	state := newState(r.h.Properties)
-
-	dict, err := newDecoderDict(r.h.DictCap)
-	if err != nil {
-		return err
-	}
-
-	r.d, err = newDecoder(br, state, dict, r.h.Size)
-	return err
-}
-
-// Read reads data out of the LZMA reader.
-func (r *Reader) Read(p []byte) (n int, err error) {
-	if r.d == nil {
-		if err = r.init(); err != nil {
-			return 0, err
-		}
-	}
-	return r.d.Read(p)
-}
-
-// EOSMarker indicates when an end-of-stream marker has been encountered.
+// EOSMarker indicates that an EOS marker has been encountered.
 func (r *Reader) EOSMarker() bool {
-	if r.d == nil {
-		return false
-	}
 	return r.d.eosMarker
+}
+
+// Read returns uncompressed data.
+func (r *Reader) Read(p []byte) (n int, err error) {
+	return r.d.Read(p)
 }

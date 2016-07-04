@@ -9,18 +9,14 @@ import (
 	"fmt"
 )
 
-// Maximum and minimum values for the LZMA properties.
+// maximum and minimum values for the LZMA properties.
 const (
-	MinLC = 0
-	MaxLC = 8
-	MinLP = 0
-	MaxLP = 4
-	MinPB = 0
-	MaxPB = 4
+	minPB = 0
+	maxPB = 4
 )
 
-// MaxPropertyCode is the possible Maximum of a properties code byte.
-const MaxPropertyCode = (MaxPB+1)*(MaxLP+1)*(MaxLC+1) - 1
+// maxPropertyCode is the possible maximum of a properties code byte.
+const maxPropertyCode = (maxPB+1)*(maxLP+1)*(maxLC+1) - 1
 
 // Properties contains the parameters LC, LP and PB. The parameter LC
 // defines the number of literal context bits; parameter LP the number
@@ -38,7 +34,7 @@ func (p *Properties) String() string {
 
 // PropertiesForCode converts a properties code byte into a Properties value.
 func PropertiesForCode(code byte) (p Properties, err error) {
-	if code > MaxPropertyCode {
+	if code > maxPropertyCode {
 		return p, errors.New("lzma: invalid properties code")
 	}
 	p.LC = int(code % 9)
@@ -49,16 +45,19 @@ func PropertiesForCode(code byte) (p Properties, err error) {
 	return p, err
 }
 
-// Verify verifies the properties for correctness.
-func (p Properties) Verify() error {
-	if !(MinLC <= p.LC && p.LC <= MaxLC) {
-		return errors.New("lc out of range")
+// verify checks the properties for correctness.
+func (p *Properties) verify() error {
+	if p == nil {
+		return errors.New("lzma: properties are nil")
 	}
-	if !(MinLP <= p.LP && p.LP <= MaxLP) {
-		return errors.New("lp out of range")
+	if !(minLC <= p.LC && p.LC <= maxLC) {
+		return errors.New("lzma: lc out of range")
 	}
-	if !(MinPB <= p.PB && p.PB <= MaxPB) {
-		return errors.New("pb out of range")
+	if !(minLP <= p.LP && p.LP <= maxLP) {
+		return errors.New("lzma: lp out of range")
+	}
+	if !(minPB <= p.PB && p.PB <= maxPB) {
+		return errors.New("lzma: pb out of range")
 	}
 	return nil
 }

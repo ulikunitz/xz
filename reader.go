@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package xz supports the compression and decompression of xz files.
+// Package xz supports the compression and decompression of xz files. It
+// supports version 1.0.4 of the specification without the non-LZMA2
+// filters. See http://tukaani.org/xz/xz-file-format-1.0.4.txt
 package xz
 
 import (
@@ -12,31 +14,49 @@ import (
 	"hash"
 	"io"
 
+	"github.com/ulikunitz/xz/internal/xlog"
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// ReaderParams defines the parameters for the xz reader. The defaults
-// are defined by ReaderDefaults.
-type ReaderParams struct {
-	lzma.Reader2Params
+// ReaderConfig defines the parameters for the xz reader. The
+// SingleStream parameter requests the reader to assume that the
+// underlying stream contains only a single stream.
+type ReaderConfig struct {
+	DictCap      int
+	SingleStream bool
 }
 
-// Verify checks the Reader parameters for errors.
-func (p *ReaderParams) Verify() error {
-	return p.Reader2Params.Verify()
+// fill replaces all zero values with their default values.
+func (c *ReaderConfig) fill() {
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
 }
 
-// ReaderDefaults defines the defaults for the xz reader.
-var ReaderDefaults = ReaderParams{
-	Reader2Params: lzma.Reader2Defaults,
+// Verify checks the reader parameters for Validity. Zero values will be
+// replaced by default values.
+func (c *ReaderConfig) Verify() error {
+	if c == nil {
+		return errors.New("xz: reader parameters are nil")
+	}
+	lc := lzma.Reader2Config{DictCap: c.DictCap}
+	if err := lc.Verify(); err != nil {
+		return err
+	}
+	return nil
 }
 
-// errUnexpectedEOF indicates an unexpected end of file.
-var errUnexpectedEOF = errors.New("xz: unexpected end of file")
-
-// Reader decodes xz files.
+// Reader supports the reading of one or multiple xz streams.
 type Reader struct {
-	ReaderParams
+	ReaderConfig
+
+	xz io.Reader
+	sr *streamReader
+}
+
+// streamReader decodes a single xz stream
+type streamReader struct {
+	ReaderConfig
 
 	xz      io.Reader
 	br      *blockReader
@@ -46,32 +66,99 @@ type Reader struct {
 }
 
 // NewReader creates a new xz reader using the default parameters.
-// NewReader reads and checks the header of the XZ stream.
+// The function reads and checks the header of the first XZ stream. The
+// reader will process multiple streams including padding.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	return NewReaderParams(xz, &ReaderDefaults)
+	return ReaderConfig{}.NewReader(xz)
 }
 
-// NewReaderParams creates a new xz reader using the given parameters.
-// NewReaderParams reads and checks the header of the XZ stream.
-func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
-	if err = p.Verify(); err != nil {
+// NewReader creates an xz stream reader. The created reader will be
+// able to process multiple streams and padding unless a SingleStream
+// has been set in the reader configuration c.
+func (c ReaderConfig) NewReader(xz io.Reader) (r *Reader, err error) {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
-		ReaderParams: *p,
+		ReaderConfig: c,
 		xz:           xz,
-		index:        make([]record, 0, 4),
 	}
-	data := make([]byte, HeaderLen)
-	if _, err = io.ReadFull(r.xz, data); err != nil {
+	if r.sr, err = c.newStreamReader(xz); err != nil {
 		if err == io.EOF {
-			err = errUnexpectedEOF
+			err = io.ErrUnexpectedEOF
 		}
 		return nil, err
+	}
+	return r, nil
+}
+
+var errUnexpectedData = errors.New("xz: unexpected data after stream")
+
+// Read reads uncompressed data from the stream.
+func (r *Reader) Read(p []byte) (n int, err error) {
+	for n < len(p) {
+		if r.sr == nil {
+			if r.SingleStream {
+				data := make([]byte, 1)
+				_, err = io.ReadFull(r.xz, data)
+				if err != io.EOF {
+					return n, errUnexpectedData
+				}
+				return n, io.EOF
+			}
+			for {
+				r.sr, err = r.ReaderConfig.newStreamReader(r.xz)
+				if err != errPadding {
+					break
+				}
+			}
+			if err != nil {
+				return n, err
+			}
+		}
+		k, err := r.sr.Read(p[n:])
+		n += k
+		if err != nil {
+			if err == io.EOF {
+				r.sr = nil
+				continue
+			}
+			return n, err
+		}
+	}
+	return n, nil
+}
+
+var errPadding = errors.New("xz: padding (4 zero bytes) encountered")
+
+// newStreamReader creates a new xz stream reader using the given configuration
+// parameters. NewReader reads and checks the header of the xz stream.
+func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error) {
+	if err = c.Verify(); err != nil {
+		return nil, err
+	}
+	data := make([]byte, HeaderLen)
+	if _, err := io.ReadFull(xz, data[:4]); err != nil {
+		return nil, err
+	}
+	if bytes.Equal(data[:4], []byte{0, 0, 0, 0}) {
+		return nil, errPadding
+	}
+	if _, err = io.ReadFull(xz, data[4:]); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, err
+	}
+	r = &streamReader{
+		ReaderConfig: c,
+		xz:           xz,
+		index:        make([]record, 0, 4),
 	}
 	if err = r.h.UnmarshalBinary(data); err != nil {
 		return nil, err
 	}
+	xlog.Debugf("xz header %s", r.h)
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err
 	}
@@ -82,11 +169,11 @@ func NewReaderParams(xz io.Reader, p *ReaderParams) (r *Reader, err error) {
 var errIndex = errors.New("xz: error in xz file index")
 
 // readTail reads the index body and the xz footer.
-func (r *Reader) readTail() error {
+func (r *streamReader) readTail() error {
 	index, n, err := readIndexBody(r.xz)
 	if err != nil {
 		if err == io.EOF {
-			err = errUnexpectedEOF
+			err = io.ErrUnexpectedEOF
 		}
 		return err
 	}
@@ -104,7 +191,7 @@ func (r *Reader) readTail() error {
 	p := make([]byte, footerLen)
 	if _, err = io.ReadFull(r.xz, p); err != nil {
 		if err == io.EOF {
-			err = errUnexpectedEOF
+			err = io.ErrUnexpectedEOF
 		}
 		return err
 	}
@@ -112,6 +199,7 @@ func (r *Reader) readTail() error {
 	if err = f.UnmarshalBinary(p); err != nil {
 		return err
 	}
+	xlog.Debugf("xz footer %s", f)
 	if f.flags != r.h.flags {
 		return errors.New("xz: footer flags incorrect")
 	}
@@ -122,7 +210,7 @@ func (r *Reader) readTail() error {
 }
 
 // Read reads actual data from the xz stream.
-func (r *Reader) Read(p []byte) (n int, err error) {
+func (r *streamReader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.br == nil {
 			bh, hlen, err := readBlockHeader(r.xz)
@@ -135,8 +223,9 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				}
 				return n, err
 			}
-			r.br, err = newBlockReader(r.xz, bh, hlen, r.newHash(),
-				&r.ReaderParams)
+			xlog.Debugf("block %v", *bh)
+			r.br, err = r.ReaderConfig.newBlockReader(r.xz, bh,
+				hlen, r.newHash())
 			if err != nil {
 				return n, err
 			}
@@ -180,8 +269,8 @@ type blockReader struct {
 }
 
 // newBlockReader creates a new block reader.
-func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
-	p *ReaderParams) (br *blockReader, err error) {
+func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
+	hlen int, hash hash.Hash) (br *blockReader, err error) {
 
 	br = &blockReader{
 		lxz:       countingReader{r: xz},
@@ -190,7 +279,7 @@ func newBlockReader(xz io.Reader, h *blockHeader, hlen int, hash hash.Hash,
 		hash:      hash,
 	}
 
-	fr, err := newFilterReader(&br.lxz, h.filters, p)
+	fr, err := c.newFilterReader(&br.lxz, h.filters)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +332,7 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 		return n, err
 	}
 	if br.uncompressedSize() < u || br.compressedSize() < c {
-		return n, errUnexpectedEOF
+		return n, io.ErrUnexpectedEOF
 	}
 
 	s := br.hash.Size()
@@ -251,7 +340,7 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	q := make([]byte, k+s, k+2*s)
 	if _, err = io.ReadFull(br.lxz.r, q); err != nil {
 		if err == io.EOF {
-			err = errUnexpectedEOF
+			err = io.ErrUnexpectedEOF
 		}
 		return n, err
 	}
@@ -266,8 +355,8 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
-func newFilterReader(r io.Reader, f []filter, p *ReaderParams,
-) (fr io.Reader, err error) {
+func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
+	err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
@@ -275,7 +364,7 @@ func newFilterReader(r io.Reader, f []filter, p *ReaderParams,
 
 	fr = r
 	for i := len(f) - 1; i >= 0; i-- {
-		fr, err = f[i].reader(fr, p)
+		fr, err = f[i].reader(fr, c)
 		if err != nil {
 			return nil, err
 		}

@@ -16,6 +16,14 @@ import (
  * provide this capability.
  */
 
+// maxMatches limits the number of matches requested from the Matches
+// function. This controls the speed of the overall encoding.
+const maxMatches = 16
+
+// shortDists defines the number of short distances supported by the
+// implementation.
+const shortDists = 8
+
 // The minimum is somehow arbitrary but the maximum is limited by the
 // memory requirements of the hash table.
 const (
@@ -33,6 +41,7 @@ var newRoller = func(n int) hash.Roller { return hash.NewCyclicPoly(n) }
 // the circular buffer stores the delta distance to the next position with a
 // word that has the same hash value.
 type hashTable struct {
+	dict *encoderDict
 	// actual hash table
 	t []int64
 	// circular list data with the offset to the next word
@@ -49,6 +58,9 @@ type hashTable struct {
 	wr hash.Roller
 	// hash roller for computing arbitrary hashes
 	hr hash.Roller
+	// preallocated slices
+	p         [maxMatches]int64
+	distances [maxMatches + shortDists]int
 }
 
 // hashTableExponent derives the hash table exponent from the dictionary
@@ -91,16 +103,7 @@ func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
 	return t, nil
 }
 
-// Reset puts hashTable back into a pristine condition.
-func (t *hashTable) Reset() {
-	for i := range t.t {
-		t.t[i] = 0
-	}
-	t.front = 0
-	t.hoff = -int64(t.wordLen)
-	t.wr = newRoller(t.wordLen)
-	t.hr = newRoller(t.wordLen)
-}
+func (t *hashTable) SetDict(d *encoderDict) { t.dict = d }
 
 // buffered returns the number of bytes that are currently hashed.
 func (t *hashTable) buffered() int {
@@ -160,7 +163,7 @@ func (t *hashTable) WriteByte(b byte) error {
 }
 
 // Write converts the bytes provided into hash tables and stores the
-// abbreviated offsets into the hash table. The function will never return an
+// abbreviated offsets into the hash table. The method will never return an
 // error.
 func (t *hashTable) Write(p []byte) (n int, err error) {
 	for _, b := range p {
@@ -172,6 +175,8 @@ func (t *hashTable) Write(p []byte) (n int, err error) {
 
 // getMatches the matches for a specific hash. The functions returns the
 // number of positions found.
+//
+// TODO: Make a getDistances because that we are actually interested in.
 func (t *hashTable) getMatches(h uint64, positions []int64) (n int) {
 	if t.hoff < 0 || len(positions) == 0 {
 		return 0
@@ -216,12 +221,6 @@ func (t *hashTable) hash(p []byte) uint64 {
 	return h
 }
 
-// WordLen returns the length of the words supported by the Matches
-// function.
-func (t *hashTable) WordLen() int {
-	return t.wordLen
-}
-
 // Matches fills the positions slice with potential matches. The
 // functions returns the number of positions filled into positions. The
 // byte slice p must have word length of the hash table.
@@ -232,4 +231,79 @@ func (t *hashTable) Matches(p []byte, positions []int64) int {
 	}
 	h := t.hash(p)
 	return t.getMatches(h, positions)
+}
+
+// NextOp identifies the next operation using the hash table.
+//
+// TODO: Use all repetitions to find matches.
+func (t *hashTable) NextOp(rep [4]uint32) operation {
+	// get positions
+	data := t.dict.data[:maxMatchLen]
+	n, _ := t.dict.buf.Peek(data)
+	data = data[:n]
+	var p []int64
+	if n < t.wordLen {
+		p = t.p[:0]
+	} else {
+		p = t.p[:maxMatches]
+		n = t.Matches(data[:t.wordLen], p)
+		p = p[:n]
+	}
+
+	// convert positions in potential distances
+	head := t.dict.head
+	dists := append(t.distances[:0], 1, 2, 3, 4, 5, 6, 7, 8)
+	for _, pos := range p {
+		dis := int(head - pos)
+		if dis > shortDists {
+			dists = append(dists, dis)
+		}
+	}
+
+	// check distances
+	var m match
+	dictLen := t.dict.DictLen()
+	for _, dist := range dists {
+		if dist > dictLen {
+			continue
+		}
+
+		// Here comes a trick. We are only interested in matches
+		// that are longer than the matches we have been found
+		// before. So before we test the whole byte sequence at
+		// the given distance, we test the first byte that would
+		// make the match longer. If it doesn't match the byte
+		// to match, we don't to care any longer.
+		i := t.dict.buf.rear - dist + m.n
+		if i < 0 {
+			i += len(t.dict.buf.data)
+		}
+		if t.dict.buf.data[i] != data[m.n] {
+			// We can't get a longer match. Jump to the next
+			// distance.
+			continue
+		}
+
+		n := t.dict.buf.matchLen(dist, data)
+		switch n {
+		case 0:
+			continue
+		case 1:
+			if uint32(dist-minDistance) != rep[0] {
+				continue
+			}
+		}
+		if n > m.n {
+			m = match{int64(dist), n}
+			if n == len(data) {
+				// No better match will be found.
+				break
+			}
+		}
+	}
+
+	if m.n == 0 {
+		return lit{data[0]}
+	}
+	return m
 }

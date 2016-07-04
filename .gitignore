@@ -20,3 +20,6 @@ cmd/xb/xb
 
 # executables on windows
 *.exe
+
+# default compression test file
+enwik8*

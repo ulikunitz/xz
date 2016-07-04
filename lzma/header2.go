@@ -185,7 +185,7 @@ func (h *chunkHeader) MarshalBinary() (data []byte, err error) {
 	if h.ctype > cLRND {
 		return nil, errors.New("invalid chunk type")
 	}
-	if err = h.props.Verify(); err != nil {
+	if err = h.props.verify(); err != nil {
 		return nil, err
 	}
 

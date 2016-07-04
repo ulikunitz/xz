@@ -6,17 +6,12 @@ package lzma
 
 import (
 	"bytes"
+	"io"
 	"testing"
 )
 
 func TestBuffer_Write(t *testing.T) {
-	buf, err := newBuffer(-1)
-	if err == nil {
-		t.Fatalf("newBuffer(-1): want error")
-	}
-	if buf, err = newBuffer(10); err != nil {
-		t.Fatalf("newBuffer error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("1234567890")
 	for i := range b {
 		n, err := buf.Write(b[i : i+1])
@@ -60,11 +55,9 @@ func TestBuffer_Write(t *testing.T) {
 }
 
 func TestBuffer_Buffered_Available(t *testing.T) {
-	buf, err := newBuffer(19)
-	if err != nil {
-		t.Fatalf("newBuffer(19) error %s", err)
-	}
+	buf := newBuffer(19)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -83,11 +76,9 @@ func TestBuffer_Buffered_Available(t *testing.T) {
 }
 
 func TestBuffer_Read(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -139,11 +130,9 @@ func TestBuffer_Read(t *testing.T) {
 }
 
 func TestBuffer_Discard(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	b := []byte("0123456789")
+	var err error
 	if _, err = buf.Write(b); err != nil {
 		t.Fatalf("buf.Write(b) error %s", err)
 	}
@@ -177,15 +166,65 @@ func TestBuffer_Discard(t *testing.T) {
 }
 
 func TestBuffer_Discard_error(t *testing.T) {
-	buf, err := newBuffer(10)
-	if err != nil {
-		t.Fatalf("newBuffer(10) error %s", err)
-	}
+	buf := newBuffer(10)
 	n, err := buf.Discard(-1)
 	if err == nil {
 		t.Fatal("buf.Discard(-1) didn't return an error")
 	}
 	if n != 0 {
 		t.Fatalf("buf.Discard(-1) returned %d; want %d", n, 0)
+	}
+}
+
+func TestPrefixLen(t *testing.T) {
+	tests := []struct {
+		a, b []byte
+		k    int
+	}{
+		{[]byte("abcde"), []byte("abc"), 3},
+		{[]byte("abc"), []byte("uvw"), 0},
+		{[]byte(""), []byte("uvw"), 0},
+		{[]byte("abcde"), []byte("abcuvw"), 3},
+	}
+	for _, c := range tests {
+		k := prefixLen(c.a, c.b)
+		if k != c.k {
+			t.Errorf("prefixLen(%q,%q) returned %d; want %d",
+				c.a, c.b, k, c.k)
+		}
+		k = prefixLen(c.b, c.a)
+		if k != c.k {
+			t.Errorf("prefixLen(%q,%q) returned %d; want %d",
+				c.b, c.a, k, c.k)
+		}
+	}
+}
+
+func TestMatchLen(t *testing.T) {
+	buf := newBuffer(13)
+	const s = "abcaba"
+	_, err := io.WriteString(buf, s)
+	if err != nil {
+		t.Fatalf("WriteString error %s", err)
+	}
+	_, err = io.WriteString(buf, s)
+	if err != nil {
+		t.Fatalf("WriteString error %s", err)
+	}
+	if _, err = buf.Discard(12); err != nil {
+		t.Fatalf("buf.Discard(6) error %s", err)
+	}
+	_, err = io.WriteString(buf, s)
+	if err != nil {
+		t.Fatalf("WriteString error %s", err)
+	}
+	tests := []struct{ d, n int }{{1, 1}, {3, 2}, {6, 6}, {5, 0}, {2, 0}}
+	for _, c := range tests {
+		n := buf.matchLen(c.d, []byte(s))
+		if n != c.n {
+			t.Errorf(
+				"MatchLen(%d,[]byte(%q)) returned %d; want %d",
+				c.d, s, n, c.n)
+		}
 	}
 }

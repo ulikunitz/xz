@@ -1,27 +1,27 @@
 # TODO list
 
-## Release v0.5
-
-1. Rewrite lzma.Encoder for a greedy one-op-at-a-time mechanism
-2. Compare compression ratio with xz tool using comparable parameters.
-3. Do the signal handling correctly.
-4. Add Go documentation for commands.
-
 ## Release v0.6
 
-1. Support parallel go routines for writing and reading xz files.
-2. Support a ReaderAt interface for xz files with small block sizes.
+1. Do some optimizations
+    - rename operation action and make it a simple type of size 8
+    - make maxMatches, wordSize parameters
+    - stop searching after a certain length is found (parameter sweetLen)
+2. Compare compression ratio with xz tool using comparable parameters
+   and optimize parameters
 
 ## Release v0.7
 
 1. Optimize code
 2. Do statistical analysis to get linear presets.
+3. Test sync.Pool compatability for xz and lzma Writer and Reader
 3. Fuzz optimized code.
 
 ## Release v0.8
 
-1. Improve compatibility between gxz and xz
-2. Provide manual page for gxz
+1. Support parallel go routines for writing and reading xz files.
+2. Support a ReaderAt interface for xz files with small block sizes.
+3. Improve compatibility between gxz and xz
+4. Provide manual page for gxz
 
 ## Release v0.9
 
@@ -38,7 +38,7 @@
 
 ## Package lzma
 
-### Release v0.5
+### Release v0.6
 
 - Rewrite Encoder into a simple greedy one-op-at-a-time encoder
   including
@@ -83,6 +83,27 @@
 - git push
 
 ## Log
+
+### 2016-07-04
+
+Release v0.5 provides improvements to the compressor and provides support for
+the decompression of xz files with multiple xz streams.
+
+### 2016-01-31
+
+Another compression rate increase by checking the byte at length of the
+best match first, before checking the whole prefix. This makes the
+compressor even faster. We have now a large time budget to beat the
+compression ratio of the xz tool. For enwik8 we have now over 40 seconds
+to reduce the compressed file size for another 7 MiB.
+
+### 2016-01-30
+
+I simplified the encoder. Speed and compression rate increased
+dramatically. A high compression rate affects also the decompression
+speed. The approach with the buffer and optimizing for operation
+compression rate has not been successful. Going for the maximum length
+appears to be the best approach.
 
 ### 2016-01-28
 

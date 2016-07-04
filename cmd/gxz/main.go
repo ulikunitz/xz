@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/pprof"
 	"strings"
 	"text/template"
 
@@ -45,6 +46,8 @@ in place).
   -V, --version     display version string
   -z, --compress    force compression
   -0 ... -9         compression preset; default is 6
+  --cpuprofile <file>
+                    create a cpuprofile that can be used with go tool pprof
 
 With no file, or when FILE is -, read standard input.
 
@@ -98,6 +101,7 @@ type options struct {
 	quiet      int
 	verbose    int
 	preset     int
+	cpuprofile string
 }
 
 func (o *options) Init() {
@@ -115,6 +119,7 @@ func (o *options) Init() {
 	gflag.CounterVarP(&o.quiet, "quiet", "q", 0, "")
 	gflag.CounterVarP(&o.verbose, "verbose", "v", 0, "")
 	gflag.PresetVar(&o.preset, 0, 9, 6, "")
+	gflag.StringVarP(&o.cpuprofile, "cpuprofile", "", "", "")
 }
 
 // normalizeFormat normalizes the format field of options. If the
@@ -193,7 +198,18 @@ func main() {
 	}
 	xlog.SetFlags(flags)
 
+	if opts.cpuprofile != "" {
+		f, err := os.Create(opts.cpuprofile)
+		if err != nil {
+			xlog.Fatal(err)
+		}
+		if err = pprof.StartCPUProfile(f); err != nil {
+			xlog.Fatal(err)
+		}
+	}
+
 	if err := normalizeFormat(&opts); err != nil {
+		pprof.StopCPUProfile()
 		xlog.Fatal(err)
 	}
 
@@ -207,6 +223,7 @@ func main() {
 
 	if opts.stdout && !opts.decompress && !opts.force &&
 		term.IsTerminal(os.Stdout.Fd()) {
+		pprof.StopCPUProfile()
 		xlog.Fatal(`Compressed data will not be written to a terminal
 Use -f to force compression. For help type gxz -h.`)
 	}
@@ -217,5 +234,7 @@ Use -f to force compression. For help type gxz -h.`)
 			exit = 1
 		}
 	}
+
+	pprof.StopCPUProfile()
 	os.Exit(exit)
 }

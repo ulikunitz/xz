@@ -35,12 +35,16 @@ func cycle(t *testing.T, n int) {
 			len(testString))
 	}
 	const dictCap = MinDictCap
-	encoderDict, err := newEncoderDict(dictCap, dictCap+1024)
+	m, err := newHashTable(dictCap, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoderDict, err := newEncoderDict(dictCap, dictCap+1024, m)
 	if err != nil {
 		t.Fatal(err)
 	}
 	props := Properties{2, 0, 2}
-	if err := props.Verify(); err != nil {
+	if err := props.verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
 	state := newState(props)
@@ -85,7 +89,7 @@ func cycle(t *testing.T, n int) {
 	}
 }
 
-func TestEncoderCycle(t *testing.T) {
+func TestEncoderCycle1(t *testing.T) {
 	cycle(t, len(testString))
 }
 
@@ -96,12 +100,16 @@ func TestEncoderCycle2(t *testing.T) {
 	txt := buf.String()
 	buf.Reset()
 	const dictCap = MinDictCap
-	encoderDict, err := newEncoderDict(dictCap, dictCap+1024)
+	m, err := newHashTable(dictCap, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoderDict, err := newEncoderDict(dictCap, dictCap+1024, m)
 	if err != nil {
 		t.Fatal(err)
 	}
 	props := Properties{3, 0, 2}
-	if err := props.Verify(); err != nil {
+	if err := props.verify(); err != nil {
 		t.Fatalf("properties error %s", err)
 	}
 	state := newState(props)

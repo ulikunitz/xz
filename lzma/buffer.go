@@ -4,7 +4,9 @@
 
 package lzma
 
-import "errors"
+import (
+	"errors"
+)
 
 // buffer provides a circular buffer of bytes. If the front index equals
 // the rear index the buffer is empty. As a consequence front cannot be
@@ -17,13 +19,8 @@ type buffer struct {
 }
 
 // newBuffer creates a buffer with the given size.
-func newBuffer(size int) (b *buffer, err error) {
-	// second condition checks for overflow
-	if !(0 < size && 0 < size+1) {
-		return nil, errors.New(
-			"lzma: buffer size out of range")
-	}
-	return &buffer{data: make([]byte, size+1)}, nil
+func newBuffer(size int) *buffer {
+	return &buffer{data: make([]byte, size+1)}
 }
 
 // Cap returns the capacity of the buffer.
@@ -144,35 +141,31 @@ func (b *buffer) WriteByte(c byte) error {
 	return nil
 }
 
-// EqualBytes checks how many bytes are equal comparing two positions in
-// the buffer. The arguments x and y give the distance of the positions
-// from the front index. The argument max gives an upper limit of
-// positions tested.
-func (b *buffer) EqualBytes(x, y, max int) int {
-	if x < max {
-		max = x
+// prefixLen returns the length of the common prefix of a and b.
+func prefixLen(a, b []byte) int {
+	if len(a) > len(b) {
+		a, b = b, a
 	}
-	if y < max {
-		max = y
-	}
-	if max <= 0 {
-		return 0
-	}
-	i := b.front - x
-	if i < 0 {
-		i += len(b.data)
-	}
-	j := b.front - y
-	if j < 0 {
-		j += len(b.data)
-	}
-	n := len(b.data)
-	for k := 0; k < max; k++ {
-		if b.data[i] != b.data[j] {
-			return k
+	for i, c := range a {
+		if b[i] != c {
+			return i
 		}
-		i = (i + 1) % n
-		j = (j + 1) % n
 	}
-	return max
+	return len(a)
+}
+
+// matchLen returns the length of the common prefix for the given
+// distance from the rear and the byte slice p.
+func (b *buffer) matchLen(distance int, p []byte) int {
+	var n int
+	i := b.rear - distance
+	if i < 0 {
+		if n = prefixLen(p, b.data[len(b.data)+i:]); n < -i {
+			return n
+		}
+		p = p[n:]
+		i = 0
+	}
+	n += prefixLen(p, b.data[i:])
+	return n
 }

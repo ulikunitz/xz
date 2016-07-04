@@ -3,6 +3,8 @@
 // license that can be found in the LICENSE file.
 
 // Command xb supports the xz for Go project builds.
+//
+// Use xb help to get information about the supported commands.
 package main
 
 //go:generate xb version-file -o version.go

@@ -10,52 +10,59 @@ import (
 	"io"
 )
 
-// Writer2Params describes the parameters for the LZMA2 writer. The
-// defaults are defined by Writer2Defaults.
-type Writer2Params struct {
-	Properties Properties
-	DictCap    int
-	// size of lookahead buffer
+// Writer2Config is used to create a Writer2 using parameters.
+type Writer2Config struct {
+	// The properties for the encoding. If the it is nil the value
+	// {LC: 3, LP: 0, PB: 2} will be chosen.
+	Properties *Properties
+	// The capacity of the dictionary. If DictCap is zero, the value
+	// 8 MiB will be chosen.
+	DictCap int
+	// Size of the lookahead buffer; value 0 indicates default size
+	// 4096
 	BufSize int
+	// Match algorithm
+	Matcher MatchAlgorithm
 }
 
-// Verify verifies LZMA2 writer parameters for correctness.
-func (p *Writer2Params) Verify() error {
+// fill replaces zero values with default values.
+func (c *Writer2Config) fill() {
+	if c.Properties == nil {
+		c.Properties = &Properties{LC: 3, LP: 0, PB: 2}
+	}
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
+	if c.BufSize == 0 {
+		c.BufSize = 4096
+	}
+}
+
+// Verify checks the Writer2Config for correctness. Zero values will be
+// replaced by default values.
+func (c *Writer2Config) Verify() error {
+	c.fill()
 	var err error
-
-	// dictionary capacity
-	if err = verifyDictCap(p.DictCap); err != nil {
+	if c == nil {
+		return errors.New("lzma: WriterConfig is nil")
+	}
+	if c.Properties == nil {
+		return errors.New("lzma: WriterConfig has no Properties set")
+	}
+	if err = c.Properties.verify(); err != nil {
 		return err
 	}
-
-	// properties
-	if err = p.Properties.Verify(); err != nil {
-		return err
+	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
 	}
-	if p.Properties.LC+p.Properties.LP > 4 {
+	if !(maxMatchLen <= c.BufSize) {
+		return errors.New("lzma: lookahead buffer size too small")
+	}
+	if c.Properties.LC+c.Properties.LP > 4 {
 		return errors.New("lzma: sum of lc and lp exceeds 4")
 	}
-
-	// buffer size
-	if p.BufSize < 1 {
-		return errors.New(
-			"lzma: lookahead buffer size must be larger than zero")
-	}
-
-	return nil
-}
-
-// Writer2Defaults defines the defaults for the LZMA2 writer parameters.
-var Writer2Defaults = Writer2Params{
-	Properties: Properties{LC: 3, LP: 0, PB: 2},
-	DictCap:    8 * 1024 * 1024,
-	BufSize:    4096,
-}
-
-// verifyDictCap verifies values for the dictionary capacity.
-func verifyDictCap(dictCap int) error {
-	if !(1 <= dictCap && int64(dictCap) <= MaxDictCap) {
-		return errors.New("lzma: dictionary capacity is out of range")
+	if err = c.Matcher.verify(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -84,30 +91,28 @@ type Writer2 struct {
 
 // NewWriter2 creates an LZMA2 chunk sequence writer with the default
 // parameters and options.
-func NewWriter2(lzma2 io.Writer) *Writer2 {
-	w, err := NewWriter2Params(lzma2, &Writer2Defaults)
-	if err != nil {
-		panic(err)
-	}
-	return w
+func NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
+	return Writer2Config{}.NewWriter2(lzma2)
 }
 
-// NewWriter2Params creates a new LZMA2 chunk sequence writer using the
-// given parameters. The parameters will be verified for correctness.
-func NewWriter2Params(lzma2 io.Writer, params *Writer2Params) (w *Writer2, err error) {
-	if err = params.Verify(); err != nil {
+// NewWriter2 creates a new LZMA2 writer using the given configuration.
+func (c Writer2Config) NewWriter2(lzma2 io.Writer) (w *Writer2, err error) {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
-
 	w = &Writer2{
 		w:      lzma2,
-		start:  newState(params.Properties),
+		start:  newState(*c.Properties),
 		cstate: start,
 		ctype:  start.defaultChunkType(),
 	}
 	w.buf.Grow(maxCompressed)
 	w.lbw = LimitedByteWriter{BW: &w.buf, N: maxCompressed}
-	d, err := newEncoderDict(params.DictCap, params.BufSize)
+	m, err := c.Matcher.new(c.DictCap)
+	if err != nil {
+		return nil, err
+	}
+	d, err := newEncoderDict(c.DictCap, c.BufSize, m)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,7 @@ import (
 func signalHandler(w *writer) chan<- struct{} {
 	quit := make(chan struct{})
 	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, os.Interrupt)
+	signal.Notify(sigch, os.Interrupt, syscall.SIGPIPE)
 	go func() {
 		select {
 		case <-quit:
@@ -59,21 +59,19 @@ var formats = map[string]*format{
 	"lzma": &format{
 		newCompressor: func(w io.Writer, opts *options,
 		) (c io.WriteCloser, err error) {
-			lz := lzma.NewWriter(w)
-			lz.Properties = lzma.Properties{LC: 3, LP: 0, PB: 2}
-			lz.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			lz.Size = -1
-			lz.EOSMarker = true
-			return lz, nil
+			lc := lzma.WriterConfig{
+				Properties: &lzma.Properties{LC: 3, LP: 0,
+					PB: 2},
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return lc.NewWriter(w)
 		},
 		newDecompressor: func(r io.Reader, opts *options,
 		) (d io.Reader, err error) {
-			lz, err := lzma.NewReader(r)
-			if err != nil {
-				return nil, err
+			lc := lzma.ReaderConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
 			}
-			lz.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return lz, err
+			return lc.NewReader(r)
 		},
 		validHeader: func(br *bufio.Reader) bool {
 			h, err := br.Peek(lzma.HeaderLen)
@@ -86,15 +84,17 @@ var formats = map[string]*format{
 	"xz": &format{
 		newCompressor: func(w io.Writer, opts *options,
 		) (c io.WriteCloser, err error) {
-			p := xz.WriterDefaults
-			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewWriterParams(w, &p)
+			cfg := xz.WriterConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return cfg.NewWriter(w)
 		},
 		newDecompressor: func(r io.Reader, opts *options,
 		) (d io.Reader, err error) {
-			p := xz.ReaderDefaults
-			p.DictCap = 1 << lzmaDictCapExps[opts.preset]
-			return xz.NewReaderParams(r, &p)
+			cfg := xz.ReaderConfig{
+				DictCap: 1 << lzmaDictCapExps[opts.preset],
+			}
+			return cfg.NewReader(r)
 		},
 		validHeader: func(br *bufio.Reader) bool {
 			h, err := br.Peek(xz.HeaderLen)
@@ -216,9 +216,6 @@ func newWriter(path string, perm os.FileMode, opts *options,
 				return nil, &userPathError{
 					Path: name,
 					Err:  errors.New("file exists")}
-			}
-			if err = os.Remove(name); err != nil {
-				return nil, err
 			}
 		}
 		tmp := tmpName(name, opts.decompress)

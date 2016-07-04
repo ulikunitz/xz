@@ -23,8 +23,6 @@ const (
 	all compressFlags = 1 << iota
 )
 
-type findOps func(d *encoderDict, f compressFlags) (end bool)
-
 // encoderFlags provide the flags for an encoder.
 type encoderFlags uint32
 
@@ -42,10 +40,9 @@ type encoder struct {
 	re    *rangeEncoder
 	start int64
 	// generate eos marker
-	marker  bool
-	limit   bool
-	findOps findOps
-	margin  int
+	marker bool
+	limit  bool
+	margin int
 }
 
 // newEncoder creates a new encoder. If the byte writer must be
@@ -60,15 +57,13 @@ func newEncoder(bw io.ByteWriter, state *state, dict *encoderDict,
 		return nil, err
 	}
 	e = &encoder{
-		findOps: greedy,
-		dict:    dict,
-		state:   state,
-		re:      re,
-		marker:  flags&eosMarker != 0,
-		start:   dict.pos(),
-		margin:  opLenMargin,
+		dict:   dict,
+		state:  state,
+		re:     re,
+		marker: flags&eosMarker != 0,
+		start:  dict.Pos(),
+		margin: opLenMargin,
 	}
-	e.dict.reps = e.state.rep
 	if e.marker {
 		e.margin += 5
 	}
@@ -81,7 +76,7 @@ func newEncoder(bw io.ByteWriter, state *state, dict *encoderDict,
 // underlying writer has been reached ErrLimit will be returned.
 func (e *encoder) Write(p []byte) (n int, err error) {
 	for {
-		k, err := e.dict.write(p[n:])
+		k, err := e.dict.Write(p[n:])
 		n += k
 		if err == ErrNoSpace {
 			if err = e.compress(0); err != nil {
@@ -99,7 +94,7 @@ func (e *encoder) Reopen(bw io.ByteWriter) error {
 	if e.re, err = newRangeEncoder(bw); err != nil {
 		return err
 	}
-	e.start = e.dict.pos()
+	e.start = e.dict.Pos()
 	e.limit = false
 	return nil
 }
@@ -107,12 +102,12 @@ func (e *encoder) Reopen(bw io.ByteWriter) error {
 // writeLiteral writes a literal into the LZMA stream
 func (e *encoder) writeLiteral(l lit) error {
 	var err error
-	state, state2, _ := e.state.states(e.dict.pos())
+	state, state2, _ := e.state.states(e.dict.Pos())
 	if err = e.state.isMatch[state2].Encode(e.re, 0); err != nil {
 		return err
 	}
-	litState := e.state.litState(e.dict.byteAt(1), e.dict.pos())
-	match := e.dict.byteAt(int(e.state.rep[0]) + 1)
+	litState := e.state.litState(e.dict.ByteAt(1), e.dict.Pos())
+	match := e.dict.ByteAt(int(e.state.rep[0]) + 1)
 	err = e.state.litCodec.Encode(e.re, l.b, state, match, litState)
 	if err != nil {
 		return err
@@ -134,7 +129,7 @@ func iverson(ok bool) uint32 {
 func (e *encoder) writeMatch(m match) error {
 	var err error
 	if !(minDistance <= m.distance && m.distance <= maxDistance) {
-		panic("match distance out of range")
+		panic(fmt.Errorf("match distance %d out of range", m.distance))
 	}
 	dist := uint32(m.distance - minDistance)
 	if !(minMatchLen <= m.n && m.n <= maxMatchLen) &&
@@ -143,7 +138,7 @@ func (e *encoder) writeMatch(m match) error {
 			"match length %d out of range; dist %d rep[0] %d",
 			m.n, dist, e.state.rep[0]))
 	}
-	state, state2, posState := e.state.states(e.dict.pos())
+	state, state2, posState := e.state.states(e.dict.Pos())
 	if err = e.state.isMatch[state2].Encode(e.re, 1); err != nil {
 		return err
 	}
@@ -207,32 +202,21 @@ func (e *encoder) writeMatch(m match) error {
 	return e.state.repLenCodec.Encode(e.re, n, posState)
 }
 
-// writeOps writes the buffered operations into the range encoder. If
-// there is not enough space in the range encoder ErrLimit will be
-// returned.
-func (e *encoder) writeOps() error {
-	for e.dict.ops.buffered() > 0 {
-		if e.re.Available() < int64(e.margin) {
-			return ErrLimit
-		}
-		op, err := e.dict.peekOp()
-		if err != nil {
-			return err
-		}
-		switch x := op.(type) {
-		case match:
-			err = e.writeMatch(x)
-		case lit:
-			err = e.writeLiteral(x)
-		}
-		if err != nil {
-			return err
-		}
-		if err = e.dict.discardOp(); err != nil {
-			return err
-		}
+// writeOp writes a single operation to the range encoder. The function
+// checks whether there is enough space available to close the LZMA
+// stream.
+func (e *encoder) writeOp(op operation) error {
+	if e.re.Available() < int64(e.margin) {
+		return ErrLimit
 	}
-	return nil
+	switch x := op.(type) {
+	case lit:
+		return e.writeLiteral(x)
+	case match:
+		return e.writeMatch(x)
+	default:
+		panic("unexpected operation")
+	}
 }
 
 // compress compressed data from the dictionary buffer. If the flag all
@@ -240,16 +224,20 @@ func (e *encoder) writeOps() error {
 // function returns ErrLimit if the underlying writer has reached its
 // limit.
 func (e *encoder) compress(flags compressFlags) error {
-	var end bool
-	for {
-		if err := e.writeOps(); err != nil {
+	n := 0
+	if flags&all == 0 {
+		n = maxMatchLen - 1
+	}
+	d := e.dict
+	m := d.m
+	for d.Buffered() > n {
+		op := m.NextOp(e.state.rep)
+		if err := e.writeOp(op); err != nil {
 			return err
 		}
-		if end {
-			return nil
-		}
-		end = e.findOps(e.dict, flags)
+		d.Discard(op.Len())
 	}
+	return nil
 }
 
 // eosMatch is a pseudo operation that indicates the end of the stream.
@@ -276,5 +264,5 @@ func (e *encoder) Close() error {
 // Compressed returns the number bytes of the input data that been
 // compressed.
 func (e *encoder) Compressed() int64 {
-	return e.dict.pos() - e.start
+	return e.dict.Pos() - e.start
 }

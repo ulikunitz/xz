@@ -7,22 +7,31 @@ package lzma
 import (
 	"errors"
 	"io"
+
+	"github.com/ulikunitz/xz/internal/xlog"
 )
 
-// Reader2Params defines the LZMA2 reader parameters. The defaults are
-// defined by Reader2Defaults.
-type Reader2Params struct {
+// Reader2Config stores the parameters for the LZMA2 reader.
+// format.
+type Reader2Config struct {
 	DictCap int
 }
 
-// Reader2Defaults define the defaults for the reader parameters.
-var Reader2Defaults = Reader2Params{
-	DictCap: 8 * 1024 * 1024,
+// fill converts the zero values of the configuration to the default values.
+func (c *Reader2Config) fill() {
+	if c.DictCap == 0 {
+		c.DictCap = 8 * 1024 * 1024
+	}
 }
 
-// Verify verifies the LZMA2 reader parameters for correctness.
-func (p *Reader2Params) Verify() error {
-	return verifyDictCap(p.DictCap)
+// Verify checks the reader configuration for errors. Zero configuration values
+// will be replaced by default values.
+func (c *Reader2Config) Verify() error {
+	c.fill()
+	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+		return errors.New("lzma: dictionary capacity is out of range")
+	}
+	return nil
 }
 
 // Reader2 supports the reading of LZMA2 chunk sequences. Note that the
@@ -42,25 +51,18 @@ type Reader2 struct {
 	ctype  chunkType
 }
 
-// NewReader2 creates a reader for an LZMA2 chunk sequence with the given
-// dictionary capacity.
-func NewReader2(lzma2 io.Reader, dictCap int) (r *Reader2, err error) {
-	params := Reader2Defaults
-	params.DictCap = dictCap
-	return NewReader2Params(lzma2, &params)
+// NewReader2 creates a reader for an LZMA2 chunk sequence.
+func NewReader2(lzma2 io.Reader) (r *Reader2, err error) {
+	return Reader2Config{}.NewReader2(lzma2)
 }
 
-// NewReader2Params creates a new LZMA2 reader using the given
-// parameters.
-func NewReader2Params(lzma2 io.Reader, params *Reader2Params) (r *Reader2, err error) {
-	if err = params.Verify(); err != nil {
+// NewReader2 creates an LZMA2 reader using the given configuration.
+func (c Reader2Config) NewReader2(lzma2 io.Reader) (r *Reader2, err error) {
+	if err = c.Verify(); err != nil {
 		return nil, err
 	}
-	r = &Reader2{
-		r:      lzma2,
-		cstate: start,
-	}
-	r.dict, err = newDecoderDict(params.DictCap)
+	r = &Reader2{r: lzma2, cstate: start}
+	r.dict, err = newDecoderDict(c.DictCap)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +88,7 @@ func (r *Reader2) startChunk() error {
 		}
 		return err
 	}
+	xlog.Debugf("chunk header %v", header)
 	if err = r.cstate.next(header.ctype); err != nil {
 		return err
 	}

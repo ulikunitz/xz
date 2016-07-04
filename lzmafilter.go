@@ -6,6 +6,7 @@ package xz
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/ulikunitz/xz/lzma"
@@ -21,6 +22,11 @@ const (
 // block header.
 type lzmaFilter struct {
 	dictCap int64
+}
+
+// String returns a representation of the LZMA filter.
+func (f lzmaFilter) String() string {
+	return fmt.Sprintf("LZMA dict cap %#x", f.dictCap)
 }
 
 // id returns the ID for the LZMA2 filter.
@@ -54,20 +60,23 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 }
 
 // reader creates a new reader for the LZMA2 filter.
-func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
+func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 	err error) {
 
-	params := p.Reader2Params
+	config := new(lzma.Reader2Config)
+	if c != nil {
+		config.DictCap = c.DictCap
+	}
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
 			"dictionary capacity overflow")
 	}
-	if dc > params.DictCap {
-		params.DictCap = dc
+	if dc > config.DictCap {
+		config.DictCap = dc
 	}
 
-	fr, err = lzma.NewReader2Params(r, &params)
+	fr, err = config.NewReader2(r)
 	if err != nil {
 		return nil, err
 	}
@@ -75,20 +84,28 @@ func (f lzmaFilter) reader(r io.Reader, p *ReaderParams) (fr io.Reader,
 }
 
 // writeCloser creates a io.WriteCloser for the LZMA2 filter.
-func (f lzmaFilter) writeCloser(w io.WriteCloser, p *WriterParams,
+func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
+	config := new(lzma.Writer2Config)
+	if c != nil {
+		*config = lzma.Writer2Config{
+			Properties: c.Properties,
+			DictCap:    c.DictCap,
+			BufSize:    c.BufSize,
+			Matcher:    c.Matcher,
+		}
+	}
 
-	params := p.Writer2Params
 	dc := int(f.dictCap)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
 			"dictionary capacity overflow")
 	}
-	if dc > params.DictCap {
-		params.DictCap = dc
+	if dc > config.DictCap {
+		config.DictCap = dc
 	}
 
-	fw, err = lzma.NewWriter2Params(w, &params)
+	fw, err = config.NewWriter2(w)
 	if err != nil {
 		return nil, err
 	}
