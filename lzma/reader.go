@@ -1,3 +1,7 @@
+// Copyright 2014-2016 Ulrich Kunitz. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // Package lzma supports the decoding and encoding of LZMA streams.
 // Reader and Writer support the classic LZMA format. Reader2 and
 // Writer2 support the decoding and encoding of LZMA2 streams.
