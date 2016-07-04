@@ -1,9 +1,5 @@
 # TODO list
 
-## Release v0.5
-
-1. Make release!
-
 ## Release v0.6
 
 1. Do some optimizations
@@ -87,6 +83,11 @@
 - git push
 
 ## Log
+
+### 2016-07-04
+
+Release v0.5 provides improvements to the compressor and provides support for
+the decompression of xz files with multiple xz streams.
 
 ### 2016-01-31
 
