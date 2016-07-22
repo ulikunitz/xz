@@ -86,6 +86,11 @@
 
 ## Log
 
+### 2016-07-23 
+
+Release v0.5.1 became necessary to fix problems with 32-bit platforms.
+Many thanks to Bruno Brigas, who reported the issue.
+
 ### 2016-07-04
 
 Release v0.5 provides improvements to the compressor and provides support for
