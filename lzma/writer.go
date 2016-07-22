@@ -75,7 +75,7 @@ func (c *WriterConfig) Verify() error {
 	if err = c.Properties.verify(); err != nil {
 		return err
 	}
-	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+	if !(MinDictCap <= c.DictCap && int64(c.DictCap) <= MaxDictCap) {
 		return errors.New("lzma: dictionary capacity is out of range")
 	}
 	if !(maxMatchLen <= c.BufSize) {

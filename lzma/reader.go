@@ -32,7 +32,7 @@ func (c *ReaderConfig) fill() {
 // be replaced by default values.
 func (c *ReaderConfig) Verify() error {
 	c.fill()
-	if !(MinDictCap <= c.DictCap && c.DictCap <= MaxDictCap) {
+	if !(MinDictCap <= c.DictCap && int64(c.DictCap) <= MaxDictCap) {
 		return errors.New("lzma: dictionary capacity is out of range")
 	}
 	return nil
