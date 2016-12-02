@@ -410,8 +410,10 @@ func (h *blockHeader) UnmarshalBinary(data []byte) error {
 	// Since headerLen is a multiple of 4 we don't need to check
 	// alignment.
 	k := r.Len()
-	if k > 3 {
-		return errors.New("xz: unexpected padding size")
+	if k > 4 {
+		// The spec says 0-3 but actual files (e.g. FreeBSD base.txz)
+		// contain padding of length 4.
+		return fmt.Errorf("xz: unexpected padding size %d", k)
 	}
 	if !allZeros(data[n-k : n]) {
 		return errPadding
