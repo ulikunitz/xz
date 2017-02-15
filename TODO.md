@@ -86,6 +86,11 @@
 
 ## Log
 
+### 2017-02-15
+
+Release v0.5.3 fixes issue #12 regarding the decompression of an empty
+XZ stream. Many thanks to Tomasz Kłak, who reported the issue.
+
 ### 2016-12-02
 
 Release v0.5.2 became necessary to allow the decoding of xz files with
