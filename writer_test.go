@@ -46,6 +46,29 @@ func TestWriter(t *testing.T) {
 	}
 }
 
+func TestIssue12(t *testing.T) {
+	var buf bytes.Buffer
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	var out bytes.Buffer
+	if _, err = io.Copy(&out, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+	s := out.String()
+	if s != "" {
+		t.Fatalf("reader decompressed to %q; want %q", s, "")
+	}
+}
+
 func Example() {
 	const text = "The quick brown fox jumps over the lazy dog."
 	var buf bytes.Buffer
