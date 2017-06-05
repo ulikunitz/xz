@@ -86,6 +86,11 @@
 
 ## Log
 
+### 2017-06-05
+
+Release v0.5.4 fixes issues #15 of another problem with the padding size
+check for the xz block header. I removed the check completely.
+
 ### 2017-02-15
 
 Release v0.5.3 fixes issue #12 regarding the decompression of an empty
