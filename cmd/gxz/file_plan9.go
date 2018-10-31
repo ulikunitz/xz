@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build !plan9
+// +build plan9
 
 package main
 
@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -21,26 +20,6 @@ import (
 	"github.com/ulikunitz/xz/internal/xlog"
 	"github.com/ulikunitz/xz/lzma"
 )
-
-// signalHandler establishes the signal handler for SIGTERM(1) and
-// handles it in its own go routine. The returned quit channel must be
-// closed to terminate the signal handler go routine.
-func signalHandler(w *writer) chan<- struct{} {
-	quit := make(chan struct{})
-	sigch := make(chan os.Signal, 1)
-	signal.Notify(sigch, os.Interrupt, syscall.SIGPIPE)
-	go func() {
-		select {
-		case <-quit:
-			signal.Stop(sigch)
-			return
-		case <-sigch:
-			w.removeTmpFile()
-			os.Exit(7)
-		}
-	}()
-	return quit
-}
 
 // format defines the newCompressor and newDecompressor functions for a
 // compression format.
