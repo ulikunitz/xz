@@ -136,3 +136,42 @@ func TestWriter2(t *testing.T) {
 		t.Fatal("decompressed data differs from original")
 	}
 }
+
+func TestWriterNoneCheck(t *testing.T) {
+	const txtlen = 1023
+	var buf bytes.Buffer
+	io.CopyN(&buf, randtxt.NewReader(rand.NewSource(41)), txtlen)
+	txt := buf.String()
+
+	buf.Reset()
+	w, err := WriterConfig{NoCheckSum: true}.NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	n, err := io.WriteString(w, txt)
+	if err != nil {
+		t.Fatalf("WriteString error %s", err)
+	}
+	if n != len(txt) {
+		t.Fatalf("WriteString wrote %d bytes; want %d", n, len(txt))
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("Close error %s", err)
+	}
+	t.Logf("buf.Len() %d", buf.Len())
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	var out bytes.Buffer
+	k, err := io.Copy(&out, r)
+	if err != nil {
+		t.Fatalf("Decompressing copy error %s after %d bytes", err, n)
+	}
+	if k != txtlen {
+		t.Fatalf("Decompression data length %d; want %d", k, txtlen)
+	}
+	if txt != out.String() {
+		t.Fatal("decompressed data differs from original")
+	}
+}
