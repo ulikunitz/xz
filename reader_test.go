@@ -79,3 +79,19 @@ func TestReaderMultipleStreams(t *testing.T) {
 		t.Fatalf("io.Copy error %s", err)
 	}
 }
+
+func TestCheckNone(t *testing.T) {
+	const file = "fox-check-none.xz"
+	xz, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	r, err := NewReader(xz)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	var buf bytes.Buffer
+	if _, err = io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+}
