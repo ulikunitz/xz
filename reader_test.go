@@ -55,7 +55,7 @@ func TestReaderSingleStream(t *testing.T) {
 	}
 }
 
-func TestReaaderMultipleStreams(t *testing.T) {
+func TestReaderMultipleStreams(t *testing.T) {
 	data, err := ioutil.ReadFile("fox.xz")
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
