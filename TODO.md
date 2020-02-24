@@ -86,6 +86,11 @@
 
 ## Log
 
+### 2020-02-24
+
+Release v0.5.7 supports the check-ID None and fixes
+[issue #27](https://github.com/ulikunitz/xz/issues/27).
+
 ### 2019-02-20
 
 Release v0.5.6 supports the go.mod file.
