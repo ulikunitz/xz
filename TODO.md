@@ -1,5 +1,9 @@
 # TODO list
 
+## Release v0.5.x
+
+1. Support check flag in gxz command.
+
 ## Release v0.6
 
 1. Review encoder and check for lzma improvements under xz.
