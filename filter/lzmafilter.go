@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package xz
+package filter
 
 import (
 	"errors"
@@ -14,37 +14,43 @@ import (
 
 // LZMA filter constants.
 const (
-	lzmaFilterID  = 0x21
-	lzmaFilterLen = 3
+	LZMAFilterID  = 0x21
+	LZMAFilterLen = 3
 )
 
-// lzmaFilter declares the LZMA2 filter information stored in an xz
+func NewLZMAFilter(cap int64) *LZMAFilter {
+	return &LZMAFilter{dictCap: cap}
+}
+
+// LZMAFilter declares the LZMA2 filter information stored in an xz
 // block header.
-type lzmaFilter struct {
+type LZMAFilter struct {
 	dictCap int64
 }
 
+func (f LZMAFilter) GetDictCap() int64 { return f.dictCap }
+
 // String returns a representation of the LZMA filter.
-func (f lzmaFilter) String() string {
+func (f LZMAFilter) String() string {
 	return fmt.Sprintf("LZMA dict cap %#x", f.dictCap)
 }
 
 // id returns the ID for the LZMA2 filter.
-func (f lzmaFilter) id() uint64 { return lzmaFilterID }
+func (f LZMAFilter) ID() uint64 { return LZMAFilterID }
 
-// MarshalBinary converts the lzmaFilter in its encoded representation.
-func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
+// MarshalBinary converts the LZMAFilter in its encoded representation.
+func (f LZMAFilter) MarshalBinary() (data []byte, err error) {
 	c := lzma.EncodeDictCap(f.dictCap)
-	return []byte{lzmaFilterID, 1, c}, nil
+	return []byte{LZMAFilterID, 1, c}, nil
 }
 
 // UnmarshalBinary unmarshals the given data representation of the LZMA2
 // filter.
-func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
-	if len(data) != lzmaFilterLen {
+func (f *LZMAFilter) UnmarshalBinary(data []byte) error {
+	if len(data) != LZMAFilterLen {
 		return errors.New("xz: data for LZMA2 filter has wrong length")
 	}
-	if data[0] != lzmaFilterID {
+	if data[0] != LZMAFilterID {
 		return errors.New("xz: wrong LZMA2 filter id")
 	}
 	if data[1] != 1 {
@@ -59,8 +65,8 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// reader creates a new reader for the LZMA2 filter.
-func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
+// Reader creates a new reader for the LZMA2 filter.
+func (f LZMAFilter) Reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 	err error) {
 
 	config := new(lzma.Reader2Config)
@@ -83,8 +89,8 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 	return fr, nil
 }
 
-// writeCloser creates a io.WriteCloser for the LZMA2 filter.
-func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
+// WriteCloser creates a io.WriteCloser for the LZMA2 filter.
+func (f LZMAFilter) WriteCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
 	config := new(lzma.Writer2Config)
 	if c != nil {
@@ -114,4 +120,4 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 
 // last returns true, because an LZMA2 filter must be the last filter in
 // the filter list.
-func (f lzmaFilter) last() bool { return true }
+func (f LZMAFilter) last() bool { return true }

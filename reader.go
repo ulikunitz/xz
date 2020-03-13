@@ -14,6 +14,7 @@ import (
 	"hash"
 	"io"
 
+	"github.com/ulikunitz/xz/filter"
 	"github.com/ulikunitz/xz/internal/xlog"
 	"github.com/ulikunitz/xz/lzma"
 )
@@ -279,7 +280,11 @@ func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
 		hash:      hash,
 	}
 
-	fr, err := c.newFilterReader(&br.lxz, h.filters)
+	config := filter.ReaderConfig{
+		DictCap: c.DictCap,
+	}
+
+	fr, err := filter.NewFilterReader(&config, &br.lxz, h.filters)
 	if err != nil {
 		return nil, err
 	}
@@ -357,21 +362,4 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 		return n, errors.New("xz: checksum error for block")
 	}
 	return n, io.EOF
-}
-
-func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
-	err error) {
-
-	if err = verifyFilters(f); err != nil {
-		return nil, err
-	}
-
-	fr = r
-	for i := len(f) - 1; i >= 0; i-- {
-		fr, err = f[i].reader(fr, c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return fr, nil
 }

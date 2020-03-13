@@ -7,6 +7,8 @@ package xz
 import (
 	"bytes"
 	"testing"
+
+	"github.com/ulikunitz/xz/filter"
 )
 
 func TestHeader(t *testing.T) {
@@ -106,7 +108,7 @@ func TestBlockHeader(t *testing.T) {
 	h := blockHeader{
 		compressedSize:   1234,
 		uncompressedSize: -1,
-		filters:          []filter{&lzmaFilter{4096}},
+		filters:          []filter.Filter{filter.NewLZMAFilter(4096)},
 	}
 	data, err := h.MarshalBinary()
 	if err != nil {
@@ -134,9 +136,9 @@ func TestBlockHeader(t *testing.T) {
 		t.Errorf("got len(filters) %d; want %d",
 			len(g.filters), len(h.filters))
 	}
-	glf := g.filters[0].(*lzmaFilter)
-	hlf := h.filters[0].(*lzmaFilter)
-	if glf.dictCap != hlf.dictCap {
-		t.Errorf("got dictCap %d; want %d", glf.dictCap, hlf.dictCap)
+	glf := g.filters[0].(*filter.LZMAFilter)
+	hlf := h.filters[0].(*filter.LZMAFilter)
+	if glf.GetDictCap() != hlf.GetDictCap() {
+		t.Errorf("got dictCap %d; want %d", glf.GetDictCap(), hlf.GetDictCap())
 	}
 }

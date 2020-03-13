@@ -9,6 +9,7 @@ import (
 	"hash"
 	"io"
 
+	"github.com/ulikunitz/xz/filter"
 	"github.com/ulikunitz/xz/lzma"
 )
 
@@ -74,65 +75,12 @@ func (c *WriterConfig) Verify() error {
 }
 
 // filters creates the filter list for the given parameters.
-func (c *WriterConfig) filters() []filter {
-	return []filter{&lzmaFilter{int64(c.DictCap)}}
+func (c *WriterConfig) filters() []filter.Filter {
+	return []filter.Filter{filter.NewLZMAFilter(int64(c.DictCap))}
 }
 
 // maxInt64 defines the maximum 64-bit signed integer.
 const maxInt64 = 1<<63 - 1
-
-// verifyFilters checks the filter list for the length and the right
-// sequence of filters.
-func verifyFilters(f []filter) error {
-	if len(f) == 0 {
-		return errors.New("xz: no filters")
-	}
-	if len(f) > 4 {
-		return errors.New("xz: more than four filters")
-	}
-	for _, g := range f[:len(f)-1] {
-		if g.last() {
-			return errors.New("xz: last filter is not last")
-		}
-	}
-	if !f[len(f)-1].last() {
-		return errors.New("xz: wrong last filter")
-	}
-	return nil
-}
-
-// newFilterWriteCloser converts a filter list into a WriteCloser that
-// can be used by a blockWriter.
-func (c *WriterConfig) newFilterWriteCloser(w io.Writer, f []filter) (fw io.WriteCloser, err error) {
-	if err = verifyFilters(f); err != nil {
-		return nil, err
-	}
-	fw = nopWriteCloser(w)
-	for i := len(f) - 1; i >= 0; i-- {
-		fw, err = f[i].writeCloser(fw, c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return fw, nil
-}
-
-// nopWCloser implements a WriteCloser with a Close method not doing
-// anything.
-type nopWCloser struct {
-	io.Writer
-}
-
-// Close returns nil and doesn't do anything else.
-func (c nopWCloser) Close() error {
-	return nil
-}
-
-// nopWriteCloser converts the Writer into a WriteCloser with a Close
-// function that does nothing beside returning nil.
-func nopWriteCloser(w io.Writer) io.WriteCloser {
-	return nopWCloser{w}
-}
 
 // Writer compresses data written to it. It is an io.WriteCloser.
 type Writer struct {
@@ -273,7 +221,7 @@ type blockWriter struct {
 	closed    bool
 	headerLen int
 
-	filters []filter
+	filters []filter.Filter
 	hash    hash.Hash
 }
 
@@ -285,7 +233,15 @@ func (c *WriterConfig) newBlockWriter(xz io.Writer, hash hash.Hash) (bw *blockWr
 		filters:   c.filters(),
 		hash:      hash,
 	}
-	bw.w, err = c.newFilterWriteCloser(&bw.cxz, bw.filters)
+
+	fwc := &filter.WriterConfig{
+		Properties: c.Properties,
+		DictCap:    c.DictCap,
+		BufSize:    c.BufSize,
+		Matcher:    c.Matcher,
+	}
+
+	bw.w, err = filter.NewFilterWriteCloser(fwc, &bw.cxz, bw.filters)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 	"hash/crc32"
 	"io"
 
+	"github.com/ulikunitz/xz/filter"
 	"github.com/ulikunitz/xz/lzma"
 )
 
@@ -193,7 +194,7 @@ func (f footer) String() string {
 // Minimum and maximum for the size of the index (backward size).
 const (
 	minIndexSize = 4
-	maxIndexSize = (1 << 32) * 4
+	maxIndexSize = 1 << 32 * 4
 )
 
 // MarshalBinary converts footer values into an xz file footer. Note
@@ -213,7 +214,7 @@ func (f *footer) MarshalBinary() (data []byte, err error) {
 	data = make([]byte, footerLen)
 
 	// backward size (index size)
-	s := (f.indexSize / 4) - 1
+	s := f.indexSize/4 - 1
 	putUint32LE(data[4:], uint32(s))
 	// flags
 	data[9] = f.flags
@@ -270,7 +271,7 @@ func (f *footer) UnmarshalBinary(data []byte) error {
 type blockHeader struct {
 	compressedSize   int64
 	uncompressedSize int64
-	filters          []filter
+	filters          []filter.Filter
 }
 
 // String converts the block header into a string.
@@ -434,13 +435,13 @@ func (h *blockHeader) MarshalBinary() (data []byte, err error) {
 	}
 	for i, f := range h.filters {
 		if i < len(h.filters)-1 {
-			if f.id() == lzmaFilterID {
+			if f.ID() == filter.LZMAFilterID {
 				return nil, errors.New(
 					"xz: LZMA2 filter is not the last")
 			}
 		} else {
 			// last filter
-			if f.id() != lzmaFilterID {
+			if f.ID() != filter.LZMAFilterID {
 				return nil, errors.New("xz: " +
 					"last filter must be the LZMA2 filter")
 			}
@@ -512,20 +513,9 @@ const (
 	minReservedID = 1 << 62
 )
 
-// filter represents a filter in the block header.
-type filter interface {
-	id() uint64
-	UnmarshalBinary(data []byte) error
-	MarshalBinary() (data []byte, err error)
-	reader(r io.Reader, c *ReaderConfig) (fr io.Reader, err error)
-	writeCloser(w io.WriteCloser, c *WriterConfig) (fw io.WriteCloser, err error)
-	// filter must be last filter
-	last() bool
-}
-
 // readFilter reads a block filter from the block header. At this point
 // in time only the LZMA2 filter is supported.
-func readFilter(r io.Reader) (f filter, err error) {
+func readFilter(r io.Reader) (f filter.Filter, err error) {
 	br := lzma.ByteReader(r)
 
 	// index
@@ -536,13 +526,13 @@ func readFilter(r io.Reader) (f filter, err error) {
 
 	var data []byte
 	switch id {
-	case lzmaFilterID:
-		data = make([]byte, lzmaFilterLen)
-		data[0] = lzmaFilterID
+	case filter.LZMAFilterID:
+		data = make([]byte, filter.LZMAFilterLen)
+		data[0] = filter.LZMAFilterID
 		if _, err = io.ReadFull(r, data[1:]); err != nil {
 			return nil, err
 		}
-		f = new(lzmaFilter)
+		f = new(filter.LZMAFilter)
 	default:
 		if id >= minReservedID {
 			return nil, errors.New(
@@ -558,7 +548,7 @@ func readFilter(r io.Reader) (f filter, err error) {
 
 // readFilters reads count filters. At this point in time only the count
 // 1 is supported.
-func readFilters(r io.Reader, count int) (filters []filter, err error) {
+func readFilters(r io.Reader, count int) (filters []filter.Filter, err error) {
 	if count != 1 {
 		return nil, errors.New("xz: unsupported filter count")
 	}
@@ -566,11 +556,11 @@ func readFilters(r io.Reader, count int) (filters []filter, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return []filter{f}, err
+	return []filter.Filter{f}, err
 }
 
 // writeFilters writes the filters.
-func writeFilters(w io.Writer, filters []filter) (n int, err error) {
+func writeFilters(w io.Writer, filters []filter.Filter) (n int, err error) {
 	for _, f := range filters {
 		p, err := f.MarshalBinary()
 		if err != nil {
