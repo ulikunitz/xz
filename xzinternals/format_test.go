@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package xz
+package xzinternals
 
 import (
 	"bytes"
@@ -12,12 +12,12 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	h := header{flags: CRC32}
+	h := Header{Flags: CRC32}
 	data, err := h.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
 	}
-	var g header
+	var g Header
 	if err = g.UnmarshalBinary(data); err != nil {
 		t.Fatalf("UnmarshalBinary error %s", err)
 	}
@@ -27,12 +27,12 @@ func TestHeader(t *testing.T) {
 }
 
 func TestFooter(t *testing.T) {
-	f := footer{indexSize: 64, flags: CRC32}
+	f := Footer{IndexSize: 64, Flags: CRC32}
 	data, err := f.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
 	}
-	var g footer
+	var g Footer
 	if err = g.UnmarshalBinary(data); err != nil {
 		t.Fatalf("UnmarshalBinary error %s", err)
 	}
@@ -42,7 +42,7 @@ func TestFooter(t *testing.T) {
 }
 
 func TestRecord(t *testing.T) {
-	r := record{1234567, 10000}
+	r := Record{1234567, 10000}
 	p, err := r.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
@@ -67,10 +67,10 @@ func TestRecord(t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
-	records := []record{{1234, 1}, {2345, 2}}
+	records := []Record{{1234, 1}, {2345, 2}}
 
 	var buf bytes.Buffer
-	n, err := writeIndex(&buf, records)
+	n, err := WriteIndex(&buf, records)
 	if err != nil {
 		t.Fatalf("writeIndex error %s", err)
 	}
@@ -105,10 +105,10 @@ func TestIndex(t *testing.T) {
 }
 
 func TestBlockHeader(t *testing.T) {
-	h := blockHeader{
-		compressedSize:   1234,
-		uncompressedSize: -1,
-		filters:          []filter.Filter{filter.NewLZMAFilter(4096)},
+	h := BlockHeader{
+		CompressedSize:   1234,
+		UncompressedSize: -1,
+		Filters:          []filter.Filter{filter.NewLZMAFilter(4096)},
 	}
 	data, err := h.MarshalBinary()
 	if err != nil {
@@ -124,20 +124,20 @@ func TestBlockHeader(t *testing.T) {
 		t.Fatalf("readBlockHeader returns %d bytes; want %d", n,
 			len(data))
 	}
-	if g.compressedSize != h.compressedSize {
+	if g.CompressedSize != h.CompressedSize {
 		t.Errorf("got compressedSize %d; want %d",
-			g.compressedSize, h.compressedSize)
+			g.CompressedSize, h.CompressedSize)
 	}
-	if g.uncompressedSize != h.uncompressedSize {
+	if g.UncompressedSize != h.UncompressedSize {
 		t.Errorf("got uncompressedSize %d; want %d",
-			g.uncompressedSize, h.uncompressedSize)
+			g.UncompressedSize, h.UncompressedSize)
 	}
-	if len(g.filters) != len(h.filters) {
+	if len(g.Filters) != len(h.Filters) {
 		t.Errorf("got len(filters) %d; want %d",
-			len(g.filters), len(h.filters))
+			len(g.Filters), len(h.Filters))
 	}
-	glf := g.filters[0].(*filter.LZMAFilter)
-	hlf := h.filters[0].(*filter.LZMAFilter)
+	glf := g.Filters[0].(*filter.LZMAFilter)
+	hlf := h.Filters[0].(*filter.LZMAFilter)
 	if glf.GetDictCap() != hlf.GetDictCap() {
 		t.Errorf("got dictCap %d; want %d", glf.GetDictCap(), hlf.GetDictCap())
 	}
