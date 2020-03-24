@@ -24,7 +24,9 @@ func (c *ReaderAtConfig) Verify() error {
 type ReaderAt struct {
 	conf ReaderAtConfig
 
-	len int64
+	// len of the contents of the underlying xz data
+	len     int64
+	indices []index
 
 	xz io.ReaderAt
 }
@@ -43,8 +45,10 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 	}
 
 	r := &ReaderAt{
-		conf: c,
-		xz:   xz,
+		conf:    c,
+		len:     0,
+		indices: []index{},
+		xz:      xz,
 	}
 
 	if err := r.init(); err != nil {
@@ -53,6 +57,25 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 
 	return r, nil
 
+}
+
+type index struct {
+	startOffset int64
+	rs          []record
+}
+
+func (i index) compressedBufferedSize() int64 {
+	size := int64(0)
+	for _, r := range i.rs {
+		unpadded := r.unpaddedSize
+		padded := 4 * (unpadded / 4)
+		if unpadded < padded {
+			padded += 4
+		}
+
+		size += padded
+	}
+	return size
 }
 
 func (r *ReaderAt) init() error {
@@ -69,17 +92,22 @@ func (r *ReaderAt) init() error {
 
 	indexOffset := footerOffset - f.indexSize
 	indexOffset++ // readIndexBody assumes the indicator byte has already been read
-	index, _, err := readIndexBody(newRat(r.xz, indexOffset))
+	indexRecs, _, err := readIndexBody(newRat(r.xz, indexOffset))
 	if err != nil {
 		return err
 	}
 
-	log.Fatal(index)
+	ix := index{
+		rs: indexRecs,
+	}
+	ix.startOffset = indexOffset - ix.compressedBufferedSize()
+	r.indices = append(r.indices, ix)
 
 	return nil
 }
 
 func (r *ReaderAt) ReadAt(p []byte, offset int64) (int, error) {
+	log.Fatal(r)
 	return 1, io.EOF
 }
 
