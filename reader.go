@@ -188,15 +188,8 @@ func (r *streamReader) readTail() error {
 		}
 	}
 
-	p := make([]byte, footerLen)
-	if _, err = io.ReadFull(r.xz, p); err != nil {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-		return err
-	}
-	var f footer
-	if err = f.UnmarshalBinary(p); err != nil {
+	f, err := readFooter(r.xz)
+	if err != nil {
 		return err
 	}
 	xlog.Debugf("xz footer %s", f)
@@ -207,6 +200,22 @@ func (r *streamReader) readTail() error {
 		return errors.New("xz: index size in footer wrong")
 	}
 	return nil
+}
+
+func readFooter(r io.Reader) (*footer, error) {
+	p := make([]byte, footerLen)
+	if _, err := io.ReadFull(r, p); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return nil, err
+	}
+	var f footer
+	if err := f.UnmarshalBinary(p); err != nil {
+		return nil, err
+	}
+
+	return &f, nil
 }
 
 // Read reads actual data from the xz stream.
