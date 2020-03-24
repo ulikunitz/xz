@@ -193,7 +193,7 @@ func (f footer) String() string {
 // Minimum and maximum for the size of the index (backward size).
 const (
 	minIndexSize = 4
-	maxIndexSize = (1 << 32) * 4
+	maxIndexSize = 1 << 32 * 4
 )
 
 // MarshalBinary converts footer values into an xz file footer. Note
@@ -213,7 +213,7 @@ func (f *footer) MarshalBinary() (data []byte, err error) {
 	data = make([]byte, footerLen)
 
 	// backward size (index size)
-	s := (f.indexSize / 4) - 1
+	s := f.indexSize/4 - 1
 	putUint32LE(data[4:], uint32(s))
 	// flags
 	data[9] = f.flags
@@ -228,8 +228,7 @@ func (f *footer) MarshalBinary() (data []byte, err error) {
 	return data, nil
 }
 
-// UnmarshalBinary sets the footer value by unmarshalling an xz file
-// footer.
+// UnmarshalBinary sets the footer value by unmarshalling an xz file footer.
 func (f *footer) UnmarshalBinary(data []byte) error {
 	if len(data) != footerLen {
 		return errors.New("xz: wrong footer length")

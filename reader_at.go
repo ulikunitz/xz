@@ -2,11 +2,14 @@ package xz
 
 import (
 	"io"
+	"log"
 	"sync"
 )
 
 // ReaderAtConfig defines the parameters for the xz readerat.
-type ReaderAtConfig struct{}
+type ReaderAtConfig struct {
+	Len int64
+}
 
 // Verify checks the reader config for validity. Zero values will be replaced by
 // default values.
@@ -20,6 +23,8 @@ func (c *ReaderAtConfig) Verify() error {
 // ReaderAt supports the reading of one or multiple xz streams.
 type ReaderAt struct {
 	conf ReaderAtConfig
+
+	len int64
 
 	xz io.ReaderAt
 }
@@ -51,6 +56,26 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 }
 
 func (r *ReaderAt) init() error {
+	r.len = r.conf.Len
+	if r.len < 1 {
+		panic("todo: implement probing for Len")
+	}
+
+	footerOffset := r.len - footerLen
+	f, err := readFooter(newRat(r.xz, footerOffset))
+	if err != nil {
+		return err
+	}
+
+	indexOffset := footerOffset - f.indexSize
+	indexOffset++ // readIndexBody assumes the indicator byte has already been read
+	index, _, err := readIndexBody(newRat(r.xz, indexOffset))
+	if err != nil {
+		return err
+	}
+
+	log.Fatal(index)
+
 	return nil
 }
 

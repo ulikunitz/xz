@@ -13,7 +13,16 @@ func TestReaderAtSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", file, err)
 	}
-	r, err := NewReaderAt(xz)
+
+	info, err := os.Stat(file)
+	if err != nil {
+		t.Fatalf("os.Stat(%q) error %s", file, err)
+	}
+
+	conf := ReaderAtConfig{
+		Len: info.Size(),
+	}
+	r, err := conf.NewReaderAt(xz)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
