@@ -60,16 +60,9 @@ func TestReaderMultipleStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
 	}
-	m := make([]byte, 0, 4*len(data)+4*4)
-	m = append(m, data...)
-	m = append(m, data...)
-	m = append(m, 0, 0, 0, 0)
-	m = append(m, data...)
-	m = append(m, 0, 0, 0, 0)
-	m = append(m, 0, 0, 0, 0)
-	m = append(m, data...)
-	m = append(m, 0, 0, 0, 0)
-	xz := bytes.NewReader(m)
+
+	multiStream := testMultiStreams(data)
+	xz := bytes.NewReader(multiStream)
 	r, err := NewReader(xz)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
@@ -78,6 +71,19 @@ func TestReaderMultipleStreams(t *testing.T) {
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
 	}
+}
+
+func testMultiStreams(singleStream []byte) []byte {
+	multiStream := make([]byte, 0, 4*len(singleStream)+4*4)
+	multiStream = append(multiStream, singleStream...)
+	multiStream = append(multiStream, singleStream...)
+	multiStream = append(multiStream, 0, 0, 0, 0)
+	multiStream = append(multiStream, singleStream...)
+	multiStream = append(multiStream, 0, 0, 0, 0)
+	multiStream = append(multiStream, 0, 0, 0, 0)
+	multiStream = append(multiStream, singleStream...)
+	multiStream = append(multiStream, 0, 0, 0, 0)
+	return multiStream
 }
 
 func TestCheckNone(t *testing.T) {
