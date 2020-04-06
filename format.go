@@ -101,8 +101,8 @@ func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
 	return
 }
 
-// header provides the actual content of the xz file header: the flags.
-type header struct {
+// streamHeader provides the actual content of the xz stream: the flags.
+type streamHeader struct {
 	flags byte
 }
 
@@ -112,18 +112,36 @@ var errHeaderMagic = errors.New("xz: invalid header magic bytes")
 // ValidHeader checks whether data is a correct xz file header. The
 // length of data must be HeaderLen.
 func ValidHeader(data []byte) bool {
-	var h header
+	var h streamHeader
 	err := h.UnmarshalBinary(data)
 	return err == nil
 }
 
 // String returns a string representation of the flags.
-func (h header) String() string {
+func (h streamHeader) String() string {
 	return flagString(h.flags)
 }
 
+func (h *streamHeader) UnmarshalReader(xz io.Reader) error {
+	data := make([]byte, HeaderLen)
+	if _, err := io.ReadFull(xz, data[:4]); err != nil {
+		return err
+	}
+	if bytes.Equal(data[:4], []byte{0, 0, 0, 0}) {
+		return errPadding
+	}
+	if _, err := io.ReadFull(xz, data[4:]); err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return err
+	}
+
+	return h.UnmarshalBinary(data)
+}
+
 // UnmarshalBinary reads header from the provided data slice.
-func (h *header) UnmarshalBinary(data []byte) error {
+func (h *streamHeader) UnmarshalBinary(data []byte) error {
 	// header length
 	if len(data) != HeaderLen {
 		return errors.New("xz: wrong file header length")
@@ -155,7 +173,7 @@ func (h *header) UnmarshalBinary(data []byte) error {
 }
 
 // MarshalBinary generates the xz file header.
-func (h *header) MarshalBinary() (data []byte, err error) {
+func (h *streamHeader) MarshalBinary() (data []byte, err error) {
 	if err = verifyFlags(h.flags); err != nil {
 		return nil, err
 	}
@@ -624,6 +642,11 @@ func (rec *record) MarshalBinary() (data []byte, err error) {
 	n := putUvarint(p, uint64(rec.unpaddedSize))
 	n += putUvarint(p[n:], uint64(rec.uncompressedSize))
 	return p[:n], nil
+}
+
+// paddedLen returns the padded length of the compressed record.
+func (rec *record) paddedLen() int64 {
+	return int64(padLen(rec.unpaddedSize)) + rec.unpaddedSize
 }
 
 // writeIndex writes the index, a sequence of records.

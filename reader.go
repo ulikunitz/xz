@@ -61,7 +61,7 @@ type streamReader struct {
 	xz      io.Reader
 	br      *blockReader
 	newHash func() hash.Hash
-	h       header
+	h       streamHeader
 	index   []record
 }
 
@@ -137,27 +137,17 @@ func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error)
 	if err = c.Verify(); err != nil {
 		return nil, err
 	}
-	data := make([]byte, HeaderLen)
-	if _, err := io.ReadFull(xz, data[:4]); err != nil {
-		return nil, err
-	}
-	if bytes.Equal(data[:4], []byte{0, 0, 0, 0}) {
-		return nil, errPadding
-	}
-	if _, err = io.ReadFull(xz, data[4:]); err != nil {
-		if err == io.EOF {
-			err = io.ErrUnexpectedEOF
-		}
-		return nil, err
-	}
+
 	r = &streamReader{
 		ReaderConfig: c,
 		xz:           xz,
 		index:        make([]record, 0, 4),
 	}
-	if err = r.h.UnmarshalBinary(data); err != nil {
+
+	if err := r.h.UnmarshalReader(xz); err != nil {
 		return nil, err
 	}
+
 	xlog.Debugf("xz header %s", r.h)
 	if r.newHash, err = newHashFunc(r.h.flags); err != nil {
 		return nil, err

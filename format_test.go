@@ -10,12 +10,12 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	h := header{flags: CRC32}
+	h := streamHeader{flags: CRC32}
 	data, err := h.MarshalBinary()
 	if err != nil {
 		t.Fatalf("MarshalBinary error %s", err)
 	}
-	var g header
+	var g streamHeader
 	if err = g.UnmarshalBinary(data); err != nil {
 		t.Fatalf("UnmarshalBinary error %s", err)
 	}

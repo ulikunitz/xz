@@ -33,7 +33,7 @@ func TestReaderAtSimple(t *testing.T) {
 	}
 
 	bufStr := buf.String()
-	expected := "The qubasdf" // fixme
+	expected := "The quick brown fox jumps over the lazy dog.\n" // fixme
 	if bufStr != expected {
 		t.Fatalf("Unexpected decompression output. \"%s\" != \"%s\"", bufStr, expected)
 	}

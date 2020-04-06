@@ -1,9 +1,11 @@
 package xz
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"sync"
+
+	"github.com/ulikunitz/xz/internal/xlog"
 )
 
 // ReaderAtConfig defines the parameters for the xz readerat.
@@ -24,11 +26,11 @@ func (c *ReaderAtConfig) Verify() error {
 type ReaderAt struct {
 	conf ReaderAtConfig
 
-	// len of the contents of the underlying xz data
-	len     int64
 	indices []index
 
-	xz io.ReaderAt
+	// len of the contents of the underlying xz data
+	len int64
+	xz  io.ReaderAt
 }
 
 // NewReader creates a new xz reader using the default parameters.
@@ -51,7 +53,7 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 		xz:      xz,
 	}
 
-	if err := r.init(); err != nil {
+	if err := r.setup(); err != nil {
 		return nil, err
 	}
 
@@ -59,26 +61,23 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 
 }
 
+// An index carries all the information necessary for reading randomly into a
+// single stream.
 type index struct {
-	startOffset int64
-	rs          []record
+	blockStartOffset int64
+	streamHeader     streamHeader
+	records          []record
 }
 
 func (i index) compressedBufferedSize() int64 {
 	size := int64(0)
-	for _, r := range i.rs {
-		unpadded := r.unpaddedSize
-		padded := 4 * (unpadded / 4)
-		if unpadded < padded {
-			padded += 4
-		}
-
-		size += padded
+	for _, r := range i.records {
+		size += r.paddedLen()
 	}
 	return size
 }
 
-func (r *ReaderAt) init() error {
+func (r *ReaderAt) setup() error {
 	r.len = r.conf.Len
 	if r.len < 1 {
 		panic("todo: implement probing for Len")
@@ -90,25 +89,102 @@ func (r *ReaderAt) init() error {
 		return err
 	}
 
-	indexOffset := footerOffset - f.indexSize
-	indexOffset++ // readIndexBody assumes the indicator byte has already been read
-	indexRecs, _, err := readIndexBody(newRat(r.xz, indexOffset))
+	indexStartOffset := footerOffset - f.indexSize
+
+	// readIndexBody assumes the indicator byte has already been read
+	indexRecs, _, err := readIndexBody(newRat(r.xz, indexStartOffset+1))
 	if err != nil {
 		return err
 	}
 
 	ix := index{
-		rs: indexRecs,
+		records: indexRecs,
 	}
-	ix.startOffset = indexOffset - ix.compressedBufferedSize()
-	r.indices = append(r.indices, ix)
+	ix.blockStartOffset = indexStartOffset - ix.compressedBufferedSize()
+	r.indices = append([]index{ix}, r.indices...)
+
+	sh := streamHeader{}
+	headerStartOffset := ix.blockStartOffset - HeaderLen
+	err = sh.UnmarshalReader(newRat(r.xz, headerStartOffset))
+	if err != nil {
+		return fmt.Errorf("trouble reading stream header at offset %d: %v", headerStartOffset, err)
+	}
+	ix.streamHeader = sh
+
+	xlog.Debugf("xz indices %+v", r.indices)
 
 	return nil
 }
 
-func (r *ReaderAt) ReadAt(p []byte, offset int64) (int, error) {
-	log.Fatal(r)
-	return 1, io.EOF
+func (r *ReaderAt) ReadAt(p []byte, bufferPos int64) (int, error) {
+	lenRequested := len(p)
+
+	indicesPos := int64(0)
+
+	for _, index := range r.indices {
+		blockOffset := index.blockStartOffset
+
+		for _, block := range index.records {
+			if indicesPos <= bufferPos && bufferPos <= indicesPos+block.uncompressedSize {
+				blockStartPos := bufferPos - indicesPos
+				blockEndPos := blockStartPos + int64(len(p))
+				if blockEndPos > block.uncompressedSize {
+					blockEndPos = block.uncompressedSize
+				}
+				blockAmtToRead := blockEndPos - blockStartPos
+
+				r.readBlockAt(
+					p[:blockAmtToRead], blockStartPos,
+					blockOffset, block.unpaddedSize, index.streamHeader.flags)
+				p = p[blockAmtToRead:]
+				bufferPos += blockAmtToRead
+			}
+
+			blockOffset += block.paddedLen()
+			indicesPos += block.uncompressedSize
+		}
+	}
+
+	var err error
+	if len(p) != 0 {
+		err = io.EOF
+	}
+	return lenRequested - len(p), err
+}
+
+func (r *ReaderAt) readBlockAt(
+	p []byte, bufferPos int64,
+	blockOffset, blockLen int64, streamFlags byte,
+) error {
+	viewStart := rat{
+		Mutex:  &sync.Mutex{},
+		offset: blockOffset,
+		reader: r.xz,
+	}
+
+	view := io.LimitReader(&viewStart, blockLen)
+
+	blockHeader, hlen, err := readBlockHeader(view)
+	if err != nil {
+		return err
+	}
+
+	readerConfig := ReaderConfig{}
+
+	hashFn, err := newHashFunc(streamFlags)
+	if err != nil {
+		return err
+	}
+	blockReader, err := readerConfig.newBlockReader(view, blockHeader, hlen, hashFn())
+
+	trash := make([]byte, bufferPos)
+	_, err = io.ReadFull(blockReader, trash)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.ReadFull(blockReader, p)
+	return err
 }
 
 // rat wraps a ReaderAt to fulfill the io.Reader interface.

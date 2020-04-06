@@ -141,7 +141,7 @@ type Writer struct {
 	xz      io.Writer
 	bw      *blockWriter
 	newHash func() hash.Hash
-	h       header
+	h       streamHeader
 	index   []record
 	closed  bool
 }
@@ -183,7 +183,7 @@ func (c WriterConfig) NewWriter(xz io.Writer) (w *Writer, err error) {
 	w = &Writer{
 		WriterConfig: c,
 		xz:           xz,
-		h:            header{c.CheckSum},
+		h:            streamHeader{c.CheckSum},
 		index:        make([]record, 0, 4),
 	}
 	if w.newHash, err = newHashFunc(c.CheckSum); err != nil {
