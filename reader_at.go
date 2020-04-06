@@ -83,7 +83,26 @@ func (r *ReaderAt) setup() error {
 		panic("todo: implement probing for Len")
 	}
 
-	footerOffset := r.len - footerLen
+	// read backwards past potential null bytes until we find the end of the
+	// footer
+	end := r.len - 1
+	for end > 0 {
+		probe := make([]byte, 1)
+		n, err := r.xz.ReadAt(probe, end)
+		if err != nil {
+			return err
+		}
+		if n != len(probe) {
+			return fmt.Errorf("read %d bytes", n)
+		}
+		if probe[0] != 0 {
+			break
+		}
+		end--
+	}
+	end++
+
+	footerOffset := end - footerLen
 	f, err := readFooter(newRat(r.xz, footerOffset))
 	if err != nil {
 		return err
