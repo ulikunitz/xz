@@ -8,7 +8,11 @@ import (
 )
 
 func TestReaderAtSimple(t *testing.T) {
-	const file = "fox.xz"
+	testFile(t, "testfiles/fox.xz")
+	testFile(t, "testfiles/fox-check-none.xz")
+}
+
+func testFile(t *testing.T, file string) {
 	xz, err := os.Open(file)
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", file, err)

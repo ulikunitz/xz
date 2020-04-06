@@ -13,7 +13,7 @@ import (
 )
 
 func TestReaderSimple(t *testing.T) {
-	const file = "fox.xz"
+	const file = "testfiles/fox.xz"
 	xz, err := os.Open(file)
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", file, err)
@@ -29,7 +29,7 @@ func TestReaderSimple(t *testing.T) {
 }
 
 func TestReaderSingleStream(t *testing.T) {
-	data, err := ioutil.ReadFile("fox.xz")
+	data, err := ioutil.ReadFile("testfiles/fox.xz")
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
 	}
@@ -56,7 +56,7 @@ func TestReaderSingleStream(t *testing.T) {
 }
 
 func TestReaderMultipleStreams(t *testing.T) {
-	data, err := ioutil.ReadFile("fox.xz")
+	data, err := ioutil.ReadFile("testfiles/fox.xz")
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
 	}
@@ -81,7 +81,7 @@ func TestReaderMultipleStreams(t *testing.T) {
 }
 
 func TestCheckNone(t *testing.T) {
-	const file = "fox-check-none.xz"
+	const file = "testfiles/fox-check-none.xz"
 	xz, err := os.Open(file)
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", file, err)
