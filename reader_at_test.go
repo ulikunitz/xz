@@ -15,6 +15,15 @@ func TestReaderAtBlocks(t *testing.T) {
 	testFilePart(t, f, fileSize, foxSentenceConst, 0, len(foxSentenceConst))
 }
 
+func BenchmarkBlocks(b *testing.B) {
+	f, fileSize := testOpenFile(b, "testfiles/fox.blocks.xz")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		testFilePart(b, f, fileSize, foxSentenceConst, 0, len(foxSentenceConst))
+	}
+}
+
 func TestReaderAtSimple(t *testing.T) {
 	f, fileSize := testOpenFile(t, "testfiles/fox.xz")
 	testFilePart(t, f, fileSize, foxSentenceConst, 0, 10)
@@ -37,7 +46,7 @@ func TestReaderAtMS(t *testing.T) {
 	testFilePart(t, msB, int64(len(msBytes)), expect, start, len(expect)-start)
 }
 
-func testOpenFile(t *testing.T, filePath string) (*os.File, int64) {
+func testOpenFile(t testing.TB, filePath string) (*os.File, int64) {
 	xz, err := os.Open(filePath)
 	if err != nil {
 		t.Fatalf("os.Open(%q) error %s", filePath, err)
@@ -51,7 +60,7 @@ func testOpenFile(t *testing.T, filePath string) (*os.File, int64) {
 	return xz, info.Size()
 }
 
-func testFilePart(t *testing.T, f io.ReaderAt, fileSize int64, expected string, start, size int) {
+func testFilePart(t testing.TB, f io.ReaderAt, fileSize int64, expected string, start, size int) {
 	conf := ReaderAtConfig{
 		Len: fileSize,
 	}
