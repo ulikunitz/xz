@@ -2,23 +2,27 @@ package xz
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
 )
 
-const expected = "The quick brown fox jumps over the lazy dog.\n"
+const foxSentenceConst = "The quick brown fox jumps over the lazy dog.\n"
 
 func TestReaderAtBlocks(t *testing.T) {
-	testFile(t, "testfiles/fox.blocks.xz", expected)
+	f, fileSize := testOpenFile(t, "testfiles/fox.blocks.xz")
+	testFilePart(t, f, fileSize, foxSentenceConst, 0, len(foxSentenceConst))
 }
 
 func TestReaderAtSimple(t *testing.T) {
-	testFile(t, "testfiles/fox.xz", expected)
+	f, fileSize := testOpenFile(t, "testfiles/fox.xz")
+	testFilePart(t, f, fileSize, foxSentenceConst, 0, 10)
 }
 
 func TestReaderAtMS(t *testing.T) {
-	expect := expected + expected + expected + expected
+	expect := foxSentenceConst + foxSentenceConst + foxSentenceConst + foxSentenceConst
+
 	filePath := "testfiles/fox.blocks.xz"
 
 	f, _ := testOpenFile(t, filePath)
@@ -29,23 +33,8 @@ func TestReaderAtMS(t *testing.T) {
 	msBytes := testMultiStreams(fData)
 	msB := bytes.NewReader(msBytes)
 
-	conf := ReaderAtConfig{
-		Len: int64(len(msBytes)),
-	}
-	r, err := conf.NewReaderAt(msB)
-	if err != nil {
-		t.Fatalf("NewReaderAt error %s", err)
-	}
-
-	reader := newRat(r, 0)
-	decompressedBytes, err := ioutil.ReadAll(reader)
-	if err != nil {
-		t.Fatalf("io.Copy error %s", err)
-	}
-
-	if string(decompressedBytes) != expect {
-		t.Fatalf("Unexpected decompression output for reader %+v. \"%s\" != \"%s\"", r, string(decompressedBytes), expect)
-	}
+	start := len(foxSentenceConst)
+	testFilePart(t, msB, int64(len(msBytes)), expect, start, len(expect)-start)
 }
 
 func testOpenFile(t *testing.T, filePath string) (*os.File, int64) {
@@ -62,17 +51,7 @@ func testOpenFile(t *testing.T, filePath string) (*os.File, int64) {
 	return xz, info.Size()
 }
 
-func testFile(t *testing.T, filePath string, expected string) {
-	for i := 0; i < len(expected); i++ {
-		for n := 1; n+i < len(expected); n++ {
-			testFilePart(t, filePath, expected, i, n)
-		}
-	}
-}
-
-func testFilePart(t *testing.T, filePath string, expected string, start, size int) {
-	f, fileSize := testOpenFile(t, filePath)
-
+func testFilePart(t *testing.T, f io.ReaderAt, fileSize int64, expected string, start, size int) {
 	conf := ReaderAtConfig{
 		Len: fileSize,
 	}
@@ -83,15 +62,16 @@ func testFilePart(t *testing.T, filePath string, expected string, start, size in
 
 	decompressedBytes := make([]byte, size)
 	n, err := r.ReadAt(decompressedBytes, int64(start))
+	if err != nil {
+		t.Fatalf("error while reading at: %v", err)
+	}
 	if n != len(decompressedBytes) {
 		t.Fatalf("unexpectedly didn't read all")
-	}
-	if err != nil {
-		t.Fatalf("io.Copy error %s", err)
 	}
 
 	subsetExpected := expected[start : start+size]
 	if string(decompressedBytes) != subsetExpected {
-		t.Fatalf("Unexpected decompression output. \"%s\" != \"%s\"", string(decompressedBytes), subsetExpected)
+		t.Fatalf("Unexpected decompression output. \"%s\" != \"%s\"",
+			string(decompressedBytes), subsetExpected)
 	}
 }
