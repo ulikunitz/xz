@@ -53,12 +53,25 @@ func (c ReaderAtConfig) NewReaderAt(xz io.ReaderAt) (*ReaderAt, error) {
 		xz:      xz,
 	}
 
-	if err := r.setup(); err != nil {
-		return nil, err
+	r.len = r.conf.Len
+	if r.len < 1 {
+		panic("todo: implement probing for Len")
+	}
+
+	streamEnd := r.len - 1
+
+	for streamEnd > 0 {
+		streamStart, err := r.setupIndexAt(streamEnd)
+		if err != nil {
+			return nil, fmt.Errorf("trouble creating indices: %v", err)
+		}
+
+		// the end of the next stream reading backwards is one before the start
+		// of the one we just processed.
+		streamEnd = streamStart - 1
 	}
 
 	return r, nil
-
 }
 
 // An index carries all the information necessary for reading randomly into a
@@ -77,35 +90,32 @@ func (i index) compressedBufferedSize() int64 {
 	return size
 }
 
-func (r *ReaderAt) setup() error {
-	r.len = r.conf.Len
-	if r.len < 1 {
-		panic("todo: implement probing for Len")
-	}
-
+// setupIndexAt takes the offset of the end of a stream, or null bytes following
+// the end of a stream. It builds an index for that stream, adds it to the
+// beginning of the ReaderAt and returns the offset to the beginning of the stream.
+func (r *ReaderAt) setupIndexAt(endOffset int64) (int64, error) {
 	// read backwards past potential null bytes until we find the end of the
 	// footer
-	end := r.len - 1
-	for end > 0 {
+	for endOffset > 0 {
 		probe := make([]byte, 1)
-		n, err := r.xz.ReadAt(probe, end)
+		n, err := r.xz.ReadAt(probe, endOffset)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if n != len(probe) {
-			return fmt.Errorf("read %d bytes", n)
+			return 0, fmt.Errorf("read %d bytes", n)
 		}
 		if probe[0] != 0 {
 			break
 		}
-		end--
+		endOffset--
 	}
-	end++
+	endOffset++
 
-	footerOffset := end - footerLen
+	footerOffset := endOffset - footerLen
 	f, err := readFooter(newRat(r.xz, footerOffset))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	indexStartOffset := footerOffset - f.indexSize
@@ -113,7 +123,7 @@ func (r *ReaderAt) setup() error {
 	// readIndexBody assumes the indicator byte has already been read
 	indexRecs, _, err := readIndexBody(newRat(r.xz, indexStartOffset+1))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	ix := index{
@@ -126,13 +136,13 @@ func (r *ReaderAt) setup() error {
 	headerStartOffset := ix.blockStartOffset - HeaderLen
 	err = sh.UnmarshalReader(newRat(r.xz, headerStartOffset))
 	if err != nil {
-		return fmt.Errorf("trouble reading stream header at offset %d: %v", headerStartOffset, err)
+		return 0, fmt.Errorf("trouble reading stream header at offset %d: %v", headerStartOffset, err)
 	}
 	ix.streamHeader = sh
 
 	xlog.Debugf("xz indices %+v", r.indices)
 
-	return nil
+	return headerStartOffset, nil
 }
 
 func (r *ReaderAt) ReadAt(p []byte, bufferPos int64) (int, error) {
