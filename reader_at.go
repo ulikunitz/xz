@@ -90,6 +90,14 @@ func (i index) compressedBufferedSize() int64 {
 	return size
 }
 
+func (i index) uncompressedSize() int64 {
+	size := int64(0)
+	for _, r := range i.records {
+		size += r.uncompressedSize
+	}
+	return size
+}
+
 // setupIndexAt takes the offset of the end of a stream, or null bytes following
 // the end of a stream. It builds an index for that stream, adds it to the
 // beginning of the ReaderAt and returns the offset to the beginning of the stream.
@@ -143,6 +151,14 @@ func (r *ReaderAt) setupIndexAt(endOffset int64) (int64, error) {
 	xlog.Debugf("xz indices %+v", r.indices)
 
 	return headerStartOffset, nil
+}
+
+func (r *ReaderAt) Size() int64 {
+	total := int64(0)
+	for _, ix := range r.indices {
+		total += ix.uncompressedSize()
+	}
+	return total
 }
 
 func (r *ReaderAt) ReadAt(p []byte, bufferPos int64) (int, error) {
