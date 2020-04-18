@@ -23,3 +23,8 @@ cmd/xb/xb
 
 # default compression test file
 enwik8*
+
+# profiling output
+/*.pdf
+/*.svg
+
