@@ -94,7 +94,7 @@ func newHashTable(capacity int, wordLen int) (t *hashTable, err error) {
 	t = &hashTable{
 		t:       make([]int64, n),
 		data:    make([]uint32, capacity),
-		mask:    (uint64(1) << uint(exp)) - 1,
+		mask:    uint64(1)<<uint(exp) - 1,
 		hoff:    -int64(wordLen),
 		wordLen: wordLen,
 		wr:      newRoller(wordLen),
@@ -303,7 +303,7 @@ func (t *hashTable) NextOp(rep [4]uint32) operation {
 	}
 
 	if m.n == 0 {
-		return lit{data[0]}
+		return lit(data[0])
 	}
 	return m
 }

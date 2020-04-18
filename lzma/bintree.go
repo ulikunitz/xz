@@ -78,7 +78,7 @@ func (t *binTree) SetDict(d *encoderDict) { t.dict = d }
 
 // WriteByte writes a single byte into the binary tree.
 func (t *binTree) WriteByte(c byte) error {
-	t.x = (t.x << 8) | uint32(c)
+	t.x = t.x<<8 | uint32(c)
 	t.hoff++
 	if t.hoff < 0 {
 		return nil
@@ -434,7 +434,7 @@ func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
 				continue
 			}
 		}
-		if n < m.n || (n == m.n && int64(dist) >= m.distance) {
+		if n < m.n || n == m.n && int64(dist) >= m.distance {
 			continue
 		}
 		m = match{int64(dist), n}
@@ -517,7 +517,7 @@ func (t *binTree) NextOp(rep [4]uint32) operation {
 	m, _, _ = t.match(m, iterPred, p)
 end:
 	if m.n == 0 {
-		return lit{t.data[0]}
+		return lit(t.data[0])
 	}
 	return m
 }

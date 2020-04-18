@@ -69,10 +69,10 @@ func (l lit) Len() int {
 // String returns a string representation for the literal.
 func (l lit) String() string {
 	var c byte
-	if unicode.IsPrint(rune(l.b)) {
-		c = l.b
+	if unicode.IsPrint(rune(l)) {
+		c = byte(l)
 	} else {
 		c = '.'
 	}
-	return fmt.Sprintf("L{%c/%02x}", c, l.b)
+	return fmt.Sprintf("L{%c/%02x}", c, byte(l))
 }

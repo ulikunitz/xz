@@ -70,7 +70,7 @@ func (d *decoder) decodeLiteral() (op operation, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return lit{s}, nil
+	return lit(s), nil
 }
 
 // errEOS indicates that an EOS marker has been found.
@@ -182,7 +182,7 @@ func (d *decoder) apply(op operation) error {
 	case match:
 		err = d.Dict.writeMatch(x.distance, x.n)
 	case lit:
-		err = d.Dict.WriteByte(x.b)
+		err = d.Dict.WriteByte(byte(x))
 	default:
 		panic("op is neither a match nor a literal")
 	}

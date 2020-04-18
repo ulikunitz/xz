@@ -46,15 +46,15 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 	if state >= 7 {
 		m := uint32(match)
 		for {
-			matchBit := (m >> 7) & 1
+			matchBit := m >> 7 & 1
 			m <<= 1
-			bit := (r >> 7) & 1
+			bit := r >> 7 & 1
 			r <<= 1
-			i := ((1 + matchBit) << 8) | symbol
+			i := (1+matchBit)<<8 | symbol
 			if err = probs[i].Encode(e, bit); err != nil {
 				return
 			}
-			symbol = (symbol << 1) | bit
+			symbol = symbol<<1 | bit
 			if matchBit != bit {
 				break
 			}
@@ -64,12 +64,12 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 		}
 	}
 	for symbol < 0x100 {
-		bit := (r >> 7) & 1
+		bit := r >> 7 & 1
 		r <<= 1
 		if err = probs[symbol].Encode(e, bit); err != nil {
 			return
 		}
-		symbol = (symbol << 1) | bit
+		symbol = symbol<<1 | bit
 	}
 	return nil
 }
@@ -85,14 +85,14 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 	if state >= 7 {
 		m := uint32(match)
 		for {
-			matchBit := (m >> 7) & 1
+			matchBit := m >> 7 & 1
 			m <<= 1
-			i := ((1 + matchBit) << 8) | symbol
+			i := (1+matchBit)<<8 | symbol
 			bit, err := d.DecodeBit(&probs[i])
 			if err != nil {
 				return 0, err
 			}
-			symbol = (symbol << 1) | bit
+			symbol = symbol<<1 | bit
 			if matchBit != bit {
 				break
 			}
@@ -106,7 +106,7 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 		if err != nil {
 			return 0, err
 		}
-		symbol = (symbol << 1) | bit
+		symbol = symbol<<1 | bit
 	}
 	s = byte(symbol - 0x100)
 	return s, nil

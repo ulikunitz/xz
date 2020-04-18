@@ -108,7 +108,7 @@ func (e *encoder) writeLiteral(l lit) error {
 	}
 	litState := e.state.litState(e.dict.ByteAt(1), e.dict.Pos())
 	match := e.dict.ByteAt(int(e.state.rep[0]) + 1)
-	err = e.state.litCodec.Encode(e.re, l.b, state, match, litState)
+	err = e.state.litCodec.Encode(e.re, byte(l), state, match, litState)
 	if err != nil {
 		return err
 	}

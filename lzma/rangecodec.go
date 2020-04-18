@@ -55,7 +55,7 @@ func (e *rangeEncoder) writeByte(c byte) error {
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 	e.nrange >>= 1
-	e.low += uint64(e.nrange) & (0 - (uint64(b) & 1))
+	e.low += uint64(e.nrange) & (0 - uint64(b)&1)
 
 	// normalize
 	const top = 1 << 24
@@ -101,7 +101,7 @@ func (e *rangeEncoder) Close() error {
 // shiftLow shifts the low value for 8 bit. The shifted byte is written into
 // the byte writer. The cache value is used to handle overflows.
 func (e *rangeEncoder) shiftLow() error {
-	if uint32(e.low) < 0xff000000 || (e.low>>32) != 0 {
+	if uint32(e.low) < 0xff000000 || e.low>>32 != 0 {
 		tmp := e.cache
 		for {
 			err := e.writeByte(tmp + byte(e.low>>32))
@@ -194,7 +194,7 @@ func (d *rangeDecoder) possiblyAtEnd() bool {
 func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	d.nrange >>= 1
 	d.code -= d.nrange
-	t := 0 - (d.code >> 31)
+	t := 0 - d.code>>31
 	d.code += d.nrange & t
 	b = (t + 1) & 1
 
@@ -243,6 +243,6 @@ func (d *rangeDecoder) updateCode() error {
 	if err != nil {
 		return err
 	}
-	d.code = (d.code << 8) | uint32(b)
+	d.code = d.code<<8 | uint32(b)
 	return nil
 }
