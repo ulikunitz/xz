@@ -59,9 +59,7 @@ func (m match) String() string {
 }
 
 // lit represents a single byte literal.
-type lit struct {
-	b byte
-}
+type lit byte
 
 // Len returns 1 for the single byte literal.
 func (l lit) Len() int {
