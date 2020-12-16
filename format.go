@@ -47,9 +47,9 @@ const HeaderLen = 12
 // Constants for the checksum methods supported by xz.
 const (
 	None   byte = 0x0
-	CRC32       = 0x1
-	CRC64       = 0x4
-	SHA256      = 0xa
+	CRC32  byte = 0x1
+	CRC64  byte = 0x4
+	SHA256 byte = 0xa
 )
 
 // errInvalidFlags indicates that flags are invalid.
