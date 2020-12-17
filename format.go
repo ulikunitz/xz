@@ -569,22 +569,6 @@ func readFilters(r io.Reader, count int) (filters []filter, err error) {
 	return []filter{f}, err
 }
 
-// writeFilters writes the filters.
-func writeFilters(w io.Writer, filters []filter) (n int, err error) {
-	for _, f := range filters {
-		p, err := f.MarshalBinary()
-		if err != nil {
-			return n, err
-		}
-		k, err := w.Write(p)
-		n += k
-		if err != nil {
-			return n, err
-		}
-	}
-	return n, nil
-}
-
 /*** Index ***/
 
 // record describes a block in the xz file index.
