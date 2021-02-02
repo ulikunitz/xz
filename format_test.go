@@ -1,4 +1,4 @@
-// Copyright 2014-2019 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2021 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -85,7 +85,7 @@ func TestIndex(t *testing.T) {
 		t.Fatalf("indicator %d; want %d", c, 0)
 	}
 
-	g, m, err := readIndexBody(&buf)
+	g, m, err := readIndexBody(&buf, len(records))
 	if err != nil {
 		for i, r := range g {
 			t.Logf("records[%d] %v", i, r)
