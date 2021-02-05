@@ -55,7 +55,7 @@ func main() {
 
 ## Documentation
 
-You can find the documentation on [pkg.go.dev](https://pkg.go.dev/github.com/ulikunitz/xz).
+You can find the full documentation at [pkg.go.dev](https://pkg.go.dev/github.com/ulikunitz/xz).
 
 ## Using the gxz compression tool
 
