@@ -1,74 +1,28 @@
 # TODO list
 
-## Release v0.5.x
-
-1. Support check flag in gxz command.
-
 ## Release v0.6
 
-1. Review encoder and check for lzma improvements under xz.
-2. Fix binary tree matcher.
-3. Compare compression ratio with xz tool using comparable parameters and optimize parameters
-4. rename operation action and make it a simple type of size 8
-5. make maxMatches, wordSize parameters
-6. stop searching after a certain length is found (parameter sweetLen)
-
-## Release v0.7
-
-1. Optimize code
-2. Do statistical analysis to get linear presets.
-3. Test sync.Pool compatability for xz and lzma Writer and Reader
-4. Fuzz optimized code.
+1. Rewrite lzma using the new lz module
+2. address the false sharing (CPU cache) of the lzma state
+3. Support parallel go routines for LZMA2
+4. Review xz implementation particularly the use of Marshal. It allocates memory
+   unnecesarily, which can be avoided by an append approach
+5. Make parellel encoding the default setup
+6. Fuzz lzma
+7. Fuzz lzma2
+8. Fuzz xz
+9. Rewrite README.md
+   - provide example for parallel encoding  
+   - create picture that compares speed improvements (v0.5, v0.6, v0.7 parallel)
 
 ## Release v0.8
 
-1. Support parallel go routines for writing and reading xz files.
-2. Support a ReaderAt interface for xz files with small block sizes.
-3. Improve compatibility between gxz and xz
-4. Provide manual page for gxz
-
-## Release v0.9
-
-1. Improve documentation
-2. Fuzz again
+1. Provide manual page for gxz
 
 ## Release v1.0
 
-1. Full functioning gxz
-2. Add godoc URL to README.md (godoc.org)
-3. Resolve all issues.
-4. Define release candidates.
-5. Public announcement.
-
-## Package lzma
-
-### v0.6
-
-* Rewrite Encoder into a simple greedy one-op-at-a-time encoder including
-  * simple scan at the dictionary head for the same byte
-  * use the killer byte (requiring matches to get longer, the first test should be the byte that would make the match longer)
-
-## Optimizations
-
-* There may be a lot of false sharing in lzma. State; check whether this  can be improved by reorganizing the internal structure of it.
-
-* Check whether batching encoding and decoding improves speed.
-
-### DAG optimizations
-
-* Use full buffer to create minimal bit-length above range encoder.
-* Might be too slow (see v0.4)
-
-### Different match finders
-
-* hashes with 2, 3 characters additional to 4 characters
-* binary trees with 2-7 characters (uint64 as key, use uint32 as
-
-  pointers into a an array)
-
-* rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
-
-  into an array with bit-steeling for the colors)
+1. Define release candidates.
+2. Public announcement.
 
 ## Release Procedure
 
@@ -77,7 +31,8 @@
 * Write release notes in doc/relnotes.
 * Update README.md
 * xb copyright . in xz directory to ensure all new files have Copyright header
-* `VERSION=<version> go generate github.com/ulikunitz/xz/...` to update version files
+* `VERSION=<version> go generate github.com/ulikunitz/xz/...` to update version
+  files
 * Execute test for Linux/amd64, Linux/x86 and Windows/amd64.
 * Update TODO.md - write short log entry
 * `git checkout master && git merge dev`
@@ -85,6 +40,12 @@
 * `git push`
 
 ## Log
+
+### 2021-12-09 
+
+I started the rewrite for the preparation of release v0.6, which will use the lz
+module, with the main feature to improve the compression and decompression
+speeds and support parallel compression.
 
 ### 2021-02-02
 
