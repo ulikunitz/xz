@@ -14,6 +14,7 @@
 9. Rewrite README.md
    - provide example for parallel encoding  
    - create picture that compares speed improvements (v0.5, v0.6, v0.7 parallel)
+10. Review open issues after final release
 
 ## Release v0.8
 
