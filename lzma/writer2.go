@@ -134,8 +134,8 @@ func (w *Writer2) written() int {
 // errClosed indicates that the writer is closed.
 var errClosed = errors.New("lzma: writer closed")
 
-// Writes data to LZMA2 stream. Note that written data will be buffered.
-// Use Flush or Close to ensure that data is written to the underlying
+// Write outputs data to an LZMA2 stream. Note that written data will be
+// buffered. Use Flush or Close to ensure that data is written to the underlying
 // writer.
 func (w *Writer2) Write(p []byte) (n int, err error) {
 	if w.cstate == stop {
