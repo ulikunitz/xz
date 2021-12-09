@@ -1,3 +1,5 @@
 module github.com/ulikunitz/xz
 
-go 1.12
+go 1.17
+
+replace github.com/ulikunitz/lz => ../lz
