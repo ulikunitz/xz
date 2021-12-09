@@ -40,14 +40,3 @@ func (p prob) bound(r uint32) uint32 {
 func (p prob) Bits() int {
 	return 1
 }
-
-// Encode encodes the least-significant bit of v. Note that the p value will be
-// changed.
-func (p *prob) Encode(e *rangeEncoder, v uint32) error {
-	return e.EncodeBit(v, p)
-}
-
-// Decode decodes a single bit. Note that the p value will change.
-func (p *prob) Decode(d *rangeDecoder) (v uint32, err error) {
-	return d.DecodeBit(p)
-}

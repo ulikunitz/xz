@@ -67,21 +67,21 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 		return errors.New("lengthCodec.Encode: l out of range")
 	}
 	if l < 8 {
-		if err = lc.choice[0].Encode(e, 0); err != nil {
+		if err = e.EncodeBit(0, &lc.choice[0]); err != nil {
 			return
 		}
 		return lc.low[posState].Encode(e, l)
 	}
-	if err = lc.choice[0].Encode(e, 1); err != nil {
+	if err = e.EncodeBit(1, &lc.choice[0]); err != nil {
 		return
 	}
 	if l < 16 {
-		if err = lc.choice[1].Encode(e, 0); err != nil {
+		if err = e.EncodeBit(0, &lc.choice[1]); err != nil {
 			return
 		}
 		return lc.mid[posState].Encode(e, l-8)
 	}
-	if err = lc.choice[1].Encode(e, 1); err != nil {
+	if err = e.EncodeBit(1, &lc.choice[1]); err != nil {
 		return
 	}
 	if err = lc.high.Encode(e, l-16); err != nil {
@@ -95,14 +95,16 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 func (lc *lengthCodec) Decode(d *rangeDecoder, posState uint32,
 ) (l uint32, err error) {
 	var b uint32
-	if b, err = lc.choice[0].Decode(d); err != nil {
+	b, err = d.DecodeBit(&lc.choice[0])
+	if err != nil {
 		return
 	}
 	if b == 0 {
 		l, err = lc.low[posState].Decode(d)
 		return
 	}
-	if b, err = lc.choice[1].Decode(d); err != nil {
+	b, err = d.DecodeBit(&lc.choice[1])
+	if err != nil {
 		return
 	}
 	if b == 0 {

@@ -85,7 +85,7 @@ func (d *decoder) readOp() (op operation, err error) {
 
 	state, state2, posState := d.State.states(d.Dict.head)
 
-	b, err := d.State.isMatch[state2].Decode(d.rd)
+	b, err := d.rd.DecodeBit(&d.State.isMatch[state2])
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (d *decoder) readOp() (op operation, err error) {
 		d.State.updateStateLiteral()
 		return op, nil
 	}
-	b, err = d.State.isRep[state].Decode(d.rd)
+	b, err = d.rd.DecodeBit(&d.State.isRep[state])
 	if err != nil {
 		return nil, err
 	}
@@ -127,14 +127,14 @@ func (d *decoder) readOp() (op operation, err error) {
 			distance: int64(d.State.rep[0]) + minDistance}
 		return op, nil
 	}
-	b, err = d.State.isRepG0[state].Decode(d.rd)
+	b, err = d.rd.DecodeBit(&d.State.isRepG0[state])
 	if err != nil {
 		return nil, err
 	}
 	dist := d.State.rep[0]
 	if b == 0 {
 		// rep match 0
-		b, err = d.State.isRepG0Long[state2].Decode(d.rd)
+		b, err = d.rd.DecodeBit(&d.State.isRepG0Long[state2])
 		if err != nil {
 			return nil, err
 		}
@@ -144,14 +144,14 @@ func (d *decoder) readOp() (op operation, err error) {
 			return op, nil
 		}
 	} else {
-		b, err = d.State.isRepG1[state].Decode(d.rd)
+		b, err = d.rd.DecodeBit(&d.State.isRepG1[state])
 		if err != nil {
 			return nil, err
 		}
 		if b == 0 {
 			dist = d.State.rep[1]
 		} else {
-			b, err = d.State.isRepG2[state].Decode(d.rd)
+			b, err = d.rd.DecodeBit(&d.State.isRepG2[state])
 			if err != nil {
 				return nil, err
 			}
