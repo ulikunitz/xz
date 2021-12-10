@@ -1,4 +1,4 @@
-% LZMA2 format
+# LZMA2 format
 
 The LZMA2 format supports flushing, parallel encoding or decoding.
 Chunks of data that cannot be compressed are copied as such.
@@ -14,8 +14,7 @@ Bits | Mask | Description
  6-7 | 0xC0 | Reserved for future use; Must be zero
 
 The dictionary size is encoded with a one-bit mantissa and five-bit
-exponent. The smallest dictionary size is 4 KiB and the biggest is 4 GiB
-- 1 B.
+exponent. The smallest dictionary size is 4 KiB and the biggest is 4 GiB- 1 B.
 
 |Raw Value | Mantissa | Exponent | Dictionary size|
 |---------:|---------:|---------:|---------------:|
