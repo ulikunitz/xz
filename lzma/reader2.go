@@ -7,8 +7,6 @@ package lzma
 import (
 	"errors"
 	"io"
-
-	"github.com/ulikunitz/xz/internal/xlog"
 )
 
 // Reader2Config stores the parameters for the LZMA2 reader.
@@ -87,7 +85,6 @@ func (r *Reader2) startChunk() error {
 		}
 		return err
 	}
-	xlog.Debugf("chunk header %v", header)
 	if err = r.cstate.next(header.ctype); err != nil {
 		return err
 	}
