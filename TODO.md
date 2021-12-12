@@ -2,6 +2,8 @@
 
 ## Release v0.6
 
+1. Create a new nlzma package
+2. Design the public interface include parallel encoder
 1. Review whether EncodeBit and DecodeBit must return an error
 1. Rewrite lzma using the new lz module
 2. address the false sharing (CPU cache) of the lzma state
