@@ -11,9 +11,10 @@ import (
 )
 
 func ExampleReader() {
-	f, err := os.Open("fox.xz")
+	const file = "testdata/fox.xz"
+	f, err := os.Open(file)
 	if err != nil {
-		log.Fatalf("os.Open(%q) error %s", "fox.xz", err)
+		log.Fatalf("os.Open(%q) error %s", file, err)
 	}
 	defer f.Close()
 	r, err := xz.NewReader(bufio.NewReader(f))
@@ -28,9 +29,10 @@ func ExampleReader() {
 }
 
 func ExampleWriter() {
-	f, err := os.Create("example.xz")
+	const file = "testdata/example.xz"
+	f, err := os.Create(file)
 	if err != nil {
-		log.Fatalf("os.Open(%q) error %s", "example.xz", err)
+		log.Fatalf("os.Open(%q) error %s", file, err)
 	}
 	defer f.Close()
 	w, err := xz.NewWriter(f)

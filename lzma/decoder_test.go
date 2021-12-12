@@ -13,7 +13,7 @@ import (
 )
 
 func TestDecoder(t *testing.T) {
-	filename := "fox.lzma"
+	filename := "testdata/fox.lzma"
 	want := "The quick brown fox jumps over the lazy dog.\n"
 	for i := 0; i < 2; i++ {
 		f, err := os.Open(filename)

@@ -17,9 +17,10 @@ import (
 )
 
 func TestNewReader(t *testing.T) {
-	f, err := os.Open("examples/a.lzma")
+	const file = "testdata/examples/a.lzma"
+	f, err := os.Open(file)
 	if err != nil {
-		t.Fatalf("open examples/a.lzma: %s", err)
+		t.Fatalf("open %s: %s", file, err)
 	}
 	defer f.Close()
 	_, err = NewReader(bufio.NewReader(f))
@@ -29,7 +30,7 @@ func TestNewReader(t *testing.T) {
 }
 
 const (
-	dirname  = "examples"
+	dirname  = "testdata/examples"
 	origname = "a.txt"
 )
 
@@ -79,7 +80,7 @@ func TestReaderSimple(t *testing.T) {
 }
 
 func TestReaderAll(t *testing.T) {
-	dirname := "examples"
+	const dirname = "testdata/examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
 		t.Fatalf("Open: %s", err)
@@ -114,7 +115,7 @@ func TestReaderAll(t *testing.T) {
 
 //
 func Example_reader() {
-	f, err := os.Open("fox.lzma")
+	f, err := os.Open("testdata/fox.lzma")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -183,7 +184,7 @@ func TestReaderWrap(t *testing.T) {
 }
 
 func TestReaderBadFiles(t *testing.T) {
-	dirname := "examples"
+	const dirname = "testdata/examples"
 	dir, err := os.Open(dirname)
 	if err != nil {
 		t.Fatalf("Open: %s", err)
