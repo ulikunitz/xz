@@ -14,7 +14,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma"
+	lzma "github.com/ulikunitz/xz/old_lzma"
 )
 
 // ReaderConfig defines the parameters for the xz reader. The

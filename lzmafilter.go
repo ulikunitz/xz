@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma"
+	lzma "github.com/ulikunitz/xz/old_lzma"
 )
 
 // LZMA filter constants.

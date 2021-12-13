@@ -17,7 +17,7 @@ import (
 
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/internal/xlog"
-	"github.com/ulikunitz/xz/lzma"
+	lzma "github.com/ulikunitz/xz/old_lzma"
 )
 
 // signalHandler establishes the signal handler for SIGTERM(1) and

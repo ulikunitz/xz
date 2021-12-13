@@ -13,7 +13,7 @@ import (
 	"hash/crc32"
 	"io"
 
-	"github.com/ulikunitz/xz/lzma"
+	lzma "github.com/ulikunitz/xz/old_lzma"
 )
 
 // allZeros checks whether a given byte slice has only zeros.
