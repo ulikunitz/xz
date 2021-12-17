@@ -35,7 +35,7 @@ func (r *rawReader) init(z io.Reader, dictSize int, p Properties) error {
 	return nil
 }
 
-func (r *rawReader) reset() {
+func (r *rawReader) restart() {
 	panic("TODO")
 }
 
