@@ -8,12 +8,12 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	tests := []header{
+	tests := []params{
 		{Properties{3, 0, 2}, 1 << 15, eosSize},
 	}
 	for _, tc := range tests {
 		s := tc.append(nil)
-		var h header
+		var h params
 		if err := h.parse(s); err != nil {
 			t.Fatalf("h.parse error %s", err)
 		}

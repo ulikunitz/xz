@@ -3,21 +3,109 @@ package lzma
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 
 	"github.com/ulikunitz/lz"
 )
+
+// Properties define the properties for the LZMA and LZMA2 compression.
+type Properties struct {
+	LC int
+	LP int
+	PB int
+}
+
+// Returns the byte that encodes the properties.
+func (p Properties) byte() byte {
+	return (byte)((p.PB*5+p.LP)*9 + p.LC)
+}
+
+func (p *Properties) fromByte(b byte) error {
+	p.LC = int(b % 9)
+	b /= 9
+	p.LP = int(b % 5)
+	b /= 5
+	p.PB = int(b)
+	if p.PB > 4 {
+		return errors.New("lzma: invalid properties byte")
+	}
+	return nil
+}
+
+func (p Properties) Verify() error {
+	if !(0 <= p.LC && p.LC <= 8) {
+		return fmt.Errorf("lzma: LC out of range 0..8")
+	}
+	if !(0 <= p.LP && p.LP <= 4) {
+		return fmt.Errorf("lzma: LP out of range 0..4")
+	}
+	if !(0 <= p.PB && p.PB <= 4) {
+		return fmt.Errorf("lzma: PB out of range 0..4")
+	}
+	return nil
+}
+
+// eosSize is used for the uncompressed size if it is unknown
+const eosSize uint64 = 0xffffffffffffffff
+
+// headerLen defines the length of an LZMA header
+const headerLen = 13
+
+// params defines the parameters for the LZMA method
+type params struct {
+	p                Properties
+	dictSize         uint32
+	uncompressedSize uint64
+}
+
+func (h params) Verify() error {
+	if uint64(h.dictSize) > math.MaxInt {
+		return errors.New("lzma: dictSize exceed max integer")
+	}
+	if h.dictSize < minDictSize {
+		return errors.New("lzma: dictSize is too small")
+	}
+	return h.p.Verify()
+}
+
+// append adds the header to the slice s.
+func (h params) append(s []byte) []byte {
+	var a [headerLen]byte
+	a[0] = h.p.byte()
+	putLE32(a[1:], h.dictSize)
+	putLE64(a[5:], h.uncompressedSize)
+	return append(s, a[:]...)
+}
+
+// parse parses the header from the slice x. x must have exactly header length.
+func (h *params) parse(x []byte) error {
+	if len(x) != headerLen {
+		return errors.New("lzma: LZMA header has incorrect length")
+	}
+	var err error
+	if err = h.p.fromByte(x[0]); err != nil {
+		return err
+	}
+	h.dictSize = getLE32(x[1:])
+	h.uncompressedSize = getLE64(x[5:])
+	return nil
+}
 
 // rawReader decompresses a byte stream of LZMA data.
 type rawReader struct {
 	buf   lz.Buffer
 	state state
 	rd    rangeDecoder
-	eos   bool
+	p     params
+	err   error
 }
 
-func (r *rawReader) init(z io.Reader, dictSize int, p Properties) error {
-	err := r.buf.Init(dictSize, 2*dictSize)
+func (r *rawReader) init(z io.Reader, p params) error {
+	r.p = p
+
+	err := r.buf.Init(int(p.dictSize), 2*int(p.dictSize))
 	if err != nil {
 		return err
 	}
@@ -30,7 +118,7 @@ func (r *rawReader) init(z io.Reader, dictSize int, p Properties) error {
 	if err = r.rd.init(br); err != nil {
 		return err
 	}
-	r.state.init(p)
+	r.state.init(p.p)
 
 	return nil
 }
@@ -109,7 +197,6 @@ func (r *rawReader) readSeq() (seq lz.Seq, err error) {
 			return lz.Seq{}, err
 		}
 		if r.state.rep[0] == eosDist {
-			r.eos = true
 			return lz.Seq{}, errEOS
 		}
 		return lz.Seq{MatchLen: n + minMatchLen,
@@ -164,13 +251,39 @@ func (r *rawReader) readSeq() (seq lz.Seq, err error) {
 }
 
 func (r *rawReader) fillBuffer() error {
-	if r.eos {
-		return errEOS
+	if r.err != nil {
+		return r.err
 	}
 	for r.buf.Available() >= maxMatchLen {
 		seq, err := r.readSeq()
 		if err != nil {
-			return err
+			if err == errEOS {
+				if !r.rd.possiblyAtEnd() {
+					r.err = ErrUnexpectedEOS
+					return r.err
+				}
+				s := r.p.uncompressedSize
+				if s != eosSize && s != uint64(r.buf.Pos()) {
+					r.err = ErrUnexpectedEOS
+					return r.err
+				}
+				r.err = io.EOF
+				return r.err
+			}
+			if err == io.EOF {
+				s := r.p.uncompressedSize
+				if !r.rd.possiblyAtEnd() || s == eosSize {
+					r.err = io.ErrUnexpectedEOF
+					return r.err
+				}
+				if s != uint64(r.buf.Pos()) {
+					r.err = io.ErrUnexpectedEOF
+				}
+				r.err = io.EOF
+				return r.err
+			}
+			r.err = err
+			return r.err
 		}
 		if seq.MatchLen == 0 {
 			// TODO: remove
@@ -187,6 +300,11 @@ func (r *rawReader) fillBuffer() error {
 				panic(err)
 			}
 		}
+		s := r.p.uncompressedSize
+		if s == uint64(r.buf.Pos()) {
+			r.err = io.EOF
+			return r.err
+		}
 	}
 	return nil
 }
@@ -194,7 +312,7 @@ func (r *rawReader) fillBuffer() error {
 func (r *rawReader) Read(p []byte) (n int, err error) {
 	if len(p) > r.buf.Len() {
 		err = r.fillBuffer()
-		if err != nil && err != io.EOF && err != errEOS {
+		if err != nil && err != io.EOF {
 			return 0, err
 		}
 	}
