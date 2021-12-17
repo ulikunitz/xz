@@ -20,8 +20,8 @@ var ErrUnexpectedEOS = errors.New("lzma: unexpected end of stream")
 var ErrEncoding = errors.New("lzma: wrong encoding")
 
 // NewReader creates a reader for LZMA-compressed streams. It reads the LZTMA
-// header and creates a reader.
-func NewReader(lzma io.Reader) (r io.Reader, err error) {
+// header and creates a reader and may return an error if the header is wrong.
+func NewReader(z io.Reader) (r io.Reader, err error) {
 	headerBuf := make([]byte, headerLen)
 	if _, err = io.ReadFull(z, headerBuf); err != nil {
 		if err == io.EOF {
