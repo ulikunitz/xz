@@ -13,7 +13,11 @@ const (
 // minDictSize defines the minumum supported dictionary size.
 const minDictSize = 1 << 12
 
+// ErrUnexpectedEOS reports an unexpected end-of-stream marker
 var ErrUnexpectedEOS = errors.New("lzma: unexpected end of stream")
+
+// ErrEncoding reports an encoding error
+var ErrEncoding = errors.New("lzma: wrong encoding")
 
 // NewReader creates a reader for LZMA-compressed streams. The reader may report
 // EOF before z is fully read, because LZMA provides its own size or uses an EOS

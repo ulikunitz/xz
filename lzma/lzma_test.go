@@ -2,8 +2,10 @@ package lzma
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -40,7 +42,7 @@ func TestReaderSimple(t *testing.T) {
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, r)
 	if err != nil {
-		t.Fatalf("io.Copy(buf, r) error %s", err)
+		t.Fatalf("%s: io.Copy(buf, r) error %s", file, err)
 	}
 	s := buf.String()
 	if s != text {
@@ -58,5 +60,95 @@ func TestReaderSimple(t *testing.T) {
 	}
 	if n != fi.Size() {
 		t.Fatalf("f pos %d; want eof pos = %d", n, fi.Size())
+	}
+}
+
+func TestGoodExamples(t *testing.T) {
+	files, err := filepath.Glob("testdata/examples/a*.lzma")
+	if err != nil {
+		t.Fatalf("Glob error %s", err)
+	}
+
+	const textFile = "testdata/examples/a.txt"
+	text, err := os.ReadFile(textFile)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error %s", textFile, err)
+	}
+
+	for _, file := range files {
+		f, err := os.Open(file)
+		if err != nil {
+			t.Errorf("os.Open(%q) error %s", file, err)
+			continue
+		}
+
+		r, err := NewReader(f)
+		if err != nil {
+			t.Errorf("NewReader(f) error %s", err)
+			continue
+		}
+
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, r)
+		if err != nil {
+			t.Errorf("io.Copy(buf, r) error %s", err)
+			continue
+		}
+		s := buf.Bytes()
+		t.Logf("got: %q", s)
+
+		if !bytes.Equal(s, text) {
+			t.Errorf("got %q; want %q", s, text)
+			continue
+		}
+
+		fi, err := f.Stat()
+		if err != nil {
+			t.Errorf("f.State() error %s", err)
+			continue
+		}
+
+		n, err := f.Seek(0, os.SEEK_CUR)
+		if err != nil {
+			t.Errorf("f.Seek() error %s", err)
+			continue
+		}
+		if n != fi.Size() {
+			t.Errorf("f pos %d; want eof pos = %d", n, fi.Size())
+			continue
+		}
+
+	}
+}
+
+func TestBadExamples(t *testing.T) {
+	files, err := filepath.Glob("testdata/examples/bad*.lzma")
+	if err != nil {
+		t.Fatalf("Glob error %s", err)
+	}
+
+	for i, file := range files {
+		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
+			f, err := os.Open(file)
+			if err != nil {
+				t.Errorf("os.Open(%q) error %s", file, err)
+				return
+			}
+
+			r, err := NewReader(f)
+			if err != nil {
+				t.Logf("NewReader(f) error %s", err)
+				return
+			}
+
+			buf := new(bytes.Buffer)
+			_, err = io.Copy(buf, r)
+			if err != nil {
+				t.Logf("io.Copy(buf, r) error %s", err)
+				return
+			}
+
+			t.Errorf("no error for %s", file)
+		})
 	}
 }

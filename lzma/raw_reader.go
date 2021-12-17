@@ -259,7 +259,7 @@ func (r *rawReader) fillBuffer() error {
 		if err != nil {
 			if err == errEOS {
 				if !r.rd.possiblyAtEnd() {
-					r.err = ErrUnexpectedEOS
+					r.err = ErrEncoding
 					return r.err
 				}
 				s := r.p.uncompressedSize
@@ -286,10 +286,6 @@ func (r *rawReader) fillBuffer() error {
 			return r.err
 		}
 		if seq.MatchLen == 0 {
-			// TODO: remove
-			if seq.LitLen != 1 {
-				panic("seq has neither literal nor match")
-			}
 			if err = r.buf.WriteByte(byte(seq.Aux)); err != nil {
 				panic(err)
 			}
@@ -297,11 +293,19 @@ func (r *rawReader) fillBuffer() error {
 			err = r.buf.WriteMatch(int(seq.MatchLen),
 				int(seq.Offset))
 			if err != nil {
-				panic(err)
+				r.err = err
+				return r.err
 			}
 		}
 		s := r.p.uncompressedSize
 		if s == uint64(r.buf.Pos()) {
+			if !r.rd.possiblyAtEnd() {
+				_, err := r.readSeq()
+				if err != errEOS || !r.rd.possiblyAtEnd() {
+					r.err = ErrEncoding
+					return r.err
+				}
+			}
 			r.err = io.EOF
 			return r.err
 		}
