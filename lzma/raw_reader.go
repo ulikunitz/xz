@@ -71,16 +71,16 @@ func (h params) Verify() error {
 }
 
 // append adds the header to the slice s.
-func (h params) append(s []byte) []byte {
+func (h params) AppendBinary(p []byte) (r []byte, err error) {
 	var a [headerLen]byte
 	a[0] = h.p.byte()
 	putLE32(a[1:], h.dictSize)
 	putLE64(a[5:], h.uncompressedSize)
-	return append(s, a[:]...)
+	return append(p, a[:]...), nil
 }
 
 // parse parses the header from the slice x. x must have exactly header length.
-func (h *params) parse(x []byte) error {
+func (h *params) UnmarshalBinary(x []byte) error {
 	if len(x) != headerLen {
 		return errors.New("lzma: LZMA header has incorrect length")
 	}

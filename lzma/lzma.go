@@ -15,10 +15,9 @@ const minDictSize = 1 << 12
 
 var ErrUnexpectedEOS = errors.New("lzma: unexpected end of stream")
 
-// NewReader creates a reader for LZMA-compressed streams. It doesn't use
-// parallel go streams. The reader will either read the number of bytes given in
-// the header or read until the EOS. It is not an error that the z reader
-// doesn't stop at the LZMA stream end.
+// NewReader creates a reader for LZMA-compressed streams. The reader may report
+// EOF before z is fully read, because LZMA provides its own size or uses an EOS
+// marker.
 func NewReader(z io.Reader) (r io.Reader, err error) {
 	headerBuf := make([]byte, headerLen)
 	if _, err = io.ReadFull(z, headerBuf); err != nil {
@@ -29,7 +28,7 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 	}
 
 	var p params
-	if err = p.parse(headerBuf); err != nil {
+	if err = p.UnmarshalBinary(headerBuf); err != nil {
 		return nil, err
 	}
 	if p.dictSize < minDictSize {

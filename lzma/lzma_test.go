@@ -12,13 +12,13 @@ func TestHeader(t *testing.T) {
 		{Properties{3, 0, 2}, 1 << 15, eosSize},
 	}
 	for _, tc := range tests {
-		s := tc.append(nil)
-		var h params
-		if err := h.parse(s); err != nil {
+		s, _ := tc.AppendBinary(nil)
+		var p params
+		if err := p.UnmarshalBinary(s); err != nil {
 			t.Fatalf("h.parse error %s", err)
 		}
-		if h != tc {
-			t.Fatalf("got %+v; want %+v", h, tc)
+		if p != tc {
+			t.Fatalf("got %+v; want %+v", p, tc)
 		}
 	}
 }
