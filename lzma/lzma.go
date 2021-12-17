@@ -19,10 +19,9 @@ var ErrUnexpectedEOS = errors.New("lzma: unexpected end of stream")
 // ErrEncoding reports an encoding error
 var ErrEncoding = errors.New("lzma: wrong encoding")
 
-// NewReader creates a reader for LZMA-compressed streams. The reader may report
-// EOF before z is fully read, because LZMA provides its own size or uses an EOS
-// marker.
-func NewReader(z io.Reader) (r io.Reader, err error) {
+// NewReader creates a reader for LZMA-compressed streams. It reads the LZTMA
+// header and creates a reader.
+func NewReader(lzma io.Reader) (r io.Reader, err error) {
 	headerBuf := make([]byte, headerLen)
 	if _, err = io.ReadFull(z, headerBuf); err != nil {
 		if err == io.EOF {
@@ -42,12 +41,12 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 		return nil, err
 	}
 
-	rr := new(rawReader)
-	if err = rr.init(z, p); err != nil {
+	t := new(reader)
+	if err = t.init(z, p); err != nil {
 		return nil, err
 	}
 
-	return rr, nil
+	return t, nil
 }
 
 // WriterConfig provides configuration parameters for the LZMA writer.

@@ -93,8 +93,8 @@ func (h *params) UnmarshalBinary(x []byte) error {
 	return nil
 }
 
-// rawReader decompresses a byte stream of LZMA data.
-type rawReader struct {
+// reader decompresses a byte stream of LZMA data.
+type reader struct {
 	buf   lz.Buffer
 	state state
 	rd    rangeDecoder
@@ -102,7 +102,7 @@ type rawReader struct {
 	err   error
 }
 
-func (r *rawReader) init(z io.Reader, p params) error {
+func (r *reader) init(z io.Reader, p params) error {
 	r.p = p
 
 	err := r.buf.Init(int(p.dictSize), 2*int(p.dictSize))
@@ -123,23 +123,23 @@ func (r *rawReader) init(z io.Reader, p params) error {
 	return nil
 }
 
-func (r *rawReader) restart() {
+func (r *reader) restart() {
 	panic("TODO")
 }
 
-func (r *rawReader) resetState() {
+func (r *reader) resetState() {
 	panic("TODO")
 }
 
-func (r *rawReader) resetProperties(p Properties) error {
+func (r *reader) resetProperties(p Properties) error {
 	panic("TODO")
 }
 
-func (r *rawReader) resetDictionary(p Properties) error {
+func (r *reader) resetDictionary(p Properties) error {
 	panic("TODO")
 }
 
-func (r *rawReader) decodeLiteral() (seq lz.Seq, err error) {
+func (r *reader) decodeLiteral() (seq lz.Seq, err error) {
 	litState := r.state.litState(r.buf.ByteAtEnd(1), r.buf.Pos())
 	match := r.buf.ByteAtEnd(int(r.state.rep[0]) + 1)
 	s, err := r.state.litCodec.Decode(&r.rd, r.state.state, match, litState)
@@ -154,7 +154,7 @@ var errEOS = errors.New("EOS marker")
 // readSeq reads a single sequence. We are encoding a little bit differently
 // than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
 // the byte) or a match (MatchLen and Offset non-zero).
-func (r *rawReader) readSeq() (seq lz.Seq, err error) {
+func (r *reader) readSeq() (seq lz.Seq, err error) {
 	const eosDist = 1<<32 - 1
 
 	state, state2, posState := r.state.states(r.buf.Pos())
@@ -250,7 +250,7 @@ func (r *rawReader) readSeq() (seq lz.Seq, err error) {
 		nil
 }
 
-func (r *rawReader) fillBuffer() error {
+func (r *reader) fillBuffer() error {
 	if r.err != nil {
 		return r.err
 	}
@@ -313,7 +313,7 @@ func (r *rawReader) fillBuffer() error {
 	return nil
 }
 
-func (r *rawReader) Read(p []byte) (n int, err error) {
+func (r *reader) Read(p []byte) (n int, err error) {
 	if len(p) > r.buf.Len() {
 		err = r.fillBuffer()
 		if err != nil && err != io.EOF {
