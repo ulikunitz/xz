@@ -11,7 +11,7 @@ import (
 
 // ErrLimit indicates that the limit of the LimitedByteWriter has been
 // reached.
-var ErrLimit = errors.New("limit reached")
+var ErrLimit = errors.New("lzma: limit reached")
 
 // LimitedByteWriter provides a byte writer that can be written until a
 // limit is reached. The field N provides the number of remaining
