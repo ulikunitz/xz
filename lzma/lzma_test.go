@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -178,5 +179,45 @@ func TestWriterSimple(t *testing.T) {
 	g := out.String()
 	if g != text {
 		t.Fatalf("got %q; want %q", g, text)
+	}
+}
+func TestWriterFile(t *testing.T) {
+	const file = "testdata/enwik7"
+
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	defer f.Close()
+	h1 := sha256.New()
+	fr := io.TeeReader(f, h1)
+
+	var buf bytes.Buffer
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	if _, err = io.Copy(w, fr); err != nil {
+		t.Fatalf("io.Copy(w, r) error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+	t.Logf("buf.Len() %d", buf.Len())
+
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	h2 := sha256.New()
+	if _, err = io.Copy(h2, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+
+	hash1 := h1.Sum(nil)
+	hash2 := h2.Sum(nil)
+
+	if !bytes.Equal(hash1, hash2) {
+		t.Fatalf("go hash %x; want %x", hash2, hash1)
 	}
 }

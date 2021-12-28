@@ -192,9 +192,24 @@ func (w *writer) clearBuffer() error {
 			if s.MatchLen < minMatchLen {
 				panic("s.MatchLen < minMatchLen")
 			}
-			err = w.e.writeMatch(s.Offset-1, s.MatchLen)
-			if err != nil {
-				return err
+
+			for {
+				var k uint32
+				if s.MatchLen <= maxMatchLen {
+					k = s.MatchLen
+				} else if s.MatchLen >= maxMatchLen+minMatchLen {
+					k = maxMatchLen
+				} else {
+					k = s.MatchLen - minMatchLen
+				}
+				err = w.e.writeMatch(s.Offset-1, k)
+				if err != nil {
+					return err
+				}
+				s.MatchLen -= k
+				if s.MatchLen == 0 {
+					break
+				}
 			}
 		}
 		for _, c := range w.blk.Literals[litIndex:] {
