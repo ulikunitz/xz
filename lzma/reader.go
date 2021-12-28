@@ -123,6 +123,7 @@ func (r *reader) init(z io.Reader, p params) error {
 	return nil
 }
 
+/*
 func (r *reader) restart() {
 	panic("TODO")
 }
@@ -138,6 +139,7 @@ func (r *reader) resetProperties(p Properties) error {
 func (r *reader) resetDictionary(p Properties) error {
 	panic("TODO")
 }
+*/
 
 func (r *reader) decodeLiteral() (seq lz.Seq, err error) {
 	litState := r.state.litState(r.buf.ByteAtEnd(1), r.buf.Pos())
@@ -151,11 +153,13 @@ func (r *reader) decodeLiteral() (seq lz.Seq, err error) {
 
 var errEOS = errors.New("EOS marker")
 
+// Distance for EOS marker
+const eosDist = 1<<32 - 1
+
 // readSeq reads a single sequence. We are encoding a little bit differently
 // than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
 // the byte) or a match (MatchLen and Offset non-zero).
 func (r *reader) readSeq() (seq lz.Seq, err error) {
-	const eosDist = 1<<32 - 1
 
 	state, state2, posState := r.state.states(r.buf.Pos())
 

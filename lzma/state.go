@@ -70,6 +70,7 @@ func (s *state) reset() {
 	s.distCodec.init()
 }
 
+/*
 func (s *state) deepCopy(src *state) {
 	if s == src {
 		return
@@ -80,6 +81,7 @@ func (s *state) deepCopy(src *state) {
 	s.repLenCodec.deepCopy(&src.repLenCodec)
 	s.distCodec.deepCopy(&src.distCodec)
 }
+*/
 
 // updateStateLiteral updates the state for a literal.
 func (s *state) updateStateLiteral() {
@@ -189,6 +191,7 @@ type lengthCodec struct {
 	high   treeCodec
 }
 
+/*
 // deepCopy initializes the lc value as deep copy of the source value.
 func (lc *lengthCodec) deepCopy(src *lengthCodec) {
 	if lc == src {
@@ -203,6 +206,7 @@ func (lc *lengthCodec) deepCopy(src *lengthCodec) {
 	}
 	lc.high.deepCopy(&src.high)
 }
+*/
 
 // init initializes a new length codec.
 func (lc *lengthCodec) init() {
@@ -291,10 +295,12 @@ func makeTreeCodec(bits int) treeCodec {
 	return treeCodec{makeProbTree(bits)}
 }
 
+/*
 // deepCopy initializes tc as a deep copy of the source.
 func (tc *treeCodec) deepCopy(src *treeCodec) {
 	tc.probTree.deepCopy(&src.probTree)
 }
+*/
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
 func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
@@ -329,11 +335,13 @@ type treeReverseCodec struct {
 	probTree
 }
 
+/*
 // deepCopy initializes the treeReverseCodec as a deep copy of the
 // source.
 func (tc *treeReverseCodec) deepCopy(src *treeReverseCodec) {
 	tc.probTree.deepCopy(&src.probTree)
 }
+*/
 
 // makeTreeReverseCodec creates treeReverseCodec value. The bits argument must
 // be in the range [1,32].
@@ -377,6 +385,7 @@ type probTree struct {
 	bits  byte
 }
 
+/*
 // deepCopy initializes the probTree value as a deep copy of the source.
 func (t *probTree) deepCopy(src *probTree) {
 	if t == src {
@@ -386,6 +395,7 @@ func (t *probTree) deepCopy(src *probTree) {
 	copy(t.probs, src.probs)
 	t.bits = src.bits
 }
+*/
 
 // makeProbTree initializes a probTree structure.
 func makeProbTree(bits int) probTree {
@@ -405,121 +415,6 @@ func makeProbTree(bits int) probTree {
 // Bits provides the number of bits for the values to de- or encode.
 func (t *probTree) Bits() int {
 	return int(t.bits)
-}
-
-// rangeEncoder implements range encoding of single bits. The low value can
-// overflow therefore we need uint64. The cache value is used to handle
-// overflows.
-type rangeEncoder struct {
-	lbw      *LimitedByteWriter
-	nrange   uint32
-	low      uint64
-	cacheLen int64
-	cache    byte
-}
-
-// maxInt64 provides the  maximal value of the int64 type
-const maxInt64 = 1<<63 - 1
-
-// newRangeEncoder creates a new range encoder.
-func newRangeEncoder(bw io.ByteWriter) (re *rangeEncoder, err error) {
-	lbw, ok := bw.(*LimitedByteWriter)
-	if !ok {
-		lbw = &LimitedByteWriter{BW: bw, N: maxInt64}
-	}
-	return &rangeEncoder{
-		lbw:      lbw,
-		nrange:   0xffffffff,
-		cacheLen: 1}, nil
-}
-
-// Available returns the number of bytes that still can be written. The
-// method takes the bytes that will be currently written by Close into
-// account.
-func (e *rangeEncoder) Available() int64 {
-	return e.lbw.N - (e.cacheLen + 4)
-}
-
-// writeByte writes a single byte to the underlying writer. An error is
-// returned if the limit is reached. The written byte will be counted if
-// the underlying writer doesn't return an error.
-func (e *rangeEncoder) writeByte(c byte) error {
-	if e.Available() < 1 {
-		return ErrLimit
-	}
-	return e.lbw.WriteByte(c)
-}
-
-// DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
-func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
-	e.nrange >>= 1
-	e.low += uint64(e.nrange) & (0 - (uint64(b) & 1))
-
-	// normalize
-	const top = 1 << 24
-	if e.nrange >= top {
-		return nil
-	}
-	e.nrange <<= 8
-	return e.shiftLow()
-}
-
-// EncodeBit encodes the least significant bit of b. The p value will be
-// updated by the function depending on the bit encoded.
-func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
-	bound := p.bound(e.nrange)
-	if b&1 == 0 {
-		e.nrange = bound
-		p.inc()
-	} else {
-		e.low += uint64(bound)
-		e.nrange -= bound
-		p.dec()
-	}
-
-	// normalize
-	const top = 1 << 24
-	if e.nrange >= top {
-		return nil
-	}
-	e.nrange <<= 8
-	return e.shiftLow()
-}
-
-// Close writes a complete copy of the low value.
-func (e *rangeEncoder) Close() error {
-	for i := 0; i < 5; i++ {
-		if err := e.shiftLow(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// shiftLow shifts the low value for 8 bit. The shifted byte is written into
-// the byte writer. The cache value is used to handle overflows.
-func (e *rangeEncoder) shiftLow() error {
-	if uint32(e.low) < 0xff000000 || (e.low>>32) != 0 {
-		tmp := e.cache
-		for {
-			err := e.writeByte(tmp + byte(e.low>>32))
-			if err != nil {
-				return err
-			}
-			tmp = 0xff
-			e.cacheLen--
-			if e.cacheLen <= 0 {
-				if e.cacheLen < 0 {
-					panic("negative cacheLen")
-				}
-				break
-			}
-		}
-		e.cache = byte(uint32(e.low) >> 24)
-	}
-	e.cacheLen++
-	e.low = uint64(uint32(e.low) << 8)
-	return nil
 }
 
 // rangeDecoder decodes single bits of the range encoding stream.
@@ -623,6 +518,7 @@ type literalCodec struct {
 	probs []prob
 }
 
+/*
 // deepCopy initializes literal codec c as a deep copy of the source.
 func (c *literalCodec) deepCopy(src *literalCodec) {
 	if c == src {
@@ -631,6 +527,7 @@ func (c *literalCodec) deepCopy(src *literalCodec) {
 	c.probs = make([]prob, len(src.probs))
 	copy(c.probs, src.probs)
 }
+*/
 
 // init initializes the literal codec.
 func (c *literalCodec) init(lc, lp int) {
@@ -743,7 +640,7 @@ const (
 	// minimum supported distance
 	minDistance = 1
 	// maximum supported distance, value is used for the eos marker.
-	maxDistance = 1 << 32
+	maxDistance = 1<<32 - 1
 	// number of the supported len states
 	lenStates = 4
 	// start for the position models
@@ -763,6 +660,7 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
+/*
 // deepCopy initializes dc as deep copy of the source.
 func (dc *distCodec) deepCopy(src *distCodec) {
 	if dc == src {
@@ -776,6 +674,7 @@ func (dc *distCodec) deepCopy(src *distCodec) {
 	}
 	dc.alignCodec.deepCopy(&src.alignCodec)
 }
+*/
 
 // newDistCodec creates a new distance codec.
 func (dc *distCodec) init() {

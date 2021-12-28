@@ -152,3 +152,31 @@ func TestBadExamples(t *testing.T) {
 		})
 	}
 }
+
+func TestWriterSimple(t *testing.T) {
+	const text = "The quick brown fox jumps over the lazy dog.\n"
+	var buf bytes.Buffer
+	w, err := NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	if _, err = io.WriteString(w, text); err != nil {
+		t.Fatalf("io.WriteString(w, %q) error %s", text, err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	var out bytes.Buffer
+	if _, err = io.Copy(&out, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+
+	g := out.String()
+	if g != text {
+		t.Fatalf("got %q; want %q", g, text)
+	}
+}
