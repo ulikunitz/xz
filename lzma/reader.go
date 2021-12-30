@@ -55,7 +55,7 @@ const headerLen = 13
 
 // params defines the parameters for the LZMA method
 type params struct {
-	p                Properties
+	props            Properties
 	dictSize         uint32
 	uncompressedSize uint64
 }
@@ -67,13 +67,13 @@ func (h params) Verify() error {
 	if h.dictSize < minDictSize {
 		return errors.New("lzma: dictSize is too small")
 	}
-	return h.p.Verify()
+	return h.props.Verify()
 }
 
 // append adds the header to the slice s.
 func (h params) AppendBinary(p []byte) (r []byte, err error) {
 	var a [headerLen]byte
-	a[0] = h.p.byte()
+	a[0] = h.props.byte()
 	putLE32(a[1:], h.dictSize)
 	putLE64(a[5:], h.uncompressedSize)
 	return append(p, a[:]...), nil
@@ -85,7 +85,7 @@ func (h *params) UnmarshalBinary(x []byte) error {
 		return errors.New("lzma: LZMA header has incorrect length")
 	}
 	var err error
-	if err = h.p.fromByte(x[0]); err != nil {
+	if err = h.props.fromByte(x[0]); err != nil {
 		return err
 	}
 	h.dictSize = getLE32(x[1:])
@@ -95,55 +95,38 @@ func (h *params) UnmarshalBinary(x []byte) error {
 
 // reader decompresses a byte stream of LZMA data.
 type reader struct {
-	buf   lz.Buffer
-	state state
-	rd    rangeDecoder
-	p     params
-	err   error
+	dict              lz.Buffer
+	state             state
+	rd                rangeDecoder
+	eof               bool
+	uncompressedLimit int64
+	err               error
 }
 
-func (r *reader) init(z io.Reader, p params) error {
-	r.p = p
-
-	err := r.buf.Init(int(p.dictSize), 2*int(p.dictSize))
-	if err != nil {
-		return err
+func (r *reader) start(z io.Reader, uncompressedSize uint64) error {
+	if uncompressedSize == eosSize {
+		r.uncompressedLimit = -1
+	} else {
+		u := uint64(r.dict.Pos()) + uncompressedSize
+		r.uncompressedLimit = int64(u)
+		if r.uncompressedLimit < 0 || u < uncompressedSize {
+			return errors.New("lzma: overflow")
+		}
 	}
-
-	// TODO: implement our own byte reader to inline the Read function
 	br, ok := z.(io.ByteReader)
 	if !ok {
 		br = bufio.NewReader(z)
 	}
-	if err = r.rd.init(br); err != nil {
+	if err := r.rd.init(br); err != nil {
 		return err
 	}
-	r.state.init(p.p)
-
+	r.eof = false
 	return nil
 }
 
-/*
-func (r *reader) restart() {
-	panic("TODO")
-}
-
-func (r *reader) resetState() {
-	panic("TODO")
-}
-
-func (r *reader) resetProperties(p Properties) error {
-	panic("TODO")
-}
-
-func (r *reader) resetDictionary(p Properties) error {
-	panic("TODO")
-}
-*/
-
 func (r *reader) decodeLiteral() (seq lz.Seq, err error) {
-	litState := r.state.litState(r.buf.ByteAtEnd(1), r.buf.Pos())
-	match := r.buf.ByteAtEnd(int(r.state.rep[0]) + 1)
+	litState := r.state.litState(r.dict.ByteAtEnd(1), r.dict.Pos())
+	match := r.dict.ByteAtEnd(int(r.state.rep[0]) + 1)
 	s, err := r.state.litCodec.Decode(&r.rd, r.state.state, match, litState)
 	if err != nil {
 		return lz.Seq{}, err
@@ -161,7 +144,7 @@ const eosDist = 1<<32 - 1
 // the byte) or a match (MatchLen and Offset non-zero).
 func (r *reader) readSeq() (seq lz.Seq, err error) {
 
-	state, state2, posState := r.state.states(r.buf.Pos())
+	state, state2, posState := r.state.states(r.dict.Pos())
 
 	s2 := &r.state.s2[state2]
 	b, err := r.rd.decodeBit(&s2.isMatch)
@@ -255,78 +238,106 @@ func (r *reader) readSeq() (seq lz.Seq, err error) {
 }
 
 func (r *reader) fillBuffer() error {
-	if r.err != nil {
-		return r.err
-	}
-	for r.buf.Available() >= maxMatchLen {
+	for r.dict.Available() >= maxMatchLen {
 		seq, err := r.readSeq()
 		if err != nil {
 			if err == errEOS {
 				if !r.rd.possiblyAtEnd() {
-					r.err = ErrEncoding
-					return r.err
+					return err
 				}
-				s := r.p.uncompressedSize
-				if s != eosSize && s != uint64(r.buf.Pos()) {
-					r.err = ErrUnexpectedEOS
-					return r.err
+				s := r.uncompressedLimit
+				if s >= 0 && s != r.dict.Pos() {
+					return err
 				}
-				r.err = io.EOF
-				return r.err
+				return io.EOF
 			}
 			if err == io.EOF {
-				s := r.p.uncompressedSize
-				if !r.rd.possiblyAtEnd() || s == eosSize {
-					r.err = io.ErrUnexpectedEOF
-					return r.err
+				s := r.uncompressedLimit
+				if !r.rd.possiblyAtEnd() || s < 0 {
+					return io.ErrUnexpectedEOF
 				}
-				if s != uint64(r.buf.Pos()) {
-					r.err = io.ErrUnexpectedEOF
+				if s != r.dict.Pos() {
+					return io.ErrUnexpectedEOF
 				}
-				r.err = io.EOF
-				return r.err
+				return io.EOF
 			}
-			r.err = err
-			return r.err
+			return err
 		}
 		if seq.MatchLen == 0 {
-			if err = r.buf.WriteByte(byte(seq.Aux)); err != nil {
+			if err = r.dict.WriteByte(byte(seq.Aux)); err != nil {
 				panic(err)
 			}
 		} else {
-			err = r.buf.WriteMatch(int(seq.MatchLen),
+			err = r.dict.WriteMatch(int(seq.MatchLen),
 				int(seq.Offset))
 			if err != nil {
-				r.err = err
-				return r.err
+				return err
 			}
 		}
-		s := r.p.uncompressedSize
-		if s == uint64(r.buf.Pos()) {
+		if r.uncompressedLimit == r.dict.Pos() {
 			if !r.rd.possiblyAtEnd() {
 				_, err := r.readSeq()
 				if err != errEOS || !r.rd.possiblyAtEnd() {
-					r.err = ErrEncoding
-					return r.err
+					return ErrEncoding
 				}
 			}
-			r.err = io.EOF
-			return r.err
+			return io.EOF
 		}
 	}
 	return nil
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {
-	if len(p) > r.buf.Len() {
-		err = r.fillBuffer()
-		if err != nil && err != io.EOF {
-			return 0, err
+	if r.err != nil {
+		return 0, r.err
+	}
+	for {
+		if r.dict.Len() == 0 {
+			if r.eof {
+				r.err = io.EOF
+				return n, io.EOF
+			}
+			err = r.fillBuffer()
+			if err != nil {
+				if err == io.EOF {
+					r.eof = true
+					continue
+				}
+				r.err = err
+				return n, r.err
+			}
+		}
+		k, err := r.dict.Read(p[n:])
+		n += k
+		if n == len(p) {
+			return n, nil
+		}
+		if err != nil {
+			r.err = err
+			return n, err
 		}
 	}
-	n, _ = r.buf.Read(p)
-	if n == 0 {
-		return 0, err
+}
+
+type uncompressedReader struct {
+	dict *lz.Buffer
+	z    io.Reader
+}
+
+func (r *uncompressedReader) Read(p []byte) (n int, err error) {
+	for {
+		k, err := r.dict.Read(p[n:])
+		n += k
+		if err != nil {
+			return n, err
+		}
+		if n == len(p) {
+			return n, nil
+		}
+		k = r.dict.Available()
+		m, err := io.CopyN(r.dict, r.z, int64(k))
+		if m == 0 {
+			return n, err
+		}
 	}
-	return n, nil
 }

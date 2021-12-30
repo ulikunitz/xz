@@ -51,3 +51,8 @@ func getLE64(p []byte) uint64 {
 	x |= uint64(p[7]) << 56
 	return x
 }
+
+func getBE16(p []byte) uint16 {
+	_ = p[1]
+	return uint16(p[0]) << 8 | uint16(p[1])
+}

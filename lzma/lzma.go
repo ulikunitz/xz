@@ -46,7 +46,11 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 	}
 
 	t := new(reader)
-	if err = t.init(z, p); err != nil {
+	if err = t.dict.Init(int(p.dictSize), 2*int(p.dictSize)); err != nil {
+		return nil, err
+	}
+	t.state.init(p.props)
+	if err = t.start(z, p.uncompressedSize); err != nil {
 		return nil, err
 	}
 
@@ -136,7 +140,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		bw:  bufio.NewWriter(z),
 	}
 	h := params{
-		p:                cfg.Properties,
+		props:       cfg.Properties,
 		dictSize:         uint32(wr.w.WindowSize),
 		uncompressedSize: eosSize,
 	}

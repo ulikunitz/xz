@@ -51,8 +51,8 @@ type state struct {
 	posBitMask uint32
 }
 
-func (s *state) init(p Properties) {
-	*s = state{Properties: p}
+func (s *state) init(props Properties) {
+	*s = state{Properties: props}
 	s.reset()
 }
 
