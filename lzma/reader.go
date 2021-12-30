@@ -292,27 +292,25 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		return 0, r.err
 	}
 	for {
-		if r.dict.Len() == 0 {
-			if r.eof {
-				r.err = io.EOF
-				return n, io.EOF
-			}
-			err = r.fillBuffer()
-			if err != nil {
-				if err == io.EOF {
-					r.eof = true
-					continue
-				}
-				r.err = err
-				return n, r.err
-			}
-		}
 		k, err := r.dict.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
 		}
 		if err != nil {
+			if err == lz.ErrEmptyBuffer {
+				if r.eof {
+					r.err = io.EOF
+					return n, io.EOF
+				}
+				if err = r.fillBuffer(); err == nil {
+					continue
+				}
+				if err == io.EOF {
+					r.eof = true
+					continue
+				}
+			}
 			r.err = err
 			return n, err
 		}
