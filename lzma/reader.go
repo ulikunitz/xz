@@ -98,7 +98,6 @@ type reader struct {
 	dict              lz.Buffer
 	state             state
 	rd                rangeDecoder
-	eof               bool
 	uncompressedLimit int64
 	err               error
 }
@@ -120,7 +119,7 @@ func (r *reader) start(z io.Reader, uncompressedSize uint64) error {
 	if err := r.rd.init(br); err != nil {
 		return err
 	}
-	r.eof = false
+	r.err = nil
 	return nil
 }
 
@@ -143,7 +142,6 @@ const eosDist = 1<<32 - 1
 // than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
 // the byte) or a match (MatchLen and Offset non-zero).
 func (r *reader) readSeq() (seq lz.Seq, err error) {
-
 	state, state2, posState := r.state.states(r.dict.Pos())
 
 	s2 := &r.state.s2[state2]
@@ -238,29 +236,24 @@ func (r *reader) readSeq() (seq lz.Seq, err error) {
 }
 
 func (r *reader) fillBuffer() error {
+	if r.err != nil {
+		return r.err
+	}
 	for r.dict.Available() >= maxMatchLen {
 		seq, err := r.readSeq()
 		if err != nil {
-			if err == errEOS {
-				if !r.rd.possiblyAtEnd() {
-					return err
+			s := r.uncompressedLimit
+			switch err {
+			case errEOS:
+				if r.rd.possiblyAtEnd() && (s < 0 || s == r.dict.Pos()) {
+					err = io.EOF
 				}
-				s := r.uncompressedLimit
-				if s >= 0 && s != r.dict.Pos() {
-					return err
+			case io.EOF:
+				if !r.rd.possiblyAtEnd() || s != r.dict.Pos() {
+					err = io.ErrUnexpectedEOF
 				}
-				return io.EOF
 			}
-			if err == io.EOF {
-				s := r.uncompressedLimit
-				if !r.rd.possiblyAtEnd() || s < 0 {
-					return io.ErrUnexpectedEOF
-				}
-				if s != r.dict.Pos() {
-					return io.ErrUnexpectedEOF
-				}
-				return io.EOF
-			}
+			r.err = err
 			return err
 		}
 		if seq.MatchLen == 0 {
@@ -271,47 +264,37 @@ func (r *reader) fillBuffer() error {
 			err = r.dict.WriteMatch(int(seq.MatchLen),
 				int(seq.Offset))
 			if err != nil {
+				r.err = err
 				return err
 			}
 		}
 		if r.uncompressedLimit == r.dict.Pos() {
+			err = io.EOF
 			if !r.rd.possiblyAtEnd() {
-				_, err := r.readSeq()
-				if err != errEOS || !r.rd.possiblyAtEnd() {
-					return ErrEncoding
+				_, serr := r.readSeq()
+				if serr != errEOS || !r.rd.possiblyAtEnd() {
+					err = ErrEncoding
 				}
 			}
-			return io.EOF
+			r.err = err
+			return err
 		}
 	}
 	return nil
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {
-	if r.err != nil {
-		return 0, r.err
-	}
 	for {
-		k, err := r.dict.Read(p[n:])
+		// Read from a dictionary never returns an error
+		k, _ := r.dict.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
 		}
-		if err != nil {
-			if err == lz.ErrEmptyBuffer {
-				if r.eof {
-					r.err = io.EOF
-					return n, io.EOF
-				}
-				if err = r.fillBuffer(); err == nil {
-					continue
-				}
-				if err == io.EOF {
-					r.eof = true
-					continue
-				}
+		if err = r.fillBuffer(); err != nil {
+			if r.dict.Len() > 0 {
+				continue
 			}
-			r.err = err
 			return n, err
 		}
 	}
@@ -322,21 +305,22 @@ type uncompressedReader struct {
 	z    io.Reader
 }
 
+func (r *uncompressedReader) fillBuffer() error {
+	_, err := io.CopyN(r.dict, r.z, int64(r.dict.Available()))
+	return err
+}
+
 func (r *uncompressedReader) Read(p []byte) (n int, err error) {
 	for {
-		k, err := r.dict.Read(p[n:])
+		// dictionary reads never return an error
+		k, _ := r.dict.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
 		}
-		if err != nil {
-			if err == lz.ErrEmptyBuffer {
-				var m int64
-				m, err = io.CopyN(r.dict, r.z,
-					int64(r.dict.Available()))
-				if m > 0 {
-					continue
-				}
+		if err = r.fillBuffer(); err != nil {
+			if r.dict.Len() > 0 {
+				continue
 			}
 			return n, err
 		}
