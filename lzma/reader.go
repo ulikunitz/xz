@@ -328,15 +328,18 @@ func (r *uncompressedReader) Read(p []byte) (n int, err error) {
 	for {
 		k, err := r.dict.Read(p[n:])
 		n += k
-		if err != nil {
-			return n, err
-		}
 		if n == len(p) {
 			return n, nil
 		}
-		k = r.dict.Available()
-		m, err := io.CopyN(r.dict, r.z, int64(k))
-		if m == 0 {
+		if err != nil {
+			if err == lz.ErrEmptyBuffer {
+				var m int64
+				m, err = io.CopyN(r.dict, r.z,
+					int64(r.dict.Available()))
+				if m > 0 {
+					continue
+				}
+			}
 			return n, err
 		}
 	}
