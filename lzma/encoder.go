@@ -24,7 +24,11 @@ func (e *encoder) init(bw io.ByteWriter, window *lz.Window, p Properties) {
 	e.re.init(bw)
 }
 
-/*
+func (e *encoder) reset(bw io.ByteWriter, pos int64) {
+	e.pos = pos
+	e.re.init(bw)
+}
+
 func (e *encoder) clone(src *encoder) {
 	if e == src {
 		return
@@ -32,7 +36,7 @@ func (e *encoder) clone(src *encoder) {
 	*e = *src
 	e.state.deepCopy(&src.state)
 }
-*/
+
 
 /*
 func (e *encoder) reopen(bw io.ByteWriter) {

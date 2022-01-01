@@ -70,7 +70,6 @@ func (s *state) reset() {
 	s.distCodec.init()
 }
 
-/*
 func (s *state) deepCopy(src *state) {
 	if s == src {
 		return
@@ -81,7 +80,6 @@ func (s *state) deepCopy(src *state) {
 	s.repLenCodec.deepCopy(&src.repLenCodec)
 	s.distCodec.deepCopy(&src.distCodec)
 }
-*/
 
 // updateStateLiteral updates the state for a literal.
 func (s *state) updateStateLiteral() {
@@ -191,7 +189,6 @@ type lengthCodec struct {
 	high   treeCodec
 }
 
-/*
 // deepCopy initializes the lc value as deep copy of the source value.
 func (lc *lengthCodec) deepCopy(src *lengthCodec) {
 	if lc == src {
@@ -206,7 +203,6 @@ func (lc *lengthCodec) deepCopy(src *lengthCodec) {
 	}
 	lc.high.deepCopy(&src.high)
 }
-*/
 
 // init initializes a new length codec.
 func (lc *lengthCodec) init() {
@@ -295,12 +291,10 @@ func makeTreeCodec(bits int) treeCodec {
 	return treeCodec{makeProbTree(bits)}
 }
 
-/*
 // deepCopy initializes tc as a deep copy of the source.
 func (tc *treeCodec) deepCopy(src *treeCodec) {
 	tc.probTree.deepCopy(&src.probTree)
 }
-*/
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
 func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
@@ -335,13 +329,11 @@ type treeReverseCodec struct {
 	probTree
 }
 
-/*
 // deepCopy initializes the treeReverseCodec as a deep copy of the
 // source.
 func (tc *treeReverseCodec) deepCopy(src *treeReverseCodec) {
 	tc.probTree.deepCopy(&src.probTree)
 }
-*/
 
 // makeTreeReverseCodec creates treeReverseCodec value. The bits argument must
 // be in the range [1,32].
@@ -385,7 +377,7 @@ type probTree struct {
 	bits  byte
 }
 
-/*
+
 // deepCopy initializes the probTree value as a deep copy of the source.
 func (t *probTree) deepCopy(src *probTree) {
 	if t == src {
@@ -395,7 +387,6 @@ func (t *probTree) deepCopy(src *probTree) {
 	copy(t.probs, src.probs)
 	t.bits = src.bits
 }
-*/
 
 // makeProbTree initializes a probTree structure.
 func makeProbTree(bits int) probTree {
@@ -518,7 +509,7 @@ type literalCodec struct {
 	probs []prob
 }
 
-/*
+
 // deepCopy initializes literal codec c as a deep copy of the source.
 func (c *literalCodec) deepCopy(src *literalCodec) {
 	if c == src {
@@ -527,7 +518,7 @@ func (c *literalCodec) deepCopy(src *literalCodec) {
 	c.probs = make([]prob, len(src.probs))
 	copy(c.probs, src.probs)
 }
-*/
+
 
 // init initializes the literal codec.
 func (c *literalCodec) init(lc, lp int) {
@@ -660,7 +651,6 @@ type distCodec struct {
 	alignCodec    treeReverseCodec
 }
 
-/*
 // deepCopy initializes dc as deep copy of the source.
 func (dc *distCodec) deepCopy(src *distCodec) {
 	if dc == src {
@@ -674,7 +664,7 @@ func (dc *distCodec) deepCopy(src *distCodec) {
 	}
 	dc.alignCodec.deepCopy(&src.alignCodec)
 }
-*/
+
 
 // newDistCodec creates a new distance codec.
 func (dc *distCodec) init() {
