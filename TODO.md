@@ -2,22 +2,18 @@
 
 ## Release v0.6
 
-1. Create a new nlzma package
-2. Design the public interface include parallel encoder
 1. Review whether EncodeBit and DecodeBit must return an error
-1. Rewrite lzma using the new lz module
-2. address the false sharing (CPU cache) of the lzma state
+2. Rewrite lzma using the new lz module
 3. Support parallel go routines for LZMA2
-4. Review xz implementation particularly the use of Marshal. It allocates memory
-   unnecesarily, which can be avoided by an append approach
-5. Make parellel encoding the default setup
-6. Fuzz lzma
-7. Fuzz lzma2
-8. Fuzz xz
-9. Rewrite README.md
+4. Make parellel encoding the default setup
+8. Fuzz lzma
+9. Fuzz lzma2
+10. Fuzz xz
+11. Update dependencies in go.mod
+12. Rewrite README.md
    - provide example for parallel encoding  
-   - create picture that compares speed improvements (v0.5, v0.6, v0.7 parallel)
-10. Review open issues after final release
+   - create picture that compares speed improvements (v0.5, v0.6)
+13. Review open issues after final release
 
 ## Release v0.8
 
@@ -44,6 +40,11 @@
 * `git push`
 
 ## Log
+
+### 2021-01-05
+
+I had a working lzma Writer and Reader implemented over the holidays.
+Now I need to complete the work on lzma2.
 
 ### 2021-12-09 
 
