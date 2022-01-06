@@ -5,15 +5,16 @@
 1. Review whether EncodeBit and DecodeBit must return an error
 2. Rewrite lzma using the new lz module
 3. Support parallel go routines for LZMA2
-4. Make parellel encoding the default setup
-8. Fuzz lzma
-9. Fuzz lzma2
-10. Fuzz xz
-11. Update dependencies in go.mod
-12. Rewrite README.md
+4. Support fixed size header for LZMA
+5. Make parellel encoding the default setup
+6. Fuzz lzma
+7. Fuzz lzma2
+8. Fuzz xz
+9. Update dependencies in go.mod
+10. Rewrite README.md
    - provide example for parallel encoding  
    - create picture that compares speed improvements (v0.5, v0.6)
-13. Review open issues after final release
+11. Review open issues after final release
 
 ## Release v0.8
 
