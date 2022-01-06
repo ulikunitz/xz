@@ -377,7 +377,6 @@ type probTree struct {
 	bits  byte
 }
 
-
 // deepCopy initializes the probTree value as a deep copy of the source.
 func (t *probTree) deepCopy(src *probTree) {
 	if t == src {
@@ -509,7 +508,6 @@ type literalCodec struct {
 	probs []prob
 }
 
-
 // deepCopy initializes literal codec c as a deep copy of the source.
 func (c *literalCodec) deepCopy(src *literalCodec) {
 	if c == src {
@@ -518,7 +516,6 @@ func (c *literalCodec) deepCopy(src *literalCodec) {
 	c.probs = make([]prob, len(src.probs))
 	copy(c.probs, src.probs)
 }
-
 
 // init initializes the literal codec.
 func (c *literalCodec) init(lc, lp int) {
@@ -665,7 +662,6 @@ func (dc *distCodec) deepCopy(src *distCodec) {
 	dc.alignCodec.deepCopy(&src.alignCodec)
 }
 
-
 // newDistCodec creates a new distance codec.
 func (dc *distCodec) init() {
 	for i := range dc.posSlotCodecs {
@@ -700,7 +696,7 @@ func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) 
 	} else {
 		_bits = uint32(30 - bits.LeadingZeros32(dist))
 		posSlot = startPosModel - 2 + (_bits << 1)
-		posSlot += (dist >> uint(_bits)) & 1
+		posSlot += (dist >> _bits) & 1
 	}
 
 	if err = dc.posSlotCodecs[lenState(l)].Encode(e, posSlot); err != nil {
