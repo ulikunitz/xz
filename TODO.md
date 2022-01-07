@@ -2,11 +2,14 @@
 
 ## Release v0.6
 
-1. Review whether EncodeBit and DecodeBit must return an error
-2. Rewrite lzma using the new lz module
-3. Support parallel go routines for LZMA2
-4. Support fixed size header for LZMA
-5. Make parellel encoding the default setup
+1. Write RawWriter and RawReader and ensure that we can cycle data through it
+2. Use RawWriter and RawReader to implement LZMA
+  - Support fixed size header for LZMA
+3. Use RawWriter and RawReader to implement LZMA2
+  - Support parallel go routines for LZMA2 
+  - Make parellel encoding the default setup
+4. Review whether EncodeBit and DecodeBit must return an error
+5. Fuzz RawReader and RawWriter
 6. Fuzz lzma
 7. Fuzz lzma2
 8. Fuzz xz
