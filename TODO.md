@@ -15,13 +15,14 @@
 8. Fuzz xz
 9. Update dependencies in go.mod
 10. Rewrite README.md
-   - provide example for parallel encoding  
-   - create picture that compares speed improvements (v0.5, v0.6)
+  - provide example for parallel encoding  
+  - create picture that compares speed improvements (v0.5, v0.6)
 11. Review open issues after final release
 
-## Release v0.8
+## Release v0.7
 
 1. Provide manual page for gxz
+2. Support lzma, xz and lzip
 
 ## Release v1.0
 
