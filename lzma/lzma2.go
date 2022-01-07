@@ -144,7 +144,12 @@ func (w *segmentWriter) compressChunk(in []byte, flags byte) (out []byte,
 		}
 	}
 
-	return bw.data
+	// TODO: remove
+	_ = sel
+	_ = start
+
+	// TODO: return the right flags
+	return bw.data, rflags
 }
 
 // compress2 compresses the given data into the slice out using seq and state
