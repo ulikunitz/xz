@@ -1,4 +1,4 @@
-package lzma
+package lzma_1
 
 import (
 	"errors"

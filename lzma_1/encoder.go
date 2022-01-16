@@ -1,4 +1,4 @@
-package lzma
+package lzma_1
 
 import (
 	"errors"
@@ -36,7 +36,6 @@ func (e *encoder) clone(src *encoder) {
 	*e = *src
 	e.state.deepCopy(&src.state)
 }
-
 
 /*
 func (e *encoder) reopen(bw io.ByteWriter) {

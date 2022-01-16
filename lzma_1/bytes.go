@@ -1,4 +1,4 @@
-package lzma
+package lzma_1
 
 // putLE32 write a uint32 value into the slice p using little endian encoding.
 // The p slice must have at least length four.
@@ -54,5 +54,5 @@ func getLE64(p []byte) uint64 {
 
 func getBE16(p []byte) uint16 {
 	_ = p[1]
-	return uint16(p[0]) << 8 | uint16(p[1])
+	return uint16(p[0])<<8 | uint16(p[1])
 }

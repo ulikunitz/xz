@@ -1,4 +1,4 @@
-package lzma
+package lzma_1
 
 import (
 	"bufio"
@@ -140,7 +140,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		bw:  bufio.NewWriter(z),
 	}
 	h := params{
-		props:       cfg.Properties,
+		props:            cfg.Properties,
 		dictSize:         uint32(wr.w.WindowSize),
 		uncompressedSize: eosSize,
 	}
