@@ -2,22 +2,20 @@
 
 ## Release v0.6
 
-1. Write RawWriter and RawReader and ensure that we can cycle data through it
-2. Use RawWriter and RawReader to implement LZMA
-  - Support fixed size header for LZMA
-3. Use RawWriter and RawReader to implement LZMA2
-  - Support parallel go routines for LZMA2 
-  - Make parellel encoding the default setup
-4. Review whether EncodeBit and DecodeBit must return an error
-5. Fuzz RawReader and RawWriter
-6. Fuzz lzma
-7. Fuzz lzma2
-8. Fuzz xz
-9. Update dependencies in go.mod
-10. Rewrite README.md
+### New lzma
+
+- Write raw reader for lzma1 that can be used for lzip, export it
+- Write raw writer for lzma1 that can be used for lzip, export it
+- Write ChunkReader and ChunkWriter
+
+### Remaining Tasks
+
+1. Fuzz lzma and xz
+2. Update dependencies in go.mod
+3. Rewrite README.md
   - provide example for parallel encoding  
   - create picture that compares speed improvements (v0.5, v0.6)
-11. Review open issues after final release
+4. Review open issues after final release
 
 ## Release v0.7
 
