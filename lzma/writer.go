@@ -302,7 +302,7 @@ func (lw *limitWriter) Close() error {
 	if lw.n > 0 {
 		return errors.New("lzma: more data required")
 	}
-	return lw.Close()
+	return lw.w.Close()
 }
 
 type WriterConfig struct {
