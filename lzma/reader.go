@@ -5,14 +5,10 @@ import (
 	"errors"
 	"io"
 	"math"
-
-	"github.com/ulikunitz/lz"
 )
 
 type reader struct {
-	dict  lz.Buffer
-	state state
-	rd    rangeDecoder
+	decoder
 	// size < 0 means we wait for EOS
 	size int64
 	err  error
@@ -155,120 +151,10 @@ var errEOS = errors.New("EOS marker")
 // Distance for EOS marker
 const eosDist = 1<<32 - 1
 
-func (r *reader) decodeLiteral() (seq lz.Seq, err error) {
-	litState := r.state.litState(r.dict.ByteAtEnd(1), r.dict.Pos())
-	match := r.dict.ByteAtEnd(int(r.state.rep[0]) + 1)
-	s, err := r.state.litCodec.Decode(&r.rd, r.state.state, match, litState)
-	if err != nil {
-		return lz.Seq{}, err
-	}
-	return lz.Seq{LitLen: 1, Aux: uint32(s)}, nil
-}
-
-// readSeq reads a single sequence. We are encoding a little bit differently
-// than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
-// the byte) or a match (MatchLen and Offset non-zero).
-func (r *reader) readSeq() (seq lz.Seq, err error) {
-	state, state2, posState := r.state.states(r.dict.Pos())
-
-	s2 := &r.state.s2[state2]
-	b, err := r.rd.decodeBit(&s2.isMatch)
-	if err != nil {
-		return lz.Seq{}, err
-	}
-	if b == 0 {
-		// literal
-		seq, err := r.decodeLiteral()
-		if err != nil {
-			return lz.Seq{}, err
-		}
-		r.state.updateStateLiteral()
-		return seq, nil
-	}
-
-	s1 := &r.state.s1[state]
-	b, err = r.rd.decodeBit(&s1.isRep)
-	if err != nil {
-		return lz.Seq{}, err
-	}
-	if b == 0 {
-		// simple match
-		r.state.rep[3], r.state.rep[2], r.state.rep[1] =
-			r.state.rep[2], r.state.rep[1], r.state.rep[0]
-
-		r.state.updateStateMatch()
-		// The length decoder returns the length offset.
-		n, err := r.state.lenCodec.Decode(&r.rd, posState)
-		if err != nil {
-			return lz.Seq{}, err
-		}
-		// The dist decoder returns the distance offset. The actual
-		// distance is 1 higher.
-		r.state.rep[0], err = r.state.distCodec.Decode(&r.rd, n)
-		if err != nil {
-			return lz.Seq{}, err
-		}
-		if r.state.rep[0] == eosDist {
-			return lz.Seq{}, errEOS
-		}
-		return lz.Seq{MatchLen: n + minMatchLen,
-			Offset: r.state.rep[0] + minDistance}, nil
-	}
-	b, err = r.rd.decodeBit(&s1.isRepG0)
-	if err != nil {
-		return lz.Seq{}, err
-	}
-	dist := r.state.rep[0]
-	if b == 0 {
-		// rep match 0
-		b, err = r.rd.decodeBit(&s2.isRepG0Long)
-		if err != nil {
-			return lz.Seq{}, err
-		}
-		if b == 0 {
-			r.state.updateStateShortRep()
-			return lz.Seq{MatchLen: 1, Offset: dist + minDistance},
-				nil
-		}
-	} else {
-		b, err = r.rd.decodeBit(&s1.isRepG1)
-		if err != nil {
-			return lz.Seq{}, err
-		}
-		if b == 0 {
-			dist = r.state.rep[1]
-		} else {
-			b, err = r.rd.decodeBit(&s1.isRepG2)
-			if err != nil {
-				return lz.Seq{}, err
-			}
-			if b == 0 {
-				dist = r.state.rep[2]
-			} else {
-				dist = r.state.rep[3]
-				r.state.rep[3] = r.state.rep[2]
-			}
-			r.state.rep[2] = r.state.rep[1]
-		}
-		r.state.rep[1] = r.state.rep[0]
-		r.state.rep[0] = dist
-	}
-	n, err := r.state.repLenCodec.Decode(&r.rd, posState)
-	if err != nil {
-		return lz.Seq{}, err
-	}
-	r.state.updateStateRep()
-	return lz.Seq{MatchLen: n + minMatchLen, Offset: dist + minDistance},
-		nil
-}
-
 // ErrEncoding reports an encoding error
 var ErrEncoding = errors.New("lzma: wrong encoding")
 
 func (r *reader) fillBuffer() error {
-	if r.err != nil {
-		return r.err
-	}
 	for r.dict.Available() >= maxMatchLen {
 		seq, err := r.readSeq()
 		if err != nil {
@@ -283,7 +169,6 @@ func (r *reader) fillBuffer() error {
 					err = io.ErrUnexpectedEOF
 				}
 			}
-			r.err = err
 			return err
 		}
 		if seq.MatchLen == 0 {
@@ -294,7 +179,6 @@ func (r *reader) fillBuffer() error {
 			err = r.dict.WriteMatch(int(seq.MatchLen),
 				int(seq.Offset))
 			if err != nil {
-				r.err = err
 				return err
 			}
 		}
@@ -306,7 +190,6 @@ func (r *reader) fillBuffer() error {
 					err = ErrEncoding
 				}
 			}
-			r.err = err
 			return err
 		}
 	}
@@ -314,6 +197,9 @@ func (r *reader) fillBuffer() error {
 }
 
 func (r *reader) Read(p []byte) (n int, err error) {
+	if r.err != nil && r.dict.Len() == 0 {
+		return 0, r.err
+	}
 	for {
 		// Read from a dictionary never returns an error
 		k, _ := r.dict.Read(p[n:])
@@ -321,7 +207,11 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		if n == len(p) {
 			return n, nil
 		}
+		if r.err != nil {
+			return n, r.err
+		}
 		if err = r.fillBuffer(); err != nil {
+			r.err = err
 			if r.dict.Len() > 0 {
 				continue
 			}
