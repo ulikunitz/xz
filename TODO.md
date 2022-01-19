@@ -4,8 +4,6 @@
 
 ### New lzma
 
-- Write raw reader for lzma1 that can be used for lzip, export it
-- Write raw writer for lzma1 that can be used for lzip, export it
 - Write chunkReader and chunkWriter
 - Use chunkReader and chunkWriter for NewWriter2 and NewReader2. NewWriter2
   should support parallel encoding.
