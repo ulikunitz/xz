@@ -6,11 +6,16 @@
 
 - Write raw reader for lzma1 that can be used for lzip, export it
 - Write raw writer for lzma1 that can be used for lzip, export it
-- Write ChunkReader and ChunkWriter
+- Write chunkReader and chunkWriter
+- Use chunkReader and chunkWriter for NewWriter2 and NewReader2. NewWriter2
+  should support parallel encoding.
+- Implement parallel decoding by splitting input stream everytime there is a
+  directory reset.
+- document the lzma code
 
 ### Remaining Tasks
 
-1. Fuzz lzma and xz
+1. Fuzz lzma and xz go1.18 or beta or release candidate
 2. Update dependencies in go.mod
 3. Rewrite README.md
   - provide example for parallel encoding  
