@@ -54,13 +54,7 @@ type state struct {
 	posBitMask uint32
 }
 
-func (s *state) init(props Properties) {
-	*s = state{Properties: props}
-	s.reset()
-}
-
-func (s *state) reset() {
-	p := s.Properties
+func (s *state) init(p Properties) {
 	*s = state{
 		Properties: p,
 		posBitMask: (1 << p.PB) - 1,
@@ -71,6 +65,10 @@ func (s *state) reset() {
 	s.lenCodec.init()
 	s.repLenCodec.init()
 	s.distCodec.init()
+}
+
+func (s *state) reset() {
+	s.init(s.Properties)
 }
 
 func (s *state) deepCopy(src *state) {
@@ -630,8 +628,11 @@ const (
 const (
 	// minimum supported distance
 	minDistance = 1
+
+	// TODO: remove
 	// maximum supported distance, value is used for the eos marker.
-	maxDistance = 1<<32 - 1
+	// maxDistance = 1<<32 - 1
+
 	// number of the supported len states
 	lenStates = 4
 	// start for the position models
