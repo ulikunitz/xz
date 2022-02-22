@@ -7,19 +7,30 @@ import (
 	"github.com/ulikunitz/lz"
 )
 
+const (
+	maxChunkSize             = 1 << 16
+	maxUncompressedChunkSize = 1 << 21
+)
+
+// chunkWriter is a writer that creates a series of LZMA2 chunks.
 type chunkWriter struct {
 	encoder
-	blk lz.Block
-	buf bytes.Buffer
-	seq lz.Sequencer
-	w   io.Writer
+	blk      lz.Block
+	buf      bytes.Buffer
+	oldState state
+	seq      lz.Sequencer
+	w        io.Writer
+	err      error
+	// start position of the current chunk
+	start int64
 	// dirReset is true if reset has been done
 	dirReset bool
 	// spReset is true if spReset has been done
 	spReset bool
-	err     error
 }
 
+// init initializes the chunkWriter. A set of initial data can be provided
+// directly. The array is directly used by the Window.
 func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 	props Properties) error {
 	*w = chunkWriter{
@@ -36,49 +47,29 @@ func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 		return err
 	}
 	w.state.init(props)
+	w.startChunk()
 	return nil
 }
 
-const (
-	maxChunkSize             = 1 << 16
-	maxUncompressedChunkSize = 1 << 21
-)
-
-func updateBlock(blk *lz.Block, litIndex, seqIndex int) {
-	n := copy(blk.Literals, blk.Literals[litIndex:])
-	blk.Literals = blk.Literals[:n]
-	n = copy(blk.Sequences, blk.Sequences[seqIndex:])
-	blk.Sequences = blk.Sequences[:n]
-}
-
-func (w *chunkWriter) writeChunk() error {
-	// prepare writing
-	w.buf.Reset()
-	w.re.init(&w.buf)
-	n := 0
-	var oldState state
-	oldState.deepCopy(&w.state)
-
-	// loop until enough uncompressed data is written or the output is too
-	// long
+func (w *chunkWriter) writeSequences() error {
 	var err error
+	max := w.start + maxUncompressedChunkSize
 loop:
 	for {
-		var litIndex = 0
+		litIndex := 0
 		for k, s := range w.blk.Sequences {
 			i := litIndex
 			litIndex += int(s.LitLen)
 			for j, c := range w.blk.Literals[i:litIndex] {
+				if w.buf.Len()+w.re.cacheLen > maxChunkSize-8 ||
+					w.pos >= max {
+					w.blk.Sequences[k].LitLen -= uint32(j)
+					updateBlock(&w.blk, i+j, k)
+					break loop
+				}
 				err = w.writeLiteral(c)
 				if err != nil {
 					return err
-				}
-				n++
-				if n >= maxUncompressedChunkSize {
-					w.blk.Sequences[k].LitLen -=
-						uint32(j) + 1
-					updateBlock(&w.blk, i+j+1, k)
-					break loop
 				}
 			}
 
@@ -100,7 +91,9 @@ loop:
 				} else {
 					u = m - minMatchLen
 				}
-				if n+int(u) > maxUncompressedChunkSize {
+				if w.pos+int64(u) > max ||
+					w.buf.Len()+w.re.cacheLen >
+						maxChunkSize-16 {
 					w.blk.Sequences[k].LitLen = 0
 					updateBlock(&w.blk, litIndex, k)
 					break loop
@@ -108,7 +101,6 @@ loop:
 				if err = w.writeMatch(o, u); err != nil {
 					return err
 				}
-				n += int(u)
 				m -= u
 				if m == 0 {
 					break
@@ -117,14 +109,14 @@ loop:
 		}
 		w.blk.Sequences = w.blk.Sequences[:0]
 		for j, c := range w.blk.Literals[litIndex:] {
-			if err = w.writeLiteral(c); err != nil {
-				return err
-			}
-			n++
-			if n >= maxUncompressedChunkSize {
-				updateBlock(&w.blk, litIndex+j+1,
+			if w.buf.Len()+w.re.cacheLen > maxChunkSize-8 ||
+				w.pos >= max {
+				updateBlock(&w.blk, litIndex+j,
 					len(w.blk.Sequences))
 				break loop
+			}
+			if err = w.writeLiteral(c); err != nil {
+				return err
 			}
 		}
 
@@ -133,13 +125,62 @@ loop:
 			if err == lz.ErrEmptyBuffer {
 				w.blk.Literals = w.blk.Literals[:0]
 				w.blk.Sequences = w.blk.Sequences[:0]
-				break loop
+				return err
 			}
 			return err
 		}
+
 	}
 
-	if err = w.re.Close(); err != nil {
+	return nil
+}
+
+// clearBuffer consumes all data provided and writes then in a sequence of
+// chunks. The last chunk will not be written out. Use the method finishChunnk
+// for it.
+func (w *chunkWriter) clearBuffer() error {
+	var err error
+	for {
+		err = w.writeSequences()
+		if err != nil {
+			if err == lz.ErrEmptyBuffer {
+				return nil
+			}
+			return err
+		}
+		if err = w.finishChunk(); err != nil {
+			return err
+		}
+	}
+}
+
+// updateBlock copies remaining sequences and literals to the front of the
+// slices in the block.
+func updateBlock(blk *lz.Block, litIndex, seqIndex int) {
+	n := copy(blk.Literals, blk.Literals[litIndex:])
+	blk.Literals = blk.Literals[:n]
+	n = copy(blk.Sequences, blk.Sequences[seqIndex:])
+	blk.Sequences = blk.Sequences[:n]
+}
+
+// startChunk starts a new chunk.
+func (w *chunkWriter) startChunk() {
+	w.start = w.encoder.pos
+	w.buf.Reset()
+	w.re.init(&w.buf)
+	w.oldState.deepCopy(&w.state)
+}
+
+// finishChunk writes a chunk out if there has been data written into the
+// encoder.
+func (w *chunkWriter) finishChunk() error {
+	n := int(w.encoder.pos - w.start)
+	if n == 0 {
+		// no data, no chunk need to be written
+		return nil
+	}
+
+	if err := w.re.Close(); err != nil {
 		return err
 	}
 
@@ -151,7 +192,7 @@ loop:
 	h := chunkHeader{size: n}
 	m := 3 + n
 	if m < headerLen+k {
-		w.state.deepCopy(&oldState)
+		w.state.deepCopy(&w.oldState)
 		// uncompressed write
 		if w.dirReset {
 			h.control = cU
@@ -159,21 +200,19 @@ loop:
 			h.control = cUD
 			w.dirReset = true
 		}
-		// TODO: write header
 
-		// TODO: use the buffer array?
 		p := w.buf.Bytes()
 		if cap(p) < m {
 			p = make([]byte, m)
 		} else {
-			p = p[:3+n]
+			p = p[:m]
 		}
 		_, err := h.append(p[:0])
 		if err != nil {
 			return err
 		}
 
-		k, err := w.window.ReadAt(p[3:], w.encoder.pos-int64(n))
+		k, err := w.window.ReadAt(p[3:], w.start)
 		if err != nil {
 			return err
 		}
@@ -185,6 +224,7 @@ loop:
 			return err
 		}
 
+		w.startChunk()
 		return nil
 	}
 
@@ -216,7 +256,9 @@ loop:
 		return err
 	}
 
+	w.startChunk()
 	return nil
+
 }
 
 func (w *chunkWriter) Write(p []byte) (n int, err error) {
@@ -234,34 +276,26 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		if err = w.writeChunk(); err != nil {
+		if err = w.clearBuffer(); err != nil {
 			w.err = err
 			return n, err
 		}
+		w.seq.Shrink()
 	}
 }
 
-func (w *chunkWriter) flush() error {
+func (w *chunkWriter) Flush() error {
 	if w.err != nil {
 		return w.err
 	}
-	for {
-		if len(w.blk.Sequences) == 0 &&
-			len(w.blk.Literals) == 0 &&
-			w.window.Buffered() == 0 {
-			return nil
-		}
-		if err := w.writeChunk(); err != nil {
-			w.err = err
-			return err
-		}
-	}
-}
-
-func (w *chunkWriter) Close() error {
-	if err := w.flush(); err != nil {
+	var err error
+	if err = w.clearBuffer(); err != nil {
+		w.err = err
 		return err
 	}
-	w.err = errClosed
+	if err = w.finishChunk(); err != nil {
+		w.err = err
+		return err
+	}
 	return nil
 }

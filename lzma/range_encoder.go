@@ -22,13 +22,6 @@ func (e *rangeEncoder) init(bw io.ByteWriter) {
 	}
 }
 
-/*
-// closeLen returns the number of bytes a close would write
-func (e *rangeEncoder) closeLen() int {
-	return e.cacheLen + 4
-}
-*/
-
 // DirectEncodeBit encodes the least-significant bit of b with probability 1/2.
 func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 	e.nrange >>= 1

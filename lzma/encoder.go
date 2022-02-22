@@ -14,7 +14,12 @@ type encoder struct {
 }
 
 func (e *encoder) byteAtEnd(i int64) byte {
-	c, _ := e.window.ReadByteAt(e.pos - i)
+	c, err := e.window.ReadByteAt(e.pos - i)
+	if err != nil {
+		if e.pos != 0 {
+			panic(err)
+		}
+	}
 	return c
 }
 

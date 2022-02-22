@@ -146,7 +146,10 @@ func (h chunkHeader) append(p []byte) (q []byte, err error) {
 	d[0] = h.control
 	if h.control == cU || h.control == cUD {
 		if !(1 <= h.size && h.size <= maxChunkSize) {
-			return p, errors.New("lzma: chunk header size out of range")
+			return p, fmt.Errorf(
+				"lzma: chunk header size %d out of range"+
+					" for uncompressed chunk",
+				h.size)
 		}
 		putBE16(d[1:], uint16(h.size-1))
 		return append(p, d[:3]...), nil
@@ -156,8 +159,8 @@ func (h chunkHeader) append(p []byte) (q []byte, err error) {
 			"lzma: chunk header uncompressed size out of range")
 	}
 	if !(1 <= h.compressedSize && h.compressedSize <= maxChunkSize) {
-		return p, errors.New(
-			"lzma: chunk header compressed size out of range")
+		return p, fmt.Errorf("lzma: chunk header compressed size %d"+
+			" is out of range", h.compressedSize)
 	}
 	us := h.size - 1
 	d[0] |= byte(us >> 16)
