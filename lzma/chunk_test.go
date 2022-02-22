@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -105,6 +106,20 @@ func TestChunkWriterReader(t *testing.T) {
 		},
 		func() (io.Reader, error) {
 			return os.Open("testdata/enwik7")
+		},
+		func() (io.Reader, error) {
+			return io.LimitReader(rand.New(rand.NewSource(99)),
+				150000), nil
+		},
+		func() (io.Reader, error) {
+			r1 := io.LimitReader(rand.New(rand.NewSource(99)),
+				150000)
+			f, err := os.Open("testdata/enwik7")
+			if err != nil {
+				return nil, err
+			}
+			r2 := io.LimitReader(f, 150000)
+			return io.MultiReader(r1, r2), nil
 		},
 	}
 	for i, tc := range tests {
