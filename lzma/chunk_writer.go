@@ -299,3 +299,20 @@ func (w *chunkWriter) Flush() error {
 	}
 	return nil
 }
+
+// Close writes all data into the underlying writer and adds an End-of-Stream
+// Chunk. No further data can be added to the writer.
+func (w *chunkWriter) Close() error {
+	var err error
+	if err = w.Flush(); err != nil {
+		return err
+	}
+	// The EOS chunk is a single zero byte.
+	var a [1]byte
+	if _, err = w.w.Write(a[:]); err != nil {
+		w.err = err
+		return err
+	}
+	w.err = errClosed
+	return nil
+}
