@@ -51,6 +51,8 @@ func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 	return nil
 }
 
+// writeSequences writes sequences to the encoder until the limits for the chunk
+// are reached or an error occurs.
 func (w *chunkWriter) writeSequences() error {
 	var err error
 	max := w.start + maxUncompressedChunkSize
@@ -261,6 +263,8 @@ func (w *chunkWriter) finishChunk() error {
 
 }
 
+// Write writes data into the window until it is filled at which time all the
+// buffer will be cleared and multiple chunks might be written.
 func (w *chunkWriter) Write(p []byte) (n int, err error) {
 	if w.err != nil {
 		return 0, w.err
@@ -284,6 +288,7 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 	}
 }
 
+// Flush writes all buffered data to the underlying writer.
 func (w *chunkWriter) Flush() error {
 	if w.err != nil {
 		return w.err

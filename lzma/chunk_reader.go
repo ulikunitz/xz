@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
+// possible values of the control byte in the LZMA2 chunk header
 const (
 	cEOS  = byte(0)
 	cUD   = byte(0b01)
@@ -18,6 +19,7 @@ const (
 	cMask = cCSPD
 )
 
+// chunkState reflects the status of a chunk stream.
 type chunkState byte
 
 const (
@@ -28,6 +30,8 @@ const (
 	sErr
 )
 
+// chunkState is modified using the given control byte. If an error occurs the
+// state becomes sErr.
 func (s chunkState) next(c byte) chunkState {
 	if s == sF || s == sErr {
 		return sErr
@@ -63,6 +67,7 @@ func (s chunkState) next(c byte) chunkState {
 	return sErr
 }
 
+// chunkReader is used to read a sequence of chunks
 type chunkReader struct {
 	decoder
 	r      io.Reader
@@ -71,6 +76,8 @@ type chunkReader struct {
 	err    error
 }
 
+// init initializes the chunk reader. Note that the chunk reader consumes twice
+// the dictSize to support a linear buffer.
 func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	*r = chunkReader{r: z}
 	if err := r.dict.Init(dictSize, 2*dictSize); err != nil {
@@ -79,6 +86,7 @@ func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	return nil
 }
 
+// chunkHeader represents a chunk header.
 type chunkHeader struct {
 	control        byte
 	compressedSize int
@@ -86,6 +94,7 @@ type chunkHeader struct {
 	properties     Properties
 }
 
+// parseChunkHeader reads the next chunk header from the reader.
 func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 	p := make([]byte, 1, 6)
 	if _, err = io.ReadFull(r, p); err != nil {
@@ -138,6 +147,8 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 	return h, nil
 }
 
+// append appends the binary representation of the chunk header to p. An error
+// is returned if the values in chunk header are inconsistent.
 func (h chunkHeader) append(p []byte) (q []byte, err error) {
 	if h.control == cEOS {
 		return append(p, cEOS), nil
@@ -177,6 +188,7 @@ func (h chunkHeader) append(p []byte) (q []byte, err error) {
 	return p, errors.New("lzma: invalid chunk header")
 }
 
+// readChunk reads a single chunk.
 func (r *chunkReader) readChunk() error {
 	h, err := parseChunkHeader(r.r)
 	if err != nil {
@@ -254,6 +266,7 @@ func (r *chunkReader) readChunk() error {
 	return nil
 }
 
+// Read reads data from the chunk reader.
 func (r *chunkReader) Read(p []byte) (n int, err error) {
 	if r.err != nil && r.dict.Len() == 0 {
 		return 0, r.err
