@@ -278,7 +278,8 @@ func (r *chunkReader) Read(p []byte) (n int, err error) {
 	}
 }
 
-func (r *chunkReader) WriterTo(w io.Writer) (n int64, err error) {
+// WriteTo supports the WriterTo interface.
+func (r *chunkReader) WriteTo(w io.Writer) (n int64, err error) {
 	if r.err != nil && r.dict.Len() == 0 {
 		return 0, r.err
 	}
@@ -290,12 +291,18 @@ func (r *chunkReader) WriterTo(w io.Writer) (n int64, err error) {
 			return n, err
 		}
 		if r.err != nil {
+			if r.err == io.EOF {
+				return n, nil
+			}
 			return n, r.err
 		}
 		if err = r.readChunk(); err != nil {
 			r.err = err
 			if r.dict.Len() > 0 {
 				continue
+			}
+			if err == io.EOF {
+				err = nil
 			}
 			return n, err
 		}
