@@ -4,7 +4,6 @@
 
 ### New lzma
 
-- Write chunkReader and chunkWriter
 - Use chunkReader and chunkWriter for NewWriter2 and NewReader2. NewWriter2
   should support parallel encoding.
 - Implement parallel decoding by splitting input stream everytime there is a
