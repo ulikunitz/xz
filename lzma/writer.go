@@ -83,8 +83,10 @@ func (w *writer) Close() error {
 	return nil
 }
 
+// errClosed is returned if the object has already been closed.
 var errClosed = errors.New("lzma: already closed")
 
+// clearBuffer reads data from the buffer and encodes it.
 func (w *writer) clearBuffer() error {
 	for {
 		_, err := w.seq.Sequence(&w.blk, 0)
@@ -141,6 +143,7 @@ func (w *writer) clearBuffer() error {
 	}
 }
 
+// Write write data into the buffer and encodes data if required.
 func (w *writer) Write(p []byte) (n int, err error) {
 	if w.err != nil {
 		return 0, w.err
@@ -163,11 +166,13 @@ func (w *writer) Write(p []byte) (n int, err error) {
 	}
 }
 
+// limitWriter a simple writer ensuring a limit.
 type limitWriter struct {
 	n int64
 	w writer
 }
 
+// Write writes data into the limited writer.
 func (lw *limitWriter) Write(p []byte) (n int, err error) {
 	if int64(len(p)) > lw.n {
 		p = p[:lw.n]
@@ -182,6 +187,7 @@ func (lw *limitWriter) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
+// Close closes the writer and the underlying writer.
 func (lw *limitWriter) Close() error {
 	if lw.n > 0 {
 		return errors.New("lzma: more data required")
@@ -189,6 +195,7 @@ func (lw *limitWriter) Close() error {
 	return lw.w.Close()
 }
 
+// WriterConfig defines the parameters for the LZMA Writer.
 type WriterConfig struct {
 	LZCfg          lz.Configurator
 	Properties     Properties
@@ -197,6 +204,7 @@ type WriterConfig struct {
 	Size           int64
 }
 
+// Verify checks the validtiy of the writer congiguration parameter.
 func (cfg *WriterConfig) Verify() error {
 	if cfg == nil {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
@@ -223,6 +231,8 @@ func (cfg *WriterConfig) Verify() error {
 	return nil
 }
 
+// ApplyDefaults applies the defaults to the configuration if they have not been
+// set previously.
 func (cfg *WriterConfig) ApplyDefaults() {
 	if cfg.LZCfg == nil {
 		cfg.LZCfg = &lz.Config{}
@@ -241,10 +251,13 @@ func (cfg *WriterConfig) ApplyDefaults() {
 	}
 }
 
+// NewWriter creates a new LZMA writer.
 func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 	return NewWriterConfig(z, WriterConfig{})
 }
 
+// NewWriterConfig creates a new LZMA writer using the parameter provided by
+// cfg.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {

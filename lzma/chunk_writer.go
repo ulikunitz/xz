@@ -8,7 +8,9 @@ import (
 )
 
 const (
-	maxChunkSize             = 1 << 16
+	// maximum size of a chunk
+	maxChunkSize = 1 << 16
+	// maximum uncompressed chunk size
 	maxUncompressedChunkSize = 1 << 21
 )
 

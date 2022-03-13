@@ -7,6 +7,7 @@ import (
 	"math"
 )
 
+// reader supports the reading of an LÖZMA stream.
 type reader struct {
 	decoder
 	// size < 0 means we wait for EOS
@@ -44,6 +45,7 @@ type params struct {
 	uncompressedSize uint64
 }
 
+// Verify checks the parameters for correctness.
 func (h params) Verify() error {
 	if uint64(h.dictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
@@ -105,6 +107,7 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 	return rr, nil
 }
 
+// init initializes the reader.
 func (r *reader) init(z io.Reader, dictSize int, props Properties,
 	uncompressedSize uint64) error {
 
@@ -154,6 +157,7 @@ const eosDist = 1<<32 - 1
 // ErrEncoding reports an encoding error
 var ErrEncoding = errors.New("lzma: wrong encoding")
 
+// fillBuffer refills the buffer.
 func (r *reader) fillBuffer() error {
 	for r.dict.Available() >= maxMatchLen {
 		seq, err := r.readSeq()
@@ -196,6 +200,7 @@ func (r *reader) fillBuffer() error {
 	return nil
 }
 
+// Read reads data from the dictionary and refills it if needed.
 func (r *reader) Read(p []byte) (n int, err error) {
 	if r.err != nil && r.dict.Len() == 0 {
 		return 0, r.err

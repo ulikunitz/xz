@@ -52,11 +52,15 @@ func getLE64(p []byte) uint64 {
 	return x
 }
 
+// getBE16 reads a uin16 value from slice p using big endian encoding. The
+// length of p must be at least 2 bytes.
 func getBE16(p []byte) uint16 {
 	_ = p[1]
 	return uint16(p[0])<<8 | uint16(p[1])
 }
 
+// putBE16 writes the value x into p using big endian encoding. The slice p must
+// have space for at least two bytes.
 func putBE16(p []byte, x uint16) {
 	_ = p[1]
 	p[0] = uint8(x >> 8)
