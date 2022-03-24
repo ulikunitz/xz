@@ -1,46 +1,45 @@
 package lzma
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"runtime"
 )
 
+// Reader2Config provides the dictionary size parameter for a LZMA2 reader.
 type Reader2Config struct {
 	DictSize int
-	Worker   int
 }
 
+// Verify checks the validity of dictionary size.
 func (cfg *Reader2Config) Verify() error {
 	if cfg.DictSize < minDictSize {
 		return fmt.Errorf(
 			"lzma: dictionary size must be larger or"+
 				" equal %d bytes", minDictSize)
 	}
-	if cfg.Worker <= 1 {
-		return errors.New("lzma: worker must be >= 1")
-	}
 	return nil
 }
 
+// ApplyDefaults sets a default value for the dictionary size.
 func (cfg *Reader2Config) ApplyDefaults() {
 	if cfg.DictSize == 0 {
 		cfg.DictSize = 8 << 20
 	}
-	if cfg.Worker == 0 {
-		cfg.Worker = runtime.NumCPU()
-	}
 }
 
-type Reader2 struct {
-	// TODO
-}
-
-func NewReader2(z io.Reader, dictSize int) (r *Reader2, err error) {
+// NewReader2 creates a LZMA2 reader.
+func NewReader2(z io.Reader, dictSize int) (r io.Reader, err error) {
 	return NewReader2Config(z, Reader2Config{DictSize: dictSize})
 }
 
-func NewReader2Config(z io.Reader, cfg Reader2Config) (r *Reader2, err error) {
-	panic("TODO")
+// NewReader2Config genrates an LZMA2 reader using the configuration parameter
+// attribute.
+func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.Reader, err error) {
+	cfg.ApplyDefaults()
+	if err = cfg.Verify(); err != nil {
+		return nil, err
+	}
+	var cr chunkReader
+	cr.init(z, cfg.DictSize)
+	return &cr, nil
 }
