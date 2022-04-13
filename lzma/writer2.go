@@ -10,10 +10,20 @@ import (
 
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
 type Writer2Config struct {
-	LZCfg          lz.Configurator
-	Properties     Properties
+	// Configuration for the LZ compressor.
+	LZCfg lz.Configurator
+	// Properties for the LZMA algorithm.
+	Properties Properties
+	// ZeroProperties are true if Properties are indeed zero.
 	ZeroProperties bool
-	Workers        int
+
+	// WorkerBufSize provides the buffer size that is provided to the
+	// workers. Note the Workers number must be larger than 1 for this
+	// parameter to apply.
+	WorkerBufSize int
+
+	// Number of workers processing data.
+	Workers int
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
@@ -36,6 +46,10 @@ func (cfg *Writer2Config) Verify() error {
 
 	if err = cfg.Properties.Verify(); err != nil {
 		return err
+	}
+
+	if cfg.WorkerBufSize <= 0 {
+		return errors.New("lzma: WorkerBufSize must be >= 0")
 	}
 	if cfg.Workers < 0 {
 		return errors.New("lzma: Worker must be larger than 0")
@@ -62,6 +76,9 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		cfg.Properties = Properties{3, 0, 2}
 	}
 
+	if cfg.WorkerBufSize == 0 {
+		cfg.WorkerBufSize = 8 << 20 // 8 MiB
+	}
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.NumCPU()
 	}
