@@ -1,6 +1,8 @@
 package lzma
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"io"
 	"runtime"
@@ -115,5 +117,43 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 		return &cw, nil
 	}
 
+	panic("TODO")
+}
+
+type writer2Task struct {
+	data  []byte
+	zCh   chan []byte
+	flush chan struct{}
+}
+
+func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, props Properties) {
+	var (
+		err error
+		w   chunkWriter
+	)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tsk := <-ch:
+			buf := new(bytes.Buffer)
+			if err = w.init(buf, seq, tsk.data, props); err != nil {
+				panic(err)
+			}
+			// TODO: add context to Flush
+			if err = w.Flush(); err != nil {
+				panic(err)
+			}
+			select {
+			case tsk.zCh <- buf.Bytes():
+				break
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+func outputCompressedData(ctx context.Context, ch chan writer2Task, errCh chan error) {
 	panic("TODO")
 }
