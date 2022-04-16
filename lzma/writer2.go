@@ -140,8 +140,12 @@ func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, 
 			if err = w.init(buf, seq, tsk.data, props); err != nil {
 				panic(err)
 			}
-			// TODO: add context to Flush
-			if err = w.Flush(); err != nil {
+			if err = w.FlushContext(ctx); err != nil {
+				if errors.Is(err, context.Canceled) ||
+					errors.Is(err,
+						context.DeadlineExceeded) {
+					return
+				}
 				panic(err)
 			}
 			select {

@@ -2,6 +2,7 @@ package lzma
 
 import (
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/ulikunitz/lz"
@@ -142,9 +143,12 @@ loop:
 // clearBuffer consumes all data provided and writes then in a sequence of
 // chunks. The last chunk will not be written out. Use the method finishChunnk
 // for it.
-func (w *chunkWriter) clearBuffer() error {
+func (w *chunkWriter) clearBuffer(ctx context.Context) error {
 	var err error
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		err = w.writeSequences()
 		if err != nil {
 			if err == lz.ErrEmptyBuffer {
@@ -282,7 +286,7 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		if err = w.clearBuffer(); err != nil {
+		if err = w.clearBuffer(context.Background()); err != nil {
 			w.err = err
 			return n, err
 		}
@@ -292,11 +296,17 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 
 // Flush writes all buffered data to the underlying writer.
 func (w *chunkWriter) Flush() error {
+	return w.FlushContext(context.Background())
+}
+
+// FlushContext writes all buffered data to the underlying writer and handles
+// context cancellations. It will return an error if cancelled.
+func (w *chunkWriter) FlushContext(ctx context.Context) error {
 	if w.err != nil {
 		return w.err
 	}
 	var err error
-	if err = w.clearBuffer(); err != nil {
+	if err = w.clearBuffer(ctx); err != nil {
 		w.err = err
 		return err
 	}
