@@ -158,6 +158,45 @@ func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, 
 	}
 }
 
-func outputCompressedData(ctx context.Context, ch chan writer2Task, errCh chan error) {
-	panic("TODO")
+func outputCompressedData(ctx context.Context, z io.Writer, ch chan writer2Task, errCh chan error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tsk, ok := <-ch:
+			if !ok {
+				var zero [1]byte
+				if _, err := z.Write(zero[:]); err != nil {
+					select {
+					case <-ctx.Done():
+						return
+					case errCh <- err:
+						return
+					}
+				}
+				return
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case data := <-tsk.zCh:
+				if _, err := z.Write(data); err != nil {
+					select {
+					case <-ctx.Done():
+						return
+					case errCh <- err:
+						return
+					}
+				}
+				if tsk.flush != nil {
+					select {
+					case <-ctx.Done():
+						return
+					case tsk.flush <- struct{}{}:
+						break
+					}
+				}
+			}
+		}
+	}
 }
