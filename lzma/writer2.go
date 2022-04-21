@@ -117,7 +117,20 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 		return &cw, nil
 	}
 
-	panic("TODO")
+	ctx, cancel := context.WithCancel(context.Background())
+	mw := &multiWriter{
+		ctx:        ctx,
+		cancel:     cancel,
+		z:          z,
+		compressCh: make(chan writer2Task, cfg.Workers),
+		outCh:      make(chan writer2Task, cfg.Workers),
+		errCh:      make(chan error, 1),
+		cfg:        cfg,
+	}
+
+	go outputCompressedData(mw.ctx, mw.z, mw.outCh, mw.errCh)
+
+	return mw, nil
 }
 
 type writer2Task struct {
@@ -126,7 +139,46 @@ type writer2Task struct {
 	flush chan struct{}
 }
 
-func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, props Properties) {
+type multiWriter struct {
+	buf        []byte
+	ctx        context.Context
+	cancel     context.CancelFunc
+	z          io.Writer
+	compressCh chan writer2Task
+	outCh      chan writer2Task
+	errCh      chan error
+	worker     int
+	cfg        Writer2Config
+	err        error
+}
+
+func (mw *multiWriter) Write(p []byte) (n int, err error) {
+	panic("TODO")
+}
+
+func (mw *multiWriter) Flush() error {
+	panic("TODO")
+}
+
+func (mw *multiWriter) Close() error {
+	if mw.err != nil {
+		return mw.err
+	}
+	defer mw.cancel()
+	var err error
+	if err = mw.Flush(); err != nil {
+		mw.err = err
+		return err
+	}
+	var zero [1]byte
+	if _, err = mw.z.Write(zero[:]); err != nil {
+		mw.err = err
+		return err
+	}
+	return nil
+}
+
+func compressWorker(ctx context.Context, compressCh chan writer2Task, seq lz.Sequencer, props Properties) {
 	var (
 		err error
 		w   chunkWriter
@@ -135,7 +187,7 @@ func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, 
 		select {
 		case <-ctx.Done():
 			return
-		case tsk := <-ch:
+		case tsk := <-compressCh:
 			buf := new(bytes.Buffer)
 			if err = w.init(buf, seq, tsk.data, props); err != nil {
 				panic(err)
@@ -158,24 +210,12 @@ func compressWorker(ctx context.Context, ch chan writer2Task, seq lz.Sequencer, 
 	}
 }
 
-func outputCompressedData(ctx context.Context, z io.Writer, ch chan writer2Task, errCh chan error) {
+func outputCompressedData(ctx context.Context, z io.Writer, outCh chan writer2Task, errCh chan error) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case tsk, ok := <-ch:
-			if !ok {
-				var zero [1]byte
-				if _, err := z.Write(zero[:]); err != nil {
-					select {
-					case <-ctx.Done():
-						return
-					case errCh <- err:
-						return
-					}
-				}
-				return
-			}
+		case tsk := <-outCh:
 			select {
 			case <-ctx.Done():
 				return
