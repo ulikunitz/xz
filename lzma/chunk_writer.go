@@ -3,6 +3,7 @@ package lzma
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/ulikunitz/lz"
@@ -36,6 +37,9 @@ type chunkWriter struct {
 // directly. The array is directly used by the Window.
 func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 	props Properties) error {
+	if err := seq.Reset(data); err != nil {
+		return err
+	}
 	*w = chunkWriter{
 		seq:     seq,
 		encoder: encoder{window: seq.WindowPtr()},
@@ -45,9 +49,6 @@ func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 		},
 		buf: w.buf,
 		w:   z,
-	}
-	if err := w.window.Reset(data); err != nil {
-		return err
 	}
 	w.state.init(props)
 	w.startChunk()
@@ -83,7 +84,10 @@ loop:
 				panic("s.Offset < minDistance")
 			}
 			if s.MatchLen < minMatchLen {
-				panic("s.MatchLen < minMatchLen")
+				panic(fmt.Errorf(
+					"s.MatchLen=%d < minMatchLen=%d"+
+					" / %+v / k=%d",
+					s.MatchLen, minMatchLen, s, k))
 			}
 
 			o, m := s.Offset-1, s.MatchLen
@@ -332,4 +336,9 @@ func (w *chunkWriter) Close() error {
 	}
 	w.err = errClosed
 	return nil
+}
+
+// DictSize returns the dictionary size for the chunk writer.
+func (w *chunkWriter) DictSize() int {
+	return w.seq.WindowPtr().WindowSize
 }

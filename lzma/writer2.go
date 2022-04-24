@@ -90,6 +90,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 type Writer2 interface {
 	io.WriteCloser
 	Flush() error
+	DictSize() int
 }
 
 // NewWriter2 generates an LZMA2 writer for the default configuration.
@@ -156,6 +157,15 @@ type multiWriter struct {
 	workers    int
 	cfg        Writer2Config
 	err        error
+}
+
+// DictSize returns the dictionary size of the LZ sequencer.
+func (mw *multiWriter) DictSize() int {
+	seq, err := mw.cfg.LZCfg.NewSequencer()
+	if err != nil {
+		panic(err)
+	}
+	return seq.WindowPtr().WindowSize
 }
 
 // Write writes data into a buffer and if the buffer is large enough provides it
