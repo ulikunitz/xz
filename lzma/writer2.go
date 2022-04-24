@@ -79,7 +79,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 	}
 
 	if cfg.WorkerBufSize == 0 {
-		cfg.WorkerBufSize = 8 << 20 // 8 MiB
+		cfg.WorkerBufSize = 1 << 20 // 1 MiB
 	}
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.NumCPU()
