@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"runtime"
 
@@ -19,13 +20,10 @@ type Writer2Config struct {
 	// ZeroProperties are true if Properties are indeed zero.
 	ZeroProperties bool
 
-	// WorkerBufSize provides the buffer size that is provided to the
-	// workers. Note the Workers number must be larger than 1 for this
-	// parameter to apply.
-	WorkerBufSize int
-
 	// Number of workers processing data.
 	Workers int
+	// Size of buffer used by the worker.
+	WorkerBufferSize int
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
@@ -50,11 +48,20 @@ func (cfg *Writer2Config) Verify() error {
 		return err
 	}
 
-	if cfg.WorkerBufSize <= 0 {
-		return errors.New("lzma: WorkerBufSize must be >= 0")
-	}
 	if cfg.Workers < 0 {
 		return errors.New("lzma: Worker must be larger than 0")
+	}
+
+	if cfg.WorkerBufferSize <= 0 {
+		return errors.New(
+			"lzma: WorkerBufferSize must be greater than 0")
+	}
+
+	sbCfg := cfg.LZCfg.BufferConfig()
+	if cfg.WorkerBufferSize > sbCfg.BufferSize {
+		return errors.New(
+			"lzma: sequence buffer buffer size must be" +
+				" less or equal than worker buffer size")
 	}
 
 	return nil
@@ -63,7 +70,11 @@ func (cfg *Writer2Config) Verify() error {
 // ApplyDefaults replaces zero values with default values.
 func (cfg *Writer2Config) ApplyDefaults() {
 	if cfg.LZCfg == nil {
-		cfg.LZCfg = &lz.Config{}
+		var err error
+		cfg.LZCfg, err = lz.Config(lz.Params{})
+		if err != nil {
+			panic(fmt.Errorf("lz.Config error %s", err))
+		}
 	}
 
 	type ad interface {
@@ -78,11 +89,12 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		cfg.Properties = Properties{3, 0, 2}
 	}
 
-	if cfg.WorkerBufSize == 0 {
-		cfg.WorkerBufSize = 1 << 20 // 1 MiB
-	}
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.NumCPU()
+	}
+
+	if cfg.WorkerBufferSize == 0 {
+		cfg.WorkerBufferSize = 1 << 20
 	}
 }
 
@@ -102,6 +114,10 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // Note taht the implementation for cfg.Workers > 2 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg.ApplyDefaults()
+	sbCfg := cfg.LZCfg.BufferConfig()
+	if cfg.WorkerBufferSize > sbCfg.BufferSize {
+		sbCfg.BufferSize = cfg.WorkerBufferSize
+	}
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}
@@ -165,7 +181,7 @@ func (mw *multiWriter) DictSize() int {
 	if err != nil {
 		panic(err)
 	}
-	return seq.WindowPtr().WindowSize
+	return seq.Buffer().WindowSize
 }
 
 // Write writes data into a buffer and if the buffer is large enough provides it
@@ -181,8 +197,9 @@ func (mw *multiWriter) Write(p []byte) (n int, err error) {
 		return 0, err
 	default:
 	}
+
 	for len(p) > 0 {
-		k := mw.cfg.WorkerBufSize - len(mw.buf)
+		k := mw.cfg.WorkerBufferSize - len(mw.buf)
 		if k > len(p) {
 			mw.buf = append(mw.buf, p...)
 			n += len(p)

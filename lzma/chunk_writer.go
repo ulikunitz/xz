@@ -42,7 +42,7 @@ func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 	}
 	*w = chunkWriter{
 		seq:     seq,
-		encoder: encoder{window: seq.WindowPtr()},
+		encoder: encoder{window: seq.Buffer()},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -86,7 +86,7 @@ loop:
 			if s.MatchLen < minMatchLen {
 				panic(fmt.Errorf(
 					"s.MatchLen=%d < minMatchLen=%d"+
-					" / %+v / k=%d",
+						" / %+v / k=%d",
 					s.MatchLen, minMatchLen, s, k))
 			}
 
@@ -340,5 +340,5 @@ func (w *chunkWriter) Close() error {
 
 // DictSize returns the dictionary size for the chunk writer.
 func (w *chunkWriter) DictSize() int {
-	return w.seq.WindowPtr().WindowSize
+	return w.seq.Buffer().WindowSize
 }

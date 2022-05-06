@@ -60,8 +60,10 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
-	var lzCfg = lz.Config{}
-	lzCfg.ApplyDefaults()
+	lzCfg, err := lz.Config(lz.Params{})
+	if err != nil {
+		t.Fatalf("lz.Config error %s", err)
+	}
 	seq, err := lzCfg.NewSequencer()
 	if err != nil {
 		t.Fatalf("lzcfg.NewSequencer() error %s", err)
@@ -74,7 +76,7 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := seq.WindowPtr().WindowSize
+	dictSize := seq.Buffer().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
@@ -135,8 +137,10 @@ func TestChunkWriterReader(t *testing.T) {
 			hIn := sha256.New()
 			z := io.TeeReader(r, hIn)
 			var cw chunkWriter
-			var lzCfg = lz.Config{}
-			lzCfg.ApplyDefaults()
+			lzCfg, err := lz.Config(lz.Params{})
+			if err != nil {
+				t.Fatalf("lz.Config error %s", err)
+			}
 			seq, err := lzCfg.NewSequencer()
 			if err != nil {
 				t.Fatalf("lzcfg.NewSequencer() error %s", err)
@@ -158,7 +162,7 @@ func TestChunkWriterReader(t *testing.T) {
 				nIn, buf.Len())
 
 			var cr chunkReader
-			dictSize := seq.WindowPtr().WindowSize
+			dictSize := seq.Buffer().WindowSize
 			t.Logf("dictSize: %d", dictSize)
 			if err = cr.init(buf, dictSize); err != nil {
 				t.Fatalf("cr.init() error %s", err)
@@ -188,8 +192,10 @@ func TestChunkClose(t *testing.T) {
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
-	var lzCfg = lz.Config{}
-	lzCfg.ApplyDefaults()
+	lzCfg, err := lz.Config(lz.Params{})
+	if err != nil {
+		t.Fatalf("lz.Config error %s", err)
+	}
 	seq, err := lzCfg.NewSequencer()
 	if err != nil {
 		t.Fatalf("lzcfg.NewSequencer() error %s", err)
@@ -202,7 +208,7 @@ func TestChunkClose(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := seq.WindowPtr().WindowSize
+	dictSize := seq.Buffer().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}

@@ -4,7 +4,7 @@ import "github.com/ulikunitz/lz"
 
 // decoder supports the decoding of sequences.
 type decoder struct {
-	dict  lz.Buffer
+	dict  lz.DecBuffer
 	state state
 	rd    rangeDecoder
 }

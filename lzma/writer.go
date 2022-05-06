@@ -3,6 +3,7 @@ package lzma
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 
@@ -44,7 +45,7 @@ func (w *writer) init(z io.Writer, seq lz.Sequencer, p Properties, eos bool) {
 
 	*w = writer{
 		seq:     seq,
-		encoder: encoder{window: seq.WindowPtr()},
+		encoder: encoder{window: seq.Buffer()},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -235,7 +236,11 @@ func (cfg *WriterConfig) Verify() error {
 // set previously.
 func (cfg *WriterConfig) ApplyDefaults() {
 	if cfg.LZCfg == nil {
-		cfg.LZCfg = &lz.Config{}
+		var err error
+		cfg.LZCfg, err = lz.Config(lz.Params{})
+		if err != nil {
+			panic(fmt.Errorf("lz.Config error %s", err))
+		}
 	}
 
 	type ad interface {
@@ -269,7 +274,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	window := seq.WindowPtr()
+	window := seq.Buffer()
 	dictSize := int64(window.WindowSize)
 	if !(0 <= dictSize && dictSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")

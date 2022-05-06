@@ -50,8 +50,8 @@ func TestWriter2Simple(t *testing.T) {
 func TestWriter2(t *testing.T) {
 	tests := []Writer2Config{
 		{Workers: 1},
-		{WorkerBufSize: 100000, Workers: 2},
-		{WorkerBufSize: 3e5},
+		{WorkerBufferSize: 100000, Workers: 2},
+		{WorkerBufferSize: 3e5},
 		{},
 	}
 
