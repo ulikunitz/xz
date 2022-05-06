@@ -56,7 +56,7 @@ Symbol | Description
 :----- | :--------------------
 u      | uncompressed size bit
 U      | uncompressed size byte
-C      | uncompressed size byte
+C      | compressed size byte
 S      | properties byte
 
 A dictionary reset requires always new properties. If this is an
