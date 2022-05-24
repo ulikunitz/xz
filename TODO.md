@@ -17,6 +17,19 @@
   - create picture that compares speed improvements (v0.5, v0.6)
 4. Review open issues after final release
 
+### Create pizza tool
+
+### Review all open issues and support
+
+### Publish release candidate 1
+
+* Run all tests on all modules that are required
+* Manually Review all documentation for all tools
+* Check orthography
+* Write release notes
+* Publish the release candidate
+* Announce it on all the open issues
+
 ## Release v0.7
 
 1. Provide manual page for gxz
