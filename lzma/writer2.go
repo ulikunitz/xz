@@ -17,7 +17,7 @@ type Writer2Config struct {
 	LZCfg lz.Configurator
 	// Properties for the LZMA algorithm.
 	Properties Properties
-	// ZeroProperties are true if Properties are indeed zero.
+	// ZeroProperties indicate that the Properties is indeed zero
 	ZeroProperties bool
 
 	// Number of workers processing data.
