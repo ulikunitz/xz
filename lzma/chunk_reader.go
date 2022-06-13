@@ -86,6 +86,15 @@ func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	return nil
 }
 
+// reset reinitialized the chunkReader. If possible existing allocated data
+// should be reused.
+func (r *chunkReader) reset(z io.Reader) {
+	r.r = z
+	r.dict.Reset()
+	r.cstate = sS
+	r.err = nil
+}
+
 // chunkHeader represents a chunk header.
 type chunkHeader struct {
 	control        byte

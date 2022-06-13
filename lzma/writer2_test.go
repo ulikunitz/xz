@@ -35,6 +35,7 @@ func TestWriter2Simple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader2(buf) error %s", err)
 	}
+	defer r.Close()
 
 	sb := new(strings.Builder)
 	if _, err = io.Copy(sb, r); err != nil {
@@ -92,6 +93,7 @@ func TestWriter2(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewReader2(buf) error %s", err)
 			}
+			defer r.Close()
 
 			h2 := sha256.New()
 			n2, err := io.Copy(h2, r)
