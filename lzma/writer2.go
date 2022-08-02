@@ -90,7 +90,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 	}
 
 	if cfg.Workers == 0 {
-		cfg.Workers = runtime.NumCPU()
+		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
 
 	if cfg.WorkerBufferSize == 0 {
