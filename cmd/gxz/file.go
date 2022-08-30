@@ -478,9 +478,9 @@ func printErr(err error) {
 	}
 }
 
-// processFile process the file with the given path applying the
-// provided options.
-func processFile(path string, opts *options) (err error) {
+// ProcessFile processes the file with the given path applying 
+// the provided options.
+func ProcessFile(path string, opts *options) (err error) {
 	r, err := newReader(path, opts)
 	if err != nil {
 		printErr(err)

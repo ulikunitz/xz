@@ -230,7 +230,7 @@ Use -f to force compression. For help type gxz -h.`)
 
 	exit := 0
 	for _, arg := range args {
-		if err := processFile(arg, &opts); err != nil {
+		if err := ProcessFile(arg, &opts); err != nil {
 			exit = 1
 		}
 	}
