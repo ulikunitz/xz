@@ -12,8 +12,7 @@ import (
 
 // NewRawWriter writes only compress data stream. The argument eos controls
 // whether an end of stream marker will be written.
-func NewRawWriter(z io.Writer, seq lz.Sequencer, p Properties,
-	eos bool) (w io.WriteCloser, err error) {
+func NewRawWriter(z io.Writer, seq lz.Sequencer, p Properties, eos bool) (w io.WriteCloser, err error) {
 
 	if err = p.Verify(); err != nil {
 		return nil, err
