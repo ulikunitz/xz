@@ -6,7 +6,7 @@
 
 - Implement parallel decoding by splitting input stream everytime there is a
   directory reset.
-- document the lzma code
+- document the lzma code and review existing documentation with pkgsite
 
 ### Remaining Tasks
 
