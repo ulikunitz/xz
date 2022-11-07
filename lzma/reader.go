@@ -16,7 +16,7 @@ type reader struct {
 }
 
 // EOSSize marks a stream that requires the EOS marker to identify the end of
-// the stream
+// the stream. It is used by [NewRawReader].
 const EOSSize uint64 = 1<<64 - 1
 
 // NewRawReader returns a reader that can read a LZMA stream. For a stream with
