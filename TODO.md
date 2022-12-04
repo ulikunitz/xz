@@ -4,8 +4,8 @@
 
 ### New lzma
 
-- Implement parallel decoding by splitting input stream everytime there is a
-  directory reset.
+- Make workers == 1 as default for ReaderConfig
+- Test multi-threader reader.
 - document the lzma code and review existing documentation with pkgsite
 
 ### Remaining Tasks
