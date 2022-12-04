@@ -4,7 +4,6 @@
 
 ### New lzma
 
-- document the lzma code and review existing documentation with pkgsite
 - replace old_lzma by lzma in xz
 
 ### Remaining Tasks
