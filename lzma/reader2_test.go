@@ -14,7 +14,6 @@ func TestReader2(t *testing.T) {
 		wcfg Writer2Config
 		rcfg Reader2Config
 	}{
-		/*
 		{
 			Writer2Config{
 				Workers:          3,
@@ -25,17 +24,27 @@ func TestReader2(t *testing.T) {
 				WorkerBufferSize: 100000,
 			},
 		},
-		*/
 		{
 			Writer2Config{
 				Workers:          3,
-				WorkerBufferSize: 50000-1,
+				WorkerBufferSize: 50000,
 			},
 			Reader2Config{
 				Workers:          3,
 				WorkerBufferSize: 100000,
 			},
 		},
+		{
+			Writer2Config{
+				Workers:          3,
+				WorkerBufferSize: 100000,
+			},
+			Reader2Config{
+				Workers:          3,
+				WorkerBufferSize: 50000,
+			},
+		},
+
 		{},
 	}
 
