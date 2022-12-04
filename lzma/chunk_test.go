@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"fmt"
@@ -15,11 +16,10 @@ import (
 
 func TestChunkHeader(t *testing.T) {
 	tests := []struct {
-		hdr      chunkHeader
-		wrong    bool
-		parseEOF bool
+		hdr   chunkHeader
+		wrong bool
 	}{
-		{hdr: chunkHeader{control: cEOS}, parseEOF: true},
+		{hdr: chunkHeader{control: cEOS}},
 		{hdr: chunkHeader{control: cU, size: 10}},
 		{hdr: chunkHeader{control: cUD, size: 100000}, wrong: true},
 	}
@@ -37,13 +37,7 @@ func TestChunkHeader(t *testing.T) {
 				t.Fatal("hdr.append(p) successful")
 			}
 			g, err := parseChunkHeader(bytes.NewReader(q))
-			if tc.parseEOF {
-				if err != io.EOF {
-					t.Fatalf("parseChunkHeader(%02x)"+
-						" expected EOF; got error %v",
-						q, err)
-				}
-			} else if err != nil {
+			if err != nil {
 				t.Fatalf("parseChunkHeader(%02x): error %s",
 					q, err)
 			}
@@ -71,8 +65,8 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	if err = cw.init(buf, seq, []byte(s), Properties{3, 0, 2}); err != nil {
 		t.Fatalf("cw.init() error %s", err)
 	}
-	if err = cw.Flush(); err != nil {
-		t.Fatalf("cw.Flush() error %s", err)
+	if err = cw.Close(); err != nil {
+		t.Fatalf("cw.Close() error %s", err)
 	}
 
 	var cr chunkReader
@@ -154,8 +148,8 @@ func TestChunkWriterReader(t *testing.T) {
 			if err != nil {
 				t.Fatalf("io.Copy error %s", err)
 			}
-			if err = cw.Flush(); err != nil {
-				t.Fatalf("cw.Flush() error %s", err)
+			if err = cw.Close(); err != nil {
+				t.Fatalf("cw.Close error %s", err)
 			}
 			hvIn := hIn.Sum(nil)
 			t.Logf("uncompressed: %d bytes; compressed: %d bytes",
@@ -222,5 +216,28 @@ func TestChunkClose(t *testing.T) {
 
 	if g != s {
 		t.Fatalf("got %q; want %q", g, s)
+	}
+}
+
+func TestPeekChunkHeader(t *testing.T) {
+	var hdr = chunkHeader{
+		control: cUD,
+		size:    256,
+	}
+	p, err := hdr.append(nil)
+	if err != nil {
+		t.Fatalf("hdr.append(nil) error %s", err)
+	}
+	r := bytes.NewReader(p)
+	br := bufio.NewReader(r)
+	h, n, err := peekChunkHeader(br)
+	if err != nil {
+		t.Fatalf("peekChunkHeader error %s", err)
+	}
+	if n != 3 {
+		t.Errorf("peekChunkHeader returned n=%d; want %d", n, 3)
+	}
+	if h != hdr {
+		t.Errorf("peekChunkHeader h=%+v; want %+v", h, hdr)
 	}
 }

@@ -38,6 +38,8 @@ func (s chunkState) next(c byte) chunkState {
 	}
 	if c&(1<<7) == 0 {
 		switch c {
+		case cEOS:
+			return sF
 		case cU:
 			switch s {
 			case s1:
@@ -60,8 +62,6 @@ func (s chunkState) next(c byte) chunkState {
 			}
 		case cCSPD:
 			return s2
-		case cEOS:
-			return sF
 		}
 	}
 	return sErr
@@ -74,6 +74,7 @@ type chunkReader struct {
 	bufr   *bufio.Reader
 	cstate chunkState
 	err    error
+	noEOS  bool
 }
 
 // init initializes the chunk reader. Note that the chunk reader consumes twice
@@ -87,7 +88,7 @@ func (r *chunkReader) init(z io.Reader, dictSize int) error {
 }
 
 // reset reinitialized the chunkReader. If possible existing allocated data
-// should be reused.
+// should be reused. The function doesn't touch the noEOS flag.
 func (r *chunkReader) reset(z io.Reader) {
 	r.r = z
 	r.dict.Reset()
@@ -103,6 +104,61 @@ type chunkHeader struct {
 	properties     Properties
 }
 
+// peekChunkHeader gets the next chunk header from the buffered reader without
+// advancing it.
+func peekChunkHeader(r *bufio.Reader) (h chunkHeader, n int, err error) {
+	p, err := r.Peek(6)
+	if err != nil && err != io.EOF {
+		return h, n, err
+	}
+	if len(p) == 0 {
+		return h, n, io.EOF
+	}
+	n = 1
+	h.control = p[0]
+	if h.control&(1<<7) == 0 {
+		switch h.control {
+		case cEOS:
+			return h, n, nil
+		case cU, cUD:
+			break
+		default:
+			return h, n, fmt.Errorf(
+				"lzma: unsupported chunk header"+
+					" control byte %02x", h.control)
+		}
+		if len(p) < 3 {
+			return h, n, io.ErrUnexpectedEOF
+		}
+		n = 3
+		h.size = int(getBE16(p[1:3])) + 1
+	} else {
+		var k int
+		h.control &= cMask
+		switch h.control {
+		case cC, cCS:
+			k = 5
+		case cCSP, cCSPD:
+			k = 6
+		default:
+			return h, n, fmt.Errorf("lzma: unsupported chunk header"+
+				" control byte %02x", h.control)
+		}
+		if len(p) < k {
+			return h, n, io.ErrUnexpectedEOF
+		}
+		n = k
+		h.size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
+		h.compressedSize = int(getBE16(p[3:5])) + 1
+		if n == 6 {
+			if err = h.properties.fromByte(p[5]); err != nil {
+				return h, n, err
+			}
+		}
+	}
+	return h, n, nil
+}
+
 // parseChunkHeader reads the next chunk header from the reader.
 func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 	p := make([]byte, 1, 6)
@@ -113,7 +169,8 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 	if h.control&(1<<7) == 0 {
 		switch h.control {
 		case cEOS:
-			return h, io.EOF
+			// return h, io.EOF
+			return h, nil
 		case cU, cUD:
 			break
 		default:
@@ -130,7 +187,7 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 		h.size = int(getBE16(p[1:3])) + 1
 	} else {
 		h.control &= cMask
-		switch h.control & cMask {
+		switch h.control {
 		case cC, cCS:
 			p = p[0:5]
 		case cCSP, cCSPD:
@@ -201,12 +258,18 @@ func (h chunkHeader) append(p []byte) (q []byte, err error) {
 func (r *chunkReader) readChunk() error {
 	h, err := parseChunkHeader(r.r)
 	if err != nil {
+		if !r.noEOS && err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return err
 	}
 	r.cstate = r.cstate.next(h.control)
 	if r.cstate == sErr {
 		return fmt.Errorf("lzma: unexpected byte control header %02x",
 			h.control)
+	}
+	if r.cstate == sF {
+		return io.EOF
 	}
 
 	if h.control == cUD || h.control == cCSPD {
