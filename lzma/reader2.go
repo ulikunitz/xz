@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
 )
 
 // Reader2Config provides the dictionary size parameter for a LZMA2 reader.
@@ -53,7 +52,7 @@ func (cfg *Reader2Config) ApplyDefaults() {
 	}
 
 	if cfg.Workers == 0 {
-		cfg.Workers = runtime.NumCPU()
+		cfg.Workers = 1
 	}
 
 	if cfg.WorkerBufferSize == 0 {
