@@ -4,20 +4,16 @@
 
 ### New lzma
 
-- Make workers == 1 as default for ReaderConfig
-- Test multi-threader reader.
 - document the lzma code and review existing documentation with pkgsite
 
 ### Remaining Tasks
 
-1. Fuzz lzma and xz go1.18 or beta or release candidate
+1. Fuzz lzma and xz
 2. Update dependencies in go.mod
 3. Rewrite README.md
   - provide example for parallel encoding  
   - create picture that compares speed improvements (v0.5, v0.6)
 4. Review open issues after final release
-
-### Create pizza tool
 
 ### Review all open issues and support
 
@@ -30,10 +26,14 @@
 * Publish the release candidate
 * Announce it on all the open issues
 
+## Write pizza tool
+
+* The pizza tool should support xz, zstd and gzip
+* Support lzma, xz and lzip
+
 ## Release v0.7
 
-1. Provide manual page for gxz
-2. Support lzma, xz and lzip
+1. Remove gxz tool and add hint for pizza tool
 
 ## Release v1.0
 
@@ -56,6 +56,11 @@
 * `git push`
 
 ## Log
+
+### 2022-12-04
+
+The parallel reader works now. Basically it took me half a year to get to this
+point.
 
 ### 2021-01-05
 
