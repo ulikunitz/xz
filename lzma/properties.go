@@ -12,7 +12,7 @@ type Properties struct {
 	PB int
 }
 
-// Returns the byte that encodes the properties.
+// byte() returns the byte that encodes the properties.
 func (p Properties) byte() byte {
 	return (byte)((p.PB*5+p.LP)*9 + p.LC)
 }

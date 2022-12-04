@@ -6,7 +6,7 @@ import (
 	"math/bits"
 )
 
-// number of supported states
+// states defines the number of supported states.
 const states = 12
 
 // maxPosBits defines the number of bits of the position value that are used to
@@ -14,8 +14,7 @@ const states = 12
 // for length encoding and decoding.
 const maxPosBits = 4
 
-// we are grouping probablities together that are used together and should be
-// combined together in a chache line.
+// state1Probs groups the probablities together to fit into a single cache line.
 type state1Probs struct {
 	isRep   prob
 	isRepG0 prob
@@ -23,17 +22,21 @@ type state1Probs struct {
 	isRepG2 prob
 }
 
+// initS1Probs initializes the state1 probabilities.
 func initS1Probs(p []state1Probs) {
 	for i := range p {
 		p[i] = state1Probs{probInit, probInit, probInit, probInit}
 	}
 }
 
+// state2Probs groups the state2 probabilities together so that the fit into a
+// single cache line.
 type state2Probs struct {
 	isMatch     prob
 	isRepG0Long prob
 }
 
+// initS2Probs intializes the state2 probabilities.
 func initS2Probs(p []state2Probs) {
 	for i := range p {
 		p[i] = state2Probs{probInit, probInit}
@@ -54,6 +57,7 @@ type state struct {
 	posBitMask uint32
 }
 
+// init initializes the state.
 func (s *state) init(p Properties) {
 	*s = state{
 		Properties: p,
@@ -67,10 +71,12 @@ func (s *state) init(p Properties) {
 	s.distCodec.init()
 }
 
+// reset sets the state back to its initial state.
 func (s *state) reset() {
 	s.init(s.Properties)
 }
 
+// deepCopy makes a deep copy of state value.
 func (s *state) deepCopy(src *state) {
 	if s == src {
 		return

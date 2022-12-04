@@ -20,7 +20,7 @@ type reader struct {
 const EOSSize uint64 = 1<<64 - 1
 
 // NewRawReader returns a reader that can read a LZMA stream. For a stream with
-// an EOS marker use EOSSize for uncompressedSize.
+// an EOS marker use [EOSSize] for uncompressedSize.
 func NewRawReader(z io.Reader, dictSize int, props Properties, uncompressedSize uint64) (r io.Reader, err error) {
 	if err = props.Verify(); err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (h params) Verify() error {
 	return h.props.Verify()
 }
 
-// append adds the header to the slice s.
+// AppendBinary adds the header to the slice s.
 func (h params) AppendBinary(p []byte) (r []byte, err error) {
 	var a [headerLen]byte
 	a[0] = h.props.byte()
@@ -65,7 +65,7 @@ func (h params) AppendBinary(p []byte) (r []byte, err error) {
 	return append(p, a[:]...), nil
 }
 
-// parse parses the header from the slice x. x must have exactly header length.
+// UnmarshalBinary parses the header from the slice x. x must have exactly header length.
 func (h *params) UnmarshalBinary(x []byte) error {
 	if len(x) != headerLen {
 		return errors.New("lzma: LZMA header has incorrect length")

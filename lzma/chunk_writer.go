@@ -144,7 +144,7 @@ loop:
 	return nil
 }
 
-// clearBuffer consumes all data provided and writes then in a sequence of
+// clearBuffer consumes all data provided and writes it in a sequence of
 // chunks. The last chunk will not be written out. Use the method finishChunnk
 // for it.
 func (w *chunkWriter) clearBuffer(ctx context.Context) error {

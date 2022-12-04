@@ -7,7 +7,9 @@ import (
 	"io"
 )
 
-// possible values of the control byte in the LZMA2 chunk header
+// Possible values of the masked control byte in the LZMA2 chunk header. Note
+// that the chunk header might contain length bits, so it has to be masked by
+// cMask.
 const (
 	cEOS  = byte(0)
 	cUD   = byte(0b01)

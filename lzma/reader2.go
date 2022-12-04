@@ -11,10 +11,9 @@ import (
 
 // Reader2Config provides the dictionary size parameter for a LZMA2 reader.
 //
-// Note that the parallel decoding will only work if the stream has been
-// parallel encoded and the WorkerBufferSize is large enough. The reader stream
-// is read until worker buffer size to check whether this is true if the Workers
-// field is larger than 1.
+// Note that the parallel decoding will only work if the stream has been encoded
+// with multiple workers and the WorkerBufferSize is large enough. If the worker
+// buffer size is too small only one worker will be used for decompression.
 type Reader2Config struct {
 	// DictSize provides the maximum dictionary size supported.
 	DictSize int
@@ -45,7 +44,8 @@ func (cfg *Reader2Config) Verify() error {
 	return nil
 }
 
-// ApplyDefaults sets a default value for the dictionary size.
+// ApplyDefaults sets a default value for the dictionary size. Note that
+// multi-threaded readers are not the default.
 func (cfg *Reader2Config) ApplyDefaults() {
 	if cfg.DictSize == 0 {
 		cfg.DictSize = 8 << 20
@@ -82,10 +82,11 @@ func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err erro
 	return newMTReader(cfg, z), nil
 }
 
+// mtReaderTask describes a single decompression task.
 type mtReaderTask struct {
 	// compressed stream consisting of chunks
 	z io.Reader
-	// uncompressed size;  less than zero if unknown (requires pipe)
+	// uncompressed size; less than zero if unknown.
 	size int
 	// reader for decompressed data
 	rCh chan io.Reader
@@ -99,6 +100,8 @@ type mtReader struct {
 	r      io.Reader
 }
 
+// newMTReader creates a new multithreader reader. Note that Close must be
+// called to clean up.
 func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
 	tskCh := make(chan mtReaderTask)
@@ -113,6 +116,7 @@ func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	}
 }
 
+// Read reads the data from the multithreaded reader.
 func (r *mtReader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
@@ -123,6 +127,7 @@ func (r *mtReader) Read(p []byte) (n int, err error) {
 			if !ok {
 				r.err = io.EOF
 				if n == 0 {
+					r.cancel()
 					return 0, io.EOF
 				}
 				return n, nil
@@ -143,6 +148,7 @@ func (r *mtReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Close closes the multihreaded reader and stops all workers.
 func (r *mtReader) Close() error {
 	if r.err == errClosed {
 		return errClosed
@@ -152,6 +158,8 @@ func (r *mtReader) Close() error {
 	return nil
 }
 
+// mtrGenerate generates the tasks for the multithreaded reader. It should be
+// started as go routine.
 func mtrGenerate(ctx context.Context, z io.Reader, bufSize int, tskCh, outCh chan<- mtReaderTask) {
 	r := bufio.NewReader(z)
 	for ctx.Err() == nil {
@@ -196,10 +204,13 @@ func mtrGenerate(ctx context.Context, z io.Reader, bufSize int, tskCh, outCh cha
 	}
 }
 
+// errReader is a reader that returns only an error.
 type errReader struct{ err error }
 
+// Read returns the error of the errReader.
 func (r *errReader) Read(p []byte) (n int, err error) { return 0, r.err }
 
+// mtrWork is the go routine function that does the actual decompression.
 func mtrWork(ctx context.Context, dictSize int, tskCh <-chan mtReaderTask) {
 	var chr chunkReader
 	chr.init(nil, dictSize)

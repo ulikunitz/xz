@@ -34,6 +34,8 @@ type writer struct {
 	bufw *bufio.Writer
 }
 
+// init initializes a writer. eos tells the writer whether an end-of-stream
+// marker should be written.
 func (w *writer) init(z io.Writer, seq lz.Sequencer, p Properties, eos bool) {
 	var bufw *bufio.Writer
 	bw, ok := z.(io.ByteWriter)
