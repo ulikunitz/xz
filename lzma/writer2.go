@@ -67,7 +67,8 @@ func (cfg *Writer2Config) Verify() error {
 	return nil
 }
 
-// ApplyDefaults replaces zero values with default values.
+// ApplyDefaults replaces zero values with default values. The workers variable
+// will be set to the number of CPUs.
 func (cfg *Writer2Config) ApplyDefaults() {
 	if cfg.LZCfg == nil {
 		var err error
@@ -110,8 +111,8 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 	return NewWriter2Config(z, Writer2Config{})
 }
 
-// NewWriter2Config constrcuts an LZMA2 writer for a specific configuration.
-// Note taht the implementation for cfg.Workers > 2 uses go routines.
+// NewWriter2Config constructs an LZMA2 writer for a specific configuration.
+// Note that the implementation for cfg.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg.ApplyDefaults()
 	sbCfg := cfg.LZCfg.BufferConfig()
