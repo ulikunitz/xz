@@ -275,8 +275,8 @@ func splitStream(w io.Writer, z *bufio.Reader, size int) (n int, ok bool, err er
 		} else {
 			k += hdr.compressedSize
 		}
-		size -= k
-		if size < 0 {
+		n += hdr.size
+		if n > size {
 			return 0, false, io.EOF
 		}
 		if _, err := io.CopyN(w, z, int64(k)); err != nil {
@@ -285,6 +285,5 @@ func splitStream(w io.Writer, z *bufio.Reader, size int) (n int, ok bool, err er
 			}
 			return 0, false, err
 		}
-		n += hdr.size
 	}
 }
