@@ -107,9 +107,6 @@ func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	tskCh := make(chan mtReaderTask)
 	outCh := make(chan mtReaderTask)
 	go mtrGenerate(ctx, z, cfg, tskCh, outCh)
-	for i := 0; i < cfg.Workers; i++ {
-		go mtrWork(ctx, cfg.DictSize, tskCh)
-	}
 	return &mtReader{
 		cancel: cancel,
 		outCh:  outCh,
@@ -160,8 +157,9 @@ func (r *mtReader) Close() error {
 
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
 // started as go routine.
-func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan<- mtReaderTask) {
+func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan mtReaderTask) {
 	r := bufio.NewReader(z)
+	workers := 0
 	for ctx.Err() == nil {
 		buf := new(bytes.Buffer)
 		buf.Grow(cfg.WorkerBufferSize)
@@ -180,6 +178,10 @@ func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, out
 			return
 		}
 		if parallel {
+			if workers < cfg.Workers {
+				go mtrWork(ctx, cfg.DictSize, tskCh)
+				workers++
+			}
 			tsk.z = buf
 			tsk.size = size
 			select {
