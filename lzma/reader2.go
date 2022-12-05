@@ -13,7 +13,7 @@ import (
 //
 // Note that the parallel decoding will only work if the stream has been encoded
 // with multiple workers and the WorkerBufferSize is large enough. If the worker
-// buffer size is too small only one worker will be used for decompression.
+// buffer size is too small no worker thread will be used for decompression.
 type Reader2Config struct {
 	// DictSize provides the maximum dictionary size supported.
 	DictSize int
