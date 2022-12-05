@@ -106,7 +106,7 @@ func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
 	tskCh := make(chan mtReaderTask)
 	outCh := make(chan mtReaderTask)
-	go mtrGenerate(ctx, z, cfg.WorkerBufferSize, tskCh, outCh)
+	go mtrGenerate(ctx, z, cfg, tskCh, outCh)
 	for i := 0; i < cfg.Workers; i++ {
 		go mtrWork(ctx, cfg.DictSize, tskCh)
 	}
@@ -160,15 +160,15 @@ func (r *mtReader) Close() error {
 
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
 // started as go routine.
-func mtrGenerate(ctx context.Context, z io.Reader, bufSize int, tskCh, outCh chan<- mtReaderTask) {
+func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan<- mtReaderTask) {
 	r := bufio.NewReader(z)
 	for ctx.Err() == nil {
 		buf := new(bytes.Buffer)
-		buf.Grow(bufSize)
+		buf.Grow(cfg.WorkerBufferSize)
 		tsk := mtReaderTask{
 			rCh: make(chan io.Reader, 1),
 		}
-		size, parallel, err := splitStream(buf, r, bufSize)
+		size, parallel, err := splitStream(buf, r, cfg.WorkerBufferSize)
 		if err != nil && err != io.EOF {
 			tsk.rCh <- &errReader{err: err}
 			select {
@@ -182,22 +182,36 @@ func mtrGenerate(ctx context.Context, z io.Reader, bufSize int, tskCh, outCh cha
 		if parallel {
 			tsk.z = buf
 			tsk.size = size
+			select {
+			case <-ctx.Done():
+				return
+			case tskCh <- tsk:
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case outCh <- tsk:
+			}
+			if err == io.EOF {
+				close(outCh)
+				return
+			}
 		} else {
 			tsk.z = io.MultiReader(buf, r)
 			tsk.size = -1
-			err = io.EOF
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case tskCh <- tsk:
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case outCh <- tsk:
-		}
-		if err == io.EOF {
+			chr := new(chunkReader)
+			chr.init(tsk.z, cfg.DictSize)
+			chr.noEOS = false
+			select {
+			case <-ctx.Done():
+				return
+			case tsk.rCh <- chr:
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case outCh <- tsk:
+			}
 			close(outCh)
 			return
 		}
@@ -238,23 +252,7 @@ func mtrWork(ctx context.Context, dictSize int, tskCh <-chan mtReaderTask) {
 			case tsk.rCh <- r:
 			}
 		} else {
-			chr.noEOS = false
-			r, w := io.Pipe()
-			select {
-			case <-ctx.Done():
-				return
-			case tsk.rCh <- r:
-			}
-			if _, err := io.Copy(w, &chr); err != nil {
-				if err = w.CloseWithError(err); err != nil {
-					panic(fmt.Errorf(
-						"w.CloseWithError error %s",
-						err))
-				}
-			}
-			if err := w.Close(); err != nil {
-				panic(fmt.Errorf("w.Close() error %s", err))
-			}
+			panic(fmt.Errorf("negative size not expexted"))
 		}
 	}
 }
