@@ -104,8 +104,8 @@ type mtReader struct {
 // called to clean up.
 func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
-	tskCh := make(chan mtReaderTask)
-	outCh := make(chan mtReaderTask)
+	tskCh := make(chan mtReaderTask, cfg.Workers)
+	outCh := make(chan mtReaderTask, cfg.Workers)
 	go mtrGenerate(ctx, z, cfg, tskCh, outCh)
 	return &mtReader{
 		cancel: cancel,
@@ -204,11 +204,7 @@ func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, out
 			chr := new(chunkReader)
 			chr.init(tsk.z, cfg.DictSize)
 			chr.noEOS = false
-			select {
-			case <-ctx.Done():
-				return
-			case tsk.rCh <- chr:
-			}
+			tsk.rCh <- chr
 			select {
 			case <-ctx.Done():
 				return
