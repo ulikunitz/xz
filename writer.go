@@ -10,34 +10,25 @@ import (
 	"hash"
 	"io"
 
-	lzma "github.com/ulikunitz/xz/old_lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // WriterConfig describe the parameters for an xz writer.
 type WriterConfig struct {
-	Properties *lzma.Properties
-	DictCap    int
-	BufSize    int
-	BlockSize  int64
+	// LZMA2 configuration
+	LZMACfg lzma.Writer2Config
+	// BlockSize defines the maximum size of a block. If not set there is no
+	// limit.
+	BlockSize int64
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
 	CheckSum byte
 	// Forces NoChecksum (default: false)
 	NoCheckSum bool
-	// match algorithm
-	Matcher lzma.MatchAlgorithm
 }
 
-// fill replaces zero values with default values.
-func (c *WriterConfig) fill() {
-	if c.Properties == nil {
-		c.Properties = &lzma.Properties{LC: 3, LP: 0, PB: 2}
-	}
-	if c.DictCap == 0 {
-		c.DictCap = 8 * 1024 * 1024
-	}
-	if c.BufSize == 0 {
-		c.BufSize = 4096
-	}
+// ApplyDefaults applies the defaults to the xz writer configuration.
+func (c *WriterConfig) ApplyDefaults() {
+	c.LZMACfg.ApplyDefaults()
 	if c.BlockSize == 0 {
 		c.BlockSize = maxInt64
 	}
@@ -55,14 +46,8 @@ func (c *WriterConfig) Verify() error {
 	if c == nil {
 		return errors.New("xz: writer configuration is nil")
 	}
-	c.fill()
-	lc := lzma.Writer2Config{
-		Properties: c.Properties,
-		DictCap:    c.DictCap,
-		BufSize:    c.BufSize,
-		Matcher:    c.Matcher,
-	}
-	if err := lc.Verify(); err != nil {
+	c.ApplyDefaults()
+	if err := c.LZMACfg.Verify(); err != nil {
 		return err
 	}
 	if c.BlockSize <= 0 {
@@ -76,7 +61,8 @@ func (c *WriterConfig) Verify() error {
 
 // filters creates the filter list for the given parameters.
 func (c *WriterConfig) filters() []filter {
-	return []filter{&lzmaFilter{int64(c.DictCap)}}
+	return []filter{&lzmaFilter{
+		int64(c.LZMACfg.LZCfg.BufferConfig().WindowSize)}}
 }
 
 // maxInt64 defines the maximum 64-bit signed integer.
@@ -137,7 +123,7 @@ func nopWriteCloser(w io.Writer) io.WriteCloser {
 
 // Writer compresses data written to it. It is an io.WriteCloser.
 type Writer struct {
-	WriterConfig
+	cfg WriterConfig
 
 	xz      io.Writer
 	bw      *blockWriter
@@ -150,7 +136,7 @@ type Writer struct {
 // newBlockWriter creates a new block writer writes the header out.
 func (w *Writer) newBlockWriter() error {
 	var err error
-	w.bw, err = w.WriterConfig.newBlockWriter(w.xz, w.newHash())
+	w.bw, err = w.cfg.newBlockWriter(w.xz, w.newHash())
 	if err != nil {
 		return err
 	}
@@ -173,19 +159,20 @@ func (w *Writer) closeBlockWriter() error {
 
 // NewWriter creates a new xz writer using default parameters.
 func NewWriter(xz io.Writer) (w *Writer, err error) {
-	return WriterConfig{}.NewWriter(xz)
+	return WriterConfig{}.newWriter(xz)
 }
 
-// NewWriter creates a new Writer using the given configuration parameters.
-func (c WriterConfig) NewWriter(xz io.Writer) (w *Writer, err error) {
+// newWriter creates a new Writer using the given configuration parameters.
+func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
+	c.ApplyDefaults()
 	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	w = &Writer{
-		WriterConfig: c,
-		xz:           xz,
-		h:            header{c.CheckSum},
-		index:        make([]record, 0, 4),
+		cfg:   c,
+		xz:    xz,
+		h:     header{c.CheckSum},
+		index: make([]record, 0, 4),
 	}
 	if w.newHash, err = newHashFunc(c.CheckSum); err != nil {
 		return nil, err

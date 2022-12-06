@@ -6,7 +6,7 @@ package xz_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/ulikunitz/xz"
@@ -21,7 +21,7 @@ func TestPanic(t *testing.T) {
 		t.Logf("xz.NewReader error %s", err)
 		return
 	}
-	_, err = ioutil.ReadAll(r)
+	_, err = io.ReadAll(r)
 	if err != nil {
 		t.Logf("ioutil.ReadAll(r) error %s", err)
 		return

@@ -12,8 +12,6 @@ import (
 	"hash"
 	"hash/crc32"
 	"io"
-
-	lzma "github.com/ulikunitz/xz/old_lzma"
 )
 
 // allZeros checks whether a given byte slice has only zeros.
@@ -526,7 +524,7 @@ type filter interface {
 // readFilter reads a block filter from the block header. At this point
 // in time only the LZMA2 filter is supported.
 func readFilter(r io.Reader) (f filter, err error) {
-	br := lzma.ByteReader(r)
+	br := byteReader(r)
 
 	// index
 	id, _, err := readUvarint(br)
@@ -667,7 +665,7 @@ func readIndexBody(r io.Reader, expectedRecordLen int) (records []record, n int6
 	// index indicator
 	crc.Write([]byte{0})
 
-	br := lzma.ByteReader(io.TeeReader(r, crc))
+	br := byteReader(io.TeeReader(r, crc))
 
 	// number of records
 	u, k, err := readUvarint(br)

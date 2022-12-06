@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	lzma "github.com/ulikunitz/xz/old_lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // LZMA filter constants.
@@ -21,12 +21,12 @@ const (
 // lzmaFilter declares the LZMA2 filter information stored in an xz
 // block header.
 type lzmaFilter struct {
-	dictCap int64
+	dictSize int64
 }
 
 // String returns a representation of the LZMA filter.
 func (f lzmaFilter) String() string {
-	return fmt.Sprintf("LZMA dict cap %#x", f.dictCap)
+	return fmt.Sprintf("LZMA dict cap %#x", f.dictSize)
 }
 
 // id returns the ID for the LZMA2 filter.
@@ -34,7 +34,7 @@ func (f lzmaFilter) id() uint64 { return lzmaFilterID }
 
 // MarshalBinary converts the lzmaFilter in its encoded representation.
 func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
-	c := lzma.EncodeDictCap(f.dictCap)
+	c := lzma.EncodeDictSize(f.dictSize)
 	return []byte{lzmaFilterID, 1, c}, nil
 }
 
@@ -50,12 +50,12 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 	if data[1] != 1 {
 		return errors.New("xz: wrong LZMA2 filter size")
 	}
-	dc, err := lzma.DecodeDictCap(data[2])
+	dc, err := lzma.DecodeDictSize(data[2])
 	if err != nil {
 		return errors.New("xz: wrong LZMA2 dictionary size property")
 	}
 
-	f.dictCap = dc
+	f.dictSize = dc
 	return nil
 }
 
@@ -63,20 +63,22 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 	err error) {
 
-	config := new(lzma.Reader2Config)
-	if c != nil {
-		config.DictCap = c.DictCap
+	var cfg lzma.Reader2Config
+	if c == nil {
+		cfg.DictSize = int(f.dictSize)
+	} else {
+		cfg = c.LZMACfg
 	}
-	dc := int(f.dictCap)
+	dc := int(f.dictSize)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
 			"dictionary capacity overflow")
 	}
-	if dc > config.DictCap {
-		config.DictCap = dc
+	if dc > cfg.DictSize {
+		cfg.DictSize = dc
 	}
 
-	fr, err = config.NewReader2(r)
+	fr, err = lzma.NewReader2Config(r, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -86,26 +88,26 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 // writeCloser creates a io.WriteCloser for the LZMA2 filter.
 func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
-	config := new(lzma.Writer2Config)
+	var cfg lzma.Writer2Config
 	if c != nil {
-		*config = lzma.Writer2Config{
-			Properties: c.Properties,
-			DictCap:    c.DictCap,
-			BufSize:    c.BufSize,
-			Matcher:    c.Matcher,
-		}
+		cfg = c.LZMACfg
+	} else {
+		cfg.ApplyDefaults()
 	}
 
-	dc := int(f.dictCap)
+	dc := int(f.dictSize)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
 			"dictionary capacity overflow")
 	}
-	if dc > config.DictCap {
-		config.DictCap = dc
+
+	sbConfig := cfg.LZCfg.BufferConfig()
+	if dc > sbConfig.WindowSize {
+		sbConfig.WindowSize = dc
+		// TODO: adjust buffer size?
 	}
 
-	fw, err = config.NewWriter2(w)
+	fw, err = lzma.NewWriter2Config(w, cfg)
 	if err != nil {
 		return nil, err
 	}

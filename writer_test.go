@@ -120,6 +120,7 @@ func TestWriter2(t *testing.T) {
 		t.Fatalf("Close error %s", err)
 	}
 	t.Logf("buf.Len() %d", buf.Len())
+
 	r, err := NewReader(&buf)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
@@ -144,7 +145,7 @@ func TestWriterNoneCheck(t *testing.T) {
 	txt := buf.String()
 
 	buf.Reset()
-	w, err := WriterConfig{NoCheckSum: true}.NewWriter(&buf)
+	w, err := WriterConfig{NoCheckSum: true}.newWriter(&buf)
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}

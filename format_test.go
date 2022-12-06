@@ -136,7 +136,7 @@ func TestBlockHeader(t *testing.T) {
 	}
 	glf := g.filters[0].(*lzmaFilter)
 	hlf := h.filters[0].(*lzmaFilter)
-	if glf.dictCap != hlf.dictCap {
-		t.Errorf("got dictCap %d; want %d", glf.dictCap, hlf.dictCap)
+	if glf.dictSize != hlf.dictSize {
+		t.Errorf("got dictCap %d; want %d", glf.dictSize, hlf.dictSize)
 	}
 }

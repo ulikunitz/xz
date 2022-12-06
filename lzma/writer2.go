@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"runtime"
 
 	"github.com/ulikunitz/lz"
 )
@@ -58,10 +57,10 @@ func (cfg *Writer2Config) Verify() error {
 	}
 
 	sbCfg := cfg.LZCfg.BufferConfig()
-	if cfg.WorkerBufferSize > sbCfg.BufferSize {
+	if cfg.WorkerBufferSize < sbCfg.BufferSize {
 		return errors.New(
-			"lzma: sequence buffer buffer size must be" +
-				" less or equal than worker buffer size")
+			"lzma: worker buffer size must be less or equal" +
+				" than sequence buffer size")
 	}
 
 	return nil
@@ -91,11 +90,16 @@ func (cfg *Writer2Config) ApplyDefaults() {
 	}
 
 	if cfg.Workers == 0 {
-		cfg.Workers = runtime.GOMAXPROCS(0)
+		// TODO: cfg.Workers = runtime.GOMAXPROCS(0)
+		cfg.Workers = 1
 	}
 
 	if cfg.WorkerBufferSize == 0 {
 		cfg.WorkerBufferSize = 1 << 20
+		sbConfig := cfg.LZCfg.BufferConfig()
+		if cfg.WorkerBufferSize > sbConfig.BufferSize {
+			sbConfig.BufferSize = cfg.WorkerBufferSize
+		}
 	}
 }
 

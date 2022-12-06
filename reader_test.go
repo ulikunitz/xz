@@ -7,7 +7,6 @@ package xz
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -29,13 +28,13 @@ func TestReaderSimple(t *testing.T) {
 }
 
 func TestReaderSingleStream(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/fox.xz")
+	data, err := os.ReadFile("testdata/fox.xz")
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
 	}
 	xz := bytes.NewReader(data)
 	rc := ReaderConfig{SingleStream: true}
-	r, err := rc.NewReader(xz)
+	r, err := rc.newReader(xz)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -46,7 +45,7 @@ func TestReaderSingleStream(t *testing.T) {
 	buf.Reset()
 	data = append(data, 0)
 	xz = bytes.NewReader(data)
-	r, err = rc.NewReader(xz)
+	r, err = rc.newReader(xz)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -56,7 +55,7 @@ func TestReaderSingleStream(t *testing.T) {
 }
 
 func TestReaderMultipleStreams(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/fox.xz")
+	data, err := os.ReadFile("testdata/fox.xz")
 	if err != nil {
 		t.Fatalf("ReadFile error %s", err)
 	}

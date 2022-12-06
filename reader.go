@@ -14,15 +14,19 @@ import (
 	"hash"
 	"io"
 
-	lzma "github.com/ulikunitz/xz/old_lzma"
+	"github.com/ulikunitz/xz/lzma"
 )
 
 // ReaderConfig defines the parameters for the xz reader. The
 // SingleStream parameter requests the reader to assume that the
 // underlying stream contains only a single stream.
 type ReaderConfig struct {
-	DictCap      int
+	LZMACfg      lzma.Reader2Config
 	SingleStream bool
+}
+
+func (c *ReaderConfig) ApplyDefaults() {
+	c.LZMACfg.ApplyDefaults()
 }
 
 // Verify checks the reader parameters for Validity. Zero values will be
@@ -31,8 +35,8 @@ func (c *ReaderConfig) Verify() error {
 	if c == nil {
 		return errors.New("xz: reader parameters are nil")
 	}
-	lc := lzma.Reader2Config{DictCap: c.DictCap}
-	if err := lc.Verify(); err != nil {
+
+	if err := c.LZMACfg.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -40,7 +44,7 @@ func (c *ReaderConfig) Verify() error {
 
 // Reader supports the reading of one or multiple xz streams.
 type Reader struct {
-	ReaderConfig
+	cfg ReaderConfig
 
 	xz io.Reader
 	sr *streamReader
@@ -61,19 +65,20 @@ type streamReader struct {
 // The function reads and checks the header of the first XZ stream. The
 // reader will process multiple streams including padding.
 func NewReader(xz io.Reader) (r *Reader, err error) {
-	return ReaderConfig{}.NewReader(xz)
+	return ReaderConfig{}.newReader(xz)
 }
 
-// NewReader creates an xz stream reader. The created reader will be
+// newReader creates an xz stream reader. The created reader will be
 // able to process multiple streams and padding unless a SingleStream
 // has been set in the reader configuration c.
-func (c ReaderConfig) NewReader(xz io.Reader) (r *Reader, err error) {
+func (c ReaderConfig) newReader(xz io.Reader) (r *Reader, err error) {
+	c.ApplyDefaults()
 	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
-		ReaderConfig: c,
-		xz:           xz,
+		cfg: c,
+		xz:  xz,
 	}
 	if r.sr, err = c.newStreamReader(xz); err != nil {
 		if err == io.EOF {
@@ -90,7 +95,7 @@ var errUnexpectedData = errors.New("xz: unexpected data after stream")
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		if r.sr == nil {
-			if r.SingleStream {
+			if r.cfg.SingleStream {
 				data := make([]byte, 1)
 				_, err = io.ReadFull(r.xz, data)
 				if err != io.EOF {
@@ -99,7 +104,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				return n, io.EOF
 			}
 			for {
-				r.sr, err = r.ReaderConfig.newStreamReader(r.xz)
+				r.sr, err = r.cfg.newStreamReader(r.xz)
 				if err != errPadding {
 					break
 				}
