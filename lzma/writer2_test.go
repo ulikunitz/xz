@@ -5,9 +5,12 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/ulikunitz/xz/internal/randtxt"
 )
 
 func TestWriter2Simple(t *testing.T) {
@@ -50,9 +53,12 @@ func TestWriter2Simple(t *testing.T) {
 
 func TestWriter2(t *testing.T) {
 	tests := []Writer2Config{
-		{Workers: 1},
-		{WorkerBufferSize: 100000, Workers: 2},
+		/*
+			{Workers: 1},
+			{WorkerBufferSize: 100000, Workers: 2},
+		*/
 		{WorkerBufferSize: 3e5},
+
 		{},
 	}
 
@@ -110,5 +116,52 @@ func TestWriter2(t *testing.T) {
 				t.Fatalf("hash checksums differ")
 			}
 		})
+	}
+}
+
+func TestMTWriter(t *testing.T) {
+	t.Skip("TODO")
+	const txtlen = 1023
+	buf := new(bytes.Buffer)
+	io.CopyN(buf, randtxt.NewReader(rand.NewSource(41)), txtlen)
+	txt := buf.String()
+
+	buf.Reset()
+	w, err := NewWriter2Config(buf, Writer2Config{Workers: 8})
+	if err != nil {
+		t.Fatalf("NewWriter2 error %s", err)
+	}
+	defer w.Close()
+	if _, err = io.WriteString(w, txt); err != nil {
+		t.Fatalf("io.WriteString error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+	dictSize := w.DictSize()
+
+	r, err := NewReader2(buf, dictSize)
+	if err != nil {
+		t.Fatalf("NewReader2 error %s", err)
+	}
+	defer r.Close()
+	sb := new(strings.Builder)
+	var n int64
+	if n, err = io.Copy(sb, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+	t.Logf("decompressed %d bytes", n)
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close error %s", err)
+	}
+
+	got := sb.String()
+	if len(got) != len(txt) {
+		t.Fatalf("got string with length %d; want %d",
+			len(got), len(txt))
+	}
+
+	if got != txt {
+		t.Fatalf("decompressed text differs from original text")
 	}
 }
