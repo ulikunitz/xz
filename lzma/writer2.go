@@ -51,16 +51,18 @@ func (cfg *Writer2Config) Verify() error {
 		return errors.New("lzma: Worker must be larger than 0")
 	}
 
-	if cfg.WorkerBufferSize <= 0 {
+	if cfg.Workers > 1 && cfg.WorkerBufferSize <= 0 {
 		return errors.New(
 			"lzma: WorkerBufferSize must be greater than 0")
 	}
 
-	sbCfg := cfg.LZCfg.BufferConfig()
-	if cfg.WorkerBufferSize < sbCfg.BufferSize {
-		return errors.New(
-			"lzma: worker buffer size must be less or equal" +
-				" than sequence buffer size")
+	if cfg.Workers > 1 {
+		sbCfg := cfg.LZCfg.BufferConfig()
+		if cfg.WorkerBufferSize > sbCfg.BufferSize {
+			return errors.New(
+				"lzma: sequence buffer size must be" +
+					" less or equal than worker buffer size")
+		}
 	}
 
 	return nil
@@ -94,11 +96,11 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		cfg.Workers = 1
 	}
 
-	if cfg.WorkerBufferSize == 0 {
+	if cfg.WorkerBufferSize == 0 && cfg.Workers > 1 {
 		cfg.WorkerBufferSize = 1 << 20
-		sbConfig := cfg.LZCfg.BufferConfig()
-		if cfg.WorkerBufferSize > sbConfig.BufferSize {
-			sbConfig.BufferSize = cfg.WorkerBufferSize
+		sbCfg := cfg.LZCfg.BufferConfig()
+		if cfg.WorkerBufferSize > sbCfg.BufferSize {
+			sbCfg.BufferSize = cfg.WorkerBufferSize
 		}
 	}
 }
@@ -120,7 +122,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg.ApplyDefaults()
 	sbCfg := cfg.LZCfg.BufferConfig()
-	if cfg.WorkerBufferSize > sbCfg.BufferSize {
+	if cfg.Workers > 1 && cfg.WorkerBufferSize > sbCfg.BufferSize {
 		sbCfg.BufferSize = cfg.WorkerBufferSize
 	}
 	if err = cfg.Verify(); err != nil {
