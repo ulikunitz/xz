@@ -143,7 +143,8 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	mw := &mtWriter{
-		buf:    make([]byte, 0, cfg.WorkerBufferSize),
+		// extra margin is an optimization for the sequencers
+		buf:    make([]byte, 0, cfg.WorkerBufferSize+7),
 		ctx:    ctx,
 		cancel: cancel,
 		taskCh: make(chan mtwTask, cfg.Workers),
@@ -215,7 +216,8 @@ func (w *mtWriter) Write(p []byte) (n int, err error) {
 			return n, err
 		case w.outCh <- output:
 		}
-		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize)
+		// extra margin is an optimization for the sequence buffers
+		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize+7)
 		n += k
 		p = p[k:]
 	}
@@ -250,7 +252,8 @@ func (w *mtWriter) Flush() error {
 			return err
 		case w.taskCh <- task:
 		}
-		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize)
+		// extra margin is an optimization for the sequencers
+		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize+7)
 	}
 	output := mtwOutput{flushCh: flushCh, zCh: zCh}
 	select {
