@@ -120,7 +120,6 @@ func TestWriter2(t *testing.T) {
 }
 
 func TestMTWriter(t *testing.T) {
-	t.Skip("TODO")
 	const txtlen = 1023
 	buf := new(bytes.Buffer)
 	io.CopyN(buf, randtxt.NewReader(rand.NewSource(41)), txtlen)
@@ -146,11 +145,9 @@ func TestMTWriter(t *testing.T) {
 	}
 	defer r.Close()
 	sb := new(strings.Builder)
-	var n int64
-	if n, err = io.Copy(sb, r); err != nil {
+	if _, err = io.Copy(sb, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
 	}
-	t.Logf("decompressed %d bytes", n)
 	if err = r.Close(); err != nil {
 		t.Fatalf("r.Close error %s", err)
 	}

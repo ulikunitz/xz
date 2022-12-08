@@ -142,255 +142,231 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	mw := &multiWriter{
-		ctx:        ctx,
-		cancel:     cancel,
-		z:          z,
-		compressCh: make(chan writer2Task, cfg.Workers),
-		outCh:      make(chan writer2Task, cfg.Workers),
-		errCh:      make(chan error, 1),
-		cfg:        cfg,
+	mw := &mtWriter{
+		buf:    make([]byte, 0, cfg.WorkerBufferSize),
+		ctx:    ctx,
+		cancel: cancel,
+		taskCh: make(chan mtwTask, cfg.Workers),
+		outCh:  make(chan mtwOutput, cfg.Workers),
+		errCh:  make(chan error, 1),
+		z:      z,
+		cfg:    cfg,
 	}
 
-	go outputCompressedData(mw.ctx, mw.z, mw.outCh, mw.errCh)
+	go mtwWriteOutput(mw.ctx, mw.outCh, mw.z, mw.errCh)
 
 	return mw, nil
 }
 
-// writer2Task describes a task that is processed by the compressing worker and
-// the output goroutine.
-//
-// The flushCh provides the information that the task and all tasks before it
-// have been successfully processed.
-type writer2Task struct {
-	data    []byte
-	zCh     chan []byte
-	flushCh chan struct{}
+type mtWriter struct {
+	buf     []byte
+	ctx     context.Context
+	cancel  context.CancelFunc
+	taskCh  chan mtwTask
+	outCh   chan mtwOutput
+	errCh   chan error
+	z       io.Writer
+	workers int
+	cfg     Writer2Config
+	err     error
 }
 
-// multiWriter describes the multithreaded writer that compresses data.
-type multiWriter struct {
-	buf        []byte
-	ctx        context.Context
-	cancel     context.CancelFunc
-	z          io.Writer
-	compressCh chan writer2Task
-	outCh      chan writer2Task
-	errCh      chan error
-	workers    int
-	cfg        Writer2Config
-	err        error
+func (w *mtWriter) DictSize() int {
+	return w.cfg.LZCfg.BufferConfig().WindowSize
 }
 
-// DictSize returns the dictionary size of the LZ sequencer.
-func (mw *multiWriter) DictSize() int {
-	seq, err := mw.cfg.LZCfg.NewSequencer()
-	if err != nil {
-		panic(err)
-	}
-	return seq.Buffer().WindowSize
-}
-
-// Write writes data into a buffer and if the buffer is large enough provides it
-// to the compressing worker.
-func (mw *multiWriter) Write(p []byte) (n int, err error) {
-	if mw.err != nil {
-		return 0, mw.err
+func (w *mtWriter) Write(p []byte) (n int, err error) {
+	if w.err != nil {
+		return 0, w.err
 	}
 	select {
-	case err = <-mw.errCh:
-		mw.err = err
-		mw.cancel()
-		return 0, err
+	case err = <-w.errCh:
+		w.err = err
+		w.cancel()
+		return n, err
 	default:
 	}
-
 	for len(p) > 0 {
-		k := mw.cfg.WorkerBufferSize - len(mw.buf)
-		if k > len(p) {
-			mw.buf = append(mw.buf, p...)
+		k := w.cfg.WorkerBufferSize - len(w.buf)
+		if k >= len(p) {
+			w.buf = append(w.buf, p...)
 			n += len(p)
 			return n, nil
 		}
-		mw.buf = append(mw.buf, p[:k]...)
-		if mw.workers < mw.cfg.Workers {
-			seq, err := mw.cfg.LZCfg.NewSequencer()
-			if err != nil {
-				mw.err = err
-				mw.cancel()
-				return n, err
-			}
-			go compressWorker(mw.ctx, mw.compressCh, seq,
-				mw.cfg.Properties)
+		if w.workers < w.cfg.Workers {
+			go mtwWork(w.ctx, w.taskCh, w.cfg)
+			w.workers++
 		}
-		task := writer2Task{
-			data: mw.buf,
-			zCh:  make(chan []byte, 1),
-		}
-		mw.buf = nil
-		// TODO: remove
-		if len(task.data) == 0 {
-			panic("len(task.data) must be greater zero")
-		}
+		w.buf = append(w.buf, p[:k]...)
+		zCh := make(chan []byte, 1)
+		task := mtwTask{data: w.buf, zCh: zCh}
 		select {
-		case err = <-mw.errCh:
-			mw.err = err
-			mw.cancel()
+		case err = <-w.errCh:
+			w.err = err
+			w.cancel()
 			return n, err
-		case mw.compressCh <- task:
+		case w.taskCh <- task:
 		}
+		output := mtwOutput{zCh: zCh}
 		select {
-		case err = <-mw.errCh:
-			mw.err = err
-			mw.cancel()
+		case err = <-w.errCh:
+			w.err = err
+			w.cancel()
 			return n, err
-		case mw.outCh <- task:
+		case w.outCh <- output:
 		}
+		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize)
 		n += k
 		p = p[k:]
 	}
 	return n, nil
 }
 
-// Flush flushes all buffered data.
-func (mw *multiWriter) Flush() error {
-	if mw.err != nil {
-		return mw.err
+func (w *mtWriter) Flush() error {
+	if w.err != nil {
+		return w.err
 	}
 	var err error
 	select {
-	case err = <-mw.errCh:
-		mw.err = err
-		mw.cancel()
+	case err = <-w.errCh:
+		w.err = err
+		w.cancel()
 		return err
 	default:
 	}
-	if mw.workers < mw.cfg.Workers {
-		seq, err := mw.cfg.LZCfg.NewSequencer()
-		if err != nil {
-			mw.err = err
-			mw.cancel()
-			return err
-		}
-		go compressWorker(mw.ctx, mw.compressCh, seq, mw.cfg.Properties)
+	if w.workers < w.cfg.Workers {
+		go mtwWork(w.ctx, w.taskCh, w.cfg)
+		w.workers++
 	}
 	flushCh := make(chan struct{}, 1)
-	task := writer2Task{
-		data:    mw.buf,
-		zCh:     make(chan []byte, 1),
-		flushCh: flushCh,
-	}
-	mw.buf = nil
-	if len(task.data) > 0 {
+	var zCh chan []byte
+	if len(w.buf) > 0 {
+		zCh = make(chan []byte, 1)
+		task := mtwTask{data: w.buf, zCh: zCh}
 		select {
-		case err = <-mw.errCh:
-			mw.err = err
-			mw.cancel()
+		case err = <-w.errCh:
+			w.err = err
+			w.cancel()
 			return err
-		case mw.compressCh <- task:
+		case w.taskCh <- task:
 		}
+		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize)
 	}
+	output := mtwOutput{flushCh: flushCh, zCh: zCh}
 	select {
-	case err = <-mw.errCh:
-		mw.err = err
-		mw.cancel()
+	case err = <-w.errCh:
+		w.err = err
+		w.cancel()
 		return err
-	case mw.outCh <- task:
+	case w.outCh <- output:
 	}
 	select {
-	case err = <-mw.errCh:
-		mw.err = err
-		mw.cancel()
+	case err = <-w.errCh:
+		w.err = err
+		w.cancel()
 		return err
 	case <-flushCh:
-		return nil
 	}
-}
-
-// Close closes the writer and terminates the LZMA2 stream.
-func (mw *multiWriter) Close() error {
-	if mw.err != nil {
-		return mw.err
-	}
-	defer mw.cancel()
-	var err error
-	if err = mw.Flush(); err != nil {
-		return err
-	}
-	var zero [1]byte
-	if _, err = mw.z.Write(zero[:]); err != nil {
-		mw.err = err
-		return err
-	}
-	mw.err = errClosed
 	return nil
 }
 
-// compressWorker compressed the data provided by the writer2Task and provides
-// the compressed information to the zCh.
-func compressWorker(ctx context.Context, compressCh chan writer2Task, seq lz.Sequencer, props Properties) {
+var zero = make([]byte, 1)
+
+func (w *mtWriter) Close() error {
+	if w.err != nil {
+		return w.err
+	}
+	defer w.cancel()
+	var err error
+	if err = w.Flush(); err != nil {
+		w.err = err
+		return err
+	}
+	if _, err = w.z.Write(zero); err != nil {
+		w.err = err
+		return err
+	}
+	w.err = errClosed
+	return nil
+}
+
+type mtwOutput struct {
+	flushCh chan<- struct{}
+	zCh     <-chan []byte
+}
+
+type mtwTask struct {
+	data []byte
+	zCh  chan<- []byte
+}
+
+func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, errCh chan<- error) {
 	var (
-		err error
+		o    mtwOutput
+		data []byte
+	)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case o = <-outCh:
+		}
+		if o.zCh != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case data = <-o.zCh:
+			}
+			if _, err := z.Write(data); err != nil {
+				select {
+				case <-ctx.Done():
+					return
+				case errCh <- err:
+					return
+				}
+			}
+		}
+		if o.flushCh != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case o.flushCh <- struct{}{}:
+			}
+		}
+	}
+}
+
+func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
+	seq, err := cfg.LZCfg.NewSequencer()
+	if err != nil {
+		panic(fmt.Errorf("NewSequencer error %s", err))
+	}
+	var (
+		tsk mtwTask
 		w   chunkWriter
 	)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case tsk := <-compressCh:
-			buf := new(bytes.Buffer)
-			if err = w.init(buf, seq, tsk.data, props); err != nil {
-				panic(err)
-			}
-			if err = w.FlushContext(ctx); err != nil {
-				if errors.Is(err, context.Canceled) ||
-					errors.Is(err,
-						context.DeadlineExceeded) {
-					return
-				}
-				panic(err)
-			}
-			select {
-			case tsk.zCh <- buf.Bytes():
-				break
-			case <-ctx.Done():
-				return
-			}
+		case tsk = <-taskCh:
 		}
-	}
-}
+		buf := new(bytes.Buffer)
+		if err := w.init(buf, seq, tsk.data, cfg.Properties); err != nil {
+			panic(fmt.Errorf("w.init error %s", err))
+		}
+		if err := w.FlushContext(ctx); err != nil {
+			if errors.Is(err, context.Canceled) ||
+				errors.Is(err, context.DeadlineExceeded) {
+				return
 
-// outputCompressedData provides the single output channel that writes the data
-// in the correct sequence to the underlying writer.
-func outputCompressedData(ctx context.Context, z io.Writer, outCh chan writer2Task, errCh chan error) {
-	for {
+			}
+			panic(fmt.Errorf("w.FlushContext error %s", err))
+		}
 		select {
 		case <-ctx.Done():
 			return
-		case tsk := <-outCh:
-			if len(tsk.data) > 0 {
-				select {
-				case <-ctx.Done():
-					return
-				case data := <-tsk.zCh:
-					if _, err := z.Write(data); err != nil {
-						select {
-						case <-ctx.Done():
-							return
-						case errCh <- err:
-							return
-						}
-					}
-				}
-			}
-			if tsk.flushCh != nil {
-				select {
-				case <-ctx.Done():
-					return
-				case tsk.flushCh <- struct{}{}:
-					break
-				}
-			}
+		case tsk.zCh <- buf.Bytes():
 		}
 	}
 }
