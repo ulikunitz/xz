@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/ulikunitz/lz"
 )
@@ -92,8 +93,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 	}
 
 	if cfg.Workers == 0 {
-		// TODO: cfg.Workers = runtime.GOMAXPROCS(0)
-		cfg.Workers = 1
+		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
 
 	if cfg.WorkerBufferSize == 0 && cfg.Workers > 1 {
