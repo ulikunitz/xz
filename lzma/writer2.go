@@ -200,21 +200,19 @@ func (w *mtWriter) Write(p []byte) (n int, err error) {
 		}
 		w.buf = append(w.buf, p[:k]...)
 		zCh := make(chan []byte, 1)
-		task := mtwTask{data: w.buf, zCh: zCh}
 		select {
 		case err = <-w.errCh:
 			w.err = err
 			w.cancel()
 			return n, err
-		case w.taskCh <- task:
+		case w.taskCh <- mtwTask{data: w.buf, zCh: zCh}:
 		}
-		output := mtwOutput{zCh: zCh}
 		select {
 		case err = <-w.errCh:
 			w.err = err
 			w.cancel()
 			return n, err
-		case w.outCh <- output:
+		case w.outCh <- mtwOutput{zCh: zCh}:
 		}
 		// extra margin is an optimization for the sequence buffers
 		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize+7)
@@ -244,24 +242,22 @@ func (w *mtWriter) Flush() error {
 	var zCh chan []byte
 	if len(w.buf) > 0 {
 		zCh = make(chan []byte, 1)
-		task := mtwTask{data: w.buf, zCh: zCh}
 		select {
 		case err = <-w.errCh:
 			w.err = err
 			w.cancel()
 			return err
-		case w.taskCh <- task:
+		case w.taskCh <- mtwTask{data: w.buf, zCh: zCh}:
 		}
 		// extra margin is an optimization for the sequencers
 		w.buf = make([]byte, 0, w.cfg.WorkerBufferSize+7)
 	}
-	output := mtwOutput{flushCh: flushCh, zCh: zCh}
 	select {
 	case err = <-w.errCh:
 		w.err = err
 		w.cancel()
 		return err
-	case w.outCh <- output:
+	case w.outCh <- mtwOutput{flushCh: flushCh, zCh: zCh}:
 	}
 	select {
 	case err = <-w.errCh:
