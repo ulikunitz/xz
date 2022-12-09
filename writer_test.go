@@ -176,3 +176,28 @@ func TestWriterNoneCheck(t *testing.T) {
 		t.Fatal("decompressed data differs from original")
 	}
 }
+
+func BenchmarkWriter(b *testing.B) {
+	const testFile = "testdata/enwik7"
+	data, err := os.ReadFile(testFile)
+	if err != nil {
+		b.Fatalf("os.ReadFile(%q) error %s", testFile, err)
+	}
+	buf := new(bytes.Buffer)
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		w, err := NewWriter(buf)
+		if err != nil {
+			b.Fatalf("NewWriter(buf) error %s", err)
+		}
+		if _, err = w.Write(data); err != nil {
+			b.Fatalf("w.Write(data) error %s", err)
+		}
+		if err = w.Close(); err != nil {
+			b.Fatalf("w.Write(data)")
+		}
+	}
+}
