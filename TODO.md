@@ -4,8 +4,7 @@
 
 ### New lzma
 
-- debug multithreaded writer
-- replace old_lzma by lzma in xz
+- run benchmarks
 
 ### Remaining Tasks
 
