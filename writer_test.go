@@ -200,4 +200,5 @@ func BenchmarkWriter(b *testing.B) {
 			b.Fatalf("w.Write(data)")
 		}
 	}
+	b.ReportMetric(float64(buf.Len())/float64(len(data)), "rate")
 }
