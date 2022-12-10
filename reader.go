@@ -68,6 +68,11 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 	return ReaderConfig{}.newReader(xz)
 }
 
+// NewReaderConfig instantioates a new reader using a configuration parameter.
+func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r *Reader, err error) {
+	return cfg.newReader(xz)
+}
+
 // newReader creates an xz stream reader. The created reader will be
 // able to process multiple streams and padding unless a SingleStream
 // has been set in the reader configuration c.
