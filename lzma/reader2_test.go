@@ -44,7 +44,6 @@ func TestReader2(t *testing.T) {
 				WorkerBufferSize: 50000,
 			},
 		},
-
 		{},
 	}
 

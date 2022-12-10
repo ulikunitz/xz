@@ -108,15 +108,16 @@ type chunkHeader struct {
 
 // peekChunkHeader gets the next chunk header from the buffered reader without
 // advancing it.
-func peekChunkHeader(r *bufio.Reader) (h chunkHeader, n int, err error) {
-	p, err := r.Peek(6)
-	if err != nil && err != io.EOF {
-		return h, n, err
+func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
+	p := make([]byte, 1, 6)
+	k, err := r.Peek(p)
+	if err != nil {
+		if k > 0 {
+			panic("unexpected")
+		}
+		return h, 0, err
 	}
-	if len(p) == 0 {
-		return h, n, io.EOF
-	}
-	n = 1
+	n += k
 	h.control = p[0]
 	if h.control&(1<<7) == 0 {
 		switch h.control {
@@ -129,30 +130,41 @@ func peekChunkHeader(r *bufio.Reader) (h chunkHeader, n int, err error) {
 				"lzma: unsupported chunk header"+
 					" control byte %02x", h.control)
 		}
-		if len(p) < 3 {
-			return h, n, io.ErrUnexpectedEOF
+		n, err = r.Peek(p[:3])
+		if err != nil {
+			if n == 3 {
+				panic("unexpected")
+			}
+			if err == io.EOF {
+				err = io.ErrUnexpectedEOF
+			}
+			return h, n, err
 		}
-		n = 3
 		h.size = int(getBE16(p[1:3])) + 1
 	} else {
-		var k int
 		h.control &= cMask
 		switch h.control {
 		case cC, cCS:
-			k = 5
+			p = p[0:5]
 		case cCSP, cCSPD:
-			k = 6
+			p = p[0:6]
 		default:
 			return h, n, fmt.Errorf("lzma: unsupported chunk header"+
 				" control byte %02x", h.control)
 		}
-		if len(p) < k {
-			return h, n, io.ErrUnexpectedEOF
+		n, err = r.Peek(p)
+		if err != nil {
+			if n == len(p) {
+				panic("unexpected")
+			}
+			if err == io.EOF {
+				err = io.ErrUnexpectedEOF
+			}
+			return h, n, err
 		}
-		n = k
 		h.size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
 		h.compressedSize = int(getBE16(p[3:5])) + 1
-		if n == 6 {
+		if h.control == cCSP || h.control == cCSPD {
 			if err = h.properties.fromByte(p[5]); err != nil {
 				return h, n, err
 			}

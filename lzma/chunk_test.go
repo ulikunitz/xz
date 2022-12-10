@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"fmt"
@@ -228,9 +227,8 @@ func TestPeekChunkHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("hdr.append(nil) error %s", err)
 	}
-	r := bytes.NewReader(p)
-	br := bufio.NewReader(r)
-	h, n, err := peekChunkHeader(br)
+	hr := &hdrReader{r: bytes.NewReader(p)}
+	h, n, err := peekChunkHeader(hr)
 	if err != nil {
 		t.Fatalf("peekChunkHeader error %s", err)
 	}

@@ -1,7 +1,6 @@
 package lzma
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"errors"
@@ -158,7 +157,7 @@ func (r *mtReader) Close() error {
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
 // started as go routine.
 func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan mtReaderTask) {
-	r := bufio.NewReader(z)
+	r := &hdrReader{r: z}
 	workers := 0
 	for ctx.Err() == nil {
 		buf := new(bytes.Buffer)
@@ -255,19 +254,72 @@ func mtrWork(ctx context.Context, dictSize int, tskCh <-chan mtReaderTask) {
 	}
 }
 
+type hdrReader struct {
+	err error
+	hdr []byte
+	r   io.Reader
+}
+
+func (hr *hdrReader) Peek(p []byte) (n int, err error) {
+	if hr.err != nil {
+		return 0, hr.err
+	}
+	if len(hr.hdr) > 0 {
+		n = copy(p, hr.hdr)
+		if n >= len(p) {
+			return n, nil
+		}
+		p = p[n:]
+	}
+	k, err := io.ReadFull(hr.r, p)
+	n += int(k)
+	hr.hdr = append(hr.hdr, p[:k]...)
+	if err != nil {
+		hr.err = err
+		if n > 0 && err == io.EOF {
+			err = nil
+		}
+	}
+	return n, err
+}
+
+func (hr *hdrReader) Read(p []byte) (n int, err error) {
+	if hr.err != nil {
+		return 0, hr.err
+	}
+	if len(hr.hdr) > 0 {
+		k := copy(p, hr.hdr)
+		n += k
+		k = copy(hr.hdr, hr.hdr[k:])
+		hr.hdr = hr.hdr[:k]
+		if k > 0 {
+			return n, nil
+		}
+	}
+	k, err := hr.r.Read(p[n:])
+	n += k
+	if err != nil {
+		hr.err = err
+		if n > 0 && err == io.EOF {
+			err = nil
+		}
+	}
+	return n, err
+}
+
 // splitStream splits the LZMA stream into blocks that can be processed in
 // parallel. Such blocks need to start with a dictionary reset. If such a block
 // cannot be found that is less or equal size then false is returned and the
 // write contains a series of chunks and the last chunk headere. The number n
 // contains the size of the decompressed block. If ok is false n will be zero.
-func splitStream(w io.Writer, z *bufio.Reader, size int) (n int, ok bool, err error) {
+func splitStream(w io.Writer, hr *hdrReader, size int) (n int, ok bool, err error) {
 	for {
-		hdr, k, err := peekChunkHeader(z)
+		hdr, k, err := peekChunkHeader(hr)
 		if err != nil {
 			if err == io.EOF {
 				err = io.ErrUnexpectedEOF
 			}
-			return 0, false, err
+			return n, false, err
 		}
 		switch hdr.control {
 		case cUD, cCSPD:
@@ -286,7 +338,7 @@ func splitStream(w io.Writer, z *bufio.Reader, size int) (n int, ok bool, err er
 		if n > size {
 			return 0, false, io.EOF
 		}
-		if _, err := io.CopyN(w, z, int64(k)); err != nil {
+		if _, err := io.CopyN(w, hr, int64(k)); err != nil {
 			if err == io.EOF {
 				err = io.ErrUnexpectedEOF
 			}
