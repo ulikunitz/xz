@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"testing"
+
+	"github.com/ulikunitz/xz/lzma"
 )
 
 func TestReaderSimple(t *testing.T) {
@@ -92,5 +94,46 @@ func TestCheckNone(t *testing.T) {
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
+	}
+}
+
+func BenchmarkReader(b *testing.B) {
+	const testFile = "testdata/enwik7"
+	data, err := os.ReadFile(testFile)
+	if err != nil {
+		b.Fatalf("os.ReadFile(%q) error %s", testFile, err)
+	}
+	buf := new(bytes.Buffer)
+	uncompressedLen := int64(len(data))
+	b.SetBytes(int64(uncompressedLen))
+	b.ReportAllocs()
+	buf.Reset()
+	w, err := NewWriter(buf)
+	if err != nil {
+		b.Fatalf("NewWriter(buf) error %s", err)
+	}
+	if _, err = w.Write(data); err != nil {
+		b.Fatalf("w.Write(data) error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		b.Fatalf("w.Write(data)")
+	}
+	data = make([]byte, buf.Len())
+	copy(data, buf.Bytes())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		r, err := NewReaderConfig(bytes.NewReader(data),
+			ReaderConfig{LZMACfg: lzma.Reader2Config{Workers: 2}})
+		if err != nil {
+			b.Fatalf("NewReader(data) error %s", err)
+		}
+		n, err := io.Copy(buf, r)
+		if err != nil {
+			b.Fatalf("io.Copy(buf, r) error %s", err)
+		}
+		if n != uncompressedLen {
+			b.Fatalf("io.Copy got %d; want %d", n, uncompressedLen)
+		}
 	}
 }
