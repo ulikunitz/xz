@@ -4,6 +4,7 @@
 
 ### New lzma
 
+- make xz.Reader a closer
 - run benchmarks
 
 ### Remaining Tasks
@@ -56,6 +57,13 @@
 * `git push`
 
 ## Log
+
+### 2022-12-11
+
+A number of bug fixes later I have now working parallel readers and writers for
+xz. The single-thread reader is not dramatically faster but the writer is.
+However the presets produce rather bad compression compared to the my original
+sopftware. We have to check, how we can achieve that rate again.
 
 ### 2022-12-04
 
