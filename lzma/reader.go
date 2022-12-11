@@ -20,7 +20,8 @@ type reader struct {
 const EOSSize uint64 = 1<<64 - 1
 
 // NewRawReader returns a reader that can read a LZMA stream. For a stream with
-// an EOS marker use [EOSSize] for uncompressedSize.
+// an EOS marker use [EOSSize] for uncompressedSize. The dictSize must be
+// positive (>=0).
 func NewRawReader(z io.Reader, dictSize int, props Properties, uncompressedSize uint64) (r io.Reader, err error) {
 	if err = props.Verify(); err != nil {
 		return nil, err
@@ -88,6 +89,14 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 	var params params
 	if err = params.UnmarshalBinary(p); err != nil {
 		return nil, err
+	}
+	// The LZMA specification says that if the dictionary size in the header
+	// is less than 4096 it must be set to 4096. See pull request
+	// https://github.com/ulikunitz/xz/pull/52
+	// TODO: depending on the discussion we might even need a way to
+	// override the header.
+	if params.dictSize < minDictSize {
+		params.dictSize = minDictSize
 	}
 	if err = params.Verify(); err != nil {
 		return nil, err
