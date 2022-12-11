@@ -69,9 +69,6 @@ func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
 	if err = r.h.unmarshalBinary(data); err != nil {
 		return nil, err
 	}
-	if r.h.dictCap < MinDictCap {
-		return nil, errors.New("lzma: dictionary capacity too small")
-	}
 	dictCap := r.h.dictCap
 	if c.DictCap > dictCap {
 		dictCap = c.DictCap
