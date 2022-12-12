@@ -1,4 +1,4 @@
-// Copyright 2014-2021 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2022 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,14 +12,14 @@ different signature.
 
 The typical use case looks like this:
 
-  b := Bool("flag-b", "b", false, "boolean flag")
-  h := Bool("help", "h", false, "prints this message")
+	  b := Bool("flag-b", "b", false, "boolean flag")
+	  h := Bool("help", "h", false, "prints this message")
 
-  Parse()
+	  Parse()
 
-  if *h {
-	  gflag.Usage()
-  }
+	  if *h {
+		  gflag.Usage()
+	  }
 */
 package gflag
 
