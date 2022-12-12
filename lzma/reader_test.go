@@ -152,3 +152,47 @@ func TestBadExamples(t *testing.T) {
 		})
 	}
 }
+
+func TestMinDictSize(t *testing.T) {
+	const file = "testdata/examples/a.txt"
+	uncompressed, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error %s", file, err)
+	}
+	f := bytes.NewReader(uncompressed)
+
+	buf := new(bytes.Buffer)
+	cfg := WriterConfig{}
+	cfg.ApplyDefaults()
+	sbCfg := cfg.LZCfg.BufferConfig()
+	sbCfg.WindowSize = 4096
+	sbCfg.ShrinkSize = 1024
+	w, err := NewWriterConfig(buf, cfg)
+	if err != nil {
+		t.Fatalf("WriterConfig(%+v).NewWriter(buf) error %s", cfg, err)
+	}
+	defer w.Close()
+	if _, err = io.Copy(w, f); err != nil {
+		t.Fatalf("io.Copy(w, f) error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+
+	compressed := buf.Bytes()
+	putLE32(compressed[1:5], 0)
+
+	z := bytes.NewReader(compressed)
+	r, err := NewReader(z)
+	if err != nil {
+		t.Fatalf("NewReader(z) error %s", err)
+	}
+	u, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("io.ReadAll(r) error %s", err)
+	}
+
+	if !bytes.Equal(u, uncompressed) {
+		t.Fatalf("got %q; want %q", u, uncompressed)
+	}
+}
