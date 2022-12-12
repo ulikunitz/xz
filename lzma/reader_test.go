@@ -112,7 +112,6 @@ func TestReaderAll(t *testing.T) {
 	}
 }
 
-//
 func Example_reader() {
 	f, err := os.Open("fox.lzma")
 	if err != nil {
@@ -308,5 +307,45 @@ func TestReaderErrAgain(t *testing.T) {
 		if k != n {
 			t.Errorf("Read %d bytes; want %d", k, n)
 		}
+	}
+}
+
+func TestMinDictSize(t *testing.T) {
+	const file = "examples/a.txt"
+	uncompressed, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q) error %s", file, err)
+	}
+	f := bytes.NewReader(uncompressed)
+
+	buf := new(bytes.Buffer)
+	cfg := WriterConfig{DictCap: 4096}
+	w, err := cfg.NewWriter(buf)
+	if err != nil {
+		t.Fatalf("WriterConfig(%+v).NewWriter(buf) error %s", cfg, err)
+	}
+	defer w.Close()
+	if _, err = io.Copy(w, f); err != nil {
+		t.Fatalf("io.Copy(w, f) error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+
+	compressed := buf.Bytes()
+	putUint32LE(compressed[1:5], 0)
+
+	z := bytes.NewReader(compressed)
+	r, err := NewReader(z)
+	if err != nil {
+		t.Fatalf("NewReader(z) error %s", err)
+	}
+	u, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("io.ReadAll(r) error %s", err)
+	}
+
+	if !bytes.Equal(u, uncompressed) {
+		t.Fatalf("got %q; want %q", u, uncompressed)
 	}
 }

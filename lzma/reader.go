@@ -70,7 +70,7 @@ func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
 		return nil, err
 	}
 	if r.h.dictCap < MinDictCap {
-		return nil, errors.New("lzma: dictionary capacity too small")
+		r.h.dictCap = MinDictCap
 	}
 	dictCap := r.h.dictCap
 	if c.DictCap > dictCap {
