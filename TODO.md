@@ -4,8 +4,8 @@
 
 ### New lzma
 
-- Implement a test for LZMA with a small dict size that will be increased to
-  4096. (Pull #52).
+- Add DictSize as parameter to WriterConfig and Writer2Config and resort the
+  parameters.
 - make xz.Reader a closer
 - run benchmarks
 - Does chunk writer support uncompressed chunks?
