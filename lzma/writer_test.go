@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/ulikunitz/lz"
 )
 
 func TestWriterSimple(t *testing.T) {
@@ -40,4 +42,28 @@ func TestWriterSimple(t *testing.T) {
 	if g != s {
 		t.Fatalf("got %q; want %q", g, s)
 	}
+}
+
+func TestWriterConfigDictSize(t *testing.T) {
+	cfg := WriterConfig{DictSize: 4096}
+	cfg.ApplyDefaults()
+	if err := cfg.Verify(); err != nil {
+		t.Fatalf("DictSize set without lzCfg: %s", err)
+	}
+
+	params := lz.Params{WindowSize: 4097}
+	lzCfg, err := lz.Config(params)
+	if err != nil {
+		t.Fatalf("lz.Config(%+v) error %s", params, err)
+	}
+	cfg = WriterConfig{
+		LZCfg:    lzCfg,
+		DictSize: 4098,
+	}
+	cfg.ApplyDefaults()
+	sbCfg := cfg.LZCfg.BufferConfig()
+	if sbCfg.WindowSize != 4098 {
+		t.Fatalf("sbCfg.windowSize %d; want %d", sbCfg.WindowSize, 4098)
+	}
+
 }

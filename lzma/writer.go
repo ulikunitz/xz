@@ -199,11 +199,24 @@ func (lw *limitWriter) Close() error {
 
 // WriterConfig defines the parameters for the LZMA Writer.
 type WriterConfig struct {
-	LZCfg          lz.Configurator
-	Properties     Properties
+	// Dictionary size.
+	DictSize int
+
+	// Properties of the LZMA algorithm.
+	Properties Properties
+
+	// If true the properties are actually zero.
 	ZeroProperties bool
-	FixedSize      bool
-	Size           int64
+
+	// FixedSize says that the stream has a fixed size know before
+	// compression.
+	FixedSize bool
+
+	// Size gives the actual size if FixedSize is set.
+	Size int64
+
+	// LZCfg specific configuration for the LZ sequencer.
+	LZCfg lz.Configurator
 }
 
 // Verify checks the validtiy of the writer congiguration parameter.
@@ -238,9 +251,18 @@ func (cfg *WriterConfig) Verify() error {
 func (cfg *WriterConfig) ApplyDefaults() {
 	if cfg.LZCfg == nil {
 		var err error
-		cfg.LZCfg, err = lz.Config(lz.Params{})
+		var params lz.Params
+		if cfg.DictSize > 0 {
+			params.WindowSize = cfg.DictSize
+		}
+		cfg.LZCfg, err = lz.Config(params)
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
+		}
+	} else if cfg.DictSize > 0 {
+		err := cfg.LZCfg.BufferConfig().SetWindowSize(cfg.DictSize)
+		if err != nil {
+			panic(err)
 		}
 	}
 
