@@ -99,7 +99,7 @@ it.
 
 Mituo Heijo has fuzzed xz and found a bug in the function readIndexBody. The
 function allocated a slice of records immediately after reading the value
-without further checks. Sincex the number has been too large the make function
+without further checks. Since the number has been too large the make function
 did panic. The fix is to check the number against the expected number of records
 before allocating the records.
 
