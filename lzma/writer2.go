@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"io"
 	"runtime"
+	"testing"
 
 	"github.com/ulikunitz/lz"
 )
 
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
 type Writer2Config struct {
-	// Configuration for the LZ compressor.
-	LZCfg lz.Configurator
+	// DictSize sets the dicationary size.
+	DictSize int
+
 	// Properties for the LZMA algorithm.
 	Properties Properties
 	// ZeroProperties indicate that the Properties is indeed zero
@@ -24,6 +26,9 @@ type Writer2Config struct {
 	Workers int
 	// Size of buffer used by the worker.
 	WorkerBufferSize int
+
+	// Configuration for the LZ compressor.
+	LZCfg lz.Configurator
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
@@ -74,9 +79,18 @@ func (cfg *Writer2Config) Verify() error {
 func (cfg *Writer2Config) ApplyDefaults() {
 	if cfg.LZCfg == nil {
 		var err error
-		cfg.LZCfg, err = lz.Config(lz.Params{})
+		var params lz.Params
+		if cfg.DictSize > 0 {
+			params.WindowSize = cfg.DictSize
+		}
+		cfg.LZCfg, err = lz.Config(params)
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
+		}
+	} else if cfg.DictSize > 0 {
+		err := cfg.LZCfg.BufferConfig().SetWindowSize(cfg.DictSize)
+		if err != nil {
+			panic(err)
 		}
 	}
 
@@ -367,5 +381,28 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 			return
 		case tsk.zCh <- buf.Bytes():
 		}
+	}
+}
+
+func TestWriter2ConfigDictSize(t *testing.T) {
+	cfg := Writer2Config{DictSize: 4096}
+	cfg.ApplyDefaults()
+	if err := cfg.Verify(); err != nil {
+		t.Fatalf("DictSize set without lzCfg: %s", err)
+	}
+
+	params := lz.Params{WindowSize: 4097}
+	lzCfg, err := lz.Config(params)
+	if err != nil {
+		t.Fatalf("lz.Config(%+v) error %s", params, err)
+	}
+	cfg = Writer2Config{
+		LZCfg:    lzCfg,
+		DictSize: 4098,
+	}
+	cfg.ApplyDefaults()
+	sbCfg := cfg.LZCfg.BufferConfig()
+	if sbCfg.WindowSize != 4098 {
+		t.Fatalf("sbCfg.windowSize %d; want %d", sbCfg.WindowSize, 4098)
 	}
 }
