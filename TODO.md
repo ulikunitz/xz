@@ -4,10 +4,10 @@
 
 ### New lzma
 
-- Add DictSize as parameter to WriterConfig and Writer2Config and resort the
-  parameters.
 - make xz.Reader a closer
 - run benchmarks
+  - single threaded
+  - multithreaded
 - Does chunk writer support uncompressed chunks?
 
 ### Remaining Tasks
@@ -21,6 +21,10 @@
 
 ### Review all open issues and support
 
+## Write pizza tool
+
+* The pizza tool should support xz, lzma
+
 ### Publish release candidate 1
 
 * Run all tests on all modules that are required
@@ -30,14 +34,11 @@
 * Publish the release candidate
 * Announce it on all the open issues
 
-## Write pizza tool
+## Update pizza tool
 
-* The pizza tool should support xz, zstd and gzip
-* Support lzma, xz and lzip
-
-## Release v0.7
-
-1. Remove gxz tool and add hint for pizza tool
+* Support lzip
+* Support zstd
+* Support gzip
 
 ## Release v1.0
 
