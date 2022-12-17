@@ -8,7 +8,9 @@
 - run benchmarks
   - single threaded
   - multithreaded
-- Does chunk writer support uncompressed chunks?
+- check for quick wins for cpu and memory creations
+- extend zbench to support lzma and normalize the params
+- add NewWriterParams() and NewWriter2Params to lzma and NewWriterParams to xz
 
 ### Remaining Tasks
 
