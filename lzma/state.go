@@ -388,7 +388,11 @@ func (t *probTree) deepCopy(src *probTree) {
 	if t == src {
 		return
 	}
-	t.probs = make([]prob, len(src.probs))
+	if cap(t.probs) >= len(src.probs) {
+		t.probs = t.probs[:len(src.probs)]
+	} else {
+		t.probs = make([]prob, len(src.probs))
+	}
 	copy(t.probs, src.probs)
 	t.bits = src.bits
 }
