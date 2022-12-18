@@ -140,7 +140,7 @@ func BenchmarkReader(b *testing.B) {
 		buf.Reset()
 		r, err := NewReaderConfig(bytes.NewReader(data),
 			ReaderConfig{LZMACfg: lzma.Reader2Config{
-				Workers: runtime.NumCPU(),
+				Workers: runtime.GOMAXPROCS(0),
 			}})
 		if err != nil {
 			b.Fatalf("NewReader(data) error %s", err)
