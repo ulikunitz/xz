@@ -228,8 +228,7 @@ func (lc *lengthCodec) init() {
 // Encode encodes the length offset. The length offset l can be compute by
 // subtracting minMatchLen (2) from the actual length.
 //
-//   l = length - minMatchLen
-//
+//	l = length - minMatchLen
 func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 ) (err error) {
 	if l > maxMatchLen-minMatchLen {
@@ -476,24 +475,25 @@ func (d *rangeDecoder) directDecodeBit() (b uint32, err error) {
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) decodeBit(p *prob) (b uint32, err error) {
-	bound := p.bound(d.nrange)
+	nrange := d.nrange
+	bound := p.bound(nrange)
 	if d.code < bound {
-		d.nrange = bound
 		p.inc()
 		b = 0
+		nrange = bound
 	} else {
-		d.code -= bound
-		d.nrange -= bound
 		p.dec()
 		b = 1
+		d.code -= bound
+		nrange -= bound
 	}
 	// normalize
 	// assume d.code < d.nrange
-	const top = 1 << 24
-	if d.nrange >= top {
+	if nrange >= (1 << 24) {
+		d.nrange = nrange
 		return b, nil
 	}
-	d.nrange <<= 8
+	d.nrange = nrange << 8
 	// d.code < d.nrange will be maintained
 	return b, d.updateCode()
 }
