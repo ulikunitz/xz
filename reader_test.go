@@ -24,9 +24,13 @@ func TestReaderSimple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
+	defer r.Close()
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
 	}
 }
 
@@ -41,9 +45,13 @@ func TestReaderSingleStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
+	defer r.Close()
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
 	}
 	buf.Reset()
 	data = append(data, 0)
@@ -52,8 +60,12 @@ func TestReaderSingleStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
+	defer r.Close()
 	if _, err = io.Copy(&buf, r); err != errUnexpectedData {
 		t.Fatalf("io.Copy returned %v; want %v", err, errUnexpectedData)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
 	}
 }
 
@@ -76,6 +88,7 @@ func TestReaderMultipleStreams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
+	defer r.Close()
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
@@ -92,6 +105,7 @@ func TestCheckNone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
+	defer r.Close()
 	var buf bytes.Buffer
 	if _, err = io.Copy(&buf, r); err != nil {
 		t.Fatalf("io.Copy error %s", err)
@@ -137,6 +151,9 @@ func BenchmarkReader(b *testing.B) {
 		}
 		if n != uncompressedLen {
 			b.Fatalf("io.Copy got %d; want %d", n, uncompressedLen)
+		}
+		if err = r.Close(); err != nil {
+			b.Fatalf("r.Close() error %s", err)
 		}
 	}
 }

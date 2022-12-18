@@ -98,6 +98,9 @@ var errUnexpectedData = errors.New("xz: unexpected data after stream")
 
 // Read reads uncompressed data from the stream.
 func (r *Reader) Read(p []byte) (n int, err error) {
+	if r.xz == nil {
+		return 0, errClosed
+	}
 	for n < len(p) {
 		if r.sr == nil {
 			if r.cfg.SingleStream {
@@ -129,6 +132,23 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 	return n, nil
+}
+
+// Close closes the xz reader. The function must be called to clear Go routines
+// that may be used by the LZMA2 reader.
+func (r *Reader) Close() error {
+	if r.xz == nil {
+		return errClosed
+	}
+	if r.sr != nil {
+		err := r.sr.Close()
+		if err != nil && err != errClosed {
+			return err
+		}
+		r.sr = nil
+	}
+	r.xz = nil
+	return nil
 }
 
 var errPadding = errors.New("xz: padding (4 zero bytes) encountered")
@@ -205,6 +225,9 @@ func (r *streamReader) readTail() error {
 
 // Read reads actual data from the xz stream.
 func (r *streamReader) Read(p []byte) (n int, err error) {
+	if r.xz == nil {
+		return 0, errClosed
+	}
 	for n < len(p) {
 		if r.br == nil {
 			bh, hlen, err := readBlockHeader(r.xz)
@@ -237,6 +260,23 @@ func (r *streamReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Close closes the stream reader. It is required to clean up go routines in the
+// LZMA2 reader implementation.
+func (r *streamReader) Close() error {
+	if r.xz == nil {
+		return errClosed
+	}
+	if r.br != nil {
+		err := r.br.Close()
+		if err != nil && err != errClosed {
+			return err
+		}
+		r.br = nil
+	}
+	r.xz = nil
+	return nil
+}
+
 // countingReader is a reader that counts the bytes read.
 type countingReader struct {
 	r io.Reader
@@ -258,6 +298,7 @@ type blockReader struct {
 	n         int64
 	hash      hash.Hash
 	r         io.Reader
+	fr        io.ReadCloser
 }
 
 // newBlockReader creates a new block reader.
@@ -271,14 +312,14 @@ func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
 		hash:      hash,
 	}
 
-	fr, err := c.newFilterReader(&br.lxz, h.filters)
+	br.fr, err = c.newFilterReader(&br.lxz, h.filters)
 	if err != nil {
 		return nil, err
 	}
 	if br.hash.Size() != 0 {
-		br.r = io.TeeReader(fr, br.hash)
+		br.r = io.TeeReader(br.fr, br.hash)
 	} else {
-		br.r = fr
+		br.r = br.fr
 	}
 
 	return br, nil
@@ -309,6 +350,9 @@ func (br *blockReader) record() record {
 
 // Read reads data from the block.
 func (br *blockReader) Read(p []byte) (n int, err error) {
+	if br.fr == nil {
+		return 0, errClosed
+	}
 	n, err = br.r.Read(p)
 	br.n += int64(n)
 
@@ -347,14 +391,25 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
-func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
-	err error) {
+// Close closes the block reader and the LZMA2 reader supporting it.
+func (br *blockReader) Close() error {
+	if br.fr == nil {
+		return errClosed
+	}
+	if err := br.fr.Close(); err != nil {
+		return err
+	}
+	br.fr = nil
+	return nil
+}
+
+func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
 	}
 
-	fr = r
+	fr = io.NopCloser(r)
 	for i := len(f) - 1; i >= 0; i-- {
 		fr, err = f[i].reader(fr, c)
 		if err != nil {

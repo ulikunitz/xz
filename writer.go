@@ -341,7 +341,7 @@ func (bw *blockWriter) record() record {
 	return record{bw.unpaddedSize(), bw.uncompressedSize()}
 }
 
-var errClosed = errors.New("xz: writer already closed")
+var errClosed = errors.New("xz: already closed")
 
 var errNoSpace = errors.New("xz: no space")
 
