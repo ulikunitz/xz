@@ -4,7 +4,6 @@
 
 ### New lzma
 
-- make xz.Reader a closer
 - run benchmarks
   - single threaded
   - multithreaded
