@@ -162,6 +162,11 @@ func NewWriter(xz io.Writer) (w *Writer, err error) {
 	return WriterConfig{}.newWriter(xz)
 }
 
+// NewWriterConfig creates a new writer using the provcided configuration.
+func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w *Writer, err error) {
+	return cfg.newWriter(xz)
+}
+
 // newWriter creates a new Writer using the given configuration parameters.
 func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
 	c.ApplyDefaults()
@@ -188,7 +193,6 @@ func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
 		return nil, err
 	}
 	return w, nil
-
 }
 
 // Write compresses the uncompressed data provided.
