@@ -81,11 +81,16 @@ func (s *state) deepCopy(src *state) {
 	if s == src {
 		return
 	}
-	*s = *src
+	s.s1 = src.s1
+	s.s2 = src.s2
 	s.litCodec.deepCopy(&src.litCodec)
 	s.lenCodec.deepCopy(&src.lenCodec)
 	s.repLenCodec.deepCopy(&src.repLenCodec)
 	s.distCodec.deepCopy(&src.distCodec)
+	s.Properties = src.Properties
+	s.rep = src.rep
+	s.state = src.state
+	s.posBitMask = src.posBitMask
 }
 
 // updateStateLiteral updates the state for a literal.
