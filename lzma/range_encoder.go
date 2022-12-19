@@ -42,11 +42,11 @@ func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
 	bound := p.bound(e.nrange)
 	if b&1 == 0 {
 		e.nrange = bound
-		p.inc()
+		*p = incProb(*p)
 	} else {
 		e.low += uint64(bound)
 		e.nrange -= bound
-		p.dec()
+		*p = decProb(*p)
 	}
 
 	// normalize
