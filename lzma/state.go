@@ -306,7 +306,7 @@ func (tc *treeCodec) deepCopy(src *treeCodec) {
 func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
 	m := uint32(1)
 	for i := int(tc.bits) - 1; i >= 0; i-- {
-		b := (v >> uint(i)) & 1
+		b := (v >> i) & 1
 		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
@@ -326,7 +326,7 @@ func (tc *treeCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 		}
 		m = (m << 1) | b
 	}
-	return m - (1 << uint(tc.bits)), nil
+	return m - (1 << tc.bits), nil
 }
 
 // treeReverseCodec is another tree codec, where the least-significant bit is
@@ -456,10 +456,10 @@ func (d *rangeDecoder) possiblyAtEnd() bool {
 // contain the bit at the least-significant position. All other bits will be
 // zero.
 func (d *rangeDecoder) directDecodeBit() (b uint32, err error) {
-	d.nrange >>= 1
-	d.code -= d.nrange
+	nrange := d.nrange >> 1
+	d.code -= nrange
 	t := 0 - (d.code >> 31)
-	d.code += d.nrange & t
+	d.code += nrange & t
 	b = (t + 1) & 1
 
 	// d.code will stay less then d.nrange
@@ -467,10 +467,11 @@ func (d *rangeDecoder) directDecodeBit() (b uint32, err error) {
 	// normalize
 	// assume d.code < d.nrange
 	const top = 1 << 24
-	if d.nrange >= top {
+	if nrange >= top {
+		d.nrange = nrange
 		return b, nil
 	}
-	d.nrange <<= 8
+	d.nrange = nrange << 8
 	// d.code < d.nrange will be maintained
 	return b, d.updateCode()
 }
