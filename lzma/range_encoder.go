@@ -39,22 +39,24 @@ func (e *rangeEncoder) DirectEncodeBit(b uint32) error {
 // EncodeBit encodes the least significant bit of b. The p value will be
 // updated by the function depending on the bit encoded.
 func (e *rangeEncoder) EncodeBit(b uint32, p *prob) error {
-	bound := p.bound(e.nrange)
+	nrange := e.nrange
+	bound := p.bound(nrange)
 	if b&1 == 0 {
-		e.nrange = bound
+		nrange = bound
 		*p = incProb(*p)
 	} else {
 		e.low += uint64(bound)
-		e.nrange -= bound
+		nrange -= bound
 		*p = decProb(*p)
 	}
 
 	// normalize
 	const top = 1 << 24
-	if e.nrange >= top {
+	if nrange >= top {
+		e.nrange = nrange
 		return nil
 	}
-	e.nrange <<= 8
+	e.nrange = nrange << 8
 	return e.shiftLow()
 }
 
