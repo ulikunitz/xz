@@ -59,16 +59,16 @@ type state struct {
 
 // init initializes the state.
 func (s *state) init(p Properties) {
-	*s = state{
-		Properties: p,
-		posBitMask: (1 << p.PB) - 1,
-	}
 	initS1Probs(s.s1[:])
 	initS2Probs(s.s2[:])
 	s.litCodec.init(p.LC, p.LP)
 	s.lenCodec.init()
 	s.repLenCodec.init()
 	s.distCodec.init()
+	s.Properties = p
+	s.rep = [4]uint32{}
+	s.state = 0
+	s.posBitMask = (1 << p.PB) - 1
 }
 
 // reset sets the state back to its initial state.
@@ -218,9 +218,8 @@ func (lc *lengthCodec) deepCopy(src *lengthCodec) {
 
 // init initializes a new length codec.
 func (lc *lengthCodec) init() {
-	for i := range lc.choice {
-		lc.choice[i] = probInit
-	}
+	lc.choice[0] = probInit
+	lc.choice[1] = probInit
 	for i := range lc.low {
 		lc.low[i].init(3)
 	}
