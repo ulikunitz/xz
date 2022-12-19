@@ -222,12 +222,12 @@ func (lc *lengthCodec) init() {
 		lc.choice[i] = probInit
 	}
 	for i := range lc.low {
-		lc.low[i] = makeTreeCodec(3)
+		lc.low[i].init(3)
 	}
 	for i := range lc.mid {
-		lc.mid[i] = makeTreeCodec(3)
+		lc.mid[i].init(3)
 	}
-	lc.high = makeTreeCodec(8)
+	lc.high.init(8)
 }
 
 // Encode encodes the length offset. The length offset l can be compute by
@@ -296,11 +296,8 @@ type treeCodec struct {
 	probTree
 }
 
-// makeTreeCodec makes a tree codec. The bits value must be inside the range
-// [1,32].
-func makeTreeCodec(bits int) treeCodec {
-	return treeCodec{makeProbTree(bits)}
-}
+// init initializes the treeCodec
+func (tc *treeCodec) init(bits int) { tc.probTree.init(bits) }
 
 // deepCopy initializes tc as a deep copy of the source.
 func (tc *treeCodec) deepCopy(src *treeCodec) {
@@ -346,11 +343,9 @@ func (tc *treeReverseCodec) deepCopy(src *treeReverseCodec) {
 	tc.probTree.deepCopy(&src.probTree)
 }
 
-// makeTreeReverseCodec creates treeReverseCodec value. The bits argument must
-// be in the range [1,32].
-func makeTreeReverseCodec(bits int) treeReverseCodec {
-	return treeReverseCodec{makeProbTree(bits)}
-}
+// init initializes the treeReverseCodec. The bits argument must be in the range
+// [1,32.]
+func (tc *treeReverseCodec) init(bits int) { tc.probTree.init(bits) }
 
 // Encode uses range encoder to encode a fixed-bit-size value. The range
 // encoder may cause errors.
@@ -402,19 +397,20 @@ func (t *probTree) deepCopy(src *probTree) {
 	t.bits = src.bits
 }
 
-// makeProbTree initializes a probTree structure.
-func makeProbTree(bits int) probTree {
+func (t *probTree) init(bits int) {
 	if !(1 <= bits && bits <= 32) {
 		panic("bits outside of range [1,32]")
 	}
-	t := probTree{
-		bits:  byte(bits),
-		probs: make([]prob, 1<<uint(bits)),
+	t.bits = byte(bits)
+	n := 1 << bits
+	if n <= cap(t.probs) {
+		t.probs = t.probs[:n]
+	} else {
+		t.probs = make([]prob, n)
 	}
 	for i := range t.probs {
 		t.probs[i] = probInit
 	}
-	return t
 }
 
 // Bits provides the number of bits for the values to de- or encode.
@@ -682,17 +678,17 @@ func (dc *distCodec) deepCopy(src *distCodec) {
 	dc.alignCodec.deepCopy(&src.alignCodec)
 }
 
-// newDistCodec creates a new distance codec.
+// init sets up a new distance codec.
 func (dc *distCodec) init() {
 	for i := range dc.posSlotCodecs {
-		dc.posSlotCodecs[i] = makeTreeCodec(posSlotBits)
+		dc.posSlotCodecs[i].init(posSlotBits)
 	}
 	for i := range dc.posModel {
 		posSlot := startPosModel + i
 		bits := (posSlot >> 1) - 1
-		dc.posModel[i] = makeTreeReverseCodec(bits)
+		dc.posModel[i].init(bits)
 	}
-	dc.alignCodec = makeTreeReverseCodec(alignBits)
+	dc.alignCodec.init(alignBits)
 }
 
 // lenState converts the value l to a supported lenState value.
