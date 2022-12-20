@@ -4,7 +4,10 @@
 
 ### New lzma
 
-- extend zbench to support lzma and normalize the params
+- Implement Writer.Flush in xz,
+  [Issue #45](https://github.com/ulikunitz/xz/issues/45)
+  - semantics?
+  - We close the block and start the new one, feature of streamwriter
 - add NewWriterParams() and NewWriter2Params to lzma and NewWriterParams to xz
 
 ### Remaining Tasks
@@ -58,6 +61,11 @@
 * `git push`
 
 ## Log
+
+### 2022-12-20
+
+I made some improvements. So far the code looks good. Now we need to get the
+params right. 
 
 ### 2022-12-11
 
