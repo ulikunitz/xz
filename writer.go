@@ -13,12 +13,14 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
-// WriterConfig describe the parameters for an xz writer.
+// WriterConfig describe the parameters for an xz writer. CRC64 is used as the
+// default checksum despite the XZ specification saying a decoder must only
+// support CRC32.
 type WriterConfig struct {
 	// LZMA2 configuration
 	LZMACfg lzma.Writer2Config
-	// BlockSize defines the maximum size of a block. If not set there is no
-	// limit.
+	// BlockSize defines the maximum size of a block.
+	// (default: MaxInt64=2^63-1)
 	BlockSize int64
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
 	CheckSum byte
