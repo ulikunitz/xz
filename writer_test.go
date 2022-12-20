@@ -6,6 +6,7 @@ package xz
 
 import (
 	"bytes"
+	"encoding/hex"
 	"io"
 	"log"
 	"math/rand"
@@ -201,4 +202,82 @@ func BenchmarkWriter(b *testing.B) {
 		}
 	}
 	b.ReportMetric(float64(buf.Len())/float64(len(data)), "rate")
+}
+
+func TestWriteEmptyFile(t *testing.T) {
+	buf := new(bytes.Buffer)
+	w, err := NewWriter(buf)
+	if err != nil {
+		t.Fatalf("NewWriter(buf) error %s", err)
+	}
+	defer w.Close()
+	if err = w.Flush(); err != nil {
+		t.Fatalf("w.Flush() error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+
+	if buf.Len() != 32 {
+		t.Fatalf("xz file has length %d; want %d", buf.Len(), 32)
+	}
+	t.Logf("\n%s", hex.Dump(buf.Bytes()))
+
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader(buf) error %s", err)
+	}
+	defer r.Close()
+	p, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("io.ReadAll(r) error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
+	}
+	if len(p) != 0 {
+		t.Fatalf("got len(p) %d; want %d", len(p), 0)
+	}
+}
+
+func TestWriterFlush(t *testing.T) {
+	buf := new(bytes.Buffer)
+	w, err := NewWriter(buf)
+	if err != nil {
+		t.Fatalf("NewWriter(buf) error %s", err)
+	}
+	defer w.Close()
+
+	if _, err = io.WriteString(w, "1"); err != nil {
+		t.Fatalf("io.WriteString(%q) error %s", "1", err)
+	}
+	if err = w.Flush(); err != nil {
+		t.Fatalf("w.Flush() error %s", err)
+	}
+	if _, err = io.WriteString(w, "2"); err != nil {
+		t.Fatalf("io.WriteString(%q) error %s", "1", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+
+	t.Logf("\n%s", hex.Dump(buf.Bytes()))
+
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader(buf) error %s", err)
+	}
+	defer r.Close()
+	p, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("io.ReadAll(r) error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
+	}
+
+	s := string(p)
+	if s != "12" {
+		t.Fatalf("got string %q; want %s", s, "12")
+	}
 }

@@ -117,9 +117,7 @@ func (c nopWCloser) Close() error {
 
 // nopWriteCloser converts the Writer into a WriteCloser with a Close
 // function that does nothing beside returning nil.
-func nopWriteCloser(w io.Writer) io.WriteCloser {
-	return nopWCloser{w}
-}
+func nopWriteCloser(w io.Writer) io.WriteCloser { return nopWCloser{w} }
 
 // Writer compresses data written to it. It is an io.WriteCloser.
 type Writer struct {
@@ -154,6 +152,7 @@ func (w *Writer) closeBlockWriter() error {
 		return err
 	}
 	w.index = append(w.index, w.bw.record())
+	w.bw = nil
 	return nil
 }
 
@@ -189,9 +188,6 @@ func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
 	if _, err = xz.Write(data); err != nil {
 		return nil, err
 	}
-	if err = w.newBlockWriter(); err != nil {
-		return nil, err
-	}
 	return w, nil
 }
 
@@ -199,6 +195,14 @@ func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
 func (w *Writer) Write(p []byte) (n int, err error) {
 	if w.closed {
 		return 0, errClosed
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if w.bw == nil {
+		if err = w.newBlockWriter(); err != nil {
+			return n, err
+		}
 	}
 	for {
 		k, err := w.bw.Write(p[n:])
@@ -215,6 +219,18 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	}
 }
 
+// Flush writes all data to the underlying writer. It actually closes the
+// current block writer and creates a new one.
+func (w *Writer) Flush() error {
+	if w.closed {
+		return errClosed
+	}
+	if w.bw == nil {
+		return nil
+	}
+	return w.closeBlockWriter()
+}
+
 // Close closes the writer and adds the footer to the Writer. Close
 // doesn't close the underlying writer.
 func (w *Writer) Close() error {
@@ -222,9 +238,12 @@ func (w *Writer) Close() error {
 		return errClosed
 	}
 	w.closed = true
+
 	var err error
-	if err = w.closeBlockWriter(); err != nil {
-		return err
+	if w.bw != nil {
+		if err = w.closeBlockWriter(); err != nil {
+			return err
+		}
 	}
 
 	f := footer{flags: w.h.flags}
