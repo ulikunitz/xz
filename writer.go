@@ -6,12 +6,19 @@ package xz
 
 import (
 	"errors"
-	"fmt"
 	"hash"
 	"io"
+	"runtime"
 
 	"github.com/ulikunitz/xz/lzma"
 )
+
+// defaultParallelBlockSize defines the default block size for more than 1
+// worker as 8 megabyte.
+const defaultParallelBlockSize = 8 << 20
+
+// maxInt64 defines the maximum 64-bit signed integer.
+const maxInt64 = 1<<63 - 1
 
 // WriterConfig describe the parameters for an xz writer. CRC64 is used as the
 // default checksum despite the XZ specification saying a decoder must only
@@ -19,26 +26,44 @@ import (
 type WriterConfig struct {
 	// LZMA2 configuration
 	LZMACfg lzma.Writer2Config
-	// BlockSize defines the maximum size of a block.
-	// (default: MaxInt64=2^63-1)
+
+	// BlockSize defines the maximum uncompressed size of a block.
+	// (default: MaxInt64=2^63-1) if Worker equals 1 or 8 MB otherwise.
 	BlockSize int64
+
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
 	CheckSum byte
 	// Forces NoChecksum (default: false)
 	NoCheckSum bool
+
+	// Workers defines the number of goroutines compressing data. If it is
+	// zero the GONUMPROCS environment variable determines the number of
+	// goroutines. If the number is 1 the compression happens in classic
+	// streaming mode and the compressed file must be also decompressed
+	// serially.
+	Workers int
 }
 
 // ApplyDefaults applies the defaults to the xz writer configuration.
 func (c *WriterConfig) ApplyDefaults() {
+	c.LZMACfg.Workers = 1
+	c.LZMACfg.WorkerBufferSize = 0
 	c.LZMACfg.ApplyDefaults()
-	if c.BlockSize == 0 {
-		c.BlockSize = maxInt64
-	}
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC64
 	}
 	if c.NoCheckSum {
 		c.CheckSum = None
+	}
+	if c.Workers == 0 {
+		c.Workers = runtime.GOMAXPROCS(0)
+	}
+	if c.BlockSize == 0 {
+		if c.Workers <= 1 {
+			c.BlockSize = maxInt64
+		} else {
+			c.BlockSize = defaultParallelBlockSize
+		}
 	}
 }
 
@@ -49,26 +74,27 @@ func (c *WriterConfig) Verify() error {
 		return errors.New("xz: writer configuration is nil")
 	}
 	c.ApplyDefaults()
-	if err := c.LZMACfg.Verify(); err != nil {
+	var err error
+	if err = c.LZMACfg.Verify(); err != nil {
 		return err
 	}
 	if c.BlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
-	if err := verifyFlags(c.CheckSum); err != nil {
+	if err = verifyFlags(c.CheckSum); err != nil {
 		return err
+	}
+	if !(1 <= c.Workers) {
+		return errors.New("xz: Workers must be positive")
 	}
 	return nil
 }
 
 // filters creates the filter list for the given parameters.
-func (c *WriterConfig) filters() []filter {
+func filters(c *WriterConfig) []filter {
 	return []filter{&lzmaFilter{
 		int64(c.LZMACfg.LZCfg.BufferConfig().WindowSize)}}
 }
-
-// maxInt64 defines the maximum 64-bit signed integer.
-const maxInt64 = 1<<63 - 1
 
 // verifyFilters checks the filter list for the length and the right
 // sequence of filters.
@@ -92,10 +118,7 @@ func verifyFilters(f []filter) error {
 
 // newFilterWriteCloser converts a filter list into a WriteCloser that
 // can be used by a blockWriter.
-func (c *WriterConfig) newFilterWriteCloser(w io.Writer, f []filter) (fw io.WriteCloser, err error) {
-	if err = verifyFilters(f); err != nil {
-		return nil, err
-	}
+func newFilterWriteCloser(w io.Writer, f []filter, c *WriterConfig) (fw io.WriteCloser, err error) {
 	fw = nopWriteCloser(w)
 	for i := len(f) - 1; i >= 0; i-- {
 		fw, err = f[i].writeCloser(fw, c)
@@ -121,291 +144,318 @@ func (c nopWCloser) Close() error {
 // function that does nothing beside returning nil.
 func nopWriteCloser(w io.Writer) io.WriteCloser { return nopWCloser{w} }
 
-// Writer compresses data written to it. It is an io.WriteCloser.
-type Writer struct {
-	cfg WriterConfig
-
-	xz      io.Writer
-	bw      *blockWriter
-	newHash func() hash.Hash
-	h       header
-	index   []record
-	closed  bool
-}
-
-// newBlockWriter creates a new block writer writes the header out.
-func (w *Writer) newBlockWriter() error {
-	var err error
-	w.bw, err = w.cfg.newBlockWriter(w.xz, w.newHash())
-	if err != nil {
-		return err
-	}
-	if err = w.bw.writeHeader(w.xz); err != nil {
-		return err
-	}
-	return nil
-}
-
-// closeBlockWriter closes a block writer and records the sizes in the
-// index.
-func (w *Writer) closeBlockWriter() error {
-	var err error
-	if err = w.bw.Close(); err != nil {
-		return err
-	}
-	w.index = append(w.index, w.bw.record())
-	w.bw = nil
-	return nil
-}
-
-// NewWriter creates a new xz writer using default parameters.
-func NewWriter(xz io.Writer) (w *Writer, err error) {
-	return WriterConfig{}.newWriter(xz)
-}
-
-// NewWriterConfig creates a new writer using the provcided configuration.
-func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w *Writer, err error) {
-	return cfg.newWriter(xz)
-}
-
-// newWriter creates a new Writer using the given configuration parameters.
-func (c WriterConfig) newWriter(xz io.Writer) (w *Writer, err error) {
-	c.ApplyDefaults()
-	if err = c.Verify(); err != nil {
-		return nil, err
-	}
-	w = &Writer{
-		cfg:   c,
-		xz:    xz,
-		h:     header{c.CheckSum},
-		index: make([]record, 0, 4),
-	}
-	if w.newHash, err = newHashFunc(c.CheckSum); err != nil {
-		return nil, err
-	}
-	data, err := w.h.MarshalBinary()
-	if err != nil {
-		return nil, fmt.Errorf("w.h.MarshalBinary(): error %w", err)
-	}
-	if _, err = xz.Write(data); err != nil {
-		return nil, err
-	}
-	return w, nil
-}
-
-// Write compresses the uncompressed data provided.
-func (w *Writer) Write(p []byte) (n int, err error) {
-	if w.closed {
-		return 0, errClosed
-	}
-	if len(p) == 0 {
-		return 0, nil
-	}
-	if w.bw == nil {
-		if err = w.newBlockWriter(); err != nil {
-			return n, err
-		}
-	}
-	for {
-		k, err := w.bw.Write(p[n:])
-		n += k
-		if err != errNoSpace {
-			return n, err
-		}
-		if err = w.closeBlockWriter(); err != nil {
-			return n, err
-		}
-		if err = w.newBlockWriter(); err != nil {
-			return n, err
-		}
-	}
-}
-
-// Flush writes all data to the underlying writer. It actually closes the
-// current block writer and creates a new one.
-func (w *Writer) Flush() error {
-	if w.closed {
-		return errClosed
-	}
-	if w.bw == nil {
-		return nil
-	}
-	return w.closeBlockWriter()
-}
-
-// Close closes the writer and adds the footer to the Writer. Close
-// doesn't close the underlying writer.
-func (w *Writer) Close() error {
-	if w.closed {
-		return errClosed
-	}
-	w.closed = true
-
-	var err error
-	if w.bw != nil {
-		if err = w.closeBlockWriter(); err != nil {
-			return err
-		}
-	}
-
-	f := footer{flags: w.h.flags}
-	if f.indexSize, err = writeIndex(w.xz, w.index); err != nil {
-		return err
-	}
-	data, err := f.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	if _, err = w.xz.Write(data); err != nil {
-		return err
-	}
-	return nil
-}
-
-// countingWriter is a writer that counts all data written to it.
-type countingWriter struct {
+type countWriter struct {
 	w io.Writer
 	n int64
 }
 
-// Write writes data to the countingWriter.
-func (cw *countingWriter) Write(p []byte) (n int, err error) {
-	n, err = cw.w.Write(p)
+func (cw *countWriter) Write(p []byte) (n int, err error) {
+	n, err = cw.w.Write(p[n:])
 	cw.n += int64(n)
-	if err == nil && cw.n < 0 {
-		return n, errors.New("xz: counter overflow")
-	}
-	return
+	return n, err
 }
 
-// blockWriter is writes a single block.
+var errNoSpace = errors.New("xz: no space")
+
+var errWriterClosed = errors.New("xz: writer is closed")
+
 type blockWriter struct {
-	cxz countingWriter
-	// mw combines io.WriteCloser w and the hash.
-	mw        io.Writer
-	w         io.WriteCloser
-	n         int64
-	blockSize int64
-	closed    bool
-	headerLen int
+	cfg WriterConfig
 
-	filters []filter
+	// filter array
+	f []filter
+
+	xz      io.Writer
+	cw      countWriter
+	fwc     io.WriteCloser
 	hash    hash.Hash
+	mw      io.Writer
+	n       int64
+	hdrSize int
+
+	err error
 }
 
-// newBlockWriter creates a new block writer.
-func (c *WriterConfig) newBlockWriter(xz io.Writer, hash hash.Hash) (bw *blockWriter, err error) {
+func newBlockWriter(w io.Writer, c *WriterConfig, f []filter, h hash.Hash) (bw *blockWriter, err error) {
 	bw = &blockWriter{
-		cxz:       countingWriter{w: xz},
-		blockSize: c.BlockSize,
-		filters:   c.filters(),
-		hash:      hash,
+		cfg: *c,
+		f:   f,
+
+		xz:   w,
+		cw:   countWriter{w: w},
+		hash: h,
 	}
-	bw.w, err = c.newFilterWriteCloser(&bw.cxz, bw.filters)
-	if err != nil {
+	if err = bw.reset(); err != nil {
 		return nil, err
-	}
-	if bw.hash.Size() != 0 {
-		bw.mw = io.MultiWriter(bw.w, bw.hash)
-	} else {
-		bw.mw = bw.w
 	}
 	return bw, nil
 }
 
-// writeHeader writes the header. If the function is called after Close
-// the commpressedSize and uncompressedSize fields will be filled.
-func (bw *blockWriter) writeHeader(w io.Writer) error {
-	h := blockHeader{
-		compressedSize:   -1,
-		uncompressedSize: -1,
-		filters:          bw.filters,
+func (bw *blockWriter) reset() error {
+	if bw.err != nil && bw.err != errWriterClosed {
+		return bw.err
 	}
-	if bw.closed {
-		h.compressedSize = bw.compressedSize()
-		h.uncompressedSize = bw.uncompressedSize()
-	}
-	data, err := h.MarshalBinary()
+	bw.err = nil
+
+	bw.hdrSize = 0
+
+	bw.cw.n = 0
+	var err error
+	bw.fwc, err = newFilterWriteCloser(&bw.cw, bw.f, &bw.cfg)
 	if err != nil {
+		bw.err = err
 		return err
 	}
-	if _, err = w.Write(data); err != nil {
-		return err
-	}
-	bw.headerLen = len(data)
+	bw.hash.Reset()
+	bw.mw = io.MultiWriter(bw.fwc, bw.hash)
+	bw.n = 0
 	return nil
 }
 
-// compressed size returns the amount of data written to the underlying
-// stream.
-func (bw *blockWriter) compressedSize() int64 {
-	return bw.cxz.n
-}
-
-// uncompressedSize returns the number of data written to the
-// blockWriter
-func (bw *blockWriter) uncompressedSize() int64 {
-	return bw.n
-}
-
-// unpaddedSize returns the sum of the header length, the uncompressed
-// size of the block and the hash size.
-func (bw *blockWriter) unpaddedSize() int64 {
-	if bw.headerLen <= 0 {
-		panic("xz: block header not written")
+func (bw *blockWriter) writeHeaderStreaming() error {
+	if bw.cfg.Workers > 1 {
+		return nil
 	}
-	n := int64(bw.headerLen)
-	n += bw.compressedSize()
-	n += int64(bw.hash.Size())
-	return n
+	hdr := blockHeader{
+		compressedSize:   -1,
+		uncompressedSize: -1,
+		filters:          bw.f,
+	}
+	data, err := hdr.MarshalBinary()
+	if err != nil {
+		bw.err = err
+		return err
+	}
+	bw.hdrSize, err = bw.xz.Write(data)
+	if err != nil {
+		bw.err = err
+		return err
+	}
+	return nil
 }
 
-// record returns the record for the current stream. Call Close before
-// calling this method.
-func (bw *blockWriter) record() record {
-	return record{bw.unpaddedSize(), bw.uncompressedSize()}
-}
-
-var errClosed = errors.New("xz: already closed")
-
-var errNoSpace = errors.New("xz: no space")
-
-// Write writes uncompressed data to the block writer.
 func (bw *blockWriter) Write(p []byte) (n int, err error) {
-	if bw.closed {
-		return 0, errClosed
+	if bw.err != nil {
+		return 0, bw.err
 	}
-
-	t := bw.blockSize - bw.n
-	if int64(len(p)) > t {
+	k := bw.cfg.BlockSize - bw.n
+	if k < int64(len(p)) {
+		p = p[:k]
 		err = errNoSpace
-		p = p[:t]
 	}
-
+	if len(p) == 0 {
+		return n, err
+	}
+	if bw.hdrSize == 0 && bw.cfg.Workers <= 1 {
+		if err = bw.writeHeaderStreaming(); err != nil {
+			return n, err
+		}
+	}
 	var werr error
 	n, werr = bw.mw.Write(p)
-	bw.n += int64(n)
 	if werr != nil {
-		return n, werr
+		err = werr
 	}
+	bw.n += int64(n)
+	bw.err = err
 	return n, err
 }
 
-// Close closes the writer.
+var errNoBlock = errors.New("xz: no data in block")
+
 func (bw *blockWriter) Close() error {
-	if bw.closed {
-		return errClosed
+	if bw.err != nil && bw.err != errNoSpace {
+		return bw.err
 	}
-	bw.closed = true
-	if err := bw.w.Close(); err != nil {
+	if bw.n == 0 && bw.hdrSize == 0 {
+		bw.err = nil
+		return errNoBlock
+	}
+	var err error
+	if err = bw.fwc.Close(); err != nil {
+		bw.err = err
 		return err
 	}
-	s := bw.hash.Size()
-	k := padLen(bw.cxz.n)
-	p := make([]byte, k+s)
-	bw.hash.Sum(p[k:k])
-	if _, err := bw.cxz.w.Write(p); err != nil {
+	k := padLen(bw.cw.n)
+	p := make([]byte, k, k+bw.hash.Size())
+	p = bw.hash.Sum(p)
+	if _, err := bw.xz.Write(p); err != nil {
+		bw.err = err
 		return err
 	}
+	bw.err = errWriterClosed
 	return nil
+}
+
+func (bw *blockWriter) appendHeaderAfterClose(in []byte) (p []byte, err error) {
+	p = in
+	if bw.err != errWriterClosed {
+		return p, errors.New(
+			"xz: header can pnly be provided if blockWriter is closed")
+	}
+	if bw.cfg.Workers <= 1 {
+		return p, errors.New("xz: header already written")
+	}
+	hdr := blockHeader{
+		compressedSize:   bw.cw.n,
+		uncompressedSize: bw.n,
+		filters:          bw.f,
+	}
+	q, err := hdr.MarshalBinary()
+	if err != nil {
+		return p, err
+	}
+	bw.hdrSize = len(q)
+	p = append(p, q...)
+	return p, nil
+}
+
+func (bw *blockWriter) record() (r record, err error) {
+	if bw.err != errWriterClosed {
+		return r, errors.New(
+			"xz: record can nly be provided if blockWriter is closed")
+	}
+	if bw.hdrSize == 0 {
+		return r, errors.New("xz: header not created")
+	}
+	r.unpaddedSize = int64(bw.hdrSize) + bw.cw.n + int64(bw.hash.Size())
+	r.uncompressedSize = bw.n
+	return r, nil
+}
+
+type WriteFlushCloser interface {
+	io.WriteCloser
+	Flush() error
+}
+
+func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
+	return NewWriterConfig(xz, WriterConfig{})
+}
+
+func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
+	cfg.Workers = 1
+	cfg.ApplyDefaults()
+	if err = cfg.Verify(); err != nil {
+		return nil, err
+	}
+
+	return newStreamWriter(xz, &cfg)
+}
+
+type streamWriter struct {
+	cfg WriterConfig
+
+	xz    io.Writer
+	bw    *blockWriter
+	index []record
+
+	err error
+}
+
+func writeHeader(xz io.Writer, flags byte) (n int, err error) {
+	hdr := header{flags: flags}
+	p, err := hdr.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+	return xz.Write(p)
+}
+
+func writeTail(xz io.Writer, index []record, flags byte) (n int64, err error) {
+	f := footer{flags: flags}
+	f.indexSize, err = writeIndex(xz, index)
+	n += f.indexSize
+	if err != nil {
+		return n, err
+	}
+	p, err := f.MarshalBinary()
+	if err != nil {
+		return n, err
+	}
+	k, err := xz.Write(p)
+	n += int64(k)
+	return n, err
+}
+
+func newStreamWriter(xz io.Writer, cfg *WriterConfig) (sw *streamWriter, err error) {
+	_, err = writeHeader(xz, cfg.CheckSum)
+	if err != nil {
+		return nil, err
+	}
+	h, err := newHash(cfg.CheckSum)
+	if err != nil {
+		return nil, err
+	}
+	bw, err := newBlockWriter(xz, cfg, filters(cfg), h)
+	if err != nil {
+		return nil, err
+	}
+	sw = &streamWriter{
+		cfg: *cfg,
+		xz:  xz,
+		bw:  bw,
+	}
+	return sw, nil
+}
+
+func (sw *streamWriter) Write(p []byte) (n int, err error) {
+	if sw.err != nil {
+		return 0, sw.err
+	}
+	for n < len(p) {
+		k, err := sw.bw.Write(p[n:])
+		n += k
+		if err != errNoSpace {
+			if err != nil {
+				sw.err = err
+			}
+			return n, err
+		}
+		if err = sw.Flush(); err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
+func (sw *streamWriter) Close() error {
+	if sw.err != nil {
+		return sw.err
+	}
+	var err error
+	if err = sw.Flush(); err != nil {
+		return err
+	}
+	if _, err = writeTail(sw.xz, sw.index, sw.cfg.CheckSum); err != nil {
+		sw.err = err
+		return err
+	}
+	sw.err = errWriterClosed
+	return nil
+}
+
+func (sw *streamWriter) Flush() error {
+	if sw.err != nil {
+		return sw.err
+	}
+	var err error
+	if err = sw.bw.Close(); err != nil {
+		if err == errNoBlock {
+			return nil
+		}
+		sw.err = err
+		return err
+	}
+	r, err := sw.bw.record()
+	if err != nil {
+		sw.err = err
+		return err
+	}
+	sw.index = append(sw.index, r)
+	err = sw.bw.reset()
+	if err != nil {
+		sw.err = err
+		return err
+	}
+	return err
 }

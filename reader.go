@@ -17,6 +17,8 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
+var errReaderClosed = errors.New("xz: reader closed")
+
 // ReaderConfig defines the parameters for the xz reader. The
 // SingleStream parameter requests the reader to assume that the
 // underlying stream contains only a single stream.
@@ -99,7 +101,7 @@ var errUnexpectedData = errors.New("xz: unexpected data after stream")
 // Read reads uncompressed data from the stream.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	if r.xz == nil {
-		return 0, errClosed
+		return 0, errReaderClosed
 	}
 	for n < len(p) {
 		if r.sr == nil {
@@ -138,11 +140,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 // that may be used by the LZMA2 reader.
 func (r *Reader) Close() error {
 	if r.xz == nil {
-		return errClosed
+		return errReaderClosed
 	}
 	if r.sr != nil {
 		err := r.sr.Close()
-		if err != nil && err != errClosed {
+		if err != nil && err != errReaderClosed {
 			return err
 		}
 		r.sr = nil
@@ -226,7 +228,7 @@ func (r *streamReader) readTail() error {
 // Read reads actual data from the xz stream.
 func (r *streamReader) Read(p []byte) (n int, err error) {
 	if r.xz == nil {
-		return 0, errClosed
+		return 0, errReaderClosed
 	}
 	for n < len(p) {
 		if r.br == nil {
@@ -264,11 +266,11 @@ func (r *streamReader) Read(p []byte) (n int, err error) {
 // LZMA2 reader implementation.
 func (r *streamReader) Close() error {
 	if r.xz == nil {
-		return errClosed
+		return errReaderClosed
 	}
 	if r.br != nil {
 		err := r.br.Close()
-		if err != nil && err != errClosed {
+		if err != nil && err != errReaderClosed {
 			return err
 		}
 		r.br = nil
@@ -351,7 +353,7 @@ func (br *blockReader) record() record {
 // Read reads data from the block.
 func (br *blockReader) Read(p []byte) (n int, err error) {
 	if br.fr == nil {
-		return 0, errClosed
+		return 0, errReaderClosed
 	}
 	n, err = br.r.Read(p)
 	br.n += int64(n)
@@ -394,7 +396,7 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 // Close closes the block reader and the LZMA2 reader supporting it.
 func (br *blockReader) Close() error {
 	if br.fr == nil {
-		return errClosed
+		return errReaderClosed
 	}
 	if err := br.fr.Close(); err != nil {
 		return err

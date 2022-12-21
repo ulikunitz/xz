@@ -99,6 +99,23 @@ func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
 	return
 }
 
+// newHash returns the hash function for the flags variable
+func newHash(flags byte) (h hash.Hash, err error) {
+	switch flags {
+	case None:
+		h = newNoneHash()
+	case CRC32:
+		h = newCRC32()
+	case CRC64:
+		h = newCRC64()
+	case SHA256:
+		h = sha256.New()
+	default:
+		err = errInvalidFlags
+	}
+	return
+}
+
 // header provides the actual content of the xz file header: the flags.
 type header struct {
 	flags byte
