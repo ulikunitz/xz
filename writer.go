@@ -5,6 +5,8 @@
 package xz
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"hash"
 	"io"
@@ -176,26 +178,36 @@ type blockWriter struct {
 	err error
 }
 
-func newBlockWriter(w io.Writer, c *WriterConfig, f []filter, h hash.Hash) (bw *blockWriter, err error) {
-	bw = &blockWriter{
-		cfg: *c,
-		f:   f,
+func newBlockWriter(w io.Writer, cfg *WriterConfig) (bw *blockWriter, err error) {
 
+	h, err := newHash(cfg.CheckSum)
+	if err != nil {
+		return nil, err
+	}
+	bw = &blockWriter{
+		cfg:  *cfg,
+		f:    filters(cfg),
 		xz:   w,
 		cw:   countWriter{w: w},
 		hash: h,
 	}
-	if err = bw.reset(); err != nil {
+
+	if err = bw.reset(nil); err != nil {
 		return nil, err
 	}
 	return bw, nil
 }
 
-func (bw *blockWriter) reset() error {
+func (bw *blockWriter) reset(xz io.Writer) error {
 	if bw.err != nil && bw.err != errWriterClosed {
 		return bw.err
 	}
 	bw.err = nil
+
+	if xz != nil {
+		bw.xz = xz
+		bw.cw.w = xz
+	}
 
 	bw.hdrSize = 0
 
@@ -333,13 +345,17 @@ func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 }
 
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
-	cfg.Workers = 1
+	cfg.Workers = 2
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}
 
-	return newStreamWriter(xz, &cfg)
+	if cfg.Workers <= 1 {
+		return newStreamWriter(xz, &cfg)
+	}
+
+	return newMTWriter(xz, &cfg)
 }
 
 type streamWriter struct {
@@ -382,11 +398,7 @@ func newStreamWriter(xz io.Writer, cfg *WriterConfig) (sw *streamWriter, err err
 	if err != nil {
 		return nil, err
 	}
-	h, err := newHash(cfg.CheckSum)
-	if err != nil {
-		return nil, err
-	}
-	bw, err := newBlockWriter(xz, cfg, filters(cfg), h)
+	bw, err := newBlockWriter(xz, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -452,10 +464,303 @@ func (sw *streamWriter) Flush() error {
 		return err
 	}
 	sw.index = append(sw.index, r)
-	err = sw.bw.reset()
+	err = sw.bw.reset(nil)
 	if err != nil {
 		sw.err = err
 		return err
 	}
 	return err
+}
+
+type mtwStreamTask struct {
+	blockCh chan mtwBlock
+	flushCh chan struct{}
+	close   bool
+}
+
+type mtwBlock struct {
+	hdr  []byte
+	body []byte
+	rec  record
+}
+
+type mtwTask struct {
+	buf     []byte
+	blockCh chan<- mtwBlock
+}
+
+type mtWriter struct {
+	cfg WriterConfig
+
+	ctx      context.Context
+	cancel   context.CancelFunc
+	errCh    chan error
+	taskCh   chan mtwTask
+	streamCh chan mtwStreamTask
+
+	buf     []byte
+	workers int
+	err     error
+}
+
+func newMTWriter(xz io.Writer, cfg *WriterConfig) (mtw *mtWriter, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	mtw = &mtWriter{
+		cfg: *cfg,
+
+		ctx:      ctx,
+		cancel:   cancel,
+		errCh:    make(chan error, 1),
+		taskCh:   make(chan mtwTask, cfg.Workers),
+		streamCh: make(chan mtwStreamTask, cfg.Workers),
+
+		buf: make([]byte, 0, cfg.BlockSize),
+	}
+
+	go mtwStream(ctx, xz, cfg, mtw.streamCh, mtw.errCh)
+
+	return mtw, nil
+}
+
+func (mtw *mtWriter) Write(p []byte) (n int, err error) {
+	if mtw.err != nil {
+		return 0, mtw.err
+	}
+
+	recv := func(err error) {
+		if err == nil {
+			panic("nil error from errCh")
+		}
+		mtw.err = err
+		mtw.cancel()
+	}
+
+	for len(p) > 0 {
+		k := mtw.cfg.BlockSize - int64(len(mtw.buf))
+		if int64(len(p)) < k {
+			mtw.buf = append(mtw.buf, p...)
+			n += len(p)
+			return n, nil
+		}
+		mtw.buf = append(mtw.buf, p[:k]...)
+
+		if mtw.workers < mtw.cfg.Workers {
+			go mtwWorker(mtw.ctx, &mtw.cfg, mtw.taskCh, mtw.errCh)
+			mtw.workers++
+		}
+
+		blockCh := make(chan mtwBlock, 1)
+		select {
+		case mtw.taskCh <- mtwTask{buf: mtw.buf, blockCh: blockCh}:
+		case err = <-mtw.errCh:
+			recv(err)
+			return n, err
+		}
+		select {
+		case mtw.streamCh <- mtwStreamTask{blockCh: blockCh}:
+		case err = <-mtw.errCh:
+			recv(err)
+			return n, err
+		}
+		n += int(k)
+		p = p[k:]
+		mtw.buf = make([]byte, 0, mtw.cfg.BlockSize)
+	}
+
+	return n, nil
+}
+
+func (mtw *mtWriter) flush(close bool) error {
+	if mtw.err != nil {
+		return mtw.err
+	}
+
+	recv := func(err error) {
+		if err == nil {
+			panic("nil error from errCh")
+		}
+		mtw.err = err
+		mtw.cancel()
+	}
+
+	var (
+		err     error
+		blockCh chan mtwBlock
+	)
+
+	if len(mtw.buf) > 0 {
+		if mtw.workers < mtw.cfg.Workers {
+			go mtwWorker(mtw.ctx, &mtw.cfg, mtw.taskCh, mtw.errCh)
+			mtw.workers++
+		}
+		blockCh = make(chan mtwBlock, 1)
+		select {
+		case mtw.taskCh <- mtwTask{buf: mtw.buf, blockCh: blockCh}:
+		case err = <-mtw.errCh:
+			recv(err)
+			return err
+		}
+		mtw.buf = make([]byte, 0, mtw.cfg.BlockSize)
+	}
+
+	flushCh := make(chan struct{})
+	select {
+	case mtw.streamCh <- mtwStreamTask{
+		blockCh: blockCh,
+		flushCh: flushCh,
+		close:   close,
+	}:
+	case err = <-mtw.errCh:
+		recv(err)
+		return err
+	}
+
+	select {
+	case <-flushCh:
+	case err = <-mtw.errCh:
+		recv(err)
+		return err
+	}
+
+	return nil
+}
+
+func (mtw *mtWriter) Flush() error {
+	return mtw.flush(false)
+}
+
+func (mtw *mtWriter) Close() error {
+	if err := mtw.flush(true); err != nil {
+		return err
+	}
+
+	mtw.cancel()
+	mtw.err = errWriterClosed
+	return nil
+}
+
+func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterConfig,
+	streamCh <-chan mtwStreamTask, errCh chan<- error) {
+
+	send := func(err error) (stop bool) {
+		select {
+		case errCh <- err:
+			return false
+		case <-ctx.Done():
+			return true
+		}
+	}
+
+	var index []record
+	_, err := writeHeader(xz, cfg.CheckSum)
+	if err != nil {
+		send(err)
+		return
+	}
+
+	for {
+		var tsk mtwStreamTask
+
+		select {
+		case <-ctx.Done():
+			return
+		case tsk = <-streamCh:
+		}
+
+		if tsk.blockCh != nil {
+			var block mtwBlock
+			select {
+			case <-ctx.Done():
+				return
+			case block = <-tsk.blockCh:
+			}
+			if _, err = xz.Write(block.hdr); err != nil {
+				send(err)
+				return
+			}
+			if _, err = xz.Write(block.body); err != nil {
+				send(err)
+				return
+			}
+			index = append(index, block.rec)
+		}
+
+		if tsk.close {
+			_, err = writeTail(xz, index, cfg.CheckSum)
+			if err != nil {
+				send(err)
+			}
+		}
+
+		if tsk.flushCh != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case tsk.flushCh <- struct{}{}:
+			}
+		}
+
+		if tsk.close {
+			return
+		}
+	}
+}
+
+func mtwWorker(ctx context.Context, cfg *WriterConfig, taskCh <-chan mtwTask,
+	errCh chan<- error) {
+
+	send := func(err error) (stop bool) {
+		select {
+		case errCh <- err:
+			return false
+		case <-ctx.Done():
+			return true
+		}
+	}
+
+	bw, err := newBlockWriter(nil, cfg)
+	if err != nil {
+		send(err)
+		return
+	}
+
+	for {
+		var tsk mtwTask
+		select {
+		case <-ctx.Done():
+			return
+		case tsk = <-taskCh:
+		}
+
+		buf := new(bytes.Buffer)
+		if err = bw.reset(buf); err != nil {
+			send(err)
+			return
+		}
+
+		if _, err = bw.Write(tsk.buf); err != nil {
+			send(err)
+			return
+		}
+		if err = bw.Close(); err != nil {
+			send(err)
+			return
+		}
+
+		var blk mtwBlock
+		if blk.hdr, err = bw.appendHeaderAfterClose(nil); err != nil {
+			send(err)
+			return
+		}
+		blk.body = buf.Bytes()
+		if blk.rec, err = bw.record(); err != nil {
+			send(err)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case tsk.blockCh <- blk:
+		}
+	}
 }
