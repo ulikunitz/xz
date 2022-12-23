@@ -74,6 +74,19 @@ func (cfg *Writer2Config) Verify() error {
 	return nil
 }
 
+// fixSBConfig computes the sequence buffer configuration in a way that works
+// for lzma. ShrinkSize cannot be smaller than the window size.
+func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
+	cfg.WindowSize = windowSize
+	cfg.ShrinkSize = cfg.WindowSize
+	cfg.BufferSize = 2 * cfg.WindowSize
+
+	const minBufferSize = 256 << 10
+	if cfg.BufferSize < minBufferSize {
+		cfg.BufferSize = minBufferSize
+	}
+}
+
 // ApplyDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
 func (cfg *Writer2Config) ApplyDefaults() {
@@ -87,11 +100,12 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
 		}
+		sbCfg := cfg.LZCfg.BufferConfig()
+		fixSBConfig(sbCfg, sbCfg.WindowSize)
+
 	} else if cfg.DictSize > 0 {
-		err := cfg.LZCfg.BufferConfig().SetWindowSize(cfg.DictSize)
-		if err != nil {
-			panic(err)
-		}
+		sbCfg := cfg.LZCfg.BufferConfig()
+		fixSBConfig(sbCfg, cfg.DictSize)
 	}
 
 	type ad interface {

@@ -16,8 +16,8 @@ import (
 )
 
 // defaultParallelBlockSize defines the default block size for more than 1
-// worker as 8 megabyte.
-const defaultParallelBlockSize = 8 << 20
+// worker as 256 kbyte.
+const defaultParallelBlockSize = 256 << 10
 
 // maxInt64 defines the maximum 64-bit signed integer.
 const maxInt64 = 1<<63 - 1
@@ -345,7 +345,6 @@ func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 }
 
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
-	cfg.Workers = 2
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err

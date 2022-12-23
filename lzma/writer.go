@@ -259,11 +259,11 @@ func (cfg *WriterConfig) ApplyDefaults() {
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
 		}
+		sbCfg := cfg.LZCfg.BufferConfig()
+		fixSBConfig(sbCfg, sbCfg.WindowSize)
 	} else if cfg.DictSize > 0 {
-		err := cfg.LZCfg.BufferConfig().SetWindowSize(cfg.DictSize)
-		if err != nil {
-			panic(err)
-		}
+		sbCfg := cfg.LZCfg.BufferConfig()
+		fixSBConfig(sbCfg, cfg.DictSize)
 	}
 
 	type ad interface {
