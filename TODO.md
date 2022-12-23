@@ -2,13 +2,11 @@
 
 ## Release v0.6
 
-### New lzma
+### Work
 
-- Implement Writer.Flush in xz,
-  [Issue #45](https://github.com/ulikunitz/xz/issues/45)
-  - semantics?
-  - We close the block and start the new one, feature of streamwriter
-- add NewWriterParams() and NewWriter2Params to lzma and NewWriterParams to xz
+- Adapt packages lz, lzma and xz to the concept in doc/api.md
+- Write the multithreaded Reader for xz.
+- Work on the presets for lz and xz.
 
 ### Remaining Tasks
 
