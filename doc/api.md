@@ -21,7 +21,7 @@ need all the knobs.
 Therefore I suggest following structure:
 
 ```
-NewWriter(z io.Writer) (w io.WriterFlushCloser, err error)
+NewWriter(z io.Writer) (w io.WriteFlushCloser, err error)
 
 NewWriterPreset(z io.Writer, preset int,  workers int) (w io.WriterFlushCloser, err error)
 
@@ -48,35 +48,28 @@ the data structures for finding matches in the dictionary window. That
 leads me to following design. The interface for the SeqBuffer should be
 reduced to the staff that is actually used. Each method should have a
 short name that provides all parameters for the method. Examples are
-hs3-10 for a specific Hash method or bdh36-12 for the BackDoubleHash.
+hs3-10 or bdhs36-12-14 for the BackDoubleHash.
 
 ```
-NewSequencer(name string, sbc SBConfig) (seq Sequencer, err error)
-
-type Method interface {
-    New(sbc SeqBufConfig) Sequencer
+type SeqConfig interface {
+    NewSequencer() (s Sequencer, err error)
+    ApplyDefaults()
+    Verify() error
+    SeqBufConfig() *SeqBufConfig
+    Method() string
 }
 
-func ParseMethod(name string) (m Method , err error)
+func ParseMethod(name string) (cfg SecConfig, err error)
 
 // AsMethod converts the method name to a Method instance. If the name
 // is invalid or unsupported the functions panics with the error from
 // ParseMathod.
-func AsMethod(name string) Method
-
-type Hash struct {
-    Len int
-    HashBits int
-}
-
-func (h Hash) String() string
-
-func (h Hash) New() Sequencer
+func SeqConfig(method string) SeqConfig
 
 // further methods: DoubleHash, BackHash, BackDoubleHash, GreedySuffixArray,
 //                  BucketHash
 
-func DefaultMethod(preset, memory int) Method
+func PresetSecConfig(p Params) SecConfig
 ```
 
 ## Benchmarking
@@ -89,3 +82,38 @@ module. So the tuning tools that create the presets must be included in
 the modules for the compression methods. The concern regarding the large
 size of the corporas can be addressed by moving them into its own
 corpora module.
+
+## Some basic thoughs about lz
+
+WindowSize W is only a constraint on the sequencer not to generate a
+sequence with an offset larger than the window size.
+
+BlockSize B is also a parameter for the Sequence method and has nothing to
+do with the buffer.
+
+Optionally we have the requirement that the full window must be
+available for the hiher level encoder in the LZMA case. That means
+shrink size S must equal the window size W.
+
+The buffer has a shrink size S and a buffer size U.
+
+W >= 0
+B > 0 // otherwise we are not making progress in the sequencer.
+
+The buffer tracks w the end of the window and it is advanced by the
+sequencer. It also tracks pos for the start position of the buffer.
+
+We are using the sequencer in two modes. Mode 1 we have a byte slice and
+the sequencer works on the byte slice. We can call it static mode and
+the streaming mode, where data will be added during whole sequencing is
+in progress. Shrink may be called if data is added to the buffer.
+
+
+
+
+
+
+
+
+
+
