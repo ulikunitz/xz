@@ -28,25 +28,23 @@ type Writer2Config struct {
 	WorkerBufferSize int
 
 	// Configuration for the LZ compressor.
-	LZCfg lz.Configurator
+	LZCfg lz.SeqConfig
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
 // call ApplyDefaults before this method.
 func (cfg *Writer2Config) Verify() error {
+	var err error
 	if cfg == nil {
 		return errors.New("lzma: Writer2Config pointer must not be nil")
 	}
 
-	var err error
-	type verifier interface {
-		Verify() error
+	if cfg.LZCfg == nil {
+		return errors.New("lzma: Writer2Config field LZCfg is nil")
 	}
-	v, ok := cfg.LZCfg.(verifier)
-	if ok {
-		if err = v.Verify(); err != nil {
-			return err
-		}
+
+	if err = cfg.LZCfg.Verify(); err != nil {
+		return err
 	}
 
 	if err = cfg.Properties.Verify(); err != nil {
@@ -107,13 +105,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		sbCfg := cfg.LZCfg.BufferConfig()
 		fixSBConfig(sbCfg, cfg.DictSize)
 	}
-
-	type ad interface {
-		ApplyDefaults()
-	}
-	if a, ok := cfg.LZCfg.(ad); ok {
-		a.ApplyDefaults()
-	}
+	cfg.LZCfg.ApplyDefaults()
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {

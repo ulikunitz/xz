@@ -216,25 +216,22 @@ type WriterConfig struct {
 	Size int64
 
 	// LZCfg specific configuration for the LZ sequencer.
-	LZCfg lz.Configurator
+	LZCfg lz.SeqConfig
 }
 
 // Verify checks the validtiy of the writer congiguration parameter.
 func (cfg *WriterConfig) Verify() error {
+	var err error
+
 	if cfg == nil {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
+
 	if cfg.LZCfg == nil {
 		return errors.New("lzma: no lz configuration provided")
 	}
-	var err error
-	type verifier interface {
-		Verify() error
-	}
-	if v, ok := cfg.LZCfg.(verifier); ok {
-		if err = v.Verify(); err != nil {
-			return err
-		}
+	if err = cfg.LZCfg.Verify(); err != nil {
+		return err
 	}
 
 	if err = cfg.Properties.Verify(); err != nil {
@@ -265,13 +262,7 @@ func (cfg *WriterConfig) ApplyDefaults() {
 		sbCfg := cfg.LZCfg.BufferConfig()
 		fixSBConfig(sbCfg, cfg.DictSize)
 	}
-
-	type ad interface {
-		ApplyDefaults()
-	}
-	if a, ok := cfg.LZCfg.(ad); ok {
-		a.ApplyDefaults()
-	}
+	cfg.LZCfg.ApplyDefaults()
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
