@@ -66,7 +66,7 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 	if c == nil {
 		cfg.DictSize = int(f.dictSize)
 	} else {
-		cfg = c.LZMACfg
+		cfg = c.LZMA
 	}
 	dc := int(f.dictSize)
 	if dc < 1 {
@@ -89,7 +89,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
 	var cfg lzma.Writer2Config
 	if c != nil {
-		cfg = c.LZMACfg
+		cfg = c.LZMA
 	} else {
 		cfg.ApplyDefaults()
 	}

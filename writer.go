@@ -27,7 +27,7 @@ const maxInt64 = 1<<63 - 1
 // support CRC32.
 type WriterConfig struct {
 	// LZMA2 configuration
-	LZMACfg lzma.Writer2Config
+	LZMA lzma.Writer2Config
 
 	// BlockSize defines the maximum uncompressed size of a block.
 	// (default: MaxInt64=2^63-1) if Worker equals 1 or 8 MB otherwise.
@@ -48,9 +48,9 @@ type WriterConfig struct {
 
 // ApplyDefaults applies the defaults to the xz writer configuration.
 func (c *WriterConfig) ApplyDefaults() {
-	c.LZMACfg.Workers = 1
-	c.LZMACfg.WorkerBufferSize = 0
-	c.LZMACfg.ApplyDefaults()
+	c.LZMA.Workers = 1
+	c.LZMA.WorkerBufferSize = 0
+	c.LZMA.ApplyDefaults()
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC64
 	}
@@ -77,7 +77,7 @@ func (c *WriterConfig) Verify() error {
 	}
 	c.ApplyDefaults()
 	var err error
-	if err = c.LZMACfg.Verify(); err != nil {
+	if err = c.LZMA.Verify(); err != nil {
 		return err
 	}
 	if c.BlockSize <= 0 {
@@ -95,7 +95,7 @@ func (c *WriterConfig) Verify() error {
 // filters creates the filter list for the given parameters.
 func filters(c *WriterConfig) []filter {
 	return []filter{&lzmaFilter{
-		int64(c.LZMACfg.LZCfg.BufferConfig().WindowSize)}}
+		int64(c.LZMA.LZCfg.BufferConfig().WindowSize)}}
 }
 
 // verifyFilters checks the filter list for the length and the right

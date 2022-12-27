@@ -1,10 +1,10 @@
-// Copyright 2014-2021 Ulrich Kunitz. All rights reserved.
+// Copyright 2014-2022 Ulrich Kunitz. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // Package xz supports the compression and decompression of xz files. It
-// supports version 1.0.4 of the specification without the non-LZMA2
-// filters. See http://tukaani.org/xz/xz-file-format-1.0.4.txt
+// supports version 1.1.0 of the specification without the non-LZMA2
+// filters. See http://tukaani.org/xz/xz-file-format-1.1.0.txt
 package xz
 
 import (
@@ -13,32 +13,48 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"runtime"
 
 	"github.com/ulikunitz/xz/lzma"
 )
 
 var errReaderClosed = errors.New("xz: reader closed")
 
-// ReaderConfig defines the parameters for the xz reader. The
-// SingleStream parameter requests the reader to assume that the
-// underlying stream contains only a single stream.
+// ReaderConfig defines the parameters for the xz reader. The SingleStream
+// parameter requests the reader to assume that the underlying stream contains
+// only a single stream without padding.
+//
+// The workers variable controls the number of parallel workers decoding the
+// file. It only has an effect if the file was encoded in a way that it created
+// blocks with the compressed size set in the headers. If Workers not 1 the
+// Workers variable in LZMAConfig will be ignored.
 type ReaderConfig struct {
-	LZMACfg      lzma.Reader2Config
+	LZMA lzma.Reader2Config
+
+	// input contains only a single stream without padding.
 	SingleStream bool
+
+	// Wokrkers defines the number of readers for parallel reading. The
+	// default is the value of GOMAXPROCS.
+	Workers int
 }
 
-func (c *ReaderConfig) ApplyDefaults() {
-	c.LZMACfg.ApplyDefaults()
+// ApplyDefaults sets
+func (cfg *ReaderConfig) ApplyDefaults() {
+	cfg.LZMA.ApplyDefaults()
+	if cfg.Workers == 0 {
+		cfg.Workers = runtime.GOMAXPROCS(0)
+	}
 }
 
 // Verify checks the reader parameters for Validity. Zero values will be
 // replaced by default values.
-func (c *ReaderConfig) Verify() error {
-	if c == nil {
+func (cfg *ReaderConfig) Verify() error {
+	if cfg == nil {
 		return errors.New("xz: reader parameters are nil")
 	}
 
-	if err := c.LZMACfg.Verify(); err != nil {
+	if err := cfg.LZMA.Verify(); err != nil {
 		return err
 	}
 	return nil
@@ -78,16 +94,16 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r *Reader, err error) {
 // newReader creates an xz stream reader. The created reader will be
 // able to process multiple streams and padding unless a SingleStream
 // has been set in the reader configuration c.
-func (c ReaderConfig) newReader(xz io.Reader) (r *Reader, err error) {
-	c.ApplyDefaults()
-	if err = c.Verify(); err != nil {
+func (cfg ReaderConfig) newReader(xz io.Reader) (r *Reader, err error) {
+	cfg.ApplyDefaults()
+	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
-		cfg: c,
+		cfg: cfg,
 		xz:  xz,
 	}
-	if r.sr, err = c.newStreamReader(xz); err != nil {
+	if r.sr, err = cfg.newStreamReader(xz); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -157,8 +173,8 @@ var errPadding = errors.New("xz: padding (4 zero bytes) encountered")
 
 // newStreamReader creates a new xz stream reader using the given configuration
 // parameters. NewReader reads and checks the header of the xz stream.
-func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error) {
-	if err = c.Verify(); err != nil {
+func (cfg ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error) {
+	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}
 	data := make([]byte, HeaderLen)
@@ -175,7 +191,7 @@ func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error)
 		return nil, err
 	}
 	r = &streamReader{
-		ReaderConfig: c,
+		ReaderConfig: cfg,
 		xz:           xz,
 		index:        make([]record, 0, 4),
 	}
@@ -304,7 +320,7 @@ type blockReader struct {
 }
 
 // newBlockReader creates a new block reader.
-func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
+func (cfg *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
 	hlen int, hash hash.Hash) (br *blockReader, err error) {
 
 	br = &blockReader{
@@ -314,7 +330,7 @@ func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
 		hash:      hash,
 	}
 
-	br.fr, err = c.newFilterReader(&br.lxz, h.filters)
+	br.fr, err = cfg.newFilterReader(&br.lxz, h.filters)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +421,7 @@ func (br *blockReader) Close() error {
 	return nil
 }
 
-func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
+func (cfg *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
@@ -413,7 +429,7 @@ func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadClose
 
 	fr = io.NopCloser(r)
 	for i := len(f) - 1; i >= 0; i-- {
-		fr, err = f[i].reader(fr, c)
+		fr, err = f[i].reader(fr, cfg)
 		if err != nil {
 			return nil, err
 		}
