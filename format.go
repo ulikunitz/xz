@@ -81,23 +81,6 @@ func flagString(flags byte) string {
 	return s
 }
 
-// newHashFunc returns a function that creates hash instances for the
-// hash method encoded in flags.
-func newHashFunc(flags byte) (newHash func() hash.Hash, err error) {
-	switch flags {
-	case None:
-		newHash = newNoneHash
-	case CRC32:
-		newHash = newCRC32
-	case CRC64:
-		newHash = newCRC64
-	case SHA256:
-		newHash = sha256.New
-	default:
-		err = errInvalidFlags
-	}
-	return
-}
 
 // newHash returns the hash function for the flags variable
 func newHash(flags byte) (h hash.Hash, err error) {
@@ -334,6 +317,9 @@ func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 	z, err := io.CopyN(&buf, r, 1)
 	n = int(z)
 	if err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, n, err
 	}
 	s := buf.Bytes()[0]
@@ -347,6 +333,9 @@ func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 	z, err = io.CopyN(&buf, r, int64(headerLen-1))
 	n += int(z)
 	if err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, n, err
 	}
 
@@ -375,6 +364,8 @@ func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
 	}
 	return int64(x), nil
 }
+
+var errPadding = errors.New("xz: invalid padding")
 
 // UnmarshalBinary unmarshals the block header.
 func (h *blockHeader) UnmarshalBinary(data []byte) error {

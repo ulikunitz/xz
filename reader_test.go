@@ -41,7 +41,7 @@ func TestReaderSingleStream(t *testing.T) {
 	}
 	xz := bytes.NewReader(data)
 	rc := ReaderConfig{SingleStream: true}
-	r, err := rc.newReader(xz)
+	r, err := NewReaderConfig(xz, rc)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}
@@ -56,7 +56,7 @@ func TestReaderSingleStream(t *testing.T) {
 	buf.Reset()
 	data = append(data, 0)
 	xz = bytes.NewReader(data)
-	r, err = rc.newReader(xz)
+	r, err = NewReaderConfig(xz, rc)
 	if err != nil {
 		t.Fatalf("NewReader error %s", err)
 	}

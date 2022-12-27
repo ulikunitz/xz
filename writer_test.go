@@ -256,7 +256,7 @@ func TestWriterFlush(t *testing.T) {
 		t.Fatalf("w.Flush() error %s", err)
 	}
 	if _, err = io.WriteString(w, "2"); err != nil {
-		t.Fatalf("io.WriteString(%q) error %s", "1", err)
+		t.Fatalf("io.WriteString(%q) error %s", "2", err)
 	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
