@@ -215,8 +215,8 @@ type WriterConfig struct {
 	// Size gives the actual size if FixedSize is set.
 	Size int64
 
-	// LZCfg specific configuration for the LZ sequencer.
-	LZCfg lz.SeqConfig
+	// LZ specific configuration for the LZ sequencer.
+	LZ lz.SeqConfig
 }
 
 // Verify checks the validtiy of the writer congiguration parameter.
@@ -227,10 +227,10 @@ func (cfg *WriterConfig) Verify() error {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
 
-	if cfg.LZCfg == nil {
+	if cfg.LZ == nil {
 		return errors.New("lzma: no lz configuration provided")
 	}
-	if err = cfg.LZCfg.Verify(); err != nil {
+	if err = cfg.LZ.Verify(); err != nil {
 		return err
 	}
 
@@ -246,23 +246,23 @@ func (cfg *WriterConfig) Verify() error {
 // ApplyDefaults applies the defaults to the configuration if they have not been
 // set previously.
 func (cfg *WriterConfig) ApplyDefaults() {
-	if cfg.LZCfg == nil {
+	if cfg.LZ == nil {
 		var err error
 		var params lz.Params
 		if cfg.DictSize > 0 {
 			params.WindowSize = cfg.DictSize
 		}
-		cfg.LZCfg, err = lz.Config(params)
+		cfg.LZ, err = lz.Config(params)
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
 		}
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		fixSBConfig(sbCfg, sbCfg.WindowSize)
 	} else if cfg.DictSize > 0 {
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		fixSBConfig(sbCfg, cfg.DictSize)
 	}
-	cfg.LZCfg.ApplyDefaults()
+	cfg.LZ.ApplyDefaults()
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
@@ -284,7 +284,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 	}
 
 	var seq lz.Sequencer
-	if seq, err = cfg.LZCfg.NewSequencer(); err != nil {
+	if seq, err = cfg.LZ.NewSequencer(); err != nil {
 		return nil, err
 	}
 

@@ -28,7 +28,7 @@ type Writer2Config struct {
 	WorkerBufferSize int
 
 	// Configuration for the LZ compressor.
-	LZCfg lz.SeqConfig
+	LZ lz.SeqConfig
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
@@ -39,11 +39,11 @@ func (cfg *Writer2Config) Verify() error {
 		return errors.New("lzma: Writer2Config pointer must not be nil")
 	}
 
-	if cfg.LZCfg == nil {
+	if cfg.LZ == nil {
 		return errors.New("lzma: Writer2Config field LZCfg is nil")
 	}
 
-	if err = cfg.LZCfg.Verify(); err != nil {
+	if err = cfg.LZ.Verify(); err != nil {
 		return err
 	}
 
@@ -61,7 +61,7 @@ func (cfg *Writer2Config) Verify() error {
 	}
 
 	if cfg.Workers > 1 {
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		if cfg.WorkerBufferSize > sbCfg.BufferSize {
 			return errors.New(
 				"lzma: sequence buffer size must be" +
@@ -88,24 +88,24 @@ func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
 // ApplyDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
 func (cfg *Writer2Config) ApplyDefaults() {
-	if cfg.LZCfg == nil {
+	if cfg.LZ == nil {
 		var err error
 		var params lz.Params
 		if cfg.DictSize > 0 {
 			params.WindowSize = cfg.DictSize
 		}
-		cfg.LZCfg, err = lz.Config(params)
+		cfg.LZ, err = lz.Config(params)
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
 		}
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		fixSBConfig(sbCfg, sbCfg.WindowSize)
 
 	} else if cfg.DictSize > 0 {
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		fixSBConfig(sbCfg, cfg.DictSize)
 	}
-	cfg.LZCfg.ApplyDefaults()
+	cfg.LZ.ApplyDefaults()
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
@@ -118,7 +118,7 @@ func (cfg *Writer2Config) ApplyDefaults() {
 
 	if cfg.WorkerBufferSize == 0 && cfg.Workers > 1 {
 		cfg.WorkerBufferSize = 1 << 20
-		sbCfg := cfg.LZCfg.BufferConfig()
+		sbCfg := cfg.LZ.BufferConfig()
 		if cfg.WorkerBufferSize > sbCfg.BufferSize {
 			sbCfg.BufferSize = cfg.WorkerBufferSize
 		}
@@ -141,7 +141,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // Note that the implementation for cfg.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZCfg.BufferConfig()
+	sbCfg := cfg.LZ.BufferConfig()
 	if cfg.Workers > 1 && cfg.WorkerBufferSize > sbCfg.BufferSize {
 		sbCfg.BufferSize = cfg.WorkerBufferSize
 	}
@@ -150,7 +150,7 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	}
 
 	if cfg.Workers == 1 {
-		seq, err := cfg.LZCfg.NewSequencer()
+		seq, err := cfg.LZ.NewSequencer()
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +193,7 @@ type mtWriter struct {
 }
 
 func (w *mtWriter) DictSize() int {
-	return w.cfg.LZCfg.BufferConfig().WindowSize
+	return w.cfg.LZ.BufferConfig().WindowSize
 }
 
 func (w *mtWriter) Write(p []byte) (n int, err error) {
@@ -356,7 +356,7 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 }
 
 func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
-	seq, err := cfg.LZCfg.NewSequencer()
+	seq, err := cfg.LZ.NewSequencer()
 	if err != nil {
 		panic(fmt.Errorf("NewSequencer error %s", err))
 	}
@@ -403,11 +403,11 @@ func TestWriter2ConfigDictSize(t *testing.T) {
 		t.Fatalf("lz.Config(%+v) error %s", params, err)
 	}
 	cfg = Writer2Config{
-		LZCfg:    lzCfg,
+		LZ:       lzCfg,
 		DictSize: 4098,
 	}
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZCfg.BufferConfig()
+	sbCfg := cfg.LZ.BufferConfig()
 	if sbCfg.WindowSize != 4098 {
 		t.Fatalf("sbCfg.windowSize %d; want %d", sbCfg.WindowSize, 4098)
 	}
