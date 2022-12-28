@@ -10,6 +10,7 @@ package xz
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"hash"
@@ -115,9 +116,14 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 
 	rp := &reader{cfg: cfg}
 
-	// for the single thread reader we are buffering
-	rp.xz = bufio.NewReader(xz)
-	rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
+	if cfg.Workers <= 1 {
+		// for the single thread reader we are buffering
+		rp.xz = bufio.NewReader(xz)
+		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
+	} else {
+		rp.xz = xz
+		rp.sr = newMultiThreadStreamReader(rp.xz, &rp.cfg)
+	}
 
 	// read header without padding
 	hdr, err := readHeader(rp.xz, false)
@@ -519,4 +525,311 @@ func readTail(xz io.Reader, rindex []record, flags byte) error {
 		return errors.New("xz: index size in footer wrong")
 	}
 	return nil
+}
+
+// mtReader supports the multi-threaded reading of LZMA streams.
+type mtReader struct {
+	cfg *ReaderConfig
+	xz  io.Reader
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	errCh    chan error
+	streamCh chan mtrStreamTask
+	workCh   chan mtrWorkerTask
+
+	index []record
+	flags byte
+
+	br     blReader
+	doneCh chan struct{}
+
+	err error
+}
+
+type blReader interface {
+	io.ReadCloser
+	record() record
+}
+
+type blr struct {
+	r    blReader
+	done chan struct{}
+}
+
+type mtrStreamTask struct {
+	blrCh <-chan blr
+}
+
+type mtrWorkerTask struct {
+	hdr    *blockHeader
+	hdrLen int
+	data   []byte
+	blrCh  chan<- blr
+}
+
+func newMultiThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
+	return &mtReader{xz: xz, cfg: cfg}
+}
+
+func (sr *mtReader) reset(hdr *header) error {
+	if sr.cancel != nil {
+		sr.cancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	*sr = mtReader{
+		xz:       sr.xz,
+		cfg:      sr.cfg,
+		ctx:      ctx,
+		cancel:   cancel,
+		errCh:    make(chan error, 1),
+		streamCh: make(chan mtrStreamTask, sr.cfg.Workers),
+		workCh:   make(chan mtrWorkerTask, sr.cfg.Workers),
+		flags:    hdr.flags,
+	}
+	go mtrStream(ctx, sr.xz, sr.cfg, sr.flags, sr.streamCh, sr.workCh,
+		sr.errCh)
+	return nil
+}
+
+func (sr *mtReader) Read(p []byte) (n int, err error) {
+	if sr.err != nil {
+		return 0, sr.err
+	}
+
+	handle := func(err error) (int, error) {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		sr.err = err
+		sr.cancel()
+		if sr.br != nil {
+			sr.br.Close()
+			sr.br = nil
+		}
+		return n, err
+	}
+
+	for n < len(p) {
+		if sr.br == nil {
+			var (
+				s  mtrStreamTask
+				ok bool
+			)
+			select {
+			case s, ok = <-sr.streamCh:
+				if !ok {
+					err = readTail(sr.xz, sr.index, sr.flags)
+					if err != nil {
+						return handle(err)
+					}
+					sr.err = io.EOF
+					sr.cancel()
+					return n, io.EOF
+				}
+			case err = <-sr.errCh:
+				return handle(err)
+			}
+			select {
+			case blr := <-s.blrCh:
+				sr.br = blr.r
+				sr.doneCh = blr.done
+			case err = <-sr.errCh:
+				return handle(err)
+			}
+		}
+		k, err := sr.br.Read(p[n:])
+		n += k
+		if err != nil {
+			if cerr := sr.br.Close(); cerr != nil {
+				return handle(cerr)
+			}
+			if err == io.EOF {
+				sr.index = append(sr.index, sr.br.record())
+				sr.br = nil
+				if sr.doneCh != nil {
+					close(sr.doneCh)
+				}
+				continue
+			}
+			sr.br = nil
+			return handle(err)
+		}
+	}
+
+	return n, nil
+}
+
+func (sr *mtReader) Close() error {
+	if sr.err == errReaderClosed {
+		return sr.err
+	}
+	if sr.br != nil {
+		sr.br.Close()
+	}
+	sr.cancel()
+	sr.err = errReaderClosed
+	return nil
+}
+
+func mtrStream(ctx context.Context, xz io.Reader, cfg *ReaderConfig, flags byte,
+	streamCh chan<- mtrStreamTask, workCh chan mtrWorkerTask,
+	errCh chan<- error) {
+
+	send := func(err error) (stop bool) {
+		select {
+		case errCh <- err:
+			return false
+		case <-ctx.Done():
+			return true
+		}
+	}
+
+	hh, err := newHash(flags)
+	if err != nil {
+		send(err)
+		return
+	}
+	checkSize := int64(hh.Size())
+	workers := 0
+	for {
+		hdr, hdrLen, err := readBlockHeader(xz)
+		if err != nil {
+			if err == errIndexIndicator {
+				close(streamCh)
+				return
+			}
+			send(err)
+			return
+		}
+		blrCh := make(chan blr, 1)
+		s := mtrStreamTask{blrCh: blrCh}
+		if hdr.compressedSize < 0 { // block without compressed size
+			// We need to setup a new block reader.
+			h, err := newHash(flags)
+			if err != nil {
+				send(err)
+				return
+			}
+			br := new(blockReader)
+			br.init(xz, cfg, h)
+			if err = br.setHeader(hdr, hdrLen); err != nil {
+				send(err)
+				return
+			}
+			// We will have to wait that the block reader has been
+			// processed by the Read function. The doneCh will get
+			// this signal.
+			doneCh := make(chan struct{})
+			select {
+			case <-ctx.Done():
+				return
+			case blrCh <- blr{r: br, done: doneCh}:
+			}
+			// We are sending the task s to the stream channel.
+			select {
+			case <-ctx.Done():
+				return
+			case streamCh <- s:
+			}
+			// We are waiting until the task is completed.
+			select {
+			case <-ctx.Done():
+				return
+			case <-doneCh:
+			}
+			continue
+		}
+		// We are creating a task for the worker.
+		w := mtrWorkerTask{
+			hdr:    hdr,
+			hdrLen: hdrLen,
+			data: make([]byte, hdr.compressedSize+
+				int64(padLen(hdr.compressedSize))+checkSize),
+			blrCh: blrCh,
+		}
+		// We are reading the data for the worker.
+		if _, err = io.ReadFull(xz, w.data); err != nil {
+			send(err)
+			return
+		}
+		// We are sending the stream task.
+		select {
+		case <-ctx.Done():
+			return
+		case streamCh <- s:
+		}
+		if workers < cfg.Workers {
+			go mtrWork(ctx, cfg, flags, workCh, errCh)
+			workers++
+		}
+		// We are sending the work tasks.
+		select {
+		case <-ctx.Done():
+			return
+		case workCh <- w:
+		}
+	}
+}
+
+type blockResultReader struct {
+	*bytes.Buffer
+	rec record
+}
+
+func (r *blockResultReader) Close() error { return nil }
+
+func (r *blockResultReader) record() record { return r.rec }
+
+func mtrWork(ctx context.Context, cfg *ReaderConfig, flag byte,
+	workCh <-chan mtrWorkerTask, errCh chan<- error) {
+	send := func(err error) (stop bool) {
+		select {
+		case errCh <- err:
+			return false
+		case <-ctx.Done():
+			return true
+		}
+	}
+
+	var br blockReader
+	defer br.Close()
+	hash, err := newHash(flag)
+	if err != nil {
+		send(err)
+		return
+	}
+
+	for {
+		var w mtrWorkerTask
+		select {
+		case <-ctx.Done():
+			return
+		case w = <-workCh:
+		}
+		br.init(bytes.NewReader(w.data), cfg, hash)
+		if err = br.setHeader(w.hdr, w.hdrLen); err != nil {
+			send(err)
+			return
+		}
+		buf := new(bytes.Buffer)
+		if w.hdr.uncompressedSize >= 0 {
+			buf.Grow(int(w.hdr.uncompressedSize))
+		}
+		if _, err = io.Copy(buf, &br); err != nil {
+			send(err)
+			return
+		}
+		if err = br.Close(); err != nil {
+			send(err)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case w.blrCh <- blr{
+			r: &blockResultReader{Buffer: buf, rec: br.record()}}:
+		}
+	}
 }
