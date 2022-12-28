@@ -24,6 +24,7 @@
     ],
     "ignoreWords": [
         "MININT",
+        "cerr",
         "enwik",
         "gflag",
         "goch",
