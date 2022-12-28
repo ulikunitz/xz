@@ -344,6 +344,9 @@ func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 	return NewWriterConfig(xz, WriterConfig{})
 }
 
+// NewWriterConfig creates a WriteFlushCloser instance. If multi-threading is
+// requested by a Workers configuration larger than 1, single threading will be
+// requested for the LZMA writer by setting the Workers variable there to 1.
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
@@ -354,6 +357,7 @@ func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err er
 		return newStreamWriter(xz, &cfg)
 	}
 
+	cfg.LZMA.Workers = 1
 	return newMTWriter(xz, &cfg)
 }
 

@@ -112,8 +112,9 @@ func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
 	return r, nil
 }
 
-// NewReaderConfig creates an xz reader using the provided configuration. Note
-// that the multiple workers for LZMA are not supported.
+// NewReaderConfig creates an xz reader using the provided configuration. If
+// Workers are larger than one, the LZMA reader will only use single-threaded
+// workers.
 func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
@@ -127,6 +128,9 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 		rp.xz = bufio.NewReader(xz)
 		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
 	} else {
+		// We don't want to have multilayered parallel encoding
+		// therefore, we set the workers number of the LZMA
+		// configuration to 1.
 		cfg.LZMA.Workers = 1
 		rp.xz = xz
 		rp.sr = newMultiThreadStreamReader(rp.xz, &rp.cfg)
