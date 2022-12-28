@@ -70,7 +70,7 @@ params right.
 A number of bug fixes later I have now working parallel readers and writers for
 xz. The single-thread reader is not dramatically faster but the writer is.
 However the presets produce rather bad compression compared to the my original
-sopftware. We have to check, how we can achieve that rate again.
+software. We have to check, how we can achieve that rate again.
 
 ### 2022-12-04
 
@@ -198,7 +198,7 @@ using the operations buffer to be able to go back, if I intend to do so.
 ### 2015-10-21
 
 I have restarted the work on the library. While trying to implement
-LZMA2, I discovered that I need to resimplify the encoder and decoder
+LZMA2, I discovered that I need to simplify the encoder and decoder
 functions. The option approach is too complicated. Using a limited byte
 writer and not caring for written bytes at all and not to try to handle
 uncompressed data simplifies the LZMA encoder and decoder much.
