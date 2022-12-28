@@ -19,7 +19,7 @@ func ExampleReader() {
 	defer f.Close()
 	r, err := xz.NewReader(bufio.NewReader(f))
 	if err != nil {
-		log.Fatalf("xz.NewReasder error %s", err)
+		log.Fatalf("xz.NewReader error %s", err)
 	}
 	if _, err = io.Copy(os.Stdout, r); err != nil {
 		log.Fatalf("io.Copy error %s", err)
