@@ -42,7 +42,7 @@ type ReaderConfig struct {
 	Workers int
 }
 
-// ApplyDefaults sets
+// ApplyDefaults sets the defaults in ReaderConfig.
 func (cfg *ReaderConfig) ApplyDefaults() {
 	cfg.LZMA.ApplyDefaults()
 	if cfg.Workers == 0 {
@@ -68,6 +68,7 @@ func (cfg *ReaderConfig) Verify() error {
 	return nil
 }
 
+// newFilterReader constructs the reader for the given filter.
 func (cfg *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
 
 	if err = verifyFilters(f); err != nil {
@@ -84,6 +85,9 @@ func (cfg *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadClo
 	return fr, nil
 }
 
+// streamReader defines the interface to the streamReader implementation. We
+// have the single-threader stream reader [stReader] and the multi-threaded
+// reader [mtReader].
 type streamReader interface {
 	io.ReadCloser
 	reset(hdr *header) error
@@ -108,6 +112,8 @@ func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
 	return r, nil
 }
 
+// NewReaderConfig creates an xz reader using the provided configuration. Note
+// that the multiple workers for LZMA are not supported.
 func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error) {
 	cfg.ApplyDefaults()
 	if err = cfg.Verify(); err != nil {
@@ -121,6 +127,7 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 		rp.xz = bufio.NewReader(xz)
 		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
 	} else {
+		cfg.LZMA.Workers = 1
 		rp.xz = xz
 		rp.sr = newMultiThreadStreamReader(rp.xz, &rp.cfg)
 	}
@@ -136,6 +143,7 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 	return rp, err
 }
 
+// Read reads the uncompressed data.
 func (r *reader) Read(p []byte) (n int, err error) {
 	if r.err != nil {
 		return 0, r.err
@@ -179,6 +187,8 @@ func (r *reader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Close closes the reader an releases underlying resources, especially the the
+// multithreaded tasks.
 func (r *reader) Close() error {
 	if r.err == errReaderClosed {
 		return errReaderClosed
@@ -222,6 +232,7 @@ type blockReader struct {
 	err error
 }
 
+// init initializes the block reader.
 func (br *blockReader) init(xz io.Reader, cfg *ReaderConfig, h hash.Hash) {
 	*br = blockReader{
 		cfg:  cfg,
@@ -231,6 +242,7 @@ func (br *blockReader) init(xz io.Reader, cfg *ReaderConfig, h hash.Hash) {
 	h.Reset()
 }
 
+// reset resets the block reader to the status after init.
 func (br *blockReader) reset() {
 	*br = blockReader{
 		cfg:  br.cfg,
@@ -240,6 +252,8 @@ func (br *blockReader) reset() {
 	br.hash.Reset()
 }
 
+// setHeader sets the header for the block reader. It can only be called once
+// after init or reset.
 func (br *blockReader) setHeader(hdr *blockHeader, hdrLen int) error {
 	if br.err != nil {
 		return br.err
@@ -366,6 +380,7 @@ func (br *blockReader) Close() error {
 	return nil
 }
 
+// stReader provides the single-threaded stream reader.
 type stReader struct {
 	cfg *ReaderConfig
 	xz  io.Reader
@@ -377,10 +392,13 @@ type stReader struct {
 	err error
 }
 
+// newSingleThreadStreamReader provides a streamReader. Note that it requires
+// the header before Read can be called.
 func newSingleThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
 	return &stReader{cfg: cfg, xz: xz}
 }
 
+// reset provides the header information for the stream reader.
 func (sr *stReader) reset(hdr *header) error {
 	h, err := newHash(hdr.flags)
 	if err != nil {
@@ -395,6 +413,8 @@ func (sr *stReader) reset(hdr *header) error {
 	return nil
 }
 
+// Read reads the uncompressed data from the stream reader. Note that the header
+// must be set before it can be used.
 func (sr *stReader) Read(p []byte) (n int, err error) {
 	if sr.err != nil {
 		return 0, sr.err
@@ -428,6 +448,7 @@ func (sr *stReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Close closes the single-threaded stream reader and closes the block reader.
 func (sr *stReader) Close() error {
 	if sr.err == errReaderClosed {
 		return errReaderClosed
@@ -548,20 +569,27 @@ type mtReader struct {
 	err error
 }
 
+// blReader provides an abstract interface for a block reader.
 type blReader interface {
 	io.ReadCloser
 	record() record
 }
 
+// blr transports block reader information including a channel that must be
+// closed if not nil after the block has been completely read.
 type blr struct {
 	r    blReader
 	done chan struct{}
 }
 
+// mtrStreamTask is a channel that provides a single blr value.
 type mtrStreamTask struct {
 	blrCh <-chan blr
 }
 
+// mtrWorkerTask provides the data of single block to the worker. It must
+// decompress the data and provide a virtual block reader to the blr channel. A
+// done channel will not be required.
 type mtrWorkerTask struct {
 	hdr    *blockHeader
 	hdrLen int
@@ -569,10 +597,14 @@ type mtrWorkerTask struct {
 	blrCh  chan<- blr
 }
 
+// newMultiThreadStreamReader creates multithreaded reader. Note that reset with
+// a header must be called before Read can be used.
 func newMultiThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
 	return &mtReader{xz: xz, cfg: cfg}
 }
 
+// reset provides the header information to the multi-threaded stream reader. It
+// starts the stream goroutine.
 func (sr *mtReader) reset(hdr *header) error {
 	if sr.cancel != nil {
 		sr.cancel()
@@ -593,6 +625,7 @@ func (sr *mtReader) reset(hdr *header) error {
 	return nil
 }
 
+// Read reads the data from the multi-threaded stream reader.
 func (sr *mtReader) Read(p []byte) (n int, err error) {
 	if sr.err != nil {
 		return 0, sr.err
@@ -661,6 +694,8 @@ func (sr *mtReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
+// Close closes the multi-threaded stream reader and has to be called to cancel
+// all goroutines that have been started.
 func (sr *mtReader) Close() error {
 	if sr.err == errReaderClosed {
 		return sr.err
@@ -673,6 +708,9 @@ func (sr *mtReader) Close() error {
 	return nil
 }
 
+// mtrStream provides the go routine that creates the work for the
+// multi-threaded readers. It also supports blocks that cannot be read in
+// parallel, because they are not providing the compressed size.
 func mtrStream(ctx context.Context, xz io.Reader, cfg *ReaderConfig, flags byte,
 	streamCh chan<- mtrStreamTask, workCh chan mtrWorkerTask,
 	errCh chan<- error) {
@@ -773,15 +811,19 @@ func mtrStream(ctx context.Context, xz io.Reader, cfg *ReaderConfig, flags byte,
 	}
 }
 
+// blockResultReader provides a virtual block reader.
 type blockResultReader struct {
 	*bytes.Buffer
 	rec record
 }
 
+// Close for the block result reader does nothing.
 func (r *blockResultReader) Close() error { return nil }
 
+// record returns the record for the reader.
 func (r *blockResultReader) record() record { return r.rec }
 
+// mtrWork is the worker go routine for the multi-threaded stream reader.
 func mtrWork(ctx context.Context, cfg *ReaderConfig, flag byte,
 	workCh <-chan mtrWorkerTask, errCh chan<- error) {
 	send := func(err error) (stop bool) {
