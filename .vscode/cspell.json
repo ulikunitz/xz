@@ -1,0 +1,21 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+        "GONUMPROCS",
+        "Kunitz",
+        "LZMA",
+        "Ulrich",
+        "unmarshalling"
+    ],
+    "ignoreWords": [
+        "rindex",
+        "ulikunitz",
+        "unpadded",
+        "vsintellicode",
+        "werr"
+    ],
+    "import": []
+}

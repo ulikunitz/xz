@@ -36,7 +36,7 @@ type ReaderConfig struct {
 	// input contains only a single stream without padding.
 	SingleStream bool
 
-	// Wokrkers defines the number of readers for parallel reading. The
+	// Workers defines the number of readers for parallel reading. The
 	// default is the value of GOMAXPROCS.
 	Workers int
 }
@@ -426,10 +426,7 @@ func (sr *stReader) Close() error {
 	if sr.err == errReaderClosed {
 		return errReaderClosed
 	}
-	switch err := sr.br.Close(); err {
-	case nil:
-		break
-	default:
+	if err := sr.br.Close(); err != nil {
 		sr.err = err
 		return err
 	}

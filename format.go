@@ -64,8 +64,8 @@ func verifyFlags(flags byte) error {
 	}
 }
 
-// flagstrings maps flag values to strings.
-var flagstrings = map[byte]string{
+// flagStrings maps flag values to strings.
+var flagStrings = map[byte]string{
 	None:   "None",
 	CRC32:  "CRC-32",
 	CRC64:  "CRC-64",
@@ -74,7 +74,7 @@ var flagstrings = map[byte]string{
 
 // flagString returns the string representation for the given flags.
 func flagString(flags byte) string {
-	s, ok := flagstrings[flags]
+	s, ok := flagStrings[flags]
 	if !ok {
 		return "invalid"
 	}
@@ -367,7 +367,7 @@ func readSizeInBlockHeader(r io.ByteReader, present bool) (n int64, err error) {
 
 var errPadding = errors.New("xz: invalid padding")
 
-// UnmarshalBinary unmarshals the block header.
+// UnmarshalBinary decodes the block header.
 func (h *blockHeader) UnmarshalBinary(data []byte) error {
 	// Check header length
 	s := data[0]

@@ -16,7 +16,7 @@ import (
 )
 
 // defaultParallelBlockSize defines the default block size for more than 1
-// worker as 256 kbyte.
+// worker as 256 kByte.
 const defaultParallelBlockSize = 256 << 10
 
 // maxInt64 defines the maximum 64-bit signed integer.
@@ -303,7 +303,7 @@ func (bw *blockWriter) appendHeaderAfterClose(in []byte) (p []byte, err error) {
 	p = in
 	if bw.err != errWriterClosed {
 		return p, errors.New(
-			"xz: header can pnly be provided if blockWriter is closed")
+			"xz: header can only be provided if blockWriter is closed")
 	}
 	if bw.cfg.Workers <= 1 {
 		return p, errors.New("xz: header already written")
