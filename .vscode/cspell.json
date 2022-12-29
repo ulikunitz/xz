@@ -29,18 +29,22 @@
         "gflag",
         "goch",
         "gospell",
+        "gsum",
+        "hsum",
         "iotest",
         "lzbase",
         "lzmago",
         "ogier",
         "pflag",
+        "rcfg",
         "relnotes",
         "rindex",
         "testdata",
         "ulikunitz",
         "unpadded",
         "vsintellicode",
-        "werr"
+        "werr",
+        "zdata"
     ],
     "import": []
 }
