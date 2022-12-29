@@ -4,7 +4,6 @@
 
 ### Work
 
-- Write the multithreaded Reader for xz.
 - Work on the presets for lz and xz.
 - Review all WriteClosers and ReadClosers for proper error handling. Define what
   proper error handling is. Write tests for it using testing/iotest. 
