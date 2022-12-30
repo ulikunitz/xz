@@ -32,6 +32,7 @@
         "gsum",
         "hsum",
         "iotest",
+        "iverson",
         "lzbase",
         "lzmago",
         "ogier",
