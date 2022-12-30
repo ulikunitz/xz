@@ -12,7 +12,7 @@ import (
 )
 
 func TestSilesia(t *testing.T) {
-	tests := []struct {
+	configs := []struct {
 		name string
 		cfg  xz.WriterConfig
 		rcfg xz.ReaderConfig
@@ -33,15 +33,16 @@ func TestSilesia(t *testing.T) {
 		t.Fatalf("Files(zdata.Silesia) error %s", err)
 	}
 
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			for _, f := range files {
+	for _, c := range configs {
+		c := c
+		for _, f := range files {
+			f := f
+			t.Run(c.name+":"+f.Name, func(t *testing.T) {
 				s := sha256.Sum256(f.Data)
 				hsum := s[:]
 
 				buf := new(bytes.Buffer)
-				w, err := xz.NewWriterConfig(buf, tc.cfg)
+				w, err := xz.NewWriterConfig(buf, c.cfg)
 				if err != nil {
 					t.Fatalf("xz.NewWriterConfig error %s",
 						err)
@@ -58,7 +59,7 @@ func TestSilesia(t *testing.T) {
 				}
 
 				h := sha256.New()
-				r, err := xz.NewReaderConfig(buf, tc.rcfg)
+				r, err := xz.NewReaderConfig(buf, c.rcfg)
 				if err != nil {
 					t.Fatalf("%s: xz.NewReaderConfig error %s",
 						f.Name, err)
@@ -77,9 +78,9 @@ func TestSilesia(t *testing.T) {
 				if !bytes.Equal(gsum, hsum) {
 					t.Errorf("%s: got %x; want %x",
 						f.Name, gsum, hsum)
-					continue
+					return
 				}
-			}
-		})
+			})
+		}
 	}
 }
