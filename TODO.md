@@ -11,6 +11,10 @@
 ### Remaining Tasks
 
 1. Fuzz lzma and xz
+  - generate a check value free example for xz and fuzz the reader
+  - do the same for LZMA
+  - make workers an input variable
+  - Make the presets a variable and check the writers
 2. Update dependencies in go.mod
 3. Rewrite README.md
   - provide example for parallel encoding  
