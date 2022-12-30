@@ -104,6 +104,7 @@ loop:
 					w.buf.Len()+w.re.cacheLen >
 						maxChunkSize-16 {
 					w.blk.Sequences[k].LitLen = 0
+					w.blk.Sequences[k].MatchLen = m
 					updateBlock(&w.blk, litIndex, k)
 					break loop
 				}
