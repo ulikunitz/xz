@@ -8,6 +8,8 @@
 - Review all WriteClosers and ReadClosers for proper error handling. Define what
   proper error handling is. Write tests for it using testing/iotest. 
 - Review the Verify code. Define upper limits for everything.
+    - define maxHashBits in lz (We are using different values throughout
+      the system)
 
 ### Remaining Tasks
 
