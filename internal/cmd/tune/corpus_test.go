@@ -1,34 +1,15 @@
-package tuning
+package main
 
 import (
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"io"
-	"sync"
 	"testing"
 
 	"github.com/ulikunitz/lz"
 	"github.com/ulikunitz/xz"
 	"github.com/ulikunitz/xz/lzma"
-	"github.com/ulikunitz/zdata"
 )
-
-var (
-	_silesiaFiles []File
-	silesiaOnce   sync.Once
-)
-
-func silesiaFiles() []File {
-	silesiaOnce.Do(func() {
-		var err error
-		_silesiaFiles, err = Files(zdata.Silesia)
-		if err != nil {
-			panic(fmt.Errorf("silesiaFiles() error %w", err))
-		}
-	})
-	return _silesiaFiles
-}
 
 func TestSilesia(t *testing.T) {
 	configs := []struct {
@@ -36,10 +17,29 @@ func TestSilesia(t *testing.T) {
 		cfg  xz.WriterConfig
 		rcfg xz.ReaderConfig
 	}{
-		{"single-threaded", xz.WriterConfig{
-			Workers: 1,
-			LZMA:    lzma.Writer2Config{Workers: 1},
-		},
+		/*
+			{"single-threaded", xz.WriterConfig{
+				Workers: 1,
+				LZMA:    lzma.Writer2Config{Workers: 1},
+			},
+				xz.ReaderConfig{
+					Workers: 1,
+					LZMA:    lzma.Reader2Config{Workers: 1},
+				},
+			},
+		*/
+		{"bug1",
+			xz.WriterConfig{
+				Workers: 1,
+				LZMA: lzma.Writer2Config{
+					Workers:  1,
+					DictSize: 32768,
+					LZ: &lz.HSConfig{
+						InputLen: 3,
+						HashBits: 4,
+					},
+				},
+			},
 			xz.ReaderConfig{
 				Workers: 1,
 				LZMA:    lzma.Reader2Config{Workers: 1},
@@ -53,6 +53,9 @@ func TestSilesia(t *testing.T) {
 		c := c
 		for _, f := range files {
 			f := f
+			if f.Name != "mozilla" {
+				continue
+			}
 			t.Run(c.name+":"+f.Name, func(t *testing.T) {
 				s := sha256.Sum256(f.Data)
 				hsum := s[:]
@@ -123,16 +126,16 @@ func BenchmarkRatio(b *testing.B) {
 			},
 		},
 		{name: "dhs3-15-st",
-		cfg: xz.WriterConfig{
-			Workers: 1,
-			LZMA: lzma.Writer2Config{
+			cfg: xz.WriterConfig{
 				Workers: 1,
-				LZ: &lz.DHSConfig{
-					InputLen1: 3, HashBits1: 15,
-					InputLen2: 6, HashBits2: 16},
+				LZMA: lzma.Writer2Config{
+					Workers: 1,
+					LZ: &lz.DHSConfig{
+						InputLen1: 3, HashBits1: 15,
+						InputLen2: 6, HashBits2: 16},
+				},
 			},
 		},
-	},
 
 		{name: "buhs3-20-20-st",
 			cfg: xz.WriterConfig{
@@ -140,35 +143,16 @@ func BenchmarkRatio(b *testing.B) {
 				LZMA: lzma.Writer2Config{
 					Workers: 1,
 					LZ: &lz.BUHSConfig{
-						InputLen: 3,
-						HashBits: 20,
-						BucketSize: 100,
+						InputLen:   3,
+						HashBits:   20,
+						BucketSize: 20,
 					},
 				},
 			},
 		},
 	}
 
-	files := silesiaFiles()
-	size := Size(files)
-
 	for _, c := range configs {
-		b.Run(c.name, func(b *testing.B) {
-			b.SetBytes(size)
-			var (
-				err            error
-				compressedSize int64
-			)
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				compressedSize, err = XZCompress(files, c.cfg)
-				if err != nil {
-					b.Fatalf("XZCompress error %s", err)
-				}
-			}
-			b.StopTimer()
-			r := float64(compressedSize) / float64(size)
-			b.ReportMetric(r, "c/u")
-		})
+		b.Run(c.name, writerBenchmark(c.cfg))
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/ulikunitz/lz"
 )
 
-// encoder supporst the LZMA encoding.
+// encoder supports the LZMA encoding.
 type encoder struct {
 	window *lz.SeqBuffer
 	state  state
