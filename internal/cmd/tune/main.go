@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"sort"
 	"testing"
 
@@ -49,6 +50,57 @@ func slot(slots []float64, ratio float64) (i int, ok bool) {
 	return len(slots) - 1, true
 }
 
+func disable(cfg *xz.WriterConfig) { cfg.Workers = -1 }
+
+func disabled(cfg *xz.WriterConfig) bool { return cfg.Workers < 0 }
+
+func worse(a, b *xz.WriterConfig) bool {
+	if a == nil || b == nil || a == b {
+		return false
+	}
+	d, e := a.LZMA.DictSize, b.LZMA.DictSize
+	switch x := a.LZMA.LZ.(type) {
+	case *lz.HSConfig:
+		y, ok := b.LZMA.LZ.(*lz.HSConfig)
+		if !(ok && x.InputLen == y.InputLen) {
+			return false
+		}
+		return d <= e && x.HashBits <= y.HashBits
+	case *lz.BHSConfig:
+		y, ok := b.LZMA.LZ.(*lz.BHSConfig)
+		if !(ok && x.InputLen == y.InputLen) {
+			return false
+		}
+		return d <= e && x.HashBits <= y.HashBits
+	case *lz.DHSConfig:
+		y, ok := b.LZMA.LZ.(*lz.DHSConfig)
+		if !ok {
+			return false
+		}
+		if !(x.InputLen1 == y.InputLen1 && x.InputLen2 == y.InputLen2) {
+			return false
+		}
+		return d <= e && x.HashBits1 <= y.HashBits1 && x.HashBits2 <= y.HashBits2
+	case *lz.BDHSConfig:
+		y, ok := b.LZMA.LZ.(*lz.BDHSConfig)
+		if !ok {
+			return false
+		}
+		if !(x.InputLen1 == y.InputLen1 && x.InputLen2 == y.InputLen2) {
+			return false
+		}
+		return d <= e && x.HashBits1 <= y.HashBits1 && x.HashBits2 <= y.HashBits2
+	case *lz.BUHSConfig:
+		y, ok := b.LZMA.LZ.(*lz.BUHSConfig)
+		if !(ok && x.InputLen == y.InputLen) {
+			return false
+		}
+		return d <= e && x.HashBits <= y.HashBits && x.BucketSize <= y.BucketSize
+	default:
+		return false
+	}
+}
+
 func findPresets(slots []float64, configs []xz.WriterConfig) {
 	if len(slots) == 0 {
 		log.Fatalf("no slots defined")
@@ -57,19 +109,43 @@ func findPresets(slots []float64, configs []xz.WriterConfig) {
 		return slots[i] > slots[j]
 	})
 	fmt.Printf("slots %.3f\n", slots)
+	rand.Shuffle(len(configs), func(i, j int) {
+		configs[i], configs[j] = configs[j], configs[i]
+	})
 
 	presets := make([]preset, len(slots))
 
-	for i, cfg := range configs {
+	i := 0
+	n := len(configs)
+	for len(configs) > 0 {
+		k := len(configs) - 1
+		cfg := configs[k]
+		configs = configs[:k]
+		if disabled(&cfg) {
+			continue
+		}
+		n--
+
+		i++
 		result := testing.Benchmark(writerBenchmark(cfg))
-		fmt.Printf("%d/%d %s\n", i+1, len(configs), result)
+		fmt.Printf("%d-%d %s\n", i, n, result)
 		si, ok := slot(slots, ratio(result))
 		if !ok {
+			for i := range configs {
+				p := &configs[i]
+				if disabled(p) {
+					continue
+				}
+				if worse(p, &cfg) {
+					disable(p)
+					n--
+				}
+			}
 			continue
 		}
 		v := mbPerSec(result)
 		p := presets[si]
-		if !p.present || v <= mbPerSec(p.result) {
+		if p.present && v <= mbPerSec(p.result) {
 			fmt.Printf("slot %d - not faster\n", si+1)
 			continue
 		}
@@ -108,8 +184,8 @@ func makeWriterConfig(cfg lz.SeqConfig, windowSize int) xz.WriterConfig {
 		Workers: 1,
 	}
 }
-func appendHSConfigs(c []xz.WriterConfig) (r []xz.WriterConfig) {
-	r = c
+func appendHSConfigs(x []xz.WriterConfig) (y []xz.WriterConfig) {
+	y = x
 	for windowExp := 15; windowExp <= 23; windowExp++ {
 		for hashBits := 4; hashBits <= 23; hashBits++ {
 			for _, inputLen := range []int{3, 4} {
@@ -121,18 +197,40 @@ func appendHSConfigs(c []xz.WriterConfig) (r []xz.WriterConfig) {
 					1<<windowExp,
 				)
 				cfg.ApplyDefaults()
-				r = append(r, cfg)
+				y = append(y, cfg)
 			}
 		}
 	}
-	return r
+	return y
+}
+
+func appendBUHSConfigs(x []xz.WriterConfig) (y []xz.WriterConfig) {
+	y = x
+	for windowExp := 15; windowExp <= 23; windowExp++ {
+		for hashBits := 4; hashBits <= 23; hashBits++ {
+			for bucketSize := 4; bucketSize <= 30; bucketSize++ {
+				cfg := makeWriterConfig(
+					&lz.BUHSConfig{
+						InputLen:   3,
+						HashBits:   hashBits,
+						BucketSize: bucketSize,
+					},
+					1<<windowExp,
+				)
+				cfg.ApplyDefaults()
+				y = append(y, cfg)
+			}
+		}
+	}
+	return y
 }
 
 func main() {
 	testing.Init()
 	configs := appendHSConfigs(nil)
+	configs = appendBUHSConfigs(configs)
 
 	slots := []float64{0.28, 0.27, 0.26, 0.25,
-		0.24, 0.23, 0.225, 0.22, 0.215}
+		0.24, 0.23, 0.22, 0.21, 0.20}
 	findPresets(slots, configs)
 }

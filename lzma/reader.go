@@ -7,7 +7,7 @@ import (
 	"math"
 )
 
-// reader supports the reading of an LÖZMA stream.
+// reader supports the reading of an LZMA stream.
 type reader struct {
 	decoder
 	// size < 0 means we wait for EOS
@@ -33,7 +33,7 @@ func NewRawReader(z io.Reader, dictSize int, props Properties, uncompressedSize 
 	return rr, nil
 }
 
-// minDictSize defines the minumum supported dictionary size.
+// minDictSize defines the minimum supported dictionary size.
 const minDictSize = 1 << 12
 
 // headerLen defines the length of an LZMA header
