@@ -12,22 +12,23 @@ import (
 )
 
 func TestSilesia(t *testing.T) {
+	if testing.Short() {
+		t.Skip("slow test")
+	}
 	configs := []struct {
 		name string
 		cfg  xz.WriterConfig
 		rcfg xz.ReaderConfig
 	}{
-		/*
-			{"single-threaded", xz.WriterConfig{
+		{"single-threaded", xz.WriterConfig{
+			Workers: 1,
+			LZMA:    lzma.Writer2Config{Workers: 1},
+		},
+			xz.ReaderConfig{
 				Workers: 1,
-				LZMA:    lzma.Writer2Config{Workers: 1},
+				LZMA:    lzma.Reader2Config{Workers: 1},
 			},
-				xz.ReaderConfig{
-					Workers: 1,
-					LZMA:    lzma.Reader2Config{Workers: 1},
-				},
-			},
-		*/
+		},
 		{"bug1",
 			xz.WriterConfig{
 				Workers: 1,
@@ -53,10 +54,8 @@ func TestSilesia(t *testing.T) {
 		c := c
 		for _, f := range files {
 			f := f
-			if f.Name != "mozilla" {
-				continue
-			}
 			t.Run(c.name+":"+f.Name, func(t *testing.T) {
+				t.Parallel()
 				s := sha256.Sum256(f.Data)
 				hsum := s[:]
 

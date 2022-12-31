@@ -26,8 +26,10 @@
     "ignoreWords": [
         "BUHS",
         "MININT",
+        "bufw",
         "cerr",
         "enwik",
+        "foofoobar",
         "gflag",
         "goch",
         "gospell",
@@ -36,6 +38,7 @@
         "iotest",
         "iverson",
         "lzbase",
+        "lzcfg",
         "lzmago",
         "ogier",
         "pflag",

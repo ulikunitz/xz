@@ -219,7 +219,7 @@ type WriterConfig struct {
 	LZ lz.SeqConfig
 }
 
-// Verify checks the validtiy of the writer congiguration parameter.
+// Verify checks the validity of the writer configuration parameter.
 func (cfg *WriterConfig) Verify() error {
 	var err error
 

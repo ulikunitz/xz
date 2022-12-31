@@ -14,7 +14,7 @@ import (
 
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
 type Writer2Config struct {
-	// DictSize sets the dicationary size.
+	// DictSize sets the dictionary size.
 	DictSize int
 
 	// Properties for the LZMA algorithm.
@@ -73,7 +73,8 @@ func (cfg *Writer2Config) Verify() error {
 }
 
 // fixSBConfig computes the sequence buffer configuration in a way that works
-// for lzma. ShrinkSize cannot be smaller than the window size.
+// for lzma. ShrinkSize cannot be smaller than the window size or the size of an
+// uncompressed chunk.
 func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
 	cfg.WindowSize = windowSize
 	cfg.ShrinkSize = cfg.WindowSize
@@ -82,6 +83,13 @@ func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
 	const minBufferSize = 256 << 10
 	if cfg.BufferSize < minBufferSize {
 		cfg.BufferSize = minBufferSize
+	}
+
+	// We need shrink size at least as large as an uncompressed chunk can
+	// be. Otherwise we may not be able to copy the data into the chunk. 
+	const minShrinkSize = 1 << 16
+	if cfg.ShrinkSize < minShrinkSize {
+		cfg.ShrinkSize = minShrinkSize
 	}
 }
 
