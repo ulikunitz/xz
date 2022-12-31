@@ -67,6 +67,13 @@
 
 ## Log
 
+### 2022-12-31
+
+I have run the compression benchmarks and I can achieve better compression than
+xz while being significantly faster. Now this is not a full test and we need the
+pizza command line utility for it. But it looks extremely positive. All the work
+did matter overall.
+
 ### 2022-12-20
 
 I made some improvements. So far the code looks good. Now we need to get the
