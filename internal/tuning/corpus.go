@@ -40,14 +40,25 @@ func Size(files []File) int64 {
 	return n
 }
 
+type countWriter struct {
+	n int64
+}
+
+func (w *countWriter) Write(p []byte) (n int, err error) {
+	n = len(p)
+	w.n += int64(n)
+	return n, nil
+}
+
 func XZCompress(files []File, cfg xz.WriterConfig) (compressedSize int64, err error) {
 	for _, f := range files {
-		w, err := xz.NewWriterConfig(io.Discard, cfg)
+		cw := &countWriter{}
+		w, err := xz.NewWriterConfig(cw, cfg)
 		if err != nil {
 			return compressedSize, err
 		}
-		n, err := io.Copy(w, bytes.NewReader(f.Data))
-		compressedSize += n
+		_, err = io.Copy(w, bytes.NewReader(f.Data))
+		compressedSize += cw.n
 		if err != nil {
 			return compressedSize, err
 		}

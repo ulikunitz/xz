@@ -23,6 +23,7 @@
         "zstd"
     ],
     "ignoreWords": [
+        "BUHS",
         "MININT",
         "cerr",
         "enwik",
