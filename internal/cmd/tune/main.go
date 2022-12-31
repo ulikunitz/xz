@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"testing"
 
@@ -13,8 +14,39 @@ import (
 )
 
 type preset struct {
-	cfg    xz.WriterConfig
-	result testing.BenchmarkResult
+	present bool
+	cfg     xz.WriterConfig
+	result  testing.BenchmarkResult
+}
+
+// mbPerSec returns the Megabytes (1 000 000 bytes) per seconds that are
+// processed.
+func mbPerSec(r testing.BenchmarkResult) float64 {
+	if v, ok := r.Extra["MB/s"]; ok {
+		return v
+	}
+	if r.Bytes <= 0 || r.T <= 0 || r.N <= 0 {
+		return 0
+	}
+	return (float64(r.Bytes) * float64(r.N) / 1e6) / r.T.Seconds()
+}
+
+func ratio(r testing.BenchmarkResult) float64 {
+	if x, ok := r.Extra["c/u"]; ok {
+		return x
+	}
+	return math.NaN()
+}
+
+// Returns the slot index the ratio qualifies for. If no slot can be found ok
+// will be false.
+func slot(slots []float64, ratio float64) (i int, ok bool) {
+	for i, r := range slots {
+		if ratio > r {
+			return i - 1, i > 0
+		}
+	}
+	return len(slots) - 1, true
 }
 
 func findPresets(slots []float64, configs []xz.WriterConfig) {
@@ -26,10 +58,43 @@ func findPresets(slots []float64, configs []xz.WriterConfig) {
 	})
 	fmt.Printf("slots %.3f\n", slots)
 
+	presets := make([]preset, len(slots))
+
 	for i, cfg := range configs {
 		result := testing.Benchmark(writerBenchmark(cfg))
-		pretty.Println(cfg)
 		fmt.Printf("%d/%d %s\n", i+1, len(configs), result)
+		si, ok := slot(slots, ratio(result))
+		if !ok {
+			continue
+		}
+		v := mbPerSec(result)
+		p := presets[si]
+		if !p.present || v <= mbPerSec(p.result) {
+			fmt.Printf("slot %d - not faster\n", si+1)
+			continue
+		}
+		presets[si] = preset{
+			present: true,
+			cfg:     cfg,
+			result:  result,
+		}
+		fmt.Printf("slot %d - update\n", si+1)
+		pretty.Println(cfg)
+	}
+
+	fmt.Printf("\n\n### Result ###\n\n")
+
+	for si, p := range presets {
+		if si > 0 {
+			fmt.Printf("\n")
+		}
+		if !p.present {
+			fmt.Printf("slot %d - not present\n", si)
+			continue
+		}
+		fmt.Printf("slot %d - \t%.3f c/u\t%.2f MB/s\n",
+			si+1, ratio(p.result), mbPerSec(p.result))
+		pretty.Println(p.cfg)
 	}
 }
 
