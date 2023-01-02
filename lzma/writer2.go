@@ -86,7 +86,7 @@ func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
 	}
 
 	// We need shrink size at least as large as an uncompressed chunk can
-	// be. Otherwise we may not be able to copy the data into the chunk. 
+	// be. Otherwise we may not be able to copy the data into the chunk.
 	const minShrinkSize = 1 << 16
 	if cfg.ShrinkSize < minShrinkSize {
 		cfg.ShrinkSize = minShrinkSize
@@ -106,14 +106,13 @@ func (cfg *Writer2Config) ApplyDefaults() {
 		if err != nil {
 			panic(fmt.Errorf("lz.Config error %s", err))
 		}
-		sbCfg := cfg.LZ.BufferConfig()
-		fixSBConfig(sbCfg, sbCfg.WindowSize)
-
 	} else if cfg.DictSize > 0 {
 		sbCfg := cfg.LZ.BufferConfig()
-		fixSBConfig(sbCfg, cfg.DictSize)
+		sbCfg.WindowSize = cfg.DictSize
 	}
 	cfg.LZ.ApplyDefaults()
+	sbCfg := cfg.LZ.BufferConfig()
+	fixSBConfig(sbCfg, sbCfg.WindowSize)
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
