@@ -26,6 +26,7 @@
     "ignoreWords": [
         "BDHS",
         "BUHS",
+        "GSAS",
         "MININT",
         "bufw",
         "cerr",
@@ -55,6 +56,7 @@
         "unpadded",
         "vsintellicode",
         "werr",
+        "wexp",
         "zdata"
     ],
     "import": []
