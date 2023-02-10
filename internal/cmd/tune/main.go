@@ -235,7 +235,7 @@ func makeConfig(cfg lz.SeqConfig, windowSize int) config {
 }
 func appendHSConfigs(x []config) (y []config) {
 	y = x
-	for windowExp := 15; windowExp <= 23; windowExp++ {
+	for windowExp := 15; windowExp <= 26; windowExp++ {
 		for hashBits := 4; hashBits <= 23; hashBits++ {
 			for _, inputLen := range []int{3, 4} {
 				cfg := makeConfig(
@@ -255,7 +255,7 @@ func appendHSConfigs(x []config) (y []config) {
 
 func appendBHSConfigs(x []config) (y []config) {
 	y = x
-	for windowExp := 15; windowExp <= 23; windowExp++ {
+	for windowExp := 15; windowExp <= 26; windowExp++ {
 		for hashBits := 4; hashBits <= 23; hashBits++ {
 			for _, inputLen := range []int{3, 4} {
 				cfg := makeConfig(
@@ -275,7 +275,7 @@ func appendBHSConfigs(x []config) (y []config) {
 
 func appendDHSConfigs(x []config) (y []config) {
 	y = x
-	for wexp := 15; wexp <= 23; wexp++ {
+	for wexp := 15; wexp <= 26; wexp++ {
 		for hb1 := 4; hb1 <= 23; hb1++ {
 			for _, il1 := range []int{3, 4} {
 				for il2 := il1 + 1; il2 <= 8; il2++ {
@@ -302,7 +302,7 @@ func appendDHSConfigs(x []config) (y []config) {
 
 func appendBDHSConfigs(x []config) (y []config) {
 	y = x
-	for wexp := 15; wexp <= 23; wexp++ {
+	for wexp := 15; wexp <= 26; wexp++ {
 		for hb1 := 4; hb1 <= 23; hb1++ {
 			for _, il1 := range []int{3, 4} {
 				for il2 := il1 + 1; il2 <= 8; il2++ {
@@ -329,7 +329,7 @@ func appendBDHSConfigs(x []config) (y []config) {
 
 func appendBUHSConfigs(x []config) (y []config) {
 	y = x
-	for windowExp := 15; windowExp <= 23; windowExp++ {
+	for windowExp := 15; windowExp <= 26; windowExp++ {
 		for hashBits := 4; hashBits <= 23; hashBits++ {
 			for bucketSize := 4; bucketSize <= 30; bucketSize++ {
 				cfg := makeConfig(

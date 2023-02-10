@@ -62,6 +62,12 @@ func xzCompress(files []file, cfg xz.WriterConfig) (compressedSize int64, err er
 			return compressedSize, err
 		}
 		_, err = io.Copy(w, bytes.NewReader(f.Data))
+		if err != nil {
+			return compressedSize, err
+		}
+		if err = w.Close(); err != nil {
+			return compressedSize, err
+		}
 		compressedSize += cw.n
 		if err != nil {
 			return compressedSize, err
@@ -107,4 +113,3 @@ func writerBenchmark(cfg xz.WriterConfig) func(b *testing.B) {
 		b.ReportMetric(r, "c/u")
 	}
 }
-

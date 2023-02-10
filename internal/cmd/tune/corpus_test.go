@@ -108,12 +108,12 @@ func BenchmarkRatio(b *testing.B) {
 		name string
 		cfg  xz.WriterConfig
 	}{
-		{name: "default-single-threaded",
-			cfg: xz.WriterConfig{
-				Workers: 1,
-				LZMA:    lzma.Writer2Config{Workers: 1},
+			{name: "default-single-threaded",
+				cfg: xz.WriterConfig{
+					Workers: 1,
+					LZMA:    lzma.Writer2Config{Workers: 1},
+				},
 			},
-		},
 		{name: "hs3-15-st",
 			cfg: xz.WriterConfig{
 				Workers: 1,
@@ -145,6 +145,35 @@ func BenchmarkRatio(b *testing.B) {
 						InputLen:   3,
 						HashBits:   20,
 						BucketSize: 20,
+					},
+				},
+			},
+		},
+		{name: "DHS-4:11-7:14/67108864",
+			cfg: xz.WriterConfig{
+				Workers: 1,
+				LZMA: lzma.Writer2Config{
+					Workers:  1,
+					DictSize: 67108864,
+					LZ: &lz.DHSConfig{
+						InputLen1: 4,
+						HashBits1: 11,
+						InputLen2: 7,
+						HashBits2: 14,
+					},
+				},
+			},
+		},
+		{name: "BUHS-3-20-128/8<<20",
+			cfg: xz.WriterConfig{
+				Workers: 1,
+				LZMA: lzma.Writer2Config{
+					Workers:  1,
+					DictSize: 67108864,
+					LZ: &lz.BUHSConfig{
+						InputLen:   3,
+						HashBits:   20,
+						BucketSize: 128,
 					},
 				},
 			},
