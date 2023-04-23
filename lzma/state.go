@@ -311,6 +311,7 @@ func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
 		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
+		// TODO: remove from the last run through the loop
 		m = (m << 1) | b
 	}
 	return nil
