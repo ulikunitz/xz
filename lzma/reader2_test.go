@@ -76,7 +76,7 @@ func TestReader2(t *testing.T) {
 			checksum1 := h1.Sum(nil)
 
 			if err = w.Close(); err != nil {
-				t.Fatalf("w.Cose() error %s", err)
+				t.Fatalf("w.Close() error %s", err)
 			}
 			t.Logf("compressed: %d, uncompressed: %d", buf.Len(), n1)
 

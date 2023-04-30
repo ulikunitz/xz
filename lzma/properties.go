@@ -30,7 +30,7 @@ func (p *Properties) fromByte(b byte) error {
 	return nil
 }
 
-// Verify verifies the correctnewss of the properties. It doesn't check the LZMA2
+// Verify verifies the correctness of the properties. It doesn't check the LZMA2
 // condition that LC + LP <= 4.
 func (p Properties) Verify() error {
 	if !(0 <= p.LC && p.LC <= 8) {

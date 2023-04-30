@@ -28,7 +28,7 @@ func TestWriter(t *testing.T) {
 		t.Fatalf("WriteString error %s", err)
 	}
 	if n != len(text) {
-		t.Fatalf("Writestring wrote %d bytes; want %d", n, len(text))
+		t.Fatalf("WriteString wrote %d bytes; want %d", n, len(text))
 	}
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close error %s", err)

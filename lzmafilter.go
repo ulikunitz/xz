@@ -100,9 +100,10 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 			"dictionary capacity overflow")
 	}
 
-	sbConfig := cfg.LZ.BufferConfig()
-	if dc > sbConfig.WindowSize {
-		sbConfig.WindowSize = dc
+	bc := cfg.LZ.BufConfig()
+	if dc > bc.WindowSize {
+		bc.WindowSize = dc
+		cfg.LZ.SetBufConfig(bc)
 		// TODO: adjust buffer size?
 	}
 

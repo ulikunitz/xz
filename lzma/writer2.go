@@ -61,8 +61,8 @@ func (cfg *Writer2Config) Verify() error {
 	}
 
 	if cfg.Workers > 1 {
-		sbCfg := cfg.LZ.BufferConfig()
-		if cfg.WorkerBufferSize > sbCfg.BufferSize {
+		bc := cfg.LZ.BufConfig()
+		if cfg.WorkerBufferSize > bc.BufferSize {
 			return errors.New(
 				"lzma: sequence buffer size must be" +
 					" less or equal than worker buffer size")
@@ -72,47 +72,44 @@ func (cfg *Writer2Config) Verify() error {
 	return nil
 }
 
-// fixSBConfig computes the sequence buffer configuration in a way that works
+// fixBufConfig computes the sequence buffer configuration in a way that works
 // for lzma. ShrinkSize cannot be smaller than the window size or the size of an
 // uncompressed chunk.
-func fixSBConfig(cfg *lz.SBConfig, windowSize int) {
-	cfg.WindowSize = windowSize
-	cfg.ShrinkSize = cfg.WindowSize
-	cfg.BufferSize = 2 * cfg.WindowSize
+func fixBufConfig(cfg lz.SeqConfig, windowSize int) {
+	bc := cfg.BufConfig()
+	bc.WindowSize = windowSize
+	bc.ShrinkSize = bc.WindowSize
+	bc.BufferSize = 2 * bc.WindowSize
 
 	const minBufferSize = 256 << 10
-	if cfg.BufferSize < minBufferSize {
-		cfg.BufferSize = minBufferSize
+	if bc.BufferSize < minBufferSize {
+		bc.BufferSize = minBufferSize
 	}
 
 	// We need shrink size at least as large as an uncompressed chunk can
 	// be. Otherwise we may not be able to copy the data into the chunk.
 	const minShrinkSize = 1 << 16
-	if cfg.ShrinkSize < minShrinkSize {
-		cfg.ShrinkSize = minShrinkSize
+	if bc.ShrinkSize < minShrinkSize {
+		bc.ShrinkSize = minShrinkSize
 	}
+	cfg.SetBufConfig(bc)
 }
 
 // ApplyDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
 func (cfg *Writer2Config) ApplyDefaults() {
 	if cfg.LZ == nil {
-		var err error
-		var params lz.Params
-		if cfg.DictSize > 0 {
-			params.WindowSize = cfg.DictSize
-		}
-		cfg.LZ, err = lz.Config(params)
-		if err != nil {
-			panic(fmt.Errorf("lz.Config error %s", err))
-		}
+		dhsCfg := &lz.DHSConfig{WindowSize: cfg.DictSize}
+		cfg.LZ = dhsCfg
+
 	} else if cfg.DictSize > 0 {
-		sbCfg := cfg.LZ.BufferConfig()
-		sbCfg.WindowSize = cfg.DictSize
+		bc := cfg.LZ.BufConfig()
+		bc.WindowSize = cfg.DictSize
+		cfg.LZ.SetBufConfig(bc)
 	}
-	cfg.LZ.ApplyDefaults()
-	sbCfg := cfg.LZ.BufferConfig()
-	fixSBConfig(sbCfg, sbCfg.WindowSize)
+	cfg.LZ.SetDefaults()
+	bc := cfg.LZ.BufConfig()
+	fixBufConfig(cfg.LZ, bc.WindowSize)
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
@@ -125,9 +122,10 @@ func (cfg *Writer2Config) ApplyDefaults() {
 
 	if cfg.WorkerBufferSize == 0 && cfg.Workers > 1 {
 		cfg.WorkerBufferSize = 1 << 20
-		sbCfg := cfg.LZ.BufferConfig()
-		if cfg.WorkerBufferSize > sbCfg.BufferSize {
-			sbCfg.BufferSize = cfg.WorkerBufferSize
+		bc := cfg.LZ.BufConfig()
+		if cfg.WorkerBufferSize > bc.BufferSize {
+			bc.BufferSize = cfg.WorkerBufferSize
+			cfg.LZ.SetBufConfig(bc)
 		}
 	}
 }
@@ -148,9 +146,10 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // Note that the implementation for cfg.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZ.BufferConfig()
-	if cfg.Workers > 1 && cfg.WorkerBufferSize > sbCfg.BufferSize {
-		sbCfg.BufferSize = cfg.WorkerBufferSize
+	bc := cfg.LZ.BufConfig()
+	if cfg.Workers > 1 && cfg.WorkerBufferSize > bc.BufferSize {
+		bc.BufferSize = cfg.WorkerBufferSize
+		cfg.LZ.SetBufConfig(bc)
 	}
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -200,7 +199,7 @@ type mtWriter struct {
 }
 
 func (w *mtWriter) DictSize() int {
-	return w.cfg.LZ.BufferConfig().WindowSize
+	return w.cfg.LZ.BufConfig().WindowSize
 }
 
 func (w *mtWriter) Write(p []byte) (n int, err error) {
@@ -404,18 +403,14 @@ func TestWriter2ConfigDictSize(t *testing.T) {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
 
-	params := lz.Params{WindowSize: 4097}
-	lzCfg, err := lz.Config(params)
-	if err != nil {
-		t.Fatalf("lz.Config(%+v) error %s", params, err)
-	}
+	lzCfg := &lz.DHSConfig{WindowSize: 4097}
 	cfg = Writer2Config{
 		LZ:       lzCfg,
 		DictSize: 4098,
 	}
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZ.BufferConfig()
-	if sbCfg.WindowSize != 4098 {
-		t.Fatalf("sbCfg.windowSize %d; want %d", sbCfg.WindowSize, 4098)
+	bc := cfg.LZ.BufConfig()
+	if bc.WindowSize != 4098 {
+		t.Fatalf("sbCfg.windowSize %d; want %d", bc.WindowSize, 4098)
 	}
 }

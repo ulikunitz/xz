@@ -13,7 +13,7 @@ type decoder struct {
 // than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
 // the byte) or a match (MatchLen and Offset non-zero).
 func (d *decoder) readSeq() (seq lz.Seq, err error) {
-	state, state2, posState := d.state.states(d.dict.Pos())
+	state, state2, posState := d.state.states(d.dict.Off)
 
 	s2 := &d.state.s2[state2]
 	b, err := d.rd.decodeBit(&s2.isMatch)
@@ -22,7 +22,7 @@ func (d *decoder) readSeq() (seq lz.Seq, err error) {
 	}
 	if b == 0 {
 		// literal
-		litState := d.state.litState(d.dict.ByteAtEnd(1), d.dict.Pos())
+		litState := d.state.litState(d.dict.ByteAtEnd(1), d.dict.Off)
 		match := d.dict.ByteAtEnd(int(d.state.rep[0]) + 1)
 		s, err := d.state.litCodec.Decode(&d.rd, d.state.state, match,
 			litState)

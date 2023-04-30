@@ -14,7 +14,7 @@ const states = 12
 // for length encoding and decoding.
 const maxPosBits = 4
 
-// state1Probs groups the probablities together to fit into a single cache line.
+// state1Probs groups the probabilities together to fit into a single cache line.
 type state1Probs struct {
 	isRep   prob
 	isRepG0 prob
@@ -36,7 +36,7 @@ type state2Probs struct {
 	isRepG0Long prob
 }
 
-// initS2Probs intializes the state2 probabilities.
+// initS2Probs initializes the state2 probabilities.
 func initS2Probs(p []state2Probs) {
 	for i := range p {
 		p[i] = state2Probs{probInit, probInit}

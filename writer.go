@@ -95,7 +95,7 @@ func (c *WriterConfig) Verify() error {
 // filters creates the filter list for the given parameters.
 func filters(c *WriterConfig) []filter {
 	return []filter{&lzmaFilter{
-		int64(c.LZMA.LZ.BufferConfig().WindowSize)}}
+		int64(c.LZMA.LZ.BufConfig().WindowSize)}}
 }
 
 // verifyFilters checks the filter list for the length and the right

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/ulikunitz/lz"
 )
 
 // Possible values of the masked control byte in the LZMA2 chunk header. Note
@@ -83,7 +85,7 @@ type chunkReader struct {
 // the dictSize to support a linear buffer.
 func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	*r = chunkReader{r: z}
-	if err := r.dict.Init(dictSize, 2*dictSize); err != nil {
+	if err := r.dict.Init(lz.DecConfig{WindowSize: dictSize}); err != nil {
 		return err
 	}
 	return nil
@@ -337,9 +339,8 @@ func (r *chunkReader) readChunk() error {
 			continue
 		}
 
-		k := int(seq.MatchLen)
-		n -= k
-		err = r.dict.WriteMatch(k, int(seq.Offset))
+		n -= int(seq.MatchLen)
+		_, err = r.dict.WriteMatch(seq.MatchLen, seq.Offset)
 		if err != nil {
 			return err
 		}
@@ -354,7 +355,8 @@ func (r *chunkReader) readChunk() error {
 
 // Read reads data from the chunk reader.
 func (r *chunkReader) Read(p []byte) (n int, err error) {
-	if r.err != nil && r.dict.Len() == 0 {
+	k := len(r.dict.Data) - r.dict.R
+	if r.err != nil && k == 0 {
 		return 0, r.err
 	}
 	for {
@@ -369,7 +371,8 @@ func (r *chunkReader) Read(p []byte) (n int, err error) {
 		}
 		if err = r.readChunk(); err != nil {
 			r.err = err
-			if r.dict.Len() > 0 {
+			k := len(r.dict.Data) - r.dict.R
+			if k > 0 {
 				continue
 			}
 			return n, err
@@ -379,7 +382,8 @@ func (r *chunkReader) Read(p []byte) (n int, err error) {
 
 // WriteTo supports the WriterTo interface.
 func (r *chunkReader) WriteTo(w io.Writer) (n int64, err error) {
-	if r.err != nil && r.dict.Len() == 0 {
+	k := len(r.dict.Data) - r.dict.R
+	if r.err != nil && k == 0 {
 		return 0, r.err
 	}
 	for {
@@ -397,7 +401,8 @@ func (r *chunkReader) WriteTo(w io.Writer) (n int64, err error) {
 		}
 		if err = r.readChunk(); err != nil {
 			r.err = err
-			if r.dict.Len() > 0 {
+			k := len(r.dict.Data) - r.dict.R
+			if k > 0 {
 				continue
 			}
 			if err == io.EOF {

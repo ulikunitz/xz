@@ -51,19 +51,14 @@ func TestWriterConfigDictSize(t *testing.T) {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
 
-	params := lz.Params{WindowSize: 4097}
-	lzCfg, err := lz.Config(params)
-	if err != nil {
-		t.Fatalf("lz.Config(%+v) error %s", params, err)
-	}
+	lzCfg := &lz.DHSConfig{WindowSize: 4097}
 	cfg = WriterConfig{
 		LZ:       lzCfg,
 		DictSize: 4098,
 	}
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZ.BufferConfig()
-	if sbCfg.WindowSize != 4098 {
-		t.Fatalf("sbCfg.windowSize %d; want %d", sbCfg.WindowSize, 4098)
+	bc := cfg.LZ.BufConfig()
+	if bc.WindowSize != 4098 {
+		t.Fatalf("bc.windowSize %d; want %d", bc.WindowSize, 4098)
 	}
-
 }

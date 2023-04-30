@@ -8,7 +8,7 @@ import (
 
 // encoder supports the LZMA encoding.
 type encoder struct {
-	window *lz.SeqBuffer
+	window lz.Sequencer
 	state  state
 	pos    int64
 	re     rangeEncoder
@@ -17,7 +17,7 @@ type encoder struct {
 // byteAtEnd returns the byte with the offset i to the end of the encoding.
 // Offsets outside of the window are only allowed for encoding position 0.
 func (e *encoder) byteAtEnd(i int64) byte {
-	c, err := e.window.ReadByteAt(e.pos - i)
+	c, err := e.window.ByteAt(e.pos - i)
 	if err != nil {
 		if e.pos != 0 {
 			panic(err)

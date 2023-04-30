@@ -4,9 +4,11 @@
 
 ### Work
 
+- Fuzz the xz Writer and xz Reader by varying the thread numbers and the input.
+
 - Work on the presets for lz and xz.
     - We have quite bad compression rates.
-    - Prefer repeats over evrything else and test for them explicitly.
+    - Prefer repeats over everything else and test for them explicitly.
       Usually we would use an interface but that is bad. We could use
       type parameters.
 

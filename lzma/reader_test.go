@@ -54,7 +54,7 @@ func TestReaderSimple(t *testing.T) {
 		t.Fatalf("f.State() error %s", err)
 	}
 
-	n, err := f.Seek(0, os.SEEK_CUR)
+	n, err := f.Seek(0, io.SeekCurrent)
 	if err != nil {
 		t.Fatalf("f.Seek() error %s", err)
 	}
@@ -108,7 +108,7 @@ func TestGoodExamples(t *testing.T) {
 			continue
 		}
 
-		n, err := f.Seek(0, os.SEEK_CUR)
+		n, err := f.Seek(0, io.SeekCurrent)
 		if err != nil {
 			t.Errorf("f.Seek() error %s", err)
 			continue
@@ -164,9 +164,10 @@ func TestMinDictSize(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cfg := WriterConfig{}
 	cfg.ApplyDefaults()
-	sbCfg := cfg.LZ.BufferConfig()
-	sbCfg.WindowSize = 4096
-	sbCfg.ShrinkSize = 1024
+	bc := cfg.LZ.BufConfig()
+	bc.WindowSize = 4096
+	bc.ShrinkSize = 1024
+	cfg.LZ.SetBufConfig(bc)
 	w, err := NewWriterConfig(buf, cfg)
 	if err != nil {
 		t.Fatalf("WriterConfig(%+v).NewWriter(buf) error %s", cfg, err)

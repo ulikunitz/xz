@@ -66,7 +66,7 @@ func NewReader2(z io.Reader, dictSize int) (r io.ReadCloser, err error) {
 }
 
 // NewReader2Config generates an LZMA2 reader using the configuration parameter
-// attribute. Note that the code returns a ReadCloser, which has to be clsoed
+// attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
 func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err error) {
 	cfg.ApplyDefaults()
@@ -99,7 +99,7 @@ type mtReader struct {
 	r      io.Reader
 }
 
-// newMTReader creates a new multithreader reader. Note that Close must be
+// newMTReader creates a new multithreading reader. Note that Close must be
 // called to clean up.
 func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -144,7 +144,7 @@ func (r *mtReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// Close closes the multihreaded reader and stops all workers.
+// Close closes the multithreading reader and stops all workers.
 func (r *mtReader) Close() error {
 	if r.err == errClosed {
 		return errClosed
@@ -249,7 +249,7 @@ func mtrWork(ctx context.Context, dictSize int, tskCh <-chan mtReaderTask) {
 			case tsk.rCh <- r:
 			}
 		} else {
-			panic(fmt.Errorf("negative size not expexted"))
+			panic(fmt.Errorf("negative size not expected"))
 		}
 	}
 }
@@ -310,7 +310,7 @@ func (hr *hdrReader) Read(p []byte) (n int, err error) {
 // splitStream splits the LZMA stream into blocks that can be processed in
 // parallel. Such blocks need to start with a dictionary reset. If such a block
 // cannot be found that is less or equal size then false is returned and the
-// write contains a series of chunks and the last chunk headere. The number n
+// write contains a series of chunks and the last chunk header. The number n
 // contains the size of the decompressed block. If ok is false n will be zero.
 func splitStream(w io.Writer, hr *hdrReader, size int) (n int, ok bool, err error) {
 	for {

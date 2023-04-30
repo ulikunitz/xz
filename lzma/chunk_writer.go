@@ -42,7 +42,7 @@ func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
 	}
 	*w = chunkWriter{
 		seq:     seq,
-		encoder: encoder{window: seq.Buffer()},
+		encoder: encoder{window: seq},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -146,7 +146,7 @@ loop:
 }
 
 // clearBuffer consumes all data provided and writes it in a sequence of
-// chunks. The last chunk will not be written out. Use the method finishChunnk
+// chunks. The last chunk will not be written out. Use the method finishChunk
 // for it.
 func (w *chunkWriter) clearBuffer(ctx context.Context) error {
 	var err error
@@ -341,5 +341,5 @@ func (w *chunkWriter) Close() error {
 
 // DictSize returns the dictionary size for the chunk writer.
 func (w *chunkWriter) DictSize() int {
-	return w.seq.Buffer().WindowSize
+	return w.seq.BufferConfig().WindowSize
 }

@@ -3,7 +3,6 @@ package lzma
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 
@@ -46,7 +45,7 @@ func (w *writer) init(z io.Writer, seq lz.Sequencer, p Properties, eos bool) {
 
 	*w = writer{
 		seq:     seq,
-		encoder: encoder{window: seq.Buffer()},
+		encoder: encoder{window: seq},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -247,22 +246,12 @@ func (cfg *WriterConfig) Verify() error {
 // set previously.
 func (cfg *WriterConfig) ApplyDefaults() {
 	if cfg.LZ == nil {
-		var err error
-		var params lz.Params
-		if cfg.DictSize > 0 {
-			params.WindowSize = cfg.DictSize
-		}
-		cfg.LZ, err = lz.Config(params)
-		if err != nil {
-			panic(fmt.Errorf("lz.Config error %s", err))
-		}
-		sbCfg := cfg.LZ.BufferConfig()
-		fixSBConfig(sbCfg, sbCfg.WindowSize)
+		cfg.LZ = &lz.DHSConfig{WindowSize: cfg.DictSize}
+		fixBufConfig(cfg.LZ, cfg.DictSize)
 	} else if cfg.DictSize > 0 {
-		sbCfg := cfg.LZ.BufferConfig()
-		fixSBConfig(sbCfg, cfg.DictSize)
+		fixBufConfig(cfg.LZ, cfg.DictSize)
 	}
-	cfg.LZ.ApplyDefaults()
+	cfg.LZ.SetDefaults()
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
@@ -288,8 +277,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	window := seq.Buffer()
-	dictSize := int64(window.WindowSize)
+	dictSize := int64(seq.BufferConfig().WindowSize)
 	if !(0 <= dictSize && dictSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}
