@@ -46,11 +46,11 @@ type WriterConfig struct {
 	Workers int
 }
 
-// ApplyDefaults applies the defaults to the xz writer configuration.
-func (c *WriterConfig) ApplyDefaults() {
+// SetDefaults applies the defaults to the xz writer configuration.
+func (c *WriterConfig) SetDefaults() {
 	c.LZMA.Workers = 1
 	c.LZMA.WorkerBufferSize = 0
-	c.LZMA.ApplyDefaults()
+	c.LZMA.SetDefaults()
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC64
 	}
@@ -75,7 +75,7 @@ func (c *WriterConfig) Verify() error {
 	if c == nil {
 		return errors.New("xz: writer configuration is nil")
 	}
-	c.ApplyDefaults()
+	c.SetDefaults()
 	var err error
 	if err = c.LZMA.Verify(); err != nil {
 		return err
@@ -348,7 +348,7 @@ func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 // requested by a Workers configuration larger than 1, single threading will be
 // requested for the LZMA writer by setting the Workers variable there to 1.
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}

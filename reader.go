@@ -42,9 +42,9 @@ type ReaderConfig struct {
 	Workers int
 }
 
-// ApplyDefaults sets the defaults in ReaderConfig.
-func (cfg *ReaderConfig) ApplyDefaults() {
-	cfg.LZMA.ApplyDefaults()
+// SetDefaults sets the defaults in ReaderConfig.
+func (cfg *ReaderConfig) SetDefaults() {
+	cfg.LZMA.SetDefaults()
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
@@ -116,7 +116,7 @@ func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
 // Workers are larger than one, the LZMA reader will only use single-threaded
 // workers.
 func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error) {
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}

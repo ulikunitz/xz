@@ -242,9 +242,9 @@ func (cfg *WriterConfig) Verify() error {
 	return nil
 }
 
-// ApplyDefaults applies the defaults to the configuration if they have not been
+// SetDefaults applies the defaults to the configuration if they have not been
 // set previously.
-func (cfg *WriterConfig) ApplyDefaults() {
+func (cfg *WriterConfig) SetDefaults() {
 	if cfg.LZ == nil {
 		cfg.LZ = &lz.DHSConfig{WindowSize: cfg.DictSize}
 		fixBufConfig(cfg.LZ, cfg.DictSize)
@@ -267,7 +267,7 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 // NewWriterConfig creates a new LZMA writer using the parameter provided by
 // cfg.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}

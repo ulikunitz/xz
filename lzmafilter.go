@@ -91,7 +91,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 	if c != nil {
 		cfg = c.LZMA
 	} else {
-		cfg.ApplyDefaults()
+		cfg.SetDefaults()
 	}
 
 	dc := int(f.dictSize)

@@ -8,7 +8,7 @@ Here is what I found even though my thinking is still developing.
 
 ## Configuration
 
-It is obvious that methods ApplyDefaults and Verify on configuration
+It is obvious that methods SetDefaults and Verify on configuration
 structures, don't belong into the hand of the users. These are helper
 methods that have local meaning.
 
@@ -53,7 +53,7 @@ hs3-10 or bdhs36-12-14 for the BackDoubleHash.
 ```
 type SeqConfig interface {
     NewSequencer() (s Sequencer, err error)
-    ApplyDefaults()
+    SetDefaults()
     Verify() error
     SeqBufConfig() *SeqBufConfig
     Method() string

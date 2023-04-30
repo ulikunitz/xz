@@ -32,7 +32,7 @@ type Writer2Config struct {
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
-// call ApplyDefaults before this method.
+// call SetDefaults before this method.
 func (cfg *Writer2Config) Verify() error {
 	var err error
 	if cfg == nil {
@@ -95,9 +95,9 @@ func fixBufConfig(cfg lz.SeqConfig, windowSize int) {
 	cfg.SetBufConfig(bc)
 }
 
-// ApplyDefaults replaces zero values with default values. The workers variable
+// SetDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
-func (cfg *Writer2Config) ApplyDefaults() {
+func (cfg *Writer2Config) SetDefaults() {
 	if cfg.LZ == nil {
 		dhsCfg := &lz.DHSConfig{WindowSize: cfg.DictSize}
 		cfg.LZ = dhsCfg
@@ -145,7 +145,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // NewWriter2Config constructs an LZMA2 writer for a specific configuration.
 // Note that the implementation for cfg.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	bc := cfg.LZ.BufConfig()
 	if cfg.Workers > 1 && cfg.WorkerBufferSize > bc.BufferSize {
 		bc.BufferSize = cfg.WorkerBufferSize
@@ -398,7 +398,7 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 
 func TestWriter2ConfigDictSize(t *testing.T) {
 	cfg := Writer2Config{DictSize: 4096}
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	if err := cfg.Verify(); err != nil {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
@@ -408,7 +408,7 @@ func TestWriter2ConfigDictSize(t *testing.T) {
 		LZ:       lzCfg,
 		DictSize: 4098,
 	}
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	bc := cfg.LZ.BufConfig()
 	if bc.WindowSize != 4098 {
 		t.Fatalf("sbCfg.windowSize %d; want %d", bc.WindowSize, 4098)

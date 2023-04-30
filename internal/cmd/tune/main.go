@@ -245,7 +245,7 @@ func appendHSConfigs(x []config) (y []config) {
 					},
 					1<<windowExp,
 				)
-				cfg.ApplyDefaults()
+				cfg.SetDefaults()
 				y = append(y, cfg)
 			}
 		}
@@ -265,7 +265,7 @@ func appendBHSConfigs(x []config) (y []config) {
 					},
 					1<<windowExp,
 				)
-				cfg.ApplyDefaults()
+				cfg.SetDefaults()
 				y = append(y, cfg)
 			}
 		}
@@ -289,7 +289,7 @@ func appendDHSConfigs(x []config) (y []config) {
 							},
 							1<<wexp,
 						)
-						cfg.ApplyDefaults()
+						cfg.SetDefaults()
 						y = append(y, cfg)
 
 					}
@@ -316,7 +316,7 @@ func appendBDHSConfigs(x []config) (y []config) {
 							},
 							1<<wexp,
 						)
-						cfg.ApplyDefaults()
+						cfg.SetDefaults()
 						y = append(y, cfg)
 
 					}
@@ -340,7 +340,7 @@ func appendBUHSConfigs(x []config) (y []config) {
 					},
 					1<<windowExp,
 				)
-				cfg.ApplyDefaults()
+				cfg.SetDefaults()
 				y = append(y, cfg)
 			}
 		}

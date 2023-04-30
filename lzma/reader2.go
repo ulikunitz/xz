@@ -43,9 +43,9 @@ func (cfg *Reader2Config) Verify() error {
 	return nil
 }
 
-// ApplyDefaults sets a default value for the dictionary size. Note that
+// SetDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
-func (cfg *Reader2Config) ApplyDefaults() {
+func (cfg *Reader2Config) SetDefaults() {
 	if cfg.DictSize == 0 {
 		cfg.DictSize = 8 << 20
 	}
@@ -69,7 +69,7 @@ func NewReader2(z io.Reader, dictSize int) (r io.ReadCloser, err error) {
 // attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
 func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err error) {
-	cfg.ApplyDefaults()
+	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
 	}

@@ -40,7 +40,7 @@ func FuzzXZ(f *testing.F) {
 			t.Skip()
 		}
 		wc := xz.WriterConfig{Workers: workers}
-		wc.ApplyDefaults()
+		wc.SetDefaults()
 		var err error
 		if err = wc.Verify(); err != nil {
 			t.Skip()
@@ -66,7 +66,7 @@ func FuzzXZ(f *testing.F) {
 		}
 		h2 := sha256.New()
 		rc := xz.ReaderConfig{Workers: workers}
-		rc.ApplyDefaults()
+		rc.SetDefaults()
 		if err = rc.Verify(); err != nil {
 			t.Fatalf("rc.Verify() for %+v error %s", rc, err)
 		}
