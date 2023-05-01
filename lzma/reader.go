@@ -35,8 +35,8 @@ func NewRawReader(z io.Reader, dictSize int, props Properties, uncompressedSize 
 	return rr, nil
 }
 
-// minDictSize defines the minimum supported dictionary size.
-const minDictSize = 1 << 12
+// minWindowSize defines the minimum supported dictionary size.
+const minWindowSize = 1 << 12
 
 // headerLen defines the length of an LZMA header
 const headerLen = 13
@@ -53,7 +53,7 @@ func (h params) Verify() error {
 	if uint64(h.dictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
 	}
-	if h.dictSize < minDictSize {
+	if h.dictSize < minWindowSize {
 		return errors.New("lzma: dictSize is too small")
 	}
 	return h.props.Verify()
@@ -97,8 +97,8 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 	// https://github.com/ulikunitz/xz/pull/52
 	// TODO: depending on the discussion we might even need a way to
 	// override the header.
-	if params.dictSize < minDictSize {
-		params.dictSize = minDictSize
+	if params.dictSize < minWindowSize {
+		params.dictSize = minWindowSize
 	}
 	if err = params.Verify(); err != nil {
 		return nil, err

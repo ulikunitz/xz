@@ -64,7 +64,7 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 
 	var cfg lzma.Reader2Config
 	if c == nil {
-		cfg.DictSize = int(f.dictSize)
+		cfg.WindowSize = int(f.dictSize)
 	} else {
 		cfg = c.LZMA
 	}
@@ -73,8 +73,8 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 		return nil, errors.New(
 			"xz: LZMA2 filter parameter dictionary capacity overflow")
 	}
-	if dc > cfg.DictSize {
-		cfg.DictSize = dc
+	if dc > cfg.WindowSize {
+		cfg.WindowSize = dc
 	}
 
 	fr, err = lzma.NewReader2Config(r, cfg)
@@ -100,10 +100,10 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 			"dictionary capacity overflow")
 	}
 
-	bc := cfg.LZ.BufConfig()
+	bc := cfg.ParserConfig.BufConfig()
 	if dc > bc.WindowSize {
 		bc.WindowSize = dc
-		cfg.LZ.SetBufConfig(bc)
+		cfg.ParserConfig.SetBufConfig(bc)
 		// TODO: adjust buffer size?
 	}
 

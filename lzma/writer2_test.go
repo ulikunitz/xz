@@ -3,10 +3,12 @@ package lzma
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -57,7 +59,7 @@ func TestWriter2(t *testing.T) {
 			{Workers: 1},
 			{WorkerBufferSize: 100000, Workers: 2},
 		*/
-		{WorkerBufferSize: 3e5},
+		{WorkSize: 3e5},
 
 		{},
 	}
@@ -160,5 +162,27 @@ func TestMTWriter(t *testing.T) {
 
 	if got != txt {
 		t.Fatalf("decompressed text differs from original text")
+	}
+}
+
+func TestWriter2ConfigJSON(t *testing.T) {
+	var err error
+	var cfg Writer2Config
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
+		t.Fatalf("Verify error %s", err)
+	}
+	p, err := json.MarshalIndent(&cfg, "", "  ")
+	if err != nil {
+		t.Fatalf("json.Marshal error %s", err)
+	}
+	t.Logf("json:\n%s", p)
+	var cfg1 Writer2Config
+	if err = json.Unmarshal(p, &cfg1); err != nil {
+		t.Fatalf("json.Unmarshal error %s", err)
+	}
+	if !reflect.DeepEqual(cfg, cfg1) {
+		t.Fatalf("json.Unmarshal: got %+v; want %+v",
+			cfg1, cfg)
 	}
 }

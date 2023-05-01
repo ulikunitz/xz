@@ -52,7 +52,7 @@ type WriterConfig struct {
 // SetDefaults applies the defaults to the xz writer configuration.
 func (c *WriterConfig) SetDefaults() {
 	c.LZMA.Workers = 1
-	c.LZMA.WorkerBufferSize = 0
+	c.LZMA.WorkSize = 0
 	c.LZMA.SetDefaults()
 	if c.CheckSum == 0 {
 		c.CheckSum = CRC64
@@ -98,7 +98,7 @@ func (c *WriterConfig) Verify() error {
 // filters creates the filter list for the given parameters.
 func filters(c *WriterConfig) []filter {
 	return []filter{&lzmaFilter{
-		int64(c.LZMA.LZ.BufConfig().WindowSize)}}
+		int64(c.LZMA.ParserConfig.BufConfig().WindowSize)}}
 }
 
 // verifyFilters checks the filter list for the length and the right

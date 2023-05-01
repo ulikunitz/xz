@@ -3,6 +3,7 @@ package lzma
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -16,32 +17,32 @@ func TestReader2(t *testing.T) {
 	}{
 		{
 			Writer2Config{
-				Workers:          3,
-				WorkerBufferSize: 100000,
+				Workers:  3,
+				WorkSize: 100000,
 			},
 			Reader2Config{
-				Workers:          3,
-				WorkerBufferSize: 100000,
+				Workers:  3,
+				WorkSize: 100000,
 			},
 		},
 		{
 			Writer2Config{
-				Workers:          3,
-				WorkerBufferSize: 50000,
+				Workers:  3,
+				WorkSize: 50000,
 			},
 			Reader2Config{
-				Workers:          3,
-				WorkerBufferSize: 100000,
+				Workers:  3,
+				WorkSize: 100000,
 			},
 		},
 		{
 			Writer2Config{
-				Workers:          3,
-				WorkerBufferSize: 100000,
+				Workers:  3,
+				WorkSize: 100000,
 			},
 			Reader2Config{
-				Workers:          3,
-				WorkerBufferSize: 50000,
+				Workers:  3,
+				WorkSize: 50000,
 			},
 		},
 		{},
@@ -81,8 +82,8 @@ func TestReader2(t *testing.T) {
 			t.Logf("compressed: %d, uncompressed: %d", buf.Len(), n1)
 
 			rcfg := tc.rcfg
-			if rcfg.DictSize == 0 {
-				rcfg.DictSize = dictSize
+			if rcfg.WindowSize == 0 {
+				rcfg.WindowSize = dictSize
 			}
 			r, err := NewReader2Config(buf, rcfg)
 			if err != nil {
@@ -106,5 +107,27 @@ func TestReader2(t *testing.T) {
 				t.Fatalf("hash checksums differ")
 			}
 		})
+	}
+}
+
+func TestReader2JSON(t *testing.T) {
+	var err error
+	var cfg Reader2Config
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
+		t.Fatalf("cfg.Verify() error %s", err)
+	}
+	p, err := json.MarshalIndent(&cfg, "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent error %s", err)
+	}
+	t.Logf("JSON:\n%s", p)
+
+	var cfg1 Reader2Config
+	if err = json.Unmarshal(p, &cfg1); err != nil {
+		t.Fatalf("Unmarshal error %s", err)
+	}
+	if cfg != cfg1 {
+		t.Fatalf("json.Unmarshal: got %+v, want %+v", cfg1, cfg)
 	}
 }

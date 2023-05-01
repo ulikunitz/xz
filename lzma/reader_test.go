@@ -164,10 +164,10 @@ func TestMinDictSize(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cfg := WriterConfig{}
 	cfg.SetDefaults()
-	bc := cfg.LZ.BufConfig()
+	bc := cfg.ParserConfig.BufConfig()
 	bc.WindowSize = 4096
 	bc.ShrinkSize = 1024
-	cfg.LZ.SetBufConfig(bc)
+	cfg.ParserConfig.SetBufConfig(bc)
 	w, err := NewWriterConfig(buf, cfg)
 	if err != nil {
 		t.Fatalf("WriterConfig(%+v).NewWriter(buf) error %s", cfg, err)

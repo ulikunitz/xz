@@ -2,7 +2,9 @@ package lzma
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 
@@ -198,14 +200,16 @@ func (lw *limitWriter) Close() error {
 
 // WriterConfig defines the parameters for the LZMA Writer.
 type WriterConfig struct {
-	// Dictionary size.
-	DictSize int
+	// WindowSize defines the size of the sliding dictionary window for the
+	// LZ parsing. If it is non-zero it overrides the parser configuration
+	// of the lz package.
+	WindowSize int
 
 	// Properties of the LZMA algorithm.
 	Properties Properties
 
 	// If true the properties are actually zero.
-	ZeroProperties bool
+	FixedProperties bool
 
 	// FixedSize says that the stream has a fixed size known before
 	// compression.
@@ -214,8 +218,82 @@ type WriterConfig struct {
 	// Size gives the actual size if FixedSize is set.
 	Size int64
 
-	// LZ specific configuration for the LZ parser.
-	LZ lz.ParserConfig
+	// ParserConfig provides the LZ parser configuration. It defines which
+	// parser will be used with what parameters note that the WindowSize
+	// overrules the WindowSize in the parser configuration. Note also that
+	// ShrinkSize must have WindowSize for the LZMA algorithm.
+	ParserConfig lz.ParserConfig
+}
+
+func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
+	var err error
+	s := struct {
+		Format          string
+		Type            string
+		WindowSize      int             `json:",omitempty"`
+		LC              int             `json:",omitempty"`
+		LP              int             `json:",omitempty"`
+		PB              int             `json:",omitempty"`
+		FixedProperties bool            `json:",omitempty"`
+		FixedSize       bool            `json:",omitempty"`
+		Size            int64           `json:",omitempty"`
+		ParserConfig    json.RawMessage `json:",omitempty"`
+	}{}
+	if err = json.Unmarshal(p, &s); err != nil {
+		return err
+	}
+	if s.Format != "LZMA" {
+		return errors.New(
+			"lzma: Format JSON property muse have value XZ")
+	}
+	if s.Type != "Writer" {
+		return errors.New(
+			"lzma: Type JSON property must have value Writer")
+	}
+	parserConfig, err := lz.ParseJSON(s.ParserConfig)
+	if err != nil {
+		return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+	}
+	*cfg = WriterConfig{
+		WindowSize: s.WindowSize,
+		Properties: Properties{
+			LC: s.LC,
+			LP: s.LP,
+			PB: s.PB,
+		},
+		FixedProperties: s.FixedProperties,
+		FixedSize:       s.FixedSize,
+		Size:            s.Size,
+		ParserConfig:    parserConfig,
+	}
+	return nil
+}
+
+func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
+	s := struct {
+		Format          string
+		Type            string
+		WindowSize      int             `json:",omitempty"`
+		LC              int             `json:",omitempty"`
+		LP              int             `json:",omitempty"`
+		PB              int             `json:",omitempty"`
+		FixedProperties bool            `json:",omitempty"`
+		FixedSize       bool            `json:",omitempty"`
+		Size            int64           `json:",omitempty"`
+		ParserConfig    lz.ParserConfig `json:",omitempty"`
+	}{
+		Format:          "LZMA",
+		Type:            "Writer",
+		WindowSize:      cfg.WindowSize,
+		LC:              cfg.Properties.LC,
+		LP:              cfg.Properties.LP,
+		PB:              cfg.Properties.PB,
+		FixedProperties: cfg.FixedProperties,
+		FixedSize:       cfg.FixedSize,
+		Size:            cfg.Size,
+		ParserConfig:    cfg.ParserConfig,
+	}
+	return json.Marshal(&s)
 }
 
 // Verify checks the validity of the writer configuration parameter.
@@ -226,10 +304,10 @@ func (cfg *WriterConfig) Verify() error {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
 
-	if cfg.LZ == nil {
-		return errors.New("lzma: no lz configuration provided")
+	if cfg.ParserConfig == nil {
+		return errors.New("lzma: no LZ parser configuration provided")
 	}
-	if err = cfg.LZ.Verify(); err != nil {
+	if err = cfg.ParserConfig.Verify(); err != nil {
 		return err
 	}
 
@@ -245,16 +323,18 @@ func (cfg *WriterConfig) Verify() error {
 // SetDefaults applies the defaults to the configuration if they have not been
 // set previously.
 func (cfg *WriterConfig) SetDefaults() {
-	if cfg.LZ == nil {
-		cfg.LZ = &lz.DHPConfig{WindowSize: cfg.DictSize}
-		fixBufConfig(cfg.LZ, cfg.DictSize)
-	} else if cfg.DictSize > 0 {
-		fixBufConfig(cfg.LZ, cfg.DictSize)
+	if cfg.ParserConfig == nil {
+		cfg.ParserConfig = &lz.DHPConfig{}
 	}
-	cfg.LZ.SetDefaults()
+	if cfg.WindowSize == 0 {
+		cfg.ParserConfig.SetDefaults()
+		cfg.WindowSize = cfg.ParserConfig.BufConfig().WindowSize
+	}
+	fixBufConfig(cfg.ParserConfig, cfg.WindowSize)
+	cfg.ParserConfig.SetDefaults()
 
 	var zeroProps = Properties{}
-	if cfg.Properties == zeroProps && !cfg.ZeroProperties {
+	if !cfg.FixedProperties && cfg.Properties == zeroProps {
 		cfg.Properties = Properties{3, 0, 2}
 	}
 }
@@ -273,17 +353,17 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 	}
 
 	var parser lz.Parser
-	if parser, err = cfg.LZ.NewParser(); err != nil {
+	if parser, err = cfg.ParserConfig.NewParser(); err != nil {
 		return nil, err
 	}
 
-	dictSize := int64(parser.BufferConfig().WindowSize)
-	if !(0 <= dictSize && dictSize <= math.MaxUint32) {
+	windowSize := int64(parser.BufferConfig().WindowSize)
+	if !(0 <= windowSize && windowSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}
 	p := params{
 		props:    cfg.Properties,
-		dictSize: uint32(dictSize),
+		dictSize: uint32(windowSize),
 	}
 	if cfg.FixedSize {
 		p.uncompressedSize = uint64(cfg.Size)

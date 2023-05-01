@@ -2,7 +2,9 @@ package lzma
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -45,20 +47,41 @@ func TestWriterSimple(t *testing.T) {
 }
 
 func TestWriterConfigDictSize(t *testing.T) {
-	cfg := WriterConfig{DictSize: 4096}
+	cfg := WriterConfig{WindowSize: 4096}
 	cfg.SetDefaults()
 	if err := cfg.Verify(); err != nil {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
 
-	lzCfg := &lz.DHPConfig{WindowSize: 4097}
 	cfg = WriterConfig{
-		LZ:       lzCfg,
-		DictSize: 4098,
+		ParserConfig: &lz.DHPConfig{WindowSize: 4097},
+		WindowSize:   4098,
 	}
 	cfg.SetDefaults()
-	bc := cfg.LZ.BufConfig()
+	bc := cfg.ParserConfig.BufConfig()
 	if bc.WindowSize != 4098 {
 		t.Fatalf("bc.windowSize %d; want %d", bc.WindowSize, 4098)
+	}
+}
+
+func TestWriterConfigJSON(t *testing.T) {
+	var err error
+	var cfg WriterConfig
+	cfg.SetDefaults()
+	if err = cfg.Verify(); err != nil {
+		t.Fatalf("Verify error %s", err)
+	}
+	p, err := json.MarshalIndent(&cfg, "", "  ")
+	if err != nil {
+		t.Fatalf("json.Marshal error %s", err)
+	}
+	t.Logf("json:\n%s", p)
+	var cfg1 WriterConfig
+	if err = json.Unmarshal(p, &cfg1); err != nil {
+		t.Fatalf("json.Unmarshal error %s", err)
+	}
+	if !reflect.DeepEqual(cfg, cfg1) {
+		t.Fatalf("json.Unmarshal: got %+v; want %+v",
+			cfg1, cfg)
 	}
 }
