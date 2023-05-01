@@ -81,7 +81,6 @@ func flagString(flags byte) string {
 	return s
 }
 
-
 // newHash returns the hash function for the flags variable
 func newHash(flags byte) (h hash.Hash, err error) {
 	switch flags {

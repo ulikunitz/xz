@@ -122,7 +122,7 @@ func NewReader(z io.Reader) (r io.Reader, err error) {
 func (r *reader) init(z io.Reader, dictSize int, props Properties,
 	uncompressedSize uint64) error {
 
-	if err := r.dict.Init(lz.DecConfig{WindowSize: dictSize}); err != nil {
+	if err := r.buffer.Init(lz.DecoderConfig{WindowSize: dictSize}); err != nil {
 		return err
 	}
 
@@ -171,7 +171,7 @@ var ErrEncoding = errors.New("lzma: wrong encoding")
 // fillBuffer refills the buffer.
 func (r *reader) fillBuffer() error {
 	for {
-		if a := r.dict.BufferSize - len(r.dict.Data); a < maxMatchLen {
+		if a := r.buffer.BufferSize - len(r.buffer.Data); a < maxMatchLen {
 			break
 		}
 		seq, err := r.readSeq()
@@ -179,27 +179,27 @@ func (r *reader) fillBuffer() error {
 			s := r.size
 			switch err {
 			case errEOS:
-				if r.rd.possiblyAtEnd() && (s < 0 || s == r.dict.Off) {
+				if r.rd.possiblyAtEnd() && (s < 0 || s == r.buffer.Off) {
 					err = io.EOF
 				}
 			case io.EOF:
-				if !r.rd.possiblyAtEnd() || s != r.dict.Off {
+				if !r.rd.possiblyAtEnd() || s != r.buffer.Off {
 					err = io.ErrUnexpectedEOF
 				}
 			}
 			return err
 		}
 		if seq.MatchLen == 0 {
-			if err = r.dict.WriteByte(byte(seq.Aux)); err != nil {
+			if err = r.buffer.WriteByte(byte(seq.Aux)); err != nil {
 				panic(err)
 			}
 		} else {
-			_, err = r.dict.WriteMatch(seq.MatchLen, seq.Offset)
+			_, err = r.buffer.WriteMatch(seq.MatchLen, seq.Offset)
 			if err != nil {
 				return err
 			}
 		}
-		if r.size == r.dict.Off {
+		if r.size == r.buffer.Off {
 			err = io.EOF
 			if !r.rd.possiblyAtEnd() {
 				_, serr := r.readSeq()
@@ -215,13 +215,13 @@ func (r *reader) fillBuffer() error {
 
 // Read reads data from the dictionary and refills it if needed.
 func (r *reader) Read(p []byte) (n int, err error) {
-	k := len(r.dict.Data) - r.dict.R
+	k := len(r.buffer.Data) - r.buffer.R
 	if r.err != nil && k == 0 {
 		return 0, r.err
 	}
 	for {
 		// Read from a dictionary never returns an error
-		k, _ := r.dict.Read(p[n:])
+		k, _ := r.buffer.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
@@ -231,7 +231,7 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		}
 		if err = r.fillBuffer(); err != nil {
 			r.err = err
-			k := len(r.dict.Data) - r.dict.R
+			k := len(r.buffer.Data) - r.buffer.R
 			if k > 0 {
 				continue
 			}

@@ -28,7 +28,7 @@ type Writer2Config struct {
 	WorkerBufferSize int
 
 	// Configuration for the LZ compressor.
-	LZ lz.SeqConfig
+	LZ lz.ParserConfig
 }
 
 // Verify checks whether the configuration is consistent and correct. Usually
@@ -75,7 +75,7 @@ func (cfg *Writer2Config) Verify() error {
 // fixBufConfig computes the sequence buffer configuration in a way that works
 // for lzma. ShrinkSize cannot be smaller than the window size or the size of an
 // uncompressed chunk.
-func fixBufConfig(cfg lz.SeqConfig, windowSize int) {
+func fixBufConfig(cfg lz.ParserConfig, windowSize int) {
 	bc := cfg.BufConfig()
 	bc.WindowSize = windowSize
 	bc.ShrinkSize = bc.WindowSize
@@ -99,7 +99,7 @@ func fixBufConfig(cfg lz.SeqConfig, windowSize int) {
 // will be set to the number of CPUs.
 func (cfg *Writer2Config) SetDefaults() {
 	if cfg.LZ == nil {
-		dhsCfg := &lz.DHSConfig{WindowSize: cfg.DictSize}
+		dhsCfg := &lz.DHPConfig{WindowSize: cfg.DictSize}
 		cfg.LZ = dhsCfg
 
 	} else if cfg.DictSize > 0 {
@@ -156,12 +156,12 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	}
 
 	if cfg.Workers == 1 {
-		seq, err := cfg.LZ.NewSequencer()
+		parser, err := cfg.LZ.NewParser()
 		if err != nil {
 			return nil, err
 		}
 		var cw chunkWriter
-		if err = cw.init(z, seq, nil, cfg.Properties); err != nil {
+		if err = cw.init(z, parser, nil, cfg.Properties); err != nil {
 			return nil, err
 		}
 		return &cw, nil
@@ -362,9 +362,9 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 }
 
 func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
-	seq, err := cfg.LZ.NewSequencer()
+	parser, err := cfg.LZ.NewParser()
 	if err != nil {
-		panic(fmt.Errorf("NewSequencer error %s", err))
+		panic(fmt.Errorf("NewParser error %s", err))
 	}
 	var (
 		tsk mtwTask
@@ -377,7 +377,7 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 		case tsk = <-taskCh:
 		}
 		buf := new(bytes.Buffer)
-		if err := w.init(buf, seq, tsk.data, cfg.Properties); err != nil {
+		if err := w.init(buf, parser, tsk.data, cfg.Properties); err != nil {
 			panic(fmt.Errorf("w.init error %s", err))
 		}
 		if err := w.FlushContext(ctx); err != nil {
@@ -403,7 +403,7 @@ func TestWriter2ConfigDictSize(t *testing.T) {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
 
-	lzCfg := &lz.DHSConfig{WindowSize: 4097}
+	lzCfg := &lz.DHPConfig{WindowSize: 4097}
 	cfg = Writer2Config{
 		LZ:       lzCfg,
 		DictSize: 4098,

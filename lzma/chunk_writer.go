@@ -22,7 +22,7 @@ type chunkWriter struct {
 	blk      lz.Block
 	buf      bytes.Buffer
 	oldState state
-	seq      lz.Sequencer
+	parser   lz.Parser
 	w        io.Writer
 	err      error
 	// start position of the current chunk
@@ -35,14 +35,14 @@ type chunkWriter struct {
 
 // init initializes the chunkWriter. A set of initial data can be provided
 // directly. The array is directly used by the Window.
-func (w *chunkWriter) init(z io.Writer, seq lz.Sequencer, data []byte,
+func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 	props Properties) error {
-	if err := seq.Reset(data); err != nil {
+	if err := parser.Reset(data); err != nil {
 		return err
 	}
 	*w = chunkWriter{
-		seq:     seq,
-		encoder: encoder{window: seq},
+		parser:  parser,
+		encoder: encoder{window: parser},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -130,7 +130,7 @@ loop:
 			}
 		}
 
-		_, err := w.seq.Sequence(&w.blk, 0)
+		_, err := w.parser.Parse(&w.blk, 0)
 		if err != nil {
 			if err == lz.ErrEmptyBuffer {
 				w.blk.Literals = w.blk.Literals[:0]
@@ -295,7 +295,7 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.seq.Shrink()
+		w.parser.Shrink()
 	}
 }
 
@@ -341,5 +341,5 @@ func (w *chunkWriter) Close() error {
 
 // DictSize returns the dictionary size for the chunk writer.
 func (w *chunkWriter) DictSize() int {
-	return w.seq.BufferConfig().WindowSize
+	return w.parser.BufferConfig().WindowSize
 }

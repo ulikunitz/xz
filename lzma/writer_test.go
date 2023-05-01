@@ -51,7 +51,7 @@ func TestWriterConfigDictSize(t *testing.T) {
 		t.Fatalf("DictSize set without lzCfg: %s", err)
 	}
 
-	lzCfg := &lz.DHSConfig{WindowSize: 4097}
+	lzCfg := &lz.DHPConfig{WindowSize: 4097}
 	cfg = WriterConfig{
 		LZ:       lzCfg,
 		DictSize: 4098,

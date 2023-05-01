@@ -53,12 +53,12 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
-	lzCfg := lz.DHSConfig{}
-	seq, err := lzCfg.NewSequencer()
+	lzCfg := lz.DHPConfig{}
+	parser, err := lzCfg.NewParser()
 	if err != nil {
-		t.Fatalf("lzcfg.NewSequencer() error %s", err)
+		t.Fatalf("lzcfg.NewParser() error %s", err)
 	}
-	if err = cw.init(buf, seq, []byte(s), Properties{3, 0, 2}); err != nil {
+	if err = cw.init(buf, parser, []byte(s), Properties{3, 0, 2}); err != nil {
 		t.Fatalf("cw.init() error %s", err)
 	}
 	if err = cw.Close(); err != nil {
@@ -66,7 +66,7 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := seq.BufferConfig().WindowSize
+	dictSize := parser.BufferConfig().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
@@ -127,13 +127,13 @@ func TestChunkWriterReader(t *testing.T) {
 			hIn := sha256.New()
 			z := io.TeeReader(r, hIn)
 			var cw chunkWriter
-			lzCfg := lz.DHSConfig{}
-			seq, err := lzCfg.NewSequencer()
+			lzCfg := lz.DHPConfig{}
+			parser, err := lzCfg.NewParser()
 			if err != nil {
-				t.Fatalf("lzcfg.NewSequencer() error %s", err)
+				t.Fatalf("lzcfg.NewParser() error %s", err)
 			}
 			buf := new(bytes.Buffer)
-			err = cw.init(buf, seq, nil, Properties{3, 0, 2})
+			err = cw.init(buf, parser, nil, Properties{3, 0, 2})
 			if err != nil {
 				t.Fatalf("cw.init() error %s", err)
 			}
@@ -149,7 +149,7 @@ func TestChunkWriterReader(t *testing.T) {
 				nIn, buf.Len())
 
 			var cr chunkReader
-			dictSize := seq.BufferConfig().WindowSize
+			dictSize := parser.BufferConfig().WindowSize
 			t.Logf("dictSize: %d", dictSize)
 			if err = cr.init(buf, dictSize); err != nil {
 				t.Fatalf("cr.init() error %s", err)
@@ -179,12 +179,12 @@ func TestChunkClose(t *testing.T) {
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
-	lzCfg := lz.DHSConfig{}
-	seq, err := lzCfg.NewSequencer()
+	lzCfg := lz.DHPConfig{}
+	parser, err := lzCfg.NewParser()
 	if err != nil {
-		t.Fatalf("lzcfg.NewSequencer() error %s", err)
+		t.Fatalf("lzcfg.NewParser() error %s", err)
 	}
-	if err = cw.init(buf, seq, []byte(s), Properties{3, 0, 2}); err != nil {
+	if err = cw.init(buf, parser, []byte(s), Properties{3, 0, 2}); err != nil {
 		t.Fatalf("cw.init() error %s", err)
 	}
 	if err = cw.Close(); err != nil {
@@ -192,7 +192,7 @@ func TestChunkClose(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := seq.BufferConfig().WindowSize
+	dictSize := parser.BufferConfig().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}

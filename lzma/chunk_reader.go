@@ -85,7 +85,7 @@ type chunkReader struct {
 // the dictSize to support a linear buffer.
 func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	*r = chunkReader{r: z}
-	if err := r.dict.Init(lz.DecConfig{WindowSize: dictSize}); err != nil {
+	if err := r.buffer.Init(lz.DecoderConfig{WindowSize: dictSize}); err != nil {
 		return err
 	}
 	return nil
@@ -95,7 +95,7 @@ func (r *chunkReader) init(z io.Reader, dictSize int) error {
 // should be reused. The function doesn't touch the noEOS flag.
 func (r *chunkReader) reset(z io.Reader) {
 	r.r = z
-	r.dict.Reset()
+	r.buffer.Reset()
 	r.cstate = sS
 	r.err = nil
 }
@@ -291,12 +291,12 @@ func (r *chunkReader) readChunk() error {
 	if h.control == cUD || h.control == cCSPD {
 		// Not strictly necessary, but ensure that there is no
 		// error in the matches that follow.
-		r.dict.Reset()
+		r.buffer.Reset()
 	}
 
 	if h.control == cU || h.control == cUD {
 		// copy uncompressed data directly into the dictionary
-		_, err = io.CopyN(&r.dict, r.r, int64(h.size))
+		_, err = io.CopyN(&r.buffer, r.r, int64(h.size))
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -332,7 +332,7 @@ func (r *chunkReader) readChunk() error {
 			return err
 		}
 		if seq.MatchLen == 0 {
-			if err = r.dict.WriteByte(byte(seq.Aux)); err != nil {
+			if err = r.buffer.WriteByte(byte(seq.Aux)); err != nil {
 				panic(err)
 			}
 			n--
@@ -340,7 +340,7 @@ func (r *chunkReader) readChunk() error {
 		}
 
 		n -= int(seq.MatchLen)
-		_, err = r.dict.WriteMatch(seq.MatchLen, seq.Offset)
+		_, err = r.buffer.WriteMatch(seq.MatchLen, seq.Offset)
 		if err != nil {
 			return err
 		}
@@ -355,13 +355,13 @@ func (r *chunkReader) readChunk() error {
 
 // Read reads data from the chunk reader.
 func (r *chunkReader) Read(p []byte) (n int, err error) {
-	k := len(r.dict.Data) - r.dict.R
+	k := len(r.buffer.Data) - r.buffer.R
 	if r.err != nil && k == 0 {
 		return 0, r.err
 	}
 	for {
 		// Read from a dictionary never returns an error
-		k, _ := r.dict.Read(p[n:])
+		k, _ := r.buffer.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
@@ -371,7 +371,7 @@ func (r *chunkReader) Read(p []byte) (n int, err error) {
 		}
 		if err = r.readChunk(); err != nil {
 			r.err = err
-			k := len(r.dict.Data) - r.dict.R
+			k := len(r.buffer.Data) - r.buffer.R
 			if k > 0 {
 				continue
 			}
@@ -382,12 +382,12 @@ func (r *chunkReader) Read(p []byte) (n int, err error) {
 
 // WriteTo supports the WriterTo interface.
 func (r *chunkReader) WriteTo(w io.Writer) (n int64, err error) {
-	k := len(r.dict.Data) - r.dict.R
+	k := len(r.buffer.Data) - r.buffer.R
 	if r.err != nil && k == 0 {
 		return 0, r.err
 	}
 	for {
-		k, err := r.dict.WriteTo(w)
+		k, err := r.buffer.WriteTo(w)
 		n += k
 		if err != nil {
 			r.err = err
@@ -401,7 +401,7 @@ func (r *chunkReader) WriteTo(w io.Writer) (n int64, err error) {
 		}
 		if err = r.readChunk(); err != nil {
 			r.err = err
-			k := len(r.dict.Data) - r.dict.R
+			k := len(r.buffer.Data) - r.buffer.R
 			if k > 0 {
 				continue
 			}

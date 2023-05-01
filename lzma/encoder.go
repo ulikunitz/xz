@@ -8,7 +8,7 @@ import (
 
 // encoder supports the LZMA encoding.
 type encoder struct {
-	window lz.Sequencer
+	window lz.Parser
 	state  state
 	pos    int64
 	re     rangeEncoder

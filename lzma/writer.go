@@ -11,14 +11,14 @@ import (
 
 // NewRawWriter writes only compress data stream. The argument eos controls
 // whether an end of stream marker will be written.
-func NewRawWriter(z io.Writer, seq lz.Sequencer, p Properties, eos bool) (w io.WriteCloser, err error) {
+func NewRawWriter(z io.Writer, parser lz.Parser, p Properties, eos bool) (w io.WriteCloser, err error) {
 
 	if err = p.Verify(); err != nil {
 		return nil, err
 	}
 
 	wr := new(writer)
-	wr.init(z, seq, p, eos)
+	wr.init(z, parser, p, eos)
 	return wr, nil
 }
 
@@ -26,16 +26,16 @@ func NewRawWriter(z io.Writer, seq lz.Sequencer, p Properties, eos bool) (w io.W
 // writeMatch and writeLiteral functions.
 type writer struct {
 	encoder
-	seq  lz.Sequencer
-	blk  lz.Block
-	eos  bool
-	err  error
-	bufw *bufio.Writer
+	parser lz.Parser
+	blk    lz.Block
+	eos    bool
+	err    error
+	bufw   *bufio.Writer
 }
 
 // init initializes a writer. eos tells the writer whether an end-of-stream
 // marker should be written.
-func (w *writer) init(z io.Writer, seq lz.Sequencer, p Properties, eos bool) {
+func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
 	var bufw *bufio.Writer
 	bw, ok := z.(io.ByteWriter)
 	if !ok {
@@ -44,8 +44,8 @@ func (w *writer) init(z io.Writer, seq lz.Sequencer, p Properties, eos bool) {
 	}
 
 	*w = writer{
-		seq:     seq,
-		encoder: encoder{window: seq},
+		parser:  parser,
+		encoder: encoder{window: parser},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -90,7 +90,7 @@ var errClosed = errors.New("lzma: already closed")
 // clearBuffer reads data from the buffer and encodes it.
 func (w *writer) clearBuffer() error {
 	for {
-		_, err := w.seq.Sequence(&w.blk, 0)
+		_, err := w.parser.Parse(&w.blk, 0)
 		if err != nil {
 			if err == lz.ErrEmptyBuffer {
 				return nil
@@ -163,7 +163,7 @@ func (w *writer) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.seq.Shrink()
+		w.parser.Shrink()
 	}
 }
 
@@ -207,15 +207,15 @@ type WriterConfig struct {
 	// If true the properties are actually zero.
 	ZeroProperties bool
 
-	// FixedSize says that the stream has a fixed size know before
+	// FixedSize says that the stream has a fixed size known before
 	// compression.
 	FixedSize bool
 
 	// Size gives the actual size if FixedSize is set.
 	Size int64
 
-	// LZ specific configuration for the LZ sequencer.
-	LZ lz.SeqConfig
+	// LZ specific configuration for the LZ parser.
+	LZ lz.ParserConfig
 }
 
 // Verify checks the validity of the writer configuration parameter.
@@ -246,7 +246,7 @@ func (cfg *WriterConfig) Verify() error {
 // set previously.
 func (cfg *WriterConfig) SetDefaults() {
 	if cfg.LZ == nil {
-		cfg.LZ = &lz.DHSConfig{WindowSize: cfg.DictSize}
+		cfg.LZ = &lz.DHPConfig{WindowSize: cfg.DictSize}
 		fixBufConfig(cfg.LZ, cfg.DictSize)
 	} else if cfg.DictSize > 0 {
 		fixBufConfig(cfg.LZ, cfg.DictSize)
@@ -272,12 +272,12 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	var seq lz.Sequencer
-	if seq, err = cfg.LZ.NewSequencer(); err != nil {
+	var parser lz.Parser
+	if parser, err = cfg.LZ.NewParser(); err != nil {
 		return nil, err
 	}
 
-	dictSize := int64(seq.BufferConfig().WindowSize)
+	dictSize := int64(parser.BufferConfig().WindowSize)
 	if !(0 <= dictSize && dictSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}
@@ -303,11 +303,11 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 
 	if cfg.FixedSize {
 		lw := &limitWriter{n: cfg.Size}
-		lw.w.init(z, seq, cfg.Properties, false)
+		lw.w.init(z, parser, cfg.Properties, false)
 		return lw, nil
 	}
 
 	wr := new(writer)
-	wr.init(z, seq, cfg.Properties, true)
+	wr.init(z, parser, cfg.Properties, true)
 	return wr, nil
 }

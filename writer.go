@@ -29,12 +29,15 @@ type WriterConfig struct {
 	// LZMA2 configuration
 	LZMA lzma.Writer2Config
 
-	// BlockSize defines the maximum uncompressed size of a block.
-	// (default: MaxInt64=2^63-1) if Worker equals 1 or 8 MB otherwise.
-	BlockSize int64
+	// XZBlockSize defines the maximum uncompressed size of a xz-format
+	// block. The default for a single worker setup MaxInt64=2^63-1 and 256
+	// kByte with multiple parallel workers. Note that the XZ block size
+	// differs from the parser block size.
+	XZBlockSize int64
 
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
 	CheckSum byte
+
 	// Forces NoChecksum (default: false)
 	NoCheckSum bool
 
@@ -60,11 +63,11 @@ func (c *WriterConfig) SetDefaults() {
 	if c.Workers == 0 {
 		c.Workers = runtime.GOMAXPROCS(0)
 	}
-	if c.BlockSize == 0 {
+	if c.XZBlockSize == 0 {
 		if c.Workers <= 1 {
-			c.BlockSize = maxInt64
+			c.XZBlockSize = maxInt64
 		} else {
-			c.BlockSize = defaultParallelBlockSize
+			c.XZBlockSize = defaultParallelBlockSize
 		}
 	}
 }
@@ -80,7 +83,7 @@ func (c *WriterConfig) Verify() error {
 	if err = c.LZMA.Verify(); err != nil {
 		return err
 	}
-	if c.BlockSize <= 0 {
+	if c.XZBlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
 	if err = verifyFlags(c.CheckSum); err != nil {
@@ -250,7 +253,7 @@ func (bw *blockWriter) Write(p []byte) (n int, err error) {
 	if bw.err != nil {
 		return 0, bw.err
 	}
-	k := bw.cfg.BlockSize - bw.n
+	k := bw.cfg.XZBlockSize - bw.n
 	if k < int64(len(p)) {
 		p = p[:k]
 		err = errNoSpace
@@ -517,7 +520,7 @@ func newMTWriter(xz io.Writer, cfg *WriterConfig) (mtw *mtWriter, err error) {
 		taskCh:   make(chan mtwTask, cfg.Workers),
 		streamCh: make(chan mtwStreamTask, cfg.Workers),
 
-		buf: make([]byte, 0, cfg.BlockSize),
+		buf: make([]byte, 0, cfg.XZBlockSize),
 	}
 
 	go mtwStream(ctx, xz, cfg, mtw.streamCh, mtw.errCh)
@@ -539,7 +542,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 	}
 
 	for len(p) > 0 {
-		k := mtw.cfg.BlockSize - int64(len(mtw.buf))
+		k := mtw.cfg.XZBlockSize - int64(len(mtw.buf))
 		if int64(len(p)) < k {
 			mtw.buf = append(mtw.buf, p...)
 			n += len(p)
@@ -567,7 +570,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 		}
 		n += int(k)
 		p = p[k:]
-		mtw.buf = make([]byte, 0, mtw.cfg.BlockSize)
+		mtw.buf = make([]byte, 0, mtw.cfg.XZBlockSize)
 	}
 
 	return n, nil
@@ -603,7 +606,7 @@ func (mtw *mtWriter) flush(close bool) error {
 			recv(err)
 			return err
 		}
-		mtw.buf = make([]byte, 0, mtw.cfg.BlockSize)
+		mtw.buf = make([]byte, 0, mtw.cfg.XZBlockSize)
 	}
 
 	flushCh := make(chan struct{})
