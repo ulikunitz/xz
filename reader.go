@@ -32,21 +32,33 @@ var errUnexpectedData = errors.New("xz: unexpected Data after stream")
 // blocks with the compressed size set in the headers. If Workers not 1 the
 // Workers variable in LZMAConfig will be ignored.
 type ReaderConfig struct {
-	LZMA lzma.Reader2Config
+	// Workers defines the number of readers for parallel reading. The
+	// default is the value of GOMAXPROCS.
+	Workers int
 
 	// input contains only a single stream without padding.
 	SingleStream bool
 
-	// Workers defines the number of readers for parallel reading. The
-	// default is the value of GOMAXPROCS.
-	Workers int
+	// Runs the multiple Workers in LZMA mode. (This is an experimental
+	// setup is normally not required.)
+	LZMAParallel bool
+
+	// LZMAWorkSize provides the work size to the LZMA layer. It is only
+	// required if LZMAParallel is set.
+	LZMAWorkSize int
 }
 
 // SetDefaults sets the defaults in ReaderConfig.
 func (cfg *ReaderConfig) SetDefaults() {
-	cfg.LZMA.SetDefaults()
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
+	}
+	if cfg.LZMAWorkSize == 0 && cfg.LZMAParallel {
+		lzmaCfg := lzma.Reader2Config{
+			Workers: cfg.Workers,
+		}
+		lzmaCfg.SetDefaults()
+		cfg.LZMAWorkSize = lzmaCfg.WorkSize
 	}
 }
 
@@ -57,12 +69,20 @@ func (cfg *ReaderConfig) Verify() error {
 		return errors.New("xz: reader parameters are nil")
 	}
 
-	if err := cfg.LZMA.Verify(); err != nil {
-		return err
-	}
-
 	if cfg.Workers < 1 {
 		return errors.New("xz: reader workers must be >= 1")
+	}
+
+	var lzmaCfg lzma.Reader2Config
+	if cfg.LZMAParallel {
+		lzmaCfg.Workers = cfg.Workers
+		lzmaCfg.WorkSize = cfg.LZMAWorkSize
+	} else {
+		lzmaCfg.Workers = 1
+	}
+	lzmaCfg.SetDefaults()
+	if err := lzmaCfg.Verify(); err != nil {
+		return err
 	}
 
 	return nil
@@ -128,10 +148,6 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 		rp.xz = bufio.NewReader(xz)
 		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
 	} else {
-		// We don't want to have multilayered parallel encoding
-		// therefore, we set the workers number of the LZMA
-		// configuration to 1.
-		cfg.LZMA.Workers = 1
 		rp.xz = xz
 		rp.sr = newMultiThreadStreamReader(rp.xz, &rp.cfg)
 	}

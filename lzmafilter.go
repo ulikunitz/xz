@@ -63,19 +63,18 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err error) {
 
 	var cfg lzma.Reader2Config
-	if c == nil {
-		cfg.WindowSize = int(f.dictSize)
-	} else {
-		cfg = c.LZMA
+	if c != nil {
+		cfg = lzma.Reader2Config{
+			Workers:    c.Workers,
+			WorkSize:   c.LZMAWorkSize,
+		}
 	}
 	dc := int(f.dictSize)
 	if dc < 1 {
 		return nil, errors.New(
 			"xz: LZMA2 filter parameter dictionary capacity overflow")
 	}
-	if dc > cfg.WindowSize {
-		cfg.WindowSize = dc
-	}
+	cfg.WindowSize = dc
 
 	fr, err = lzma.NewReader2Config(r, cfg)
 	if err != nil {

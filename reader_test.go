@@ -10,8 +10,6 @@ import (
 	"os"
 	"runtime"
 	"testing"
-
-	"github.com/ulikunitz/xz/lzma"
 )
 
 func TestReaderSimple(t *testing.T) {
@@ -139,9 +137,10 @@ func BenchmarkReader(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf.Reset()
 		r, err := NewReaderConfig(bytes.NewReader(data),
-			ReaderConfig{LZMA: lzma.Reader2Config{
-				Workers: runtime.GOMAXPROCS(0),
-			}})
+			ReaderConfig{
+				Workers:      runtime.GOMAXPROCS(0),
+				LZMAParallel: true,
+			})
 		if err != nil {
 			b.Fatalf("NewReader(data) error %s", err)
 		}
