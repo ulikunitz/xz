@@ -50,15 +50,18 @@ type ReaderConfig struct {
 
 // SetDefaults sets the defaults in ReaderConfig.
 func (cfg *ReaderConfig) SetDefaults() {
-	if cfg.Workers == 0 {
-		cfg.Workers = runtime.GOMAXPROCS(0)
-	}
-	if cfg.LZMAWorkSize == 0 && cfg.LZMAParallel {
+	if cfg.LZMAParallel {
 		lzmaCfg := lzma.Reader2Config{
-			Workers: cfg.Workers,
+			Workers:  cfg.Workers,
+			WorkSize: cfg.LZMAWorkSize,
 		}
 		lzmaCfg.SetDefaults()
+		cfg.Workers = lzmaCfg.Workers
 		cfg.LZMAWorkSize = lzmaCfg.WorkSize
+	} else {
+		if cfg.Workers == 0 {
+			cfg.Workers = runtime.GOMAXPROCS(0)
+		}
 	}
 }
 
@@ -69,16 +72,20 @@ func (cfg *ReaderConfig) Verify() error {
 		return errors.New("xz: reader parameters are nil")
 	}
 
-	if cfg.Workers < 1 {
-		return errors.New("xz: reader workers must be >= 1")
-	}
-
 	var lzmaCfg lzma.Reader2Config
 	if cfg.LZMAParallel {
-		lzmaCfg.Workers = cfg.Workers
-		lzmaCfg.WorkSize = cfg.LZMAWorkSize
+		lzmaCfg = lzma.Reader2Config{
+			Workers:  cfg.Workers,
+			WorkSize: cfg.LZMAWorkSize,
+		}
 	} else {
-		lzmaCfg.Workers = 1
+		if cfg.Workers < 1 {
+			return errors.New("xz: reader workers must be >= 1")
+		}
+		lzmaCfg = lzma.Reader2Config{
+			Workers:  1,
+			WorkSize: cfg.LZMAWorkSize,
+		}
 	}
 	lzmaCfg.SetDefaults()
 	if err := lzmaCfg.Verify(); err != nil {
@@ -143,7 +150,7 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 
 	rp := &reader{cfg: cfg}
 
-	if cfg.Workers <= 1 {
+	if cfg.Workers <= 1 || cfg.LZMAParallel {
 		// for the single thread reader we are buffering
 		rp.xz = bufio.NewReader(xz)
 		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)

@@ -62,11 +62,21 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 // reader creates a new reader for the LZMA2 filter.
 func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err error) {
 
+	if c == nil {
+		c = &ReaderConfig{}
+		c.SetDefaults()
+	}
+
 	var cfg lzma.Reader2Config
-	if c != nil {
+	if c.LZMAParallel {
 		cfg = lzma.Reader2Config{
-			Workers:    c.Workers,
-			WorkSize:   c.LZMAWorkSize,
+			Workers:  c.Workers,
+			WorkSize: c.LZMAWorkSize,
+		}
+	} else {
+		cfg = lzma.Reader2Config{
+			Workers:  1,
+			WorkSize: c.LZMAWorkSize,
 		}
 	}
 	dc := int(f.dictSize)
@@ -86,25 +96,30 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 // writeCloser creates a io.WriteCloser for the LZMA2 filter.
 func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
-	var cfg lzma.Writer2Config
-	if c != nil {
-		cfg = c.LZMA
-	} else {
-		cfg.SetDefaults()
+	if c == nil {
+		c = &WriterConfig{}
+		c.SetDefaults()
 	}
 
+	cfg := lzma.Writer2Config{
+		WindowSize:      c.WindowSize,
+		Properties:      c.Properties,
+		FixedProperties: c.FixedProperties,
+		ParserConfig:    c.ParserConfig,
+	}
+	if c.LZMAParallel {
+		cfg.Workers = c.Workers
+		cfg.WorkSize = c.LZMAWorkSize
+	} else {
+		cfg.Workers = 1
+		cfg.WorkSize = c.LZMAWorkSize
+	}
 	dc := int(f.dictSize)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +
 			"dictionary capacity overflow")
 	}
-
-	bc := cfg.ParserConfig.BufConfig()
-	if dc > bc.WindowSize {
-		bc.WindowSize = dc
-		cfg.ParserConfig.SetBufConfig(bc)
-		// TODO: adjust buffer size?
-	}
+	cfg.WindowSize = dc
 
 	fw, err = lzma.NewWriter2Config(w, cfg)
 	if err != nil {

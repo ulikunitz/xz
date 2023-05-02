@@ -12,6 +12,7 @@ import (
 	"io"
 	"runtime"
 
+	"github.com/ulikunitz/lz"
 	"github.com/ulikunitz/xz/lzma"
 )
 
@@ -26,8 +27,25 @@ const maxInt64 = 1<<63 - 1
 // default checksum despite the XZ specification saying a decoder must only
 // support CRC32.
 type WriterConfig struct {
-	// LZMA2 configuration
-	LZMA lzma.Writer2Config
+	// WindowSize sets the dictionary size.
+	WindowSize int
+
+	// Properties for the LZMA algorithm.
+	Properties lzma.Properties
+	// FixedProperties indicate that the Properties is indeed zero
+	FixedProperties bool
+
+	// Number of workers processing data.
+	Workers int
+	// LZMAParallel indicates that the parallel execution should be on the
+	// LZMA level. (This is an experimental setup and should normally not be
+	// used.)
+	LZMAParallel bool
+	// Size of buffer used by the worker in LZMA work.
+	LZMAWorkSize int
+
+	// Configuration for the LZ parser.
+	ParserConfig lz.ParserConfig
 
 	// XZBlockSize defines the maximum uncompressed size of a xz-format
 	// block. The default for a single worker setup MaxInt64=2^63-1 and 256
@@ -40,65 +58,94 @@ type WriterConfig struct {
 
 	// Forces NoChecksum (default: false)
 	NoCheckSum bool
-
-	// Workers defines the number of goroutines compressing data. If it is
-	// zero the GONUMPROCS environment variable determines the number of
-	// goroutines. If the number is 1 the compression happens in classic
-	// streaming mode and the compressed file must be also decompressed
-	// serially.
-	Workers int
 }
 
 // SetDefaults applies the defaults to the xz writer configuration.
-func (c *WriterConfig) SetDefaults() {
-	c.LZMA.Workers = 1
-	c.LZMA.WorkSize = 0
-	c.LZMA.SetDefaults()
-	if c.CheckSum == 0 {
-		c.CheckSum = CRC64
+func (cfg *WriterConfig) SetDefaults() {
+	lzmaCfg := lzma.Writer2Config{
+		WindowSize:      cfg.WindowSize,
+		Properties:      cfg.Properties,
+		FixedProperties: cfg.FixedProperties,
+		ParserConfig:    cfg.ParserConfig,
 	}
-	if c.NoCheckSum {
-		c.CheckSum = None
+	if cfg.LZMAParallel {
+		lzmaCfg.Workers = cfg.Workers
+		lzmaCfg.WorkSize = cfg.LZMAWorkSize
+	} else {
+		lzmaCfg.Workers = 1
+		lzmaCfg.WorkSize = cfg.LZMAWorkSize
 	}
-	if c.Workers == 0 {
-		c.Workers = runtime.GOMAXPROCS(0)
-	}
-	if c.XZBlockSize == 0 {
-		if c.Workers <= 1 {
-			c.XZBlockSize = maxInt64
-		} else {
-			c.XZBlockSize = defaultParallelBlockSize
+	lzmaCfg.SetDefaults()
+
+	cfg.WindowSize = lzmaCfg.WindowSize
+	cfg.Properties = lzmaCfg.Properties
+	cfg.FixedProperties = lzmaCfg.FixedProperties
+	cfg.ParserConfig = lzmaCfg.ParserConfig
+	if cfg.LZMAParallel {
+		cfg.Workers = lzmaCfg.Workers
+		cfg.LZMAWorkSize = lzmaCfg.WorkSize
+		if cfg.XZBlockSize == 0 {
+			cfg.XZBlockSize = maxInt64
 		}
+	} else {
+		if cfg.Workers == 0 {
+			cfg.Workers = runtime.GOMAXPROCS(0)
+		}
+		if cfg.Workers <= 1 {
+			cfg.XZBlockSize = maxInt64
+		} else {
+			cfg.XZBlockSize = defaultParallelBlockSize
+		}
+	}
+	if cfg.CheckSum == 0 {
+		cfg.CheckSum = CRC64
+	}
+	if cfg.NoCheckSum {
+		cfg.CheckSum = None
 	}
 }
 
 // Verify checks the configuration for errors. Zero values will be
 // replaced by default values.
-func (c *WriterConfig) Verify() error {
-	if c == nil {
+func (cfg *WriterConfig) Verify() error {
+	if cfg == nil {
 		return errors.New("xz: writer configuration is nil")
 	}
-	c.SetDefaults()
+	lzmaCfg := lzma.Writer2Config{
+		WindowSize:      cfg.WindowSize,
+		Properties:      cfg.Properties,
+		FixedProperties: cfg.FixedProperties,
+		ParserConfig:    cfg.ParserConfig,
+	}
+	if cfg.LZMAParallel {
+		lzmaCfg.Workers = cfg.Workers
+		lzmaCfg.WorkSize = cfg.LZMAWorkSize
+	} else {
+		lzmaCfg.Workers = 1
+		lzmaCfg.WorkSize = 0
+	}
 	var err error
-	if err = c.LZMA.Verify(); err != nil {
+	if err = lzmaCfg.Verify(); err != nil {
 		return err
 	}
-	if c.XZBlockSize <= 0 {
+	if !cfg.LZMAParallel {
+		if !(1 <= cfg.Workers) {
+			return errors.New("xz: Workers must be positive")
+		}
+	}
+	if cfg.XZBlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
-	if err = verifyFlags(c.CheckSum); err != nil {
+	if err = verifyFlags(cfg.CheckSum); err != nil {
 		return err
-	}
-	if !(1 <= c.Workers) {
-		return errors.New("xz: Workers must be positive")
 	}
 	return nil
 }
 
 // filters creates the filter list for the given parameters.
-func filters(c *WriterConfig) []filter {
+func filters(cfg *WriterConfig) []filter {
 	return []filter{&lzmaFilter{
-		int64(c.LZMA.ParserConfig.BufConfig().WindowSize)}}
+		int64(cfg.ParserConfig.BufConfig().WindowSize)}}
 }
 
 // verifyFilters checks the filter list for the length and the right
@@ -356,11 +403,10 @@ func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err er
 		return nil, err
 	}
 
-	if cfg.Workers <= 1 {
+	if cfg.Workers <= 1 || cfg.LZMAParallel {
 		return newStreamWriter(xz, &cfg)
 	}
 
-	cfg.LZMA.Workers = 1
 	return newMTWriter(xz, &cfg)
 }
 
