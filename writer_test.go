@@ -147,7 +147,7 @@ func TestWriterNoneCheck(t *testing.T) {
 
 	buf.Reset()
 
-	w, err := NewWriterConfig(&buf, WriterConfig{NoCheckSum: true})
+	w, err := NewWriterConfig(&buf, WriterConfig{NoChecksum: true})
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}

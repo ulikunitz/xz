@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
@@ -46,6 +47,55 @@ type ReaderConfig struct {
 	// LZMAWorkSize provides the work size to the LZMA layer. It is only
 	// required if LZMAParallel is set.
 	LZMAWorkSize int
+}
+
+func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
+	var err error
+	s := struct {
+		Format       string
+		Type         string
+		Workers      int
+		SingleStream bool
+		LZMAParallel bool
+		LZMAWorkSize int
+	}{}
+	if err = json.Unmarshal(p, &s); err != nil {
+		return err
+	}
+	if s.Format != "XZ" {
+		return errors.New(
+			"xz: Format JSON property must have value XZ")
+	}
+	if s.Type != "Reader" {
+		return errors.New(
+			"lzma: Type JSON property must have value Reader")
+	}
+	*cfg = ReaderConfig{
+		Workers:      s.Workers,
+		SingleStream: s.SingleStream,
+		LZMAParallel: s.LZMAParallel,
+		LZMAWorkSize: s.LZMAWorkSize,
+	}
+	return nil
+}
+
+func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
+	s := struct {
+		Format       string
+		Type         string
+		Workers      int  `json:",omitempty"`
+		SingleStream bool `json:",omitempty"`
+		LZMAParallel bool `json:",omitempty"`
+		LZMAWorkSize int  `json:",omitempty"`
+	}{
+		Format:       "XZ",
+		Type:         "Reader",
+		Workers:      cfg.Workers,
+		SingleStream: cfg.SingleStream,
+		LZMAParallel: cfg.LZMAParallel,
+		LZMAWorkSize: cfg.LZMAWorkSize,
+	}
+	return json.Marshal(&s)
 }
 
 // SetDefaults sets the defaults in ReaderConfig.

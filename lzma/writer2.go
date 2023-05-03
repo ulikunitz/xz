@@ -51,11 +51,11 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 	}
 	if s.Format != "LZMA" {
 		return errors.New(
-			"lzma: Format JSON property muse have value XZ")
+			"lzma: Format JSON property muse have value LZMA")
 	}
 	if s.Type != "Writer2" {
 		return errors.New(
-			"lzma: Type JSON property must have value Writer")
+			"lzma: Type JSON property must have value Writer2")
 	}
 	parserConfig, err := lz.ParseJSON(s.ParserConfig)
 	if err != nil {
@@ -98,7 +98,7 @@ func (cfg *Writer2Config) MarshalJSON() (p []byte, err error) {
 		FixedProperties: cfg.FixedProperties,
 		Workers:         cfg.Workers,
 		WorkSize:        cfg.WorkSize,
-		ParserConfig: cfg.ParserConfig,
+		ParserConfig:    cfg.ParserConfig,
 	}
 	return json.Marshal(&s)
 }

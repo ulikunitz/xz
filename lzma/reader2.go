@@ -38,11 +38,11 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	}
 	if s.Format != "LZMA" {
 		return errors.New(
-			"lzma: Format JSON property muse have value XZ")
+			"lzma: Format JSON property muse have value LZMA")
 	}
 	if s.Type != "Reader2" {
 		return errors.New(
-			"lzma: Type JSON property must have value Writer")
+			"lzma: Type JSON property must have value Reader2")
 	}
 	*cfg = Reader2Config{
 		WindowSize: s.WindowSize,

@@ -7,7 +7,9 @@ package xz
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"hash"
 	"io"
 	"runtime"
@@ -54,10 +56,97 @@ type WriterConfig struct {
 	XZBlockSize int64
 
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
-	CheckSum byte
+	Checksum byte
 
 	// Forces NoChecksum (default: false)
-	NoCheckSum bool
+	NoChecksum bool
+}
+
+func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
+	var err error
+	s := struct {
+		Format          string
+		Type            string
+		WindowSize      int             `json:",omitempty"`
+		LC              int             `json:",omitempty"`
+		LP              int             `json:",omitempty"`
+		PB              int             `json:",omitempty"`
+		FixedProperties bool            `json:",omitempty"`
+		Workers         int             `json:",omitempty"`
+		LZMAParallel    bool            `json:",omitempty"`
+		LZMAWorkSize    int             `json:",omitempty"`
+		ParserConfig    json.RawMessage `json:",omitempty"`
+		XZBlockSize     int64           `json:",omitempty"`
+		Checksum        byte            `json:",omitempty"`
+		NoChecksum      bool            `json:",omitempty"`
+	}{}
+	if err = json.Unmarshal(p, &s); err != nil {
+		return err
+	}
+	if s.Format != "XZ" {
+		return errors.New(
+			"lzma: Format JSON property muse have value XZ")
+	}
+	if s.Type != "Writer" {
+		return errors.New(
+			"lzma: Type JSON property must have value Writer")
+	}
+	parserConfig, err := lz.ParseJSON(s.ParserConfig)
+	if err != nil {
+		return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+	}
+	*cfg = WriterConfig{
+		WindowSize: s.WindowSize,
+		Properties: lzma.Properties{
+			LC: s.LC,
+			LP: s.LP,
+			PB: s.PB,
+		},
+		FixedProperties: s.FixedProperties,
+		Workers:         s.Workers,
+		LZMAParallel:    s.LZMAParallel,
+		LZMAWorkSize:    s.LZMAWorkSize,
+		ParserConfig:    parserConfig,
+		XZBlockSize:     s.XZBlockSize,
+		Checksum:        s.Checksum,
+		NoChecksum:      s.NoChecksum,
+	}
+	return nil
+}
+
+func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
+	s := struct {
+		Format          string
+		Type            string
+		WindowSize      int             `json:",omitempty"`
+		LC              int             `json:",omitempty"`
+		LP              int             `json:",omitempty"`
+		PB              int             `json:",omitempty"`
+		FixedProperties bool            `json:",omitempty"`
+		Workers         int             `json:",omitempty"`
+		LZMAParallel    bool            `json:",omitempty"`
+		LZMAWorkSize    int             `json:",omitempty"`
+		ParserConfig    lz.ParserConfig `json:",omitempty"`
+		XZBlockSize     int64           `json:",omitempty"`
+		Checksum        byte            `json:",omitempty"`
+		NoChecksum      bool            `json:",omitempty"`
+	}{
+		Format:          "LZMA",
+		Type:            "Writer2",
+		WindowSize:      cfg.WindowSize,
+		LC:              cfg.Properties.LC,
+		LP:              cfg.Properties.LP,
+		PB:              cfg.Properties.PB,
+		FixedProperties: cfg.FixedProperties,
+		Workers:         cfg.Workers,
+		LZMAParallel:    cfg.LZMAParallel,
+		LZMAWorkSize:    cfg.LZMAWorkSize,
+		ParserConfig:    cfg.ParserConfig,
+		XZBlockSize:     cfg.XZBlockSize,
+		Checksum:        cfg.Checksum,
+		NoChecksum:      cfg.NoChecksum,
+	}
+	return json.Marshal(&s)
 }
 
 // SetDefaults applies the defaults to the xz writer configuration.
@@ -97,11 +186,11 @@ func (cfg *WriterConfig) SetDefaults() {
 			cfg.XZBlockSize = defaultParallelBlockSize
 		}
 	}
-	if cfg.CheckSum == 0 {
-		cfg.CheckSum = CRC64
+	if cfg.Checksum == 0 {
+		cfg.Checksum = CRC64
 	}
-	if cfg.NoCheckSum {
-		cfg.CheckSum = None
+	if cfg.NoChecksum {
+		cfg.Checksum = None
 	}
 }
 
@@ -136,7 +225,7 @@ func (cfg *WriterConfig) Verify() error {
 	if cfg.XZBlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
-	if err = verifyFlags(cfg.CheckSum); err != nil {
+	if err = verifyFlags(cfg.Checksum); err != nil {
 		return err
 	}
 	return nil
@@ -230,7 +319,7 @@ type blockWriter struct {
 
 func newBlockWriter(w io.Writer, cfg *WriterConfig) (bw *blockWriter, err error) {
 
-	h, err := newHash(cfg.CheckSum)
+	h, err := newHash(cfg.Checksum)
 	if err != nil {
 		return nil, err
 	}
@@ -446,7 +535,7 @@ func writeTail(xz io.Writer, index []record, flags byte) (n int64, err error) {
 }
 
 func newStreamWriter(xz io.Writer, cfg *WriterConfig) (sw *streamWriter, err error) {
-	_, err = writeHeader(xz, cfg.CheckSum)
+	_, err = writeHeader(xz, cfg.Checksum)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +579,7 @@ func (sw *streamWriter) Close() error {
 	if err = sw.Flush(); err != nil {
 		return err
 	}
-	if _, err = writeTail(sw.xz, sw.index, sw.cfg.CheckSum); err != nil {
+	if _, err = writeTail(sw.xz, sw.index, sw.cfg.Checksum); err != nil {
 		sw.err = err
 		return err
 	}
@@ -704,7 +793,7 @@ func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterConfig,
 	}
 
 	var index []record
-	_, err := writeHeader(xz, cfg.CheckSum)
+	_, err := writeHeader(xz, cfg.Checksum)
 	if err != nil {
 		send(err)
 		return
@@ -738,7 +827,7 @@ func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterConfig,
 		}
 
 		if tsk.close {
-			_, err = writeTail(xz, index, cfg.CheckSum)
+			_, err = writeTail(xz, index, cfg.Checksum)
 			if err != nil {
 				send(err)
 			}

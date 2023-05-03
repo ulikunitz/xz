@@ -244,7 +244,7 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	}
 	if s.Format != "LZMA" {
 		return errors.New(
-			"lzma: Format JSON property muse have value XZ")
+			"lzma: Format JSON property muse have value LZMA")
 	}
 	if s.Type != "Writer" {
 		return errors.New(
