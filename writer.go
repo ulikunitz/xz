@@ -62,6 +62,42 @@ type WriterConfig struct {
 	NoChecksum bool
 }
 
+type checksum byte
+
+func (c *checksum) UnmarshalText(text []byte) error {
+	switch string(text) {
+	case "<none>":
+		*c = 0
+	case "crc32":
+		*c = checksum(CRC32)
+	case "crc64":
+		*c = checksum(CRC64)
+	case "sha256":
+		*c = checksum(SHA256)
+	default:
+		*c = 0
+		return fmt.Errorf("xz: unsupported checksum value %q", text)
+	}
+	return nil
+}
+
+func (c *checksum) MarshalText() (data []byte, err error) {
+	switch byte(*c) {
+	case 0:
+		data = []byte("<none>")
+	case CRC32:
+		data = []byte("crc32")
+	case CRC64:
+		data = []byte("crc64")
+	case SHA256:
+		data = []byte("sha256")
+	default:
+		return nil, fmt.Errorf("xz: unsupported checksum value %#02x",
+			*c)
+	}
+	return data, nil
+}
+
 func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
@@ -77,7 +113,7 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 		LZMAWorkSize    int             `json:",omitempty"`
 		ParserConfig    json.RawMessage `json:",omitempty"`
 		XZBlockSize     int64           `json:",omitempty"`
-		Checksum        byte            `json:",omitempty"`
+		Checksum        checksum        `json:",omitempty"`
 		NoChecksum      bool            `json:",omitempty"`
 	}{}
 	if err = json.Unmarshal(p, &s); err != nil {
@@ -85,15 +121,15 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	}
 	if s.Format != "XZ" {
 		return errors.New(
-			"lzma: Format JSON property muse have value XZ")
+			"xz: Format JSON property muse have value XZ")
 	}
 	if s.Type != "Writer" {
 		return errors.New(
-			"lzma: Type JSON property must have value Writer")
+			"xz: Type JSON property must have value Writer")
 	}
 	parserConfig, err := lz.ParseJSON(s.ParserConfig)
 	if err != nil {
-		return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+		return fmt.Errorf("xz.WriterConfig.UnmarshalJSON: %w", err)
 	}
 	*cfg = WriterConfig{
 		WindowSize: s.WindowSize,
@@ -108,7 +144,7 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 		LZMAWorkSize:    s.LZMAWorkSize,
 		ParserConfig:    parserConfig,
 		XZBlockSize:     s.XZBlockSize,
-		Checksum:        s.Checksum,
+		Checksum:        byte(s.Checksum),
 		NoChecksum:      s.NoChecksum,
 	}
 	return nil
@@ -128,11 +164,11 @@ func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 		LZMAWorkSize    int             `json:",omitempty"`
 		ParserConfig    lz.ParserConfig `json:",omitempty"`
 		XZBlockSize     int64           `json:",omitempty"`
-		Checksum        byte            `json:",omitempty"`
+		Checksum        checksum        `json:",omitempty"`
 		NoChecksum      bool            `json:",omitempty"`
 	}{
-		Format:          "LZMA",
-		Type:            "Writer2",
+		Format:          "XZ",
+		Type:            "Writer",
 		WindowSize:      cfg.WindowSize,
 		LC:              cfg.Properties.LC,
 		LP:              cfg.Properties.LP,
@@ -143,7 +179,7 @@ func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 		LZMAWorkSize:    cfg.LZMAWorkSize,
 		ParserConfig:    cfg.ParserConfig,
 		XZBlockSize:     cfg.XZBlockSize,
-		Checksum:        cfg.Checksum,
+		Checksum:        checksum(cfg.Checksum),
 		NoChecksum:      cfg.NoChecksum,
 	}
 	return json.Marshal(&s)

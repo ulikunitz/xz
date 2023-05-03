@@ -68,7 +68,7 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 	}
 	if s.Type != "Reader" {
 		return errors.New(
-			"lzma: Type JSON property must have value Reader")
+			"xz: Type JSON property must have value Reader")
 	}
 	*cfg = ReaderConfig{
 		Workers:      s.Workers,

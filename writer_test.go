@@ -7,10 +7,12 @@ package xz
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"log"
 	"math/rand"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/ulikunitz/xz/internal/randtxt"
@@ -280,5 +282,25 @@ func TestWriterFlush(t *testing.T) {
 	s := string(p)
 	if s != "12" {
 		t.Fatalf("got string %q; want %s", s, "12")
+	}
+}
+
+func TestWriterJSON(t *testing.T) {
+	cfg := WriterConfig{
+		Workers:  3,
+		Checksum: CRC64,
+	}
+	p, err := json.MarshalIndent(&cfg, "", "  ")
+	if err != nil {
+		t.Fatalf("json.MarshalIndent error %s", err)
+	}
+	t.Logf("json:\n%s", p)
+	var cfg1 WriterConfig
+	err = json.Unmarshal(p, &cfg1)
+	if err != nil {
+		t.Fatalf("json.Unmarshal error %s", err)
+	}
+	if !reflect.DeepEqual(cfg1, cfg) {
+		t.Fatalf("json.Unmarshal returned %+v, want %+v", cfg1, cfg)
 	}
 }
