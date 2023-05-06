@@ -81,14 +81,19 @@ type chunkReader struct {
 	noEOS  bool
 }
 
-// init initializes the chunk reader. Note that the chunk reader consumes twice
-// the dictSize to support a linear buffer.
+// init initializes the chunk reader. Note that the chunk reader at least consumes twice
+// the dictSize to support a linear buffer or 2 MiB.
 func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	*r = chunkReader{r: z}
-	if err := r.buffer.Init(lz.DecoderConfig{WindowSize: dictSize}); err != nil {
-		return err
+	dc := lz.DecoderConfig{
+		WindowSize: dictSize,
+		BufferSize: 2 * dictSize,
 	}
-	return nil
+	if dc.BufferSize < maxUncompressedChunkSize {
+		dc.BufferSize = maxUncompressedChunkSize
+	}
+	err := r.buffer.Init(dc)
+	return err
 }
 
 // reset reinitialized the chunkReader. If possible existing allocated data
