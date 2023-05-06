@@ -57,9 +57,12 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 		return errors.New(
 			"lzma: Type JSON property must have value Writer2")
 	}
-	parserConfig, err := lz.ParseJSON(s.ParserConfig)
-	if err != nil {
-		return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+	var parserConfig lz.ParserConfig
+	if len(s.ParserConfig) > 0 {
+		parserConfig, err = lz.ParseJSON(s.ParserConfig)
+		if err != nil {
+			return fmt.Errorf("lz.ParseJSON(%q): %w", s.ParserConfig, err)
+		}
 	}
 	*cfg = Writer2Config{
 		WindowSize: s.WindowSize,

@@ -127,7 +127,13 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 		return errors.New(
 			"xz: Type JSON property must have value Writer")
 	}
-	parserConfig, err := lz.ParseJSON(s.ParserConfig)
+	var parserConfig lz.ParserConfig
+	if len(s.ParserConfig) > 0 {
+		parserConfig, err = lz.ParseJSON(s.ParserConfig)
+		if err != nil {
+			return fmt.Errorf("lz.ParseJSON(%q): %w", s.ParserConfig, err)
+		}
+	}
 	if err != nil {
 		return fmt.Errorf("xz.WriterConfig.UnmarshalJSON: %w", err)
 	}
