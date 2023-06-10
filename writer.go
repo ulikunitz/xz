@@ -62,6 +62,15 @@ type WriterConfig struct {
 	NoChecksum bool
 }
 
+// Clone creates a deep copy of the cfg value.
+func (cfg *WriterConfig) Clone() WriterConfig {
+	x := *cfg
+	if x.ParserConfig != nil {
+		x.ParserConfig = cfg.ParserConfig.Clone()
+	}
+	return x
+}
+
 type checksum byte
 
 func (c *checksum) UnmarshalText(text []byte) error {
@@ -527,13 +536,14 @@ type WriteFlushCloser interface {
 // NewWriter creates a new Writer for xz-compressed data. The Writer uses the
 // preset #5. See [Preset] and [NewWriterConfig] for changing the parameters.
 func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
-	return NewWriterConfig(xz, presets[4])
+	return NewWriterConfig(xz, Preset(5))
 }
 
 // NewWriterConfig creates a WriteFlushCloser instance. If multi-threading is
 // requested by a Workers configuration larger than 1, single threading will be
 // requested for the LZMA writer by setting the Workers variable there to 1.
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
+	cfg = cfg.Clone()
 	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err

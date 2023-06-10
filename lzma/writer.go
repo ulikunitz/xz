@@ -225,6 +225,15 @@ type WriterConfig struct {
 	ParserConfig lz.ParserConfig
 }
 
+// Clone creates a deep copy of the configuration.
+func (cfg *WriterConfig) Clone() WriterConfig {
+	x := *cfg
+	if x.ParserConfig != nil {
+		x.ParserConfig = x.ParserConfig.Clone()
+	}
+	return x
+}
+
 // UnmarshalJSON parses the JSON representation and set WriterConfig
 // accordingly.
 func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
@@ -350,6 +359,7 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 // NewWriterConfig creates a new LZMA writer using the parameter provided by
 // cfg.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
+	cfg = cfg.Clone()
 	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err

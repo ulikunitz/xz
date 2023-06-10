@@ -31,6 +31,15 @@ type Writer2Config struct {
 	ParserConfig lz.ParserConfig
 }
 
+// Clone creates a deep copy of the Writer2Config value.
+func (cfg *Writer2Config) Clone() Writer2Config {
+	x := *cfg
+	if x.ParserConfig != nil {
+		x.ParserConfig = x.ParserConfig.Clone()
+	}
+	return x
+}
+
 // UnmarshalJSON parses the JSON representation for Writer2Config and sets the
 // cfg value accordingly.
 func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
@@ -224,6 +233,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // NewWriter2Config constructs an LZMA2 writer for a specific configuration.
 // Note that the implementation for cfg.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
+	cfg = cfg.Clone()
 	cfg.SetDefaults()
 	bc := cfg.ParserConfig.BufConfig()
 	if cfg.Workers > 1 && cfg.WorkSize > bc.BufferSize {

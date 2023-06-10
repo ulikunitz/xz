@@ -14,9 +14,11 @@ func Preset(n int) WriterConfig {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))
 	}
-	return presets[n-1]
+	cfg := presets[n-1]
+	return cfg.Clone()
 }
 
+// presets contain the predefined tickets. Don't use directly!
 var presets = []WriterConfig{
 	0: {
 		WindowSize: 1024 << 10,
