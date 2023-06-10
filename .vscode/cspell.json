@@ -25,11 +25,13 @@
         "zstd"
     ],
     "ignoreWords": [
+        "BDHP",
         "BDHS",
         "BUHS",
         "CSPD",
         "GSAS",
         "MININT",
+        "OSAP",
         "Probs",
         "Unmarshal",
         "breader",
