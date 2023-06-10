@@ -522,7 +522,7 @@ type WriteFlushCloser interface {
 }
 
 func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
-	return NewWriterConfig(xz, WriterConfig{})
+	return NewWriterConfig(xz, presets[4])
 }
 
 // NewWriterConfig creates a WriteFlushCloser instance. If multi-threading is
