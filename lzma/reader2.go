@@ -24,6 +24,7 @@ type Reader2Config struct {
 	WorkSize int
 }
 
+// UnmarshalJSON parses the JSON representation for Reader2Config.
 func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	var err error
 	var s struct {
@@ -52,6 +53,7 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON produces the JSON configuration for the Reader2Config value.
 func (cfg *Reader2Config) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format     string

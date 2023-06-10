@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ulikunitz/lz"
 	"github.com/ulikunitz/xz/internal/randtxt"
 )
 
@@ -184,5 +185,24 @@ func TestWriter2ConfigJSON(t *testing.T) {
 	if !reflect.DeepEqual(cfg, cfg1) {
 		t.Fatalf("json.Unmarshal: got %+v; want %+v",
 			cfg1, cfg)
+	}
+}
+
+func TestWriter2ConfigDictSize(t *testing.T) {
+	cfg := Writer2Config{WindowSize: 4096}
+	cfg.SetDefaults()
+	if err := cfg.Verify(); err != nil {
+		t.Fatalf("DictSize set without lzCfg: %s", err)
+	}
+
+	lzCfg := &lz.DHPConfig{WindowSize: 4097}
+	cfg = Writer2Config{
+		ParserConfig: lzCfg,
+		WindowSize:   4098,
+	}
+	cfg.SetDefaults()
+	bc := cfg.ParserConfig.BufConfig()
+	if bc.WindowSize != 4098 {
+		t.Fatalf("sbCfg.windowSize %d; want %d", bc.WindowSize, 4098)
 	}
 }

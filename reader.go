@@ -49,6 +49,7 @@ type ReaderConfig struct {
 	LZMAWorkSize int
 }
 
+// UnmarshalJSON parses JSON and sets the ReaderConfig accordingly.
 func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
@@ -79,6 +80,7 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON creates the jason structure for a ReaderConfig value.
 func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format       string

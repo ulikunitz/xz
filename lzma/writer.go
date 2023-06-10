@@ -225,6 +225,8 @@ type WriterConfig struct {
 	ParserConfig lz.ParserConfig
 }
 
+// UnmarshalJSON parses the JSON representation and set WriterConfig
+// accordingly.
 func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
@@ -269,6 +271,7 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON creates the JSON representation of the WriterConfig value.
 func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string

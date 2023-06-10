@@ -101,7 +101,7 @@ var presets = []WriterConfig{
 		WindowSize: 32768 << 10,
 		Properties: lzma.Properties{LC: 1, LP: 2, PB: 3},
 		ParserConfig: &lz.OSAPConfig{
-			BlockSize:  256 << 10,
+			BlockSize:   256 << 10,
 			MinMatchLen: 4,
 		},
 	},

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"testing"
 
 	"github.com/ulikunitz/lz"
 )
@@ -32,6 +31,8 @@ type Writer2Config struct {
 	ParserConfig lz.ParserConfig
 }
 
+// UnmarshalJSON parses the JSON representation for Writer2Config and sets the
+// cfg value accordingly.
 func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
@@ -79,6 +80,7 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON creates the JSON representation for the cfg value.
 func (cfg *Writer2Config) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
@@ -441,7 +443,7 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 	parser, err := cfg.ParserConfig.NewParser()
 	if err != nil {
-		panic(fmt.Errorf("NewParser error %s", err))
+		panic(fmt.Errorf("xz: NewParser error %s", err))
 	}
 	var (
 		tsk mtwTask
@@ -470,24 +472,5 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 			return
 		case tsk.zCh <- buf.Bytes():
 		}
-	}
-}
-
-func TestWriter2ConfigDictSize(t *testing.T) {
-	cfg := Writer2Config{WindowSize: 4096}
-	cfg.SetDefaults()
-	if err := cfg.Verify(); err != nil {
-		t.Fatalf("DictSize set without lzCfg: %s", err)
-	}
-
-	lzCfg := &lz.DHPConfig{WindowSize: 4097}
-	cfg = Writer2Config{
-		ParserConfig: lzCfg,
-		WindowSize:   4098,
-	}
-	cfg.SetDefaults()
-	bc := cfg.ParserConfig.BufConfig()
-	if bc.WindowSize != 4098 {
-		t.Fatalf("sbCfg.windowSize %d; want %d", bc.WindowSize, 4098)
 	}
 }

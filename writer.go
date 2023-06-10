@@ -98,6 +98,7 @@ func (c *checksum) MarshalText() (data []byte, err error) {
 	return data, nil
 }
 
+// UnmarshalJSON parses a JSON value and set the WriterConfig value accordingly.
 func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
@@ -156,6 +157,7 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON creates the JSON representation of the WriterConfig value.
 func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
@@ -516,11 +518,14 @@ func (bw *blockWriter) record() (r record, err error) {
 	return r, nil
 }
 
+// WriteFlushCloser supports the Write, Flush and Close methods.
 type WriteFlushCloser interface {
 	io.WriteCloser
 	Flush() error
 }
 
+// NewWriter creates a new Writer for xz-compressed data. The Writer uses the
+// preset #5. See [Preset] and [NewWriterConfig] for changing the parameters.
 func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 	return NewWriterConfig(xz, presets[4])
 }

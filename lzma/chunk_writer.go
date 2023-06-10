@@ -199,7 +199,7 @@ func (w *chunkWriter) finishChunk() error {
 
 	headerLen := 5
 	if !w.spReset {
-		headerLen += 1
+		headerLen++
 	}
 	k := w.buf.Len()
 	h := chunkHeader{size: n}
