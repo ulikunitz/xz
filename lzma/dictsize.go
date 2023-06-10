@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: © 2014 Ulrich Kunitz
+//
+// SPDX-License-Identifier: BSD-3-Clause
+
 package lzma
 
 import "errors"

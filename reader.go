@@ -1,6 +1,6 @@
-// Copyright 2014-2022 Ulrich Kunitz. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-FileCopyrightText: © 2014 Ulrich Kunitz
+//
+// SPDX-License-Identifier: BSD-3-Clause
 
 // Package xz supports the compression and decompression of xz files. It
 // supports version 1.1.0 of the specification without the non-LZMA2

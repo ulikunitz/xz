@@ -1,6 +1,6 @@
-// Copyright 2014-2021 Ulrich Kunitz. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// SPDX-FileCopyrightText: © 2014 Ulrich Kunitz
+//
+// SPDX-License-Identifier: BSD-3-Clause
 
 // Package randtxt supports the generation of random text using a
 // trigram model for the English language.
