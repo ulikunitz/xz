@@ -2,7 +2,8 @@
 
 ## Supported Versions
 
-Currently the last minor version v0.5.x is supported.
+Currently the last minor version v0.5.x is supported and v0.6.x including all
+prerelease versions.
 
 ## Reporting a Vulnerability
 
