@@ -80,6 +80,36 @@ func TestReaderMultipleStreams(t *testing.T) {
 	}
 }
 
+func TestReaderMultipleStreamsWithSplitStream(t *testing.T) {
+	data, err := ioutil.ReadFile("fox.xz")
+	if err != nil {
+		t.Fatalf("ReadFile error %s", err)
+	}
+	emptyData := []byte{0, 0, 0, 0}
+
+	dataRepeatTable := [][]byte{data, data, emptyData, data, emptyData, emptyData, data, emptyData}
+	m := make([]byte, 0, 4*len(data)+4*len(emptyData))
+	for _, d := range dataRepeatTable {
+		m = append(m, d...)
+	}
+	xz := bytes.NewReader(m)
+	r, err := ReaderConfig{SplitStream: true}.NewReader(xz)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	for i := 0; i < 4; i++ {
+		var buf bytes.Buffer
+		_, err := io.Copy(&buf, r)
+		if err != EOS {
+			t.Fatalf("Expected got end of stream, got %v at %d iteration", err, i+1)
+		}
+	}
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+}
+
 func TestCheckNone(t *testing.T) {
 	const file = "fox-check-none.xz"
 	xz, err := os.Open(file)

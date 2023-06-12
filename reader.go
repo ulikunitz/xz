@@ -18,12 +18,20 @@ import (
 	"github.com/ulikunitz/xz/lzma"
 )
 
+// EOS is the error that returns when option `SplitStream` is enabled in
+// `ReaderConfig`, and read till the end of the stream.
+var EOS = errors.New("xz: end of stream")
+
 // ReaderConfig defines the parameters for the xz reader. The
 // SingleStream parameter requests the reader to assume that the
-// underlying stream contains only a single stream.
+// underlying stream contains only a single stream. Enable SplitStream
+// will stop the Read call of continuing reading contents in next stream, and
+// an error EOS is returned. Caller can enable this option to know current
+// stream is drained.
 type ReaderConfig struct {
 	DictCap      int
 	SingleStream bool
+	SplitStream  bool
 }
 
 // Verify checks the reader parameters for Validity. Zero values will be
@@ -114,6 +122,9 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		if err != nil {
 			if err == io.EOF {
 				r.sr = nil
+				if r.SplitStream {
+					return n, EOS
+				}
 				continue
 			}
 			return n, err
