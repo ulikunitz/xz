@@ -32,41 +32,6 @@ func TestReaderSimple(t *testing.T) {
 	}
 }
 
-func TestReaderSingleStream(t *testing.T) {
-	data, err := os.ReadFile("testdata/fox.xz")
-	if err != nil {
-		t.Fatalf("ReadFile error %s", err)
-	}
-	xz := bytes.NewReader(data)
-	rc := ReaderConfig{SingleStream: true}
-	r, err := NewReaderConfig(xz, rc)
-	if err != nil {
-		t.Fatalf("NewReader error %s", err)
-	}
-	defer r.Close()
-	var buf bytes.Buffer
-	if _, err = io.Copy(&buf, r); err != nil {
-		t.Fatalf("io.Copy error %s", err)
-	}
-	if err = r.Close(); err != nil {
-		t.Fatalf("r.Close() error %s", err)
-	}
-	buf.Reset()
-	data = append(data, 0)
-	xz = bytes.NewReader(data)
-	r, err = NewReaderConfig(xz, rc)
-	if err != nil {
-		t.Fatalf("NewReader error %s", err)
-	}
-	defer r.Close()
-	if _, err = io.Copy(&buf, r); err != errUnexpectedData {
-		t.Fatalf("io.Copy returned %v; want %v", err, errUnexpectedData)
-	}
-	if err = r.Close(); err != nil {
-		t.Fatalf("r.Close() error %s", err)
-	}
-}
-
 func TestReaderMultipleStreams(t *testing.T) {
 	data, err := os.ReadFile("testdata/fox.xz")
 	if err != nil {

@@ -5,9 +5,12 @@
 package xz_test
 
 import (
+	"archive/tar"
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/ulikunitz/xz"
@@ -93,4 +96,126 @@ func FuzzXZ(f *testing.F) {
 			t.Fatalf("r.Close() error %s", err)
 		}
 	})
+}
+
+// TestCombined addresses issue https://github.com/ulikunitz/xz/pull/54
+func TestReadCombinedStreams(t *testing.T) {
+	const file = "testdata/combined.tar.xz"
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	defer f.Close()
+	r, err := xz.NewReader(f)
+	if err != nil {
+		t.Fatalf("xz.NewReader error %s", err)
+	}
+	defer r.Close()
+
+	br := bufio.NewReader(r)
+
+	files := 0
+	tr := tar.NewReader(br)
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("tr.Next error %s", err)
+		}
+		files++
+		t.Logf("header: %s", h.Name)
+	}
+
+	// We have to jump over zero bytes. Option -i of tar.
+loop:
+	for {
+		p, err := br.Peek(1024)
+		if err != nil {
+			t.Fatalf("br.Peek(%d) error %s", 1024, err)
+		}
+		for i, b := range p {
+			if b != 0 {
+				br.Discard(i)
+				break loop
+			}
+		}
+		br.Discard(1024)
+	}
+
+	tr = tar.NewReader(br)
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("tr.Next error %s", err)
+		}
+		files++
+		t.Logf("header: %s", h.Name)
+	}
+	if files != 2 {
+		t.Fatalf("read %d files; want %d", files, 2)
+	}
+}
+
+func TestReadSingleStream(t *testing.T) {
+	const file = "testdata/combined.tar.xz"
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	defer f.Close()
+
+	cfg := xz.ReaderConfig{SingleStream: true}
+	r, err := xz.NewReaderConfig(f, cfg)
+	if err != nil {
+		t.Fatalf("xz.NewReaderConfig(f, %+v) error %s", cfg, err)
+	}
+	defer r.Close()
+
+	files := 0
+	tr := tar.NewReader(r)
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("tr.Next error %s", err)
+		}
+		files++
+		t.Logf("header: %s", h.Name)
+	}
+	// we need to read trailing zeros
+	n, err := io.Copy(io.Discard, r)
+	t.Logf("%d bytes discarded", n)
+	if err != nil {
+		t.Fatalf("io.Copy(io.Discard, r) error %s", err)
+	}
+
+	r, err = xz.NewReaderConfig(f, cfg)
+	if err != nil {
+		t.Fatalf("xz.NewReaderConfig(f, %+v) error %s", cfg, err)
+	}
+	defer r.Close()
+
+	tr = tar.NewReader(r)
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("tr.Next error %s", err)
+		}
+		files++
+		t.Logf("header: %s", h.Name)
+	}
+
+	if files != 2 {
+		t.Fatalf("read %d files; want %d", files, 2)
+	}
 }

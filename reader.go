@@ -22,7 +22,6 @@ import (
 )
 
 var errReaderClosed = errors.New("xz: reader closed")
-var errUnexpectedData = errors.New("xz: unexpected Data after stream")
 
 // ReaderConfig defines the parameters for the xz reader. The SingleStream
 // parameter requests the reader to assume that the underlying stream contains
@@ -37,7 +36,8 @@ type ReaderConfig struct {
 	// default is the value of GOMAXPROCS.
 	Workers int
 
-	// input contains only a single stream without padding.
+	// Read a single xz stream from the underlying reader, stop and return
+	// EOF. No checks are done whether the underlying reader finishes too.
 	SingleStream bool
 
 	// Runs the multiple Workers in LZMA mode. (This is an experimental
@@ -237,15 +237,12 @@ func (r *reader) Read(p []byte) (n int, err error) {
 					return n, err
 				}
 				if r.cfg.SingleStream {
-					var q [1]byte
-					_, err = io.ReadFull(r.xz, q[:1])
-					if err == nil {
-						err = errUnexpectedData
-					} else if err == io.ErrUnexpectedEOF {
-						err = io.EOF
-					}
-					r.err = err
-					return n, err
+					// return simply with EOF after a single
+					// stream is read. Checking for EOF in
+					// the underlying reader can be done by
+					// the client code.
+					r.err = io.EOF
+					return n, nil
 				}
 				// read header with padding
 				hdr, err := readHeader(r.xz, true)
