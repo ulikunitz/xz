@@ -107,7 +107,7 @@ func (r *Reader2) startChunk() error {
 		r.chunkReader = r.ur
 		return nil
 	}
-	br := ByteReader(io.LimitReader(r.r, int64(header.compressed)+1))
+	br := limitByteReader(ByteReader(r.r), int64(header.compressed)+1)
 	if r.decoder == nil {
 		state := newState(header.props)
 		r.decoder, err = newDecoder(br, state, r.dict, size)
