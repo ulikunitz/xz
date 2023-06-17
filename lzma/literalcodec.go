@@ -100,6 +100,12 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 				break
 			}
 		}
+	} else {
+		x, err := d.treeDecodeBits(probs, 8)
+		if err != nil {
+			return 0, err
+		}
+		return byte(x), nil
 	}
 	for symbol < 0x100 {
 		bit, err := d.DecodeBit(&probs[symbol])
