@@ -81,35 +81,19 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 ) (s byte, err error) {
 	k := litState * 0x300
 	probs := c.probs[k : k+0x300]
-	symbol := uint32(1)
 	if state >= 7 {
-		m := uint32(match)
-		for {
-			matchBit := (m >> 7) & 1
-			m <<= 1
-			i := ((1 + matchBit) << 8) | symbol
-			bit, err := d.DecodeBit(&probs[i])
-			if err != nil {
-				return 0, err
-			}
-			symbol = (symbol << 1) | bit
-			if matchBit != bit {
-				break
-			}
-			if symbol >= 0x100 {
-				break
-			}
-		}
-	}
-	for symbol < 0x100 {
-		bit, err := d.DecodeBit(&probs[symbol])
+		x, err := d.treeDecodeMatchedByte(probs, uint32(match))
 		if err != nil {
 			return 0, err
 		}
-		symbol = (symbol << 1) | bit
+		return byte(x), nil
+	} else {
+		x, err := d.treeDecodeBits(probs, 8)
+		if err != nil {
+			return 0, err
+		}
+		return byte(x), nil
 	}
-	s = byte(symbol - 0x100)
-	return s, nil
 }
 
 // minLC and maxLC define the range for LC values.

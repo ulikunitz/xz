@@ -185,7 +185,7 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	return b, d.updateCode()
 }
 
-// decodeBit decodes a single bit. The bit will be returned at the
+// DecodeBit decodes a single bit. The bit will be returned at the
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
@@ -209,6 +209,131 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	d.nrange <<= 8
 	// d.code < d.nrange will be maintained
 	return b, d.updateCode()
+}
+
+func (d *rangeDecoder) treeDecodeMatchedByte(ps []prob, m uint32) (uint32, error) {
+	nrange, code := d.nrange, d.code
+	symbol := uint32(1)
+	offset := uint32(0x100)
+	for i := 0; i < 8; i++ {
+		m <<= 1
+		bit := offset
+		offset &= m
+
+		p := &ps[offset+bit+symbol]
+		bound := p.bound(nrange)
+		if code < bound {
+			p.inc()
+			nrange = bound
+			symbol = symbol<<1 | 0
+			offset ^= bit
+		} else {
+			p.dec()
+			nrange -= bound
+			code -= bound
+			symbol = symbol<<1 | 1
+		}
+		if nrange < 1<<24 {
+			b, err := d.br.ReadByte()
+			if err != nil {
+				d.nrange, d.code = nrange, code
+				return 0, err
+			}
+			nrange <<= 8
+			code = code<<8 | uint32(b)
+		}
+	}
+
+	d.nrange, d.code = nrange, code
+	return symbol & 0xff, nil
+}
+
+func (d *rangeDecoder) treeDecodeBits(ps []prob, n int) (uint32, error) {
+	nrange, code := d.nrange, d.code
+	symbol := uint32(1)
+
+	for i := 0; i < n; i++ {
+		p := &ps[symbol]
+		bound := p.bound(nrange)
+		if code < bound {
+			p.inc()
+			nrange = bound
+			symbol = symbol<<1 | 0
+		} else {
+			p.dec()
+			nrange -= bound
+			code -= bound
+			symbol = symbol<<1 | 1
+		}
+		if nrange < 1<<24 {
+			b, err := d.br.ReadByte()
+			if err != nil {
+				d.nrange, d.code = nrange, code
+				return 0, err
+			}
+			nrange <<= 8
+			code = code<<8 | uint32(b)
+		}
+	}
+	d.nrange, d.code = nrange, code
+	return symbol - uint32(1<<uint(n)), nil
+}
+
+func (d *rangeDecoder) reverseTreeDecodeBits(ps []prob, n int) (uint32, error) {
+	nrange, code := d.nrange, d.code
+	symbol := uint32(1)
+	x := uint32(0)
+
+	for i := 0; i < n; i++ {
+		p := &ps[symbol]
+		bound := p.bound(nrange)
+		if code < bound {
+			p.inc()
+			nrange = bound
+			symbol = symbol<<1 | 0
+		} else {
+			p.dec()
+			nrange -= bound
+			code -= bound
+			symbol = symbol<<1 | 1
+			x |= 1 << uint(i)
+		}
+		if nrange < 1<<24 {
+			b, err := d.br.ReadByte()
+			if err != nil {
+				d.nrange, d.code = nrange, code
+				return 0, err
+			}
+			nrange <<= 8
+			code = code<<8 | uint32(b)
+		}
+	}
+	d.nrange, d.code = nrange, code
+	return x, nil
+}
+
+func (d *rangeDecoder) directDecodeBits(n int) (uint32, error) {
+	nrange, code := d.nrange, d.code
+	x := uint32(0)
+
+	for i := 0; i < n; i++ {
+		nrange >>= 1
+		code -= nrange
+		t := 0 - (code >> 31)
+		code += nrange & t
+		x = x<<1 | (t+1)&1
+		if nrange < 1<<24 {
+			b, err := d.br.ReadByte()
+			if err != nil {
+				d.nrange, d.code = nrange, code
+				return 0, err
+			}
+			nrange <<= 8
+			code = code<<8 | uint32(b)
+		}
+	}
+	d.nrange, d.code = nrange, code
+	return x, nil
 }
 
 // updateCode reads a new byte into the code.
