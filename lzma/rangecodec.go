@@ -211,6 +211,43 @@ func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
 	return b, d.updateCode()
 }
 
+func (d *rangeDecoder) treeDecodeMatchedByte(ps []prob, m uint32) (uint32, error) {
+	nrange, code := d.nrange, d.code
+	symbol := uint32(1)
+	offset := uint32(0x100)
+	for i := 0; i < 8; i++ {
+		m <<= 1
+		bit := offset
+		offset &= m
+
+		p := &ps[offset+bit+symbol]
+		bound := p.bound(nrange)
+		if code < bound {
+			p.inc()
+			nrange = bound
+			symbol = symbol<<1 | 0
+			offset ^= bit
+		} else {
+			p.dec()
+			nrange -= bound
+			code -= bound
+			symbol = symbol<<1 | 1
+		}
+		if nrange < 1<<24 {
+			b, err := d.br.ReadByte()
+			if err != nil {
+				d.nrange, d.code = nrange, code
+				return 0, err
+			}
+			nrange <<= 8
+			code = code<<8 | uint32(b)
+		}
+	}
+
+	d.nrange, d.code = nrange, code
+	return symbol & 0xff, nil
+}
+
 func (d *rangeDecoder) treeDecodeBits(ps []prob, n int) (uint32, error) {
 	nrange, code := d.nrange, d.code
 	symbol := uint32(1)
