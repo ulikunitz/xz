@@ -261,7 +261,7 @@ func (t *hashTable) NextOp(rep [4]uint32) operation {
 	}
 
 	// check distances
-	var m match
+	var m operation
 	dictLen := t.dict.DictLen()
 	for _, dist := range dists {
 		if dist > dictLen {
@@ -274,11 +274,12 @@ func (t *hashTable) NextOp(rep [4]uint32) operation {
 		// the given distance, we test the first byte that would
 		// make the match longer. If it doesn't match the byte
 		// to match, we don't to care any longer.
-		i := t.dict.buf.rear - dist + m.n
+		mLength := m.length()
+		i := t.dict.buf.rear - dist + mLength
 		if i < 0 {
 			i += len(t.dict.buf.data)
 		}
-		if t.dict.buf.data[i] != data[m.n] {
+		if t.dict.buf.data[i] != data[mLength] {
 			// We can't get a longer match. Jump to the next
 			// distance.
 			continue
@@ -293,8 +294,8 @@ func (t *hashTable) NextOp(rep [4]uint32) operation {
 				continue
 			}
 		}
-		if n > m.n {
-			m = match{int64(dist), n}
+		if n > mLength {
+			m = makeMatchOp(int64(dist), n)
 			if n == len(data) {
 				// No better match will be found.
 				break
@@ -302,8 +303,8 @@ func (t *hashTable) NextOp(rep [4]uint32) operation {
 		}
 	}
 
-	if m.n == 0 {
-		return lit{data[0]}
+	if m == 0 {
+		return makeLitOp(data[0])
 	}
 	return m
 }
