@@ -68,9 +68,9 @@ func (d *decoder) decodeLiteral() (op operation, err error) {
 	match := d.Dict.byteAt(int(d.State.rep[0]) + 1)
 	s, err := d.State.litCodec.Decode(d.rd, d.State.state, match, litState)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return lit{s}, nil
+	return makeLitOp(s), nil
 }
 
 // errEOS indicates that an EOS marker has been found.
@@ -87,20 +87,20 @@ func (d *decoder) readOp() (op operation, err error) {
 
 	b, err := d.State.isMatch[state2].Decode(d.rd)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if b == 0 {
 		// literal
 		op, err := d.decodeLiteral()
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		d.State.updateStateLiteral()
 		return op, nil
 	}
 	b, err = d.State.isRep[state].Decode(d.rd)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if b == 0 {
 		// simple match
@@ -111,49 +111,48 @@ func (d *decoder) readOp() (op operation, err error) {
 		// The length decoder returns the length offset.
 		n, err := d.State.lenCodec.Decode(d.rd, posState)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		// The dist decoder returns the distance offset. The actual
 		// distance is 1 higher.
 		d.State.rep[0], err = d.State.distCodec.Decode(d.rd, n)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		if d.State.rep[0] == eosDist {
 			d.eosMarker = true
-			return nil, errEOS
+			return 0, errEOS
 		}
-		op = match{n: int(n) + minMatchLen,
-			distance: int64(d.State.rep[0]) + minDistance}
+		op = makeMatchOp(int64(d.State.rep[0])+minDistance, int(n)+minMatchLen)
 		return op, nil
 	}
 	b, err = d.State.isRepG0[state].Decode(d.rd)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	dist := d.State.rep[0]
 	if b == 0 {
 		// rep match 0
 		b, err = d.State.isRepG0Long[state2].Decode(d.rd)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		if b == 0 {
 			d.State.updateStateShortRep()
-			op = match{n: 1, distance: int64(dist) + minDistance}
+			op = makeMatchOp(int64(dist)+minDistance, 1)
 			return op, nil
 		}
 	} else {
 		b, err = d.State.isRepG1[state].Decode(d.rd)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 		if b == 0 {
 			dist = d.State.rep[1]
 		} else {
 			b, err = d.State.isRepG2[state].Decode(d.rd)
 			if err != nil {
-				return nil, err
+				return 0, err
 			}
 			if b == 0 {
 				dist = d.State.rep[2]
@@ -168,25 +167,19 @@ func (d *decoder) readOp() (op operation, err error) {
 	}
 	n, err := d.State.repLenCodec.Decode(d.rd, posState)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	d.State.updateStateRep()
-	op = match{n: int(n) + minMatchLen, distance: int64(dist) + minDistance}
+	op = makeMatchOp(int64(dist)+minDistance, int(n)+minMatchLen)
 	return op, nil
 }
 
 // apply takes the operation and transforms the decoder dictionary accordingly.
 func (d *decoder) apply(op operation) error {
-	var err error
-	switch x := op.(type) {
-	case match:
-		err = d.Dict.writeMatch(x.distance, x.n)
-	case lit:
-		err = d.Dict.WriteByte(x.b)
-	default:
-		panic("op is neither a match nor a literal")
+	if op.isLiteral() {
+		return d.Dict.WriteByte(op.literal())
 	}
-	return err
+	return d.Dict.writeMatch(op.distance(), op.length())
 }
 
 // decompress fills the dictionary unless no space for new data is

@@ -395,8 +395,10 @@ type matchParams struct {
 	stopShorter bool
 }
 
-func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
-) (r match, checked int, accepted bool) {
+// TODO: distIter should return (int64, bool). "int" isn't big enough on 32-bit
+// architectures.
+func (t *binTree) match(m operation, distIter func() (int, bool), p matchParams,
+) (r operation, checked int, accepted bool) {
 	buf := &t.dict.buf
 	for {
 		if checked >= p.check {
@@ -407,14 +409,14 @@ func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
 			return m, checked, false
 		}
 		checked++
-		if m.n > 0 {
-			i := buf.rear - dist + m.n - 1
+		if mLength := m.length(); mLength > 0 {
+			i := buf.rear - dist + mLength - 1
 			if i < 0 {
 				i += len(buf.data)
 			} else if i >= len(buf.data) {
 				i -= len(buf.data)
 			}
-			if buf.data[i] != t.data[m.n-1] {
+			if buf.data[i] != t.data[mLength-1] {
 				if p.stopShorter {
 					return m, checked, false
 				}
@@ -433,10 +435,10 @@ func (t *binTree) match(m match, distIter func() (int, bool), p matchParams,
 				continue
 			}
 		}
-		if n < m.n || (n == m.n && int64(dist) >= m.distance) {
+		if mLength := m.length(); n < mLength || (n == mLength && int64(dist) >= m.distance()) {
 			continue
 		}
-		m = match{int64(dist), n}
+		m = makeMatchOp(int64(dist), n)
 		if n >= p.nAccept {
 			return m, checked, true
 		}
@@ -452,7 +454,7 @@ func (t *binTree) NextOp(rep [4]uint32) operation {
 	t.data = t.data[:n]
 
 	var (
-		m                  match
+		m                  operation
 		x, u, v            uint32
 		iterPred, iterSucc func() (int, bool)
 	)
@@ -515,8 +517,8 @@ func (t *binTree) NextOp(rep [4]uint32) operation {
 	}
 	m, _, _ = t.match(m, iterPred, p)
 end:
-	if m.n == 0 {
-		return lit{t.data[0]}
+	if m == 0 {
+		return makeLitOp(t.data[0])
 	}
 	return m
 }
