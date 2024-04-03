@@ -86,6 +86,11 @@
 
 ## Log
 
+### 2024-04-03
+
+Release v0.5.12 updates README.md and SECURITY.md to address the supply chain
+attack on the original xz implementation.
+
 ### 2022-12-12
 
 Matt Dantay (@bodgit) reported an issue with the LZMA reader. The implementation
