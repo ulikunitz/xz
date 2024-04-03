@@ -1,5 +1,6 @@
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
-github.com/ulikunitz/lz v0.3.1 h1:u0xBXk+Lm5Cw5k71RG1cnqATcF5zJimMLy+UPL7swvg=
-github.com/ulikunitz/lz v0.3.1/go.mod h1:UaONuXdzFuN/Ptzl0KTUYFL18y/mcJqtypeT2N6G5F4=
-golang.org/x/exp v0.0.0-20230420155640-133eef4313cb h1:rhjz/8Mbfa8xROFiH+MQphmAmgqRM0bOMnytznhWEXk=
-golang.org/x/exp v0.0.0-20230420155640-133eef4313cb/go.mod h1:V1LtkGg67GoY2N1AnLN78QLrzxkLyJw7RJb1gzOOz9w=
+github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
+github.com/ulikunitz/lz v0.4.0 h1:L/saNWzCLpvNpoACMWSsLqq7bPJO1iFPFqOImWVmKwk=
+github.com/ulikunitz/lz v0.4.0/go.mod h1:UaONuXdzFuN/Ptzl0KTUYFL18y/mcJqtypeT2N6G5F4=
+golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 h1:aAcj0Da7eBAtrTp03QXWvm88pSyOt+UgdZw2BFZ+lEw=
+golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8/go.mod h1:CQ1k9gNrJ50XIzaKCRR2hssIjF07kZFEiieALBM/ARQ=
