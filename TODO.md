@@ -23,7 +23,10 @@
 3. Rewrite README.md
   - provide example for parallel encoding  
   - create picture that compares speed improvements (v0.5, v0.6)
-4. Review open issues after final release
+  - don't use the ampersand in the headline
+  - explain the role of the lz module
+  - Thank contributors
+4. Review open issues before final release
 
 ### Review all open issues and support
 
