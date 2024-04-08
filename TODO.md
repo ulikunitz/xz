@@ -2,6 +2,12 @@
 
 ## Release v0.6
 
+### Missing features
+
+* Info about file 
+  - compressed size
+  - uncompressed size
+  
 ### Work
 
 - Fuzz the xz Writer and xz Reader by varying the thread numbers and the input.
