@@ -88,3 +88,6 @@ lc    | [0,8]  | number of literal context bits
 lp    | [0,4]  | number of literal pos bits
 pb    | [0,4]  | the number of pos bits
 
+## References
+
+[1] The .xz File Format,  <https://tukaani.org/xz/xz-file-format.txt>
