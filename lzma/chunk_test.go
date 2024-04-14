@@ -19,12 +19,12 @@ import (
 
 func TestChunkHeader(t *testing.T) {
 	tests := []struct {
-		hdr   chunkHeader
+		hdr   ChunkHeader
 		wrong bool
 	}{
-		{hdr: chunkHeader{control: cEOS}},
-		{hdr: chunkHeader{control: cU, size: 10}},
-		{hdr: chunkHeader{control: cUD, size: 100000}, wrong: true},
+		{hdr: ChunkHeader{Control: CEOS}},
+		{hdr: ChunkHeader{Control: CU, Size: 10}},
+		{hdr: ChunkHeader{Control: CUD, Size: 100000}, wrong: true},
 	}
 
 	for i, tc := range tests {
@@ -214,9 +214,9 @@ func TestChunkClose(t *testing.T) {
 }
 
 func TestPeekChunkHeader(t *testing.T) {
-	var hdr = chunkHeader{
-		control: cUD,
-		size:    256,
+	var hdr = ChunkHeader{
+		Control: CUD,
+		Size:    256,
 	}
 	p, err := hdr.append(nil)
 	if err != nil {

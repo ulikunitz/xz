@@ -373,20 +373,20 @@ func splitStream(w io.Writer, hr *hdrReader, size int) (n int, ok bool, err erro
 			}
 			return n, false, err
 		}
-		switch hdr.control {
-		case cUD, cCSPD:
+		switch hdr.Control {
+		case CUD, CCSPD:
 			if n > 0 {
 				return n, true, nil
 			}
-		case cEOS:
+		case CEOS:
 			return n, true, io.EOF
 		}
-		if hdr.control&(1<<7) == 0 {
-			k += hdr.size
+		if hdr.Control&(1<<7) == 0 {
+			k += hdr.Size
 		} else {
-			k += hdr.compressedSize
+			k += hdr.CompressedSize
 		}
-		n += hdr.size
+		n += hdr.Size
 		if n > size {
 			return 0, false, io.EOF
 		}

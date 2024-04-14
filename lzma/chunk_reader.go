@@ -17,14 +17,14 @@ import (
 // that the chunk header might contain length bits, so it has to be masked by
 // cMask.
 const (
-	cEOS  = byte(0)
-	cUD   = byte(0b01)
-	cU    = byte(0b10)
-	cC    = byte(0b100) << 5
-	cCS   = byte(0b101) << 5
-	cCSP  = byte(0b110) << 5
-	cCSPD = byte(0b111) << 5
-	cMask = cCSPD
+	CEOS  = byte(0)
+	CUD   = byte(0b01)
+	CU    = byte(0b10)
+	CC    = byte(0b100) << 5
+	CCS   = byte(0b101) << 5
+	CCSP  = byte(0b110) << 5
+	CCSPD = byte(0b111) << 5
+	cMask = CCSPD
 )
 
 // chunkState reflects the status of a chunk stream.
@@ -46,29 +46,29 @@ func (s chunkState) next(c byte) chunkState {
 	}
 	if c&(1<<7) == 0 {
 		switch c {
-		case cEOS:
+		case CEOS:
 			return sF
-		case cU:
+		case CU:
 			switch s {
 			case s1:
 				return s1
 			case s2:
 				return s2
 			}
-		case cUD:
+		case CUD:
 			return s1
 		}
 	} else {
 		switch c & cMask {
-		case cC, cCS:
+		case CC, CCS:
 			if s == s2 {
 				return s2
 			}
-		case cCSP:
+		case CCSP:
 			if s == s1 || s == s2 {
 				return s2
 			}
-		case cCSPD:
+		case CCSPD:
 			return s2
 		}
 	}
@@ -109,17 +109,17 @@ func (r *chunkReader) reset(z io.Reader) {
 	r.err = nil
 }
 
-// chunkHeader represents a chunk header.
-type chunkHeader struct {
-	control        byte
-	compressedSize int
-	size           int
-	properties     Properties
+// ChunkHeader represents a chunk header.
+type ChunkHeader struct {
+	Control        byte
+	CompressedSize int
+	Size           int
+	Properties     Properties
 }
 
 // peekChunkHeader gets the next chunk header from the buffered reader without
 // advancing it.
-func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
+func peekChunkHeader(r *hdrReader) (h ChunkHeader, n int, err error) {
 	p := make([]byte, 1, 6)
 	k, err := r.Peek(p)
 	if err != nil {
@@ -129,17 +129,17 @@ func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
 		return h, 0, err
 	}
 	n += k
-	h.control = p[0]
-	if h.control&(1<<7) == 0 {
-		switch h.control {
-		case cEOS:
+	h.Control = p[0]
+	if h.Control&(1<<7) == 0 {
+		switch h.Control {
+		case CEOS:
 			return h, n, nil
-		case cU, cUD:
+		case CU, CUD:
 			break
 		default:
 			return h, n, fmt.Errorf(
 				"lzma: unsupported chunk header"+
-					" control byte %02x", h.control)
+					" control byte %02x", h.Control)
 		}
 		n, err = r.Peek(p[:3])
 		if err != nil {
@@ -151,17 +151,17 @@ func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
 			}
 			return h, n, err
 		}
-		h.size = int(getBE16(p[1:3])) + 1
+		h.Size = int(getBE16(p[1:3])) + 1
 	} else {
-		h.control &= cMask
-		switch h.control {
-		case cC, cCS:
+		h.Control &= cMask
+		switch h.Control {
+		case CC, CCS:
 			p = p[0:5]
-		case cCSP, cCSPD:
+		case CCSP, CCSPD:
 			p = p[0:6]
 		default:
 			return h, n, fmt.Errorf("lzma: unsupported chunk header"+
-				" control byte %02x", h.control)
+				" control byte %02x", h.Control)
 		}
 		n, err = r.Peek(p)
 		if err != nil {
@@ -173,10 +173,10 @@ func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
 			}
 			return h, n, err
 		}
-		h.size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
-		h.compressedSize = int(getBE16(p[3:5])) + 1
-		if h.control == cCSP || h.control == cCSPD {
-			if err = h.properties.fromByte(p[5]); err != nil {
+		h.Size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
+		h.CompressedSize = int(getBE16(p[3:5])) + 1
+		if h.Control == CCSP || h.Control == CCSPD {
+			if err = h.Properties.fromByte(p[5]); err != nil {
 				return h, n, err
 			}
 		}
@@ -185,23 +185,23 @@ func peekChunkHeader(r *hdrReader) (h chunkHeader, n int, err error) {
 }
 
 // parseChunkHeader reads the next chunk header from the reader.
-func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
+func parseChunkHeader(r io.Reader) (h ChunkHeader, err error) {
 	p := make([]byte, 1, 6)
 	if _, err = io.ReadFull(r, p); err != nil {
 		return h, err
 	}
-	h.control = p[0]
-	if h.control&(1<<7) == 0 {
-		switch h.control {
-		case cEOS:
+	h.Control = p[0]
+	if h.Control&(1<<7) == 0 {
+		switch h.Control {
+		case CEOS:
 			// return h, io.EOF
 			return h, nil
-		case cU, cUD:
+		case CU, CUD:
 			break
 		default:
 			return h, fmt.Errorf(
 				"lzma: unsupported chunk header"+
-					" control byte %02x", h.control)
+					" control byte %02x", h.Control)
 		}
 		if _, err = io.ReadFull(r, p[1:3]); err != nil {
 			if err == io.EOF {
@@ -209,17 +209,17 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 			}
 			return h, err
 		}
-		h.size = int(getBE16(p[1:3])) + 1
+		h.Size = int(getBE16(p[1:3])) + 1
 	} else {
-		h.control &= cMask
-		switch h.control {
-		case cC, cCS:
+		h.Control &= cMask
+		switch h.Control {
+		case CC, CCS:
 			p = p[0:5]
-		case cCSP, cCSPD:
+		case CCSP, CCSPD:
 			p = p[0:6]
 		default:
 			return h, fmt.Errorf("lzma: unsupported chunk header"+
-				" control byte %02x", h.control)
+				" control byte %02x", h.Control)
 		}
 		if _, err := io.ReadFull(r, p[1:]); err != nil {
 			if err == io.EOF {
@@ -227,10 +227,10 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 			}
 			return h, err
 		}
-		h.size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
-		h.compressedSize = int(getBE16(p[3:5])) + 1
-		if h.control == cCSP || h.control == cCSPD {
-			if err = h.properties.fromByte(p[5]); err != nil {
+		h.Size = int(p[0]&(1<<5-1))<<16 + int(getBE16(p[1:3])) + 1
+		h.CompressedSize = int(getBE16(p[3:5])) + 1
+		if h.Control == CCSP || h.Control == CCSPD {
+			if err = h.Properties.fromByte(p[5]); err != nil {
 				return h, err
 			}
 		}
@@ -240,39 +240,39 @@ func parseChunkHeader(r io.Reader) (h chunkHeader, err error) {
 
 // append appends the binary representation of the chunk header to p. An error
 // is returned if the values in chunk header are inconsistent.
-func (h chunkHeader) append(p []byte) (q []byte, err error) {
-	if h.control == cEOS {
-		return append(p, cEOS), nil
+func (h ChunkHeader) append(p []byte) (q []byte, err error) {
+	if h.Control == CEOS {
+		return append(p, CEOS), nil
 	}
 	var d [6]byte
-	d[0] = h.control
-	if h.control == cU || h.control == cUD {
-		if !(1 <= h.size && h.size <= maxChunkSize) {
+	d[0] = h.Control
+	if h.Control == CU || h.Control == CUD {
+		if !(1 <= h.Size && h.Size <= maxChunkSize) {
 			return p, fmt.Errorf(
 				"lzma: chunk header size %d out of range"+
 					" for uncompressed chunk",
-				h.size)
+				h.Size)
 		}
-		putBE16(d[1:], uint16(h.size-1))
+		putBE16(d[1:], uint16(h.Size-1))
 		return append(p, d[:3]...), nil
 	}
-	if !(1 <= h.size && h.size <= maxUncompressedChunkSize) {
+	if !(1 <= h.Size && h.Size <= maxUncompressedChunkSize) {
 		return p, errors.New(
 			"lzma: chunk header uncompressed size out of range")
 	}
-	if !(1 <= h.compressedSize && h.compressedSize <= maxChunkSize) {
+	if !(1 <= h.CompressedSize && h.CompressedSize <= maxChunkSize) {
 		return p, fmt.Errorf("lzma: chunk header compressed size %d"+
-			" is out of range", h.compressedSize)
+			" is out of range", h.CompressedSize)
 	}
-	us := h.size - 1
+	us := h.Size - 1
 	d[0] |= byte(us >> 16)
 	putBE16(d[1:], uint16(us))
-	putBE16(d[3:], uint16(h.compressedSize-1))
-	if h.control == cC || h.control == cCS {
+	putBE16(d[3:], uint16(h.CompressedSize-1))
+	if h.Control == CC || h.Control == CCS {
 		return append(p, d[:5]...), nil
 	}
-	d[5] = h.properties.byte()
-	if h.control == cCSP || h.control == cCSPD {
+	d[5] = h.Properties.byte()
+	if h.Control == CCSP || h.Control == CCSPD {
 		return append(p, d[:6]...), nil
 
 	}
@@ -288,38 +288,38 @@ func (r *chunkReader) readChunk() error {
 		}
 		return err
 	}
-	r.cstate = r.cstate.next(h.control)
+	r.cstate = r.cstate.next(h.Control)
 	if r.cstate == sErr {
 		return fmt.Errorf("lzma: unexpected byte control header %02x",
-			h.control)
+			h.Control)
 	}
 	if r.cstate == sF {
 		return io.EOF
 	}
 
-	if h.control == cUD || h.control == cCSPD {
+	if h.Control == CUD || h.Control == CCSPD {
 		// Not strictly necessary, but ensure that there is no
 		// error in the matches that follow.
 		r.buffer.Reset()
 	}
 
-	if h.control == cU || h.control == cUD {
+	if h.Control == CU || h.Control == CUD {
 		// copy uncompressed data directly into the dictionary
-		_, err = io.CopyN(&r.buffer, r.r, int64(h.size))
+		_, err = io.CopyN(&r.buffer, r.r, int64(h.Size))
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
 		return err
 	}
 
-	switch h.control {
-	case cCSP, cCSPD:
-		r.state.init(h.properties)
-	case cCS:
+	switch h.Control {
+	case CCSP, CCSPD:
+		r.state.init(h.Properties)
+	case CCS:
 		r.state.reset()
 	}
 
-	lr := io.LimitReader(r.r, int64(h.compressedSize))
+	lr := io.LimitReader(r.r, int64(h.CompressedSize))
 	if r.bufr == nil {
 		r.bufr = bufio.NewReader(lr)
 	} else {
@@ -331,7 +331,7 @@ func (r *chunkReader) readChunk() error {
 		}
 		return err
 	}
-	n := h.size
+	n := h.Size
 	for n > 0 {
 		seq, err := r.decoder.readSeq()
 		if err != nil {

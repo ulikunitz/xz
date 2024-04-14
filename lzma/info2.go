@@ -1,6 +1,7 @@
 package lzma
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -18,53 +19,66 @@ func skip(r io.Reader, n int64) error {
 
 	if s, ok := r.(io.Seeker); ok {
 		_, err := s.Seek(n, io.SeekCurrent)
-		return err
+		if err == nil {
+			return nil
+		}
 	}
 
-	buf := make([]byte, 1<<14)
+	p := make([]byte, 16*1024)
 	for n > 0 {
-		var p []byte
-		if n < int64(len(buf)) {
-			p = buf[:n]
-		} else {
-			p = buf
+		if n < int64(len(p)) {
+			p = p[:n]
 		}
 		k, err := r.Read(p)
+		n -= int64(k)
 		if err != nil {
 			return err
 		}
-		n -= int64(k)
 	}
 
 	return nil
 }
 
-// Stat2 returns information over the LZMA2 stream and consumes it in parallel.
-func Stat2(r io.Reader) (info Info, err error) {
+// Walk2 visits all chunk headers of a LZMA2 stream.
+func Walk2(r io.Reader, ch func(ChunkHeader) error) error {
 	for {
 		h, err := parseChunkHeader(r)
 		if err != nil {
-			return Info{-1, -1}, err
+			return err
 		}
-		switch h.control {
-		case cEOS:
-			info.Compressed += 1
-			return info, nil
-		case cU, cUD:
-			info.Compressed += 3 + int64(h.size)
-			err = skip(r, int64(h.size))
-		case cC, cCS:
-			info.Compressed += 5 + int64(h.compressedSize)
-			err = skip(r, int64(h.compressedSize))
-		case cCSP, cCSPD:
-			info.Compressed += 6 + int64(h.compressedSize)
-			err = skip(r, int64(h.compressedSize))
+		if err = ch(h); err != nil {
+			return err
+		}
+		switch h.Control {
+		case CEOS:
+			return nil
+		case CU, CUD:
+			err = skip(r, int64(h.Size))
+		case CC, CCS, CCSP, CCSPD:
+			err = skip(r, int64(h.CompressedSize))
 		default:
 			panic("unexpected control byte")
 		}
 		if err != nil {
-			return Info{-1, -1}, err
+			return err
 		}
-		info.Uncompressed += int64(h.size)
 	}
+}
+
+// Stat2 returns information over the LZMA2 stream and consumes it in parallel.
+func Stat2(r io.Reader) (info Info, err error) {
+	return info, Walk2(r, func(h ChunkHeader) error {
+		info.Uncompressed += int64(h.Size)
+		switch h.Control {
+		case CU, CUD:
+			info.Compressed += 3 + int64(h.Size)
+		case CC, CCS:
+			info.Compressed += 5 + int64(h.CompressedSize)
+		case CCSP, CCSPD:
+			info.Compressed += 6 + int64(h.CompressedSize)
+		default:
+			return fmt.Errorf("lzma: unexpected control byte %#02x", h.Control)
+		}
+		return nil
+	})
 }

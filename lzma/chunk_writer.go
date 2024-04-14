@@ -206,15 +206,15 @@ func (w *chunkWriter) finishChunk() error {
 		headerLen++
 	}
 	k := w.buf.Len()
-	h := chunkHeader{size: n}
+	h := ChunkHeader{Size: n}
 	m := 3 + n
 	if m < headerLen+k {
 		w.state.deepCopy(&w.oldState)
 		// uncompressed write
 		if w.dirReset {
-			h.control = cU
+			h.Control = CU
 		} else {
-			h.control = cUD
+			h.Control = CUD
 			w.dirReset = true
 		}
 
@@ -246,18 +246,18 @@ func (w *chunkWriter) finishChunk() error {
 	}
 
 	// compressed write
-	h.compressedSize = k
+	h.CompressedSize = k
 	if !w.spReset {
-		h.properties = w.state.Properties
+		h.Properties = w.state.Properties
 		if !w.dirReset {
-			h.control = cCSPD
+			h.Control = CCSPD
 			w.dirReset = true
 		} else {
-			h.control = cCSP
+			h.Control = CCSP
 		}
 		w.spReset = true
 	} else {
-		h.control = cC
+		h.Control = CC
 	}
 
 	var a [6]byte
