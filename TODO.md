@@ -49,8 +49,15 @@
 * Publish the release candidate
 * Announce it on all the open issues
 
+### Publish the pizza tool
+
+* Support lzma format as supported by xz
+* Write README.md
+* Make sure that the documentation is complete
+
 ## Update pizza tool
 
+* Support lzma
 * Support lzip
 * Support zstd
 * Support gzip
