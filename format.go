@@ -309,28 +309,29 @@ var errIndexIndicator = errors.New("xz: found index indicator")
 
 // readBlockHeader reads the block header.
 func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
-	var buf bytes.Buffer
-	buf.Grow(20)
-
-	// block header size
-	z, err := io.CopyN(&buf, r, 1)
-	n = int(z)
+	p := make([]byte, 1, 32)
+	n, err = io.ReadFull(r, p)
 	if err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
 		return nil, n, err
 	}
-	s := buf.Bytes()[0]
+	s := p[0]
 	if s == 0 {
 		return nil, n, errIndexIndicator
 	}
 
 	// read complete header
 	headerLen := (int(s) + 1) * 4
-	buf.Grow(headerLen - 1)
-	z, err = io.CopyN(&buf, r, int64(headerLen-1))
-	n += int(z)
+	if headerLen > cap(p) {
+		p = make([]byte, headerLen)
+		p[0] = s
+	} else {
+		p = p[:headerLen]
+	}
+	k, err := io.ReadFull(r, p[1:])
+	n += k
 	if err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
@@ -340,7 +341,7 @@ func readBlockHeader(r io.Reader) (h *blockHeader, n int, err error) {
 
 	// unmarshal block header
 	h = new(blockHeader)
-	if err = h.UnmarshalBinary(buf.Bytes()); err != nil {
+	if err = h.UnmarshalBinary(p); err != nil {
 		return nil, n, err
 	}
 

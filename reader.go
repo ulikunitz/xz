@@ -169,7 +169,7 @@ func (cfg *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadClo
 // reader [mtReader].
 type streamReader interface {
 	io.ReadCloser
-	reset(hdr *header) error
+	reset(hdr header) error
 }
 
 // reader supports the reading of one or multiple xz streams.
@@ -212,7 +212,7 @@ func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error
 	}
 
 	// read header without padding
-	hdr, err := readHeader(rp.xz, false)
+	hdr, err := readHeader(rp.xz, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (r *reader) Read(p []byte) (n int, err error) {
 					return n, nil
 				}
 				// read header with padding
-				hdr, err := readHeader(r.xz, true)
+				hdr, err := readHeader(r.xz, expectPadding)
 				if err != nil {
 					r.err = err
 					return n, err
@@ -475,7 +475,7 @@ func newSingleThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
 }
 
 // reset provides the header information for the stream reader.
-func (sr *stReader) reset(hdr *header) error {
+func (sr *stReader) reset(hdr header) error {
 	h, err := newHash(hdr.flags)
 	if err != nil {
 		return err
@@ -537,52 +537,65 @@ func (sr *stReader) Close() error {
 	return nil
 }
 
+const expectPadding = 1
+
+func readHeaderBytes(p []byte, r io.Reader, flags byte) (n int64, err error) {
+	if len(p) != HeaderLen {
+		return 0, errors.New("xz: buffer must have headerLen bytes")
+	}
+	if flags&expectPadding == 0 {
+		k, err := io.ReadFull(r, p)
+		n += int64(k)
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+		return n, err
+	}
+	// expect padding
+	for {
+		k, err := io.ReadFull(r, p)
+		n += int64(k)
+		if err != nil {
+			if err == io.ErrUnexpectedEOF && allZeros(p[:k]) {
+				// padding
+				if n%4 != 0 {
+					return n, errPadding
+				}
+				return n, io.EOF
+			}
+			return n, err
+		}
+		for i, b := range p {
+			if b != 0 {
+				if i == 0 {
+					return n, nil
+				}
+				if i%4 != 0 {
+					return n, errPadding
+				}
+				k = copy(p, p[i:])
+				k, err = io.ReadFull(r, p[k:])
+				n += int64(k)
+				if err == io.EOF {
+					err = io.ErrUnexpectedEOF
+				}
+				return n, err
+			}
+		}
+	}
+}
+
 // readHeader reads header from the reader and skips padding if the padding
 // argument is true. A possible outcome is io. EOF. If there is a problem with
 // the padding errPadding is returned.
-func readHeader(r io.Reader, padding bool) (hdr *header, err error) {
+func readHeader(r io.Reader, flags byte) (hdr header, err error) {
 	p := make([]byte, HeaderLen)
-	if padding {
-	loop:
-		for {
-			n, err := io.ReadFull(r, p)
-			if err != nil {
-				if err == io.ErrUnexpectedEOF {
-					if allZeros(p[:n]) {
-						if n%4 != 0 {
-							return nil, errPadding
-						}
-						return nil, io.EOF
-					}
-				}
-				return nil, err
-			}
-			for i, b := range p {
-				if b != 0 {
-					if i == 0 {
-						break loop
-					}
-					if i%4 != 0 {
-						return nil, errPadding
-					}
-					n = copy(p, p[i:])
-					_, err = io.ReadFull(r, p[n:])
-					if err != nil {
-						return nil, err
-					}
-					break loop
-				}
-			}
-		}
-	} else {
-		_, err = io.ReadFull(r, p)
-		if err != nil {
-			return nil, err
-		}
+	_, err = readHeaderBytes(p, r, flags)
+	if err != nil {
+		return header{}, err
 	}
-	hdr = new(header)
 	if err = hdr.UnmarshalBinary(p); err != nil {
-		return nil, err
+		return header{}, err
 	}
 	return hdr, nil
 }
@@ -681,7 +694,7 @@ func newMultiThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
 
 // reset provides the header information to the multi-threaded stream reader. It
 // starts the stream goroutine.
-func (sr *mtReader) reset(hdr *header) error {
+func (sr *mtReader) reset(hdr header) error {
 	if sr.cancel != nil {
 		sr.cancel()
 	}
