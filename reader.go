@@ -585,9 +585,9 @@ func readHeaderBytes(p []byte, r io.Reader, flags byte) (n int64, err error) {
 	}
 }
 
-// readHeader reads header from the reader and skips padding if the padding
-// argument is true. A possible outcome is io. EOF. If there is a problem with
-// the padding errPadding is returned.
+// readHeader reads header from the reader and skips padding if the
+// [expectPadding] flag is set. A possible outcome is io. EOF. If there is a
+// problem with the padding errPadding is returned.
 func readHeader(r io.Reader, flags byte) (hdr header, err error) {
 	p := make([]byte, HeaderLen)
 	_, err = readHeaderBytes(p, r, flags)
