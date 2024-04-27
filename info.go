@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/ulikunitz/xz/internal/discard"
+	"github.com/ulikunitz/xz/internal/stream"
 	"github.com/ulikunitz/xz/lzma"
 )
 
@@ -29,12 +29,12 @@ type walker interface {
 
 type streamWalkParser struct {
 	w        walker
-	dr       discard.Reader
+	s        stream.Streamer
 	h        header
 	checkLen int
 }
 
-func newStreamWalkParser(r io.Reader, w walker, h header) *streamWalkParser {
+func newStreamWalkParser(s stream.Streamer, w walker, h header) *streamWalkParser {
 	var checkLen int
 	f := h.flags & 0x0f
 	if f == 0 {
@@ -45,14 +45,14 @@ func newStreamWalkParser(r io.Reader, w walker, h header) *streamWalkParser {
 	}
 	return &streamWalkParser{
 		w:        w,
-		dr:       discard.Wrap(r),
+		s:        s,
 		h:        h,
 		checkLen: checkLen,
 	}
 }
 
 func (p *streamWalkParser) Block() error {
-	hdr, _, err := readBlockHeader(p.dr)
+	hdr, _, err := readBlockHeader(p.s)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (p *streamWalkParser) Block() error {
 		}
 	}
 	if requireChunks || hdr.compressedSize < 0 {
-		err = lzma.Walk2(p.dr, func(ch lzma.ChunkHeader) error {
+		hdr.compressedSize, err = lzma.Walk2(p.s, func(ch lzma.ChunkHeader) error {
 			return p.w.chunkHeader(ch)
 		})
 		if err != nil {
@@ -76,15 +76,16 @@ func (p *streamWalkParser) Block() error {
 			return err
 		}
 	} else {
-		if _, err = p.dr.Discard64(hdr.compressedSize); err != nil {
+		if _, err = p.s.Discard64(hdr.compressedSize); err != nil {
 			if err == io.EOF {
 				err = io.ErrUnexpectedEOF
 			}
 			return err
 		}
 	}
+
 	k := padLen(hdr.compressedSize) + p.checkLen
-	if _, err := p.dr.Discard64(int64(k)); err != nil {
+	if _, err := p.s.Discard64(int64(k)); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -110,7 +111,7 @@ func (p *streamWalkParser) Body() error {
 	}
 
 	// Index
-	br := byteReader(p.dr)
+	br := byteReader(p.s)
 	indexLen := 1
 	u, n, err := readUvarint(br)
 	indexLen += n
@@ -148,7 +149,7 @@ func (p *streamWalkParser) Body() error {
 		}
 	}
 	k := padLen(int64(indexLen)) + 4
-	if _, err = p.dr.Discard64(int64(k)); err != nil {
+	if _, err = p.s.Discard64(int64(k)); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -157,7 +158,7 @@ func (p *streamWalkParser) Body() error {
 
 	// footer
 	buf := make([]byte, footerLen)
-	if _, err = io.ReadFull(p.dr, buf); err != nil {
+	if _, err = io.ReadFull(p.s, buf); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -170,46 +171,106 @@ func (p *streamWalkParser) Body() error {
 	return p.w.streamFooter(f)
 }
 
-func walkStream(r io.Reader, w walker, flags byte) error {
-	h, err := readHeader(r, flags)
+func walkStream(s stream.Streamer, w walker, flags byte) error {
+	h, err := readHeader(s, flags)
 	if err != nil {
 		return err
 	}
-	p := newStreamWalkParser(r, w, h)
+	p := newStreamWalkParser(s, w, h)
 	return p.Body()
 }
 
-// Flags for the walk function.
+// Flags for th  Stat function
 const (
-	singleStream = 1 << iota
+	SingleStream = 1 << iota
 )
 
-func walk(r io.Reader, w walker, flags byte) error {
-	var err error
-	if flags&singleStream != 0 {
-		if err = walkStream(r, w, 0); err != nil {
-			return err
+// walk visits all important parts of the XZ stream and calls the methods of
+// walker.
+func walk(r io.Reader, w walker, flags byte) (n int64, err error) {
+	s := stream.Wrap(r)
+	start := s.Offset()
+	if flags&SingleStream != 0 {
+		err = walkStream(s, w, 0)
+		n = s.Offset() - start
+		if err != nil {
+			return n, err
 		}
 		// check for EOF
 		var a [1]byte
-		if _, err = r.Read(a[:]); err != io.EOF {
-			return errors.New(
+		if _, err = s.Read(a[:]); err != io.EOF {
+			return n, errors.New(
 				"xz: expected EOF at end of single stream")
 		}
-		return nil
+		return n, nil
 	}
 
-	if err = walkStream(r, w, 0); err != nil {
-		return err
+	err = walkStream(s, w, 0)
+	if err != nil {
+		return s.Offset() - start, err
 	}
 	for {
-		if err = walkStream(r, w, expectPadding); err != nil {
+		if err = walkStream(s, w, expectPadding); err != nil {
+			n = s.Offset() - start
 			if err == io.EOF {
-				return nil
+				return n, nil
 			}
-			return err
+			return n, err
 		}
 	}
 }
 
-// TODO: implement the actual Stat function
+// Info provides information about an xz-compressed file.
+type Info struct {
+	Streams      int64
+	Blocks       int64
+	Uncompressed int64
+	Compressed   int64
+	Check        byte
+}
+
+// infoWalker collects the information about the uncompressed bytes in an xz
+// stream.
+type infoWalker struct {
+	Info
+}
+
+func (w *infoWalker) streamHeader(h header) error {
+	w.Check = h.flags & 0x0f
+	w.Streams++
+	return nil
+}
+
+func (w *infoWalker) streamFooter(f footer) error {
+	return nil
+}
+
+func (w *infoWalker) blockHeader(bh blockHeader) error {
+	w.Blocks++
+	return errSuppressChunks
+}
+
+func (w *infoWalker) chunkHeader(ch lzma.ChunkHeader) error {
+	return nil
+}
+
+func (w *infoWalker) index(records int) error {
+	return nil
+}
+
+func (w *infoWalker) record(r record) error {
+	w.Uncompressed += int64(r.uncompressedSize)
+	return nil
+}
+
+// Stat provides statistics about the data in an xz file.
+func Stat(r io.Reader, flags byte) (info Info, err error) {
+	var w infoWalker
+	n, err := walk(r, &w, flags)
+	if err != nil {
+		return Info{}, err
+	}
+
+	w.Compressed = n
+	return w.Info, nil
+}

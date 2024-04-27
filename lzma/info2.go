@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ulikunitz/xz/internal/discard"
+	"github.com/ulikunitz/xz/internal/stream"
 )
 
 // Info stores the uncompressed size and the compressed size of a LZMA2 stream.
@@ -14,35 +14,36 @@ type Info struct {
 }
 
 // Walk2 visits all chunk headers of a LZMA2 stream.
-func Walk2(r io.Reader, ch func(ChunkHeader) error) error {
-	d := discard.Wrap(r)
+func Walk2(r io.Reader, ch func(ChunkHeader) error) (n int64, err error) {
+	s := stream.Wrap(r)
+	n = s.Offset()
 	for {
-		h, err := parseChunkHeader(d)
+		h, err := parseChunkHeader(s)
 		if err != nil {
-			return err
+			return s.Offset() - n, err
 		}
 		if err = ch(h); err != nil {
-			return err
+			return s.Offset() - n, err
 		}
 		switch h.Control {
 		case CEOS:
-			return nil
+			return s.Offset() - n, nil
 		case CU, CUD:
-			_, err = d.Discard64(int64(h.Size))
+			_, err = s.Discard64(int64(h.Size))
 		case CC, CCS, CCSP, CCSPD:
-			_, err = d.Discard64(int64(h.CompressedSize))
+			_, err = s.Discard64(int64(h.CompressedSize))
 		default:
 			panic("unexpected control byte")
 		}
 		if err != nil {
-			return err
+			return s.Offset() - n, err
 		}
 	}
 }
 
 // Stat2 returns information over the LZMA2 stream and consumes it in parallel.
 func Stat2(r io.Reader) (info Info, err error) {
-	err = Walk2(r, func(h ChunkHeader) error {
+	_, err = Walk2(r, func(h ChunkHeader) error {
 		info.Uncompressed += int64(h.Size)
 		switch h.Control {
 		case CU, CUD:
