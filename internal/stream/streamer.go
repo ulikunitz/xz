@@ -56,22 +56,24 @@ func (r *simpleReader) Discard64(n int64) (discarded int64, err error) {
 	}
 
 	p := r.buf[:cap(r.buf)]
-	k := n
-	for k > 0 {
+	for {
+		k := n - discarded
+		if k <= 0 {
+			break
+		}
 		if k < int64(len(p)) {
 			p = p[:k]
 		}
-		s, err := r.Read(p)
-		k -= int64(s)
+		s, err := r.r.Read(p)
+		discarded += int64(s)
 		if err != nil {
-			n -= k
-			r.off += n
-			return n, err
+			r.off += discarded
+			return discarded, err
 		}
 	}
 
-	r.off += n
-	return n, nil
+	r.off += discarded
+	return discarded, nil
 }
 
 // readSeeker implements the Reader interface for an io.ReadSeeker.
