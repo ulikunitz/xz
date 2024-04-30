@@ -11,8 +11,8 @@ import (
 )
 
 // Preset returns a WriterConfig with preset parameters. Supported
-// presets are ranging from 1 to 9 from fast to slow with increasing compression
-// rate.
+// presets are ranging from 1 to 9 from fast to slow with increasing
+// compression rate.
 func Preset(n int) WriterConfig {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))
@@ -21,7 +21,8 @@ func Preset(n int) WriterConfig {
 	return cfg.Clone()
 }
 
-// presets contain the predefined tickets. Don't use directly!
+// presets contain the predefined tickets. Don't use directly to prevent
+// modification.
 var presets = []WriterConfig{
 	0: {
 		WindowSize: 1024 << 10,
