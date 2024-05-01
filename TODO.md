@@ -11,6 +11,7 @@
 - Review the Verify code. Define upper limits for everything.
     - define maxHashBits in lz (We are using different values throughout
       the system)
+- Work in stove to create the statistics for the README.md file.
 
 ### Remaining Tasks
 
@@ -30,10 +31,6 @@
 
 ### Review all open issues and support
 
-## Write pizza tool
-
-* The pizza tool should support xz, lzma
-
 ### Publish release candidate 1
 
 * Run all tests on all modules that are required
@@ -45,9 +42,14 @@
 
 ### Publish the pizza tool
 
-* Support lzma format as supported by xz
 * Write README.md
 * Make sure that the documentation is complete
+* set correct tags on all my repos
+
+## Release v0.7
+
+* work on a new structure by supporting multiple indexes combined with cost
+  evaluators as type parameters
 
 ## Update pizza tool
 
