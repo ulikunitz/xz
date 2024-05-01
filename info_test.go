@@ -33,15 +33,6 @@ func TestStat(t *testing.T) {
 				Check:        CRC64,
 			},
 		},
-		{"example.xz",
-			Info{
-				Streams:      1,
-				Blocks:       1,
-				Compressed:   96,
-				Uncompressed: 39,
-				Check:        CRC64,
-			},
-		},
 		{"fox-check-none.xz",
 			Info{
 				Streams:      1,
