@@ -37,8 +37,8 @@ LZMA2 stream.
 An LZMA2 stream is a sequence of chunks. Each chunk is preceded by a
 control byte and other information.
 
-Following the C implementation in the LZMA SDK the control byte can be
-described as such:
+Following the C implementation in the LZMA SDK the chunk header including the
+control byte can be described as such:
 
 Chunk header         | Description
 :------------------- | :--------------------------------------------------
@@ -91,3 +91,6 @@ pb    | [0,4]  | the number of pos bits
 ## References
 
 [1] The .xz File Format,  <https://tukaani.org/xz/xz-file-format.txt>
+
+[2] LZMA specification (DRAFT version),
+    <https://github.com/jljusten/LZMA-SDK/blob/master/DOC/lzma-specification.txt>
