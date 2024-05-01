@@ -26,7 +26,7 @@ func Preset(n int) WriterConfig {
 var presets = []WriterConfig{
 	0: {
 		WindowSize: 1024 << 10,
-		Properties: lzma.Properties{LC: 1, LP: 1, PB: 3},
+		Properties: Properties{LC: 1, LP: 1, PB: 3},
 		ParserConfig: &lz.HPConfig{
 			BlockSize: 128 << 10,
 			InputLen:  4,
@@ -35,7 +35,7 @@ var presets = []WriterConfig{
 	},
 	1: {
 		WindowSize: 8192 << 10,
-		Properties: lzma.Properties{LC: 0, LP: 3, PB: 4},
+		Properties: Properties{LC: 0, LP: 3, PB: 4},
 		ParserConfig: &lz.BHPConfig{
 			BlockSize: 256 << 10,
 			InputLen:  6,
@@ -44,7 +44,7 @@ var presets = []WriterConfig{
 	},
 	2: {
 		WindowSize: 2048 << 10,
-		Properties: lzma.Properties{LC: 2, LP: 2, PB: 3},
+		Properties: Properties{LC: 2, LP: 2, PB: 3},
 		ParserConfig: &lz.BDHPConfig{
 			BlockSize: 32 << 10,
 			InputLen1: 6,
@@ -55,7 +55,7 @@ var presets = []WriterConfig{
 	},
 	3: {
 		WindowSize: 8192 << 10,
-		Properties: lzma.Properties{LC: 3, LP: 1, PB: 3},
+		Properties: Properties{LC: 3, LP: 1, PB: 3},
 		ParserConfig: &lz.BUPConfig{
 			BlockSize:  256 << 10,
 			InputLen:   5,
@@ -65,7 +65,7 @@ var presets = []WriterConfig{
 	},
 	4: {
 		WindowSize: 16384 << 10,
-		Properties: lzma.Properties{LC: 1, LP: 2, PB: 3},
+		Properties: Properties{LC: 1, LP: 2, PB: 3},
 		ParserConfig: &lz.BUPConfig{
 			BlockSize:  128 << 10,
 			InputLen:   6,
@@ -75,7 +75,7 @@ var presets = []WriterConfig{
 	},
 	5: {
 		WindowSize: 32768 << 10,
-		Properties: lzma.Properties{LC: 0, LP: 1, PB: 2},
+		Properties: Properties{LC: 0, LP: 1, PB: 2},
 		ParserConfig: &lz.BUPConfig{
 			BlockSize:  64 << 10,
 			InputLen:   6,
@@ -85,7 +85,7 @@ var presets = []WriterConfig{
 	},
 	6: {
 		WindowSize: 4096 << 10,
-		Properties: lzma.Properties{LC: 2, LP: 1, PB: 4},
+		Properties: Properties{LC: 2, LP: 1, PB: 4},
 		ParserConfig: &lz.BUPConfig{
 			BlockSize:  256 << 10,
 			InputLen:   6,
@@ -95,7 +95,7 @@ var presets = []WriterConfig{
 	},
 	7: {
 		WindowSize: 65536 << 10,
-		Properties: lzma.Properties{LC: 2, LP: 1, PB: 0},
+		Properties: Properties{LC: 2, LP: 1, PB: 0},
 		ParserConfig: &lz.BUPConfig{
 			BlockSize:  128 << 10,
 			InputLen:   7,
@@ -105,7 +105,7 @@ var presets = []WriterConfig{
 	},
 	8: {
 		WindowSize: 32768 << 10,
-		Properties: lzma.Properties{LC: 1, LP: 2, PB: 3},
+		Properties: Properties{LC: 1, LP: 2, PB: 3},
 		ParserConfig: &lz.OSAPConfig{
 			BlockSize:   256 << 10,
 			MinMatchLen: 4,
