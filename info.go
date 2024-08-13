@@ -263,7 +263,8 @@ func (w *infoWalker) record(r record) error {
 	return nil
 }
 
-// Stat provides statistics about the data in an xz file.
+// Stat provides statistics about the data in an xz file. The function will read
+// the reader until EOF or another error.
 func Stat(r io.Reader, flags byte) (info Info, err error) {
 	var w infoWalker
 	n, err := walk(r, &w, flags)
