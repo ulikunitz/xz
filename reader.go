@@ -54,7 +54,6 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
 		Format       string
-		Type         string
 		Workers      int
 		SingleStream bool
 		LZMAParallel bool
@@ -66,10 +65,6 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 	if s.Format != "XZ" {
 		return errors.New(
 			"xz: Format JSON property must have value XZ")
-	}
-	if s.Type != "Reader" {
-		return errors.New(
-			"xz: Type JSON property must have value Reader")
 	}
 	*cfg = ReaderConfig{
 		Workers:      s.Workers,
@@ -84,14 +79,12 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format       string
-		Type         string
 		Workers      int  `json:",omitempty"`
 		SingleStream bool `json:",omitempty"`
 		LZMAParallel bool `json:",omitempty"`
 		LZMAWorkSize int  `json:",omitempty"`
 	}{
 		Format:       "XZ",
-		Type:         "Reader",
 		Workers:      cfg.Workers,
 		SingleStream: cfg.SingleStream,
 		LZMAParallel: cfg.LZMAParallel,

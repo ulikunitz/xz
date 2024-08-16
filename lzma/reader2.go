@@ -33,7 +33,6 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	var err error
 	var s struct {
 		Format     string
-		Type       string
 		WindowSize int `json:",omitempty"`
 		Workers    int `json:",omitempty"`
 		WorkSize   int `json:",omitempty"`
@@ -41,13 +40,9 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
-	if s.Format != "LZMA" {
+	if s.Format != "LZMA2" {
 		return errors.New(
 			"lzma: Format JSON property muse have value LZMA")
-	}
-	if s.Type != "Reader2" {
-		return errors.New(
-			"lzma: Type JSON property must have value Reader2")
 	}
 	*cfg = Reader2Config{
 		WindowSize: s.WindowSize,
@@ -61,13 +56,11 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 func (cfg *Reader2Config) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format     string
-		Type       string
 		WindowSize int `json:",omitempty"`
 		Workers    int `json:",omitempty"`
 		WorkSize   int `json:",omitempty"`
 	}{
-		Format:     "LZMA",
-		Type:       "Reader2",
+		Format:     "LZMA2",
 		WindowSize: cfg.WindowSize,
 		Workers:    cfg.Workers,
 		WorkSize:   cfg.WorkSize,

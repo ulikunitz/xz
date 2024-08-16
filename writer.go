@@ -112,7 +112,6 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
 		Format          string
-		Type            string
 		WindowSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
@@ -132,10 +131,6 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	if s.Format != "XZ" {
 		return errors.New(
 			"xz: Format JSON property muse have value XZ")
-	}
-	if s.Type != "Writer" {
-		return errors.New(
-			"xz: Type JSON property must have value Writer")
 	}
 	var parserConfig lz.ParserConfig
 	if len(s.ParserConfig) > 0 {
@@ -170,7 +165,6 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
-		Type            string
 		WindowSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
@@ -185,7 +179,6 @@ func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 		NoChecksum      bool            `json:",omitempty"`
 	}{
 		Format:          "XZ",
-		Type:            "Writer",
 		WindowSize:      cfg.WindowSize,
 		LC:              cfg.Properties.LC,
 		LP:              cfg.Properties.LP,

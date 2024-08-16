@@ -50,7 +50,6 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
 		Format          string
-		Type            string
 		WindowSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
@@ -63,13 +62,9 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
-	if s.Format != "LZMA" {
+	if s.Format != "LZMA2" {
 		return errors.New(
 			"lzma: Format JSON property muse have value LZMA")
-	}
-	if s.Type != "Writer2" {
-		return errors.New(
-			"lzma: Type JSON property must have value Writer2")
 	}
 	var parserConfig lz.ParserConfig
 	if len(s.ParserConfig) > 0 {
@@ -97,7 +92,6 @@ func (cfg *Writer2Config) UnmarshalJSON(p []byte) error {
 func (cfg *Writer2Config) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
-		Type            string
 		WindowSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
@@ -107,8 +101,7 @@ func (cfg *Writer2Config) MarshalJSON() (p []byte, err error) {
 		WorkSize        int             `json:",omitempty"`
 		ParserConfig    lz.ParserConfig `json:",omitempty"`
 	}{
-		Format:          "LZMA",
-		Type:            "Writer2",
+		Format:          "LZMA2",
 		WindowSize:      cfg.WindowSize,
 		LC:              cfg.Properties.LC,
 		LP:              cfg.Properties.LP,
