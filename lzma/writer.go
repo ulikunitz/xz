@@ -256,25 +256,45 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
-	if s.Format != "LZMA" {
+	if s.Format != "" && s.Format != "LZMA" {
 		return errors.New(
-			"lzma: Format JSON property muse have value LZMA")
+			"lzma: Format JSON property must have value LZMA")
 	}
-	parserConfig, err := lz.ParseJSON(s.ParserConfig)
-	if err != nil {
-		return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+	if s.WindowSize != 0 {
+		cfg.WindowSize = s.WindowSize
 	}
-	*cfg = WriterConfig{
-		WindowSize: s.WindowSize,
-		Properties: Properties{
+	if s.FixedProperties {
+		cfg.FixedProperties = true
+		cfg.Properties = Properties{
 			LC: s.LC,
 			LP: s.LP,
 			PB: s.PB,
-		},
-		FixedProperties: s.FixedProperties,
-		FixedSize:       s.FixedSize,
-		Size:            s.Size,
-		ParserConfig:    parserConfig,
+		}
+	} else {
+		if s.LC != 0 {
+			cfg.Properties.LC = s.LC
+		}
+		if s.LP != 0 {
+			cfg.Properties.LP = s.LP
+		}
+		if s.PB != 0 {
+			cfg.Properties.PB = s.PB
+		}
+	}
+	if s.FixedSize {
+		cfg.FixedSize = true
+		cfg.Size = s.Size
+	} else {
+		if s.Size != 0 {
+			cfg.Size = s.Size
+		}
+	}
+	if len(s.ParserConfig) != 0 {
+		parserConfig, err := lz.ParseJSON(s.ParserConfig)
+		if err != nil {
+			return fmt.Errorf("lzma.WriterConfig.UnmarshalJSON: %w", err)
+		}
+		cfg.ParserConfig = parserConfig
 	}
 	return nil
 }

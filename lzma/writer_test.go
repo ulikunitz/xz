@@ -7,6 +7,7 @@ package lzma
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -87,5 +88,21 @@ func TestWriterConfigJSON(t *testing.T) {
 	if !reflect.DeepEqual(cfg, cfg1) {
 		t.Fatalf("json.Unmarshal: got %+v; want %+v",
 			cfg1, cfg)
+	}
+}
+
+func TestWriterConfigAll(t *testing.T) {
+	tests := []string{
+		`{"Format": "LZMA"}`,
+	}
+	for i, cfg := range tests {
+		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
+			var c WriterConfig
+			err := json.Unmarshal([]byte(cfg), &c)
+			if err != nil {
+				t.Fatalf("json.Unmarshal(%q, &c) failed: %v",
+					cfg, err)
+			}
+		})
 	}
 }
