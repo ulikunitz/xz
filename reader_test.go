@@ -32,6 +32,26 @@ func TestReaderSimple(t *testing.T) {
 	}
 }
 
+func TestIssue60(t *testing.T) {
+	const file = "testdata/exit-list-2024-04.tar.xz"
+	xz, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	r, err := NewReader(xz)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	defer r.Close()
+	var buf bytes.Buffer
+	if _, err = io.Copy(&buf, r); err != nil {
+		t.Fatalf("io.Copy error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
+	}
+}
+
 func TestReaderMultipleStreams(t *testing.T) {
 	data, err := os.ReadFile("testdata/fox.xz")
 	if err != nil {
