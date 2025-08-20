@@ -80,6 +80,17 @@
 
 ## Log
 
+### 2025-08-20
+
+Release v0.5.13 addressed issue #61 regarding handling of multiple WriteClosers
+together. So I added a new package xio with a WriteCloserStack to address the
+issue.
+
+### 2024-04-03
+
+Release v0.5.12 updates README.md and SECURITY.md to address the supply chain
+attack on the original xz implementation.
+
 ### 2022-12-31
 
 I have run the compression benchmarks and I can achieve better compression than
@@ -91,6 +102,15 @@ did matter overall.
 
 I made some improvements. So far the code looks good. Now we need to get the
 params right. 
+
+### 2022-12-12
+
+Matt Dantay (@bodgit) reported an issue with the LZMA reader. The implementation
+returned an error if the dictionary size was less than 4096 byte, but the
+recommendation stated the actual used window size should be set to 4096 byte in
+that case. It actually was the pull request
+[#52](https://github.com/ulikunitz/xz/pull/52). The new patch v0.5.11 will fix
+it.
 
 ### 2022-12-11
 
