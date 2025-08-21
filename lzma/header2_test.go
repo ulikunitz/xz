@@ -78,6 +78,7 @@ func TestHeaderLen(t *testing.T) {
 }
 
 func chunkHeaderSamples(t *testing.T) []chunkHeader {
+	_ = t
 	props := Properties{LC: 3, LP: 0, PB: 2}
 	headers := make([]chunkHeader, 0, 12)
 	for c := cEOS; c <= cLRND; c++ {

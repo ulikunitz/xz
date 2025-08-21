@@ -7,18 +7,18 @@ package lzma
 import "testing"
 
 func TestHeaderMarshalling(t *testing.T) {
-	tests := []header{
-		{properties: Properties{3, 0, 2}, dictCap: 8 * 1024 * 1024,
-			size: -1},
-		{properties: Properties{4, 3, 3}, dictCap: 4096,
-			size: 10},
+	tests := []Header{
+		{Properties: Properties{3, 0, 2}, DictSize: 8 * 1024 * 1024,
+			Size: -1},
+		{Properties: Properties{4, 3, 3}, DictSize: 4096,
+			Size: 10},
 	}
 	for _, h := range tests {
 		data, err := h.marshalBinary()
 		if err != nil {
 			t.Fatalf("marshalBinary error %s", err)
 		}
-		var g header
+		var g Header
 		if err = g.unmarshalBinary(data); err != nil {
 			t.Fatalf("unmarshalBinary error %s", err)
 		}
@@ -29,11 +29,11 @@ func TestHeaderMarshalling(t *testing.T) {
 }
 
 func TestValidHeader(t *testing.T) {
-	tests := []header{
-		{properties: Properties{3, 0, 2}, dictCap: 8 * 1024 * 1024,
-			size: -1},
-		{properties: Properties{4, 3, 3}, dictCap: 4096,
-			size: 10},
+	tests := []Header{
+		{Properties: Properties{3, 0, 2}, DictSize: 8 * 1024 * 1024,
+			Size: -1},
+		{Properties: Properties{4, 3, 3}, DictSize: 4096,
+			Size: 10},
 	}
 	for _, h := range tests {
 		data, err := h.marshalBinary()

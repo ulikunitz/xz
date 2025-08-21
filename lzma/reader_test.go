@@ -34,7 +34,7 @@ const (
 )
 
 func readOrigFile(t *testing.T) []byte {
-	orig, err := ioutil.ReadFile(filepath.Join(dirname, origname))
+	orig, err := os.ReadFile(filepath.Join(dirname, origname))
 	if err != nil {
 		t.Fatalf("ReadFile: %s", err)
 	}
@@ -347,5 +347,49 @@ func TestMinDictSize(t *testing.T) {
 
 	if !bytes.Equal(u, uncompressed) {
 		t.Fatalf("got %q; want %q", u, uncompressed)
+	}
+}
+
+func TestZeroPrefixIssue(t *testing.T) {
+	files := []string{
+		"examples/a.lzma",
+		"examples/a_lp1_lc2_pb1.lzma",
+		"examples/a_eos_and_size.lzma",
+		"fox.lzma",
+	}
+
+	zeroPrefix := []byte{0}
+	rcfg := ReaderConfig{}
+
+	for _, tc := range files {
+		t.Run(tc, func(t *testing.T) {
+			f, err := os.Open(tc)
+			if err != nil {
+				t.Fatalf("Open(%q) error %s", tc, err)
+			}
+			defer f.Close()
+			zp := bytes.NewReader(zeroPrefix)
+			z := io.MultiReader(zp, f)
+			l, err := rcfg.NewReader(z)
+			if err != nil {
+				t.Logf("NewReader(z) for %s error %s", tc, err)
+				return
+			}
+			h, ok := l.Header()
+			t.Logf("Header %+v ok %v", h, ok)
+			actualDictSize := len(l.d.Dict.buf.data)-1
+			t.Logf("Actual dictionary size: %d", actualDictSize)
+			if actualDictSize > MinDictCap && h.Size >= 0 &&
+				h.Size < int64(actualDictSize) {
+				t.Errorf("actualDictSize %d smaller than file size %d",
+					actualDictSize, h.Size)
+			}
+			_, err = io.ReadAll(l)
+			if err == nil {
+				t.Errorf("ReadAll for %q: no error", tc)
+				return
+			}
+			t.Logf("%q: error %s", tc, err)
+		})
 	}
 }

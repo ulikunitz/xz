@@ -1,8 +1,13 @@
 # TODO list
 
-## Release v0.5.x
+## Release v0.5.14
 
-1. Support check flag in gxz command.
+* If the DictionarySize is larger than the UncompressedSize set it to
+  UncompressedSize
+* make a Header() (h Header, ok bool) function so the user can implement its own
+  policy
+* Add documentation to Reader to explain the situation
+* Add a TODO for the rewrite version
 
 ## Release v0.6
 
