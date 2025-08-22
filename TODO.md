@@ -2,6 +2,10 @@
 
 ## Release v0.6
 
+## Security Issue
+
+Transfer the mitigation for lzma.Reader to the new implementation.
+
 ### Work
 
 - Fuzz the xz Writer and xz Reader by varying the thread numbers and the input.
