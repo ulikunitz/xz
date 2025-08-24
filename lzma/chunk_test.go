@@ -70,7 +70,7 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := parser.BufferConfig().WindowSize
+	dictSize := parser.ParserConfig().BufConfig().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
@@ -153,7 +153,7 @@ func TestChunkWriterReader(t *testing.T) {
 				nIn, buf.Len())
 
 			var cr chunkReader
-			dictSize := parser.BufferConfig().WindowSize
+			dictSize := parser.ParserConfig().BufConfig().WindowSize
 			t.Logf("dictSize: %d", dictSize)
 			if err = cr.init(buf, dictSize); err != nil {
 				t.Fatalf("cr.init() error %s", err)
@@ -196,7 +196,7 @@ func TestChunkClose(t *testing.T) {
 	}
 
 	var cr chunkReader
-	dictSize := parser.BufferConfig().WindowSize
+	dictSize := parser.ParserConfig().BufConfig().WindowSize
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
