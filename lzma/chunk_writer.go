@@ -345,5 +345,5 @@ func (w *chunkWriter) Close() error {
 
 // DictSize returns the dictionary size for the chunk writer.
 func (w *chunkWriter) DictSize() int {
-	return w.parser.ParserConfig().BufConfig().WindowSize
+	return w.parser.BufferConfig().WindowSize
 }

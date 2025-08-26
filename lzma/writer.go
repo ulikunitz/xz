@@ -315,6 +315,10 @@ func (cfg *WriterConfig) Verify() error {
 	if cfg.ParserConfig == nil {
 		return errors.New("lzma: no LZ parser configuration provided")
 	}
+	if err = cfg.ParserConfig.Verify(); err != nil {
+		return err
+	}
+
 	if err = cfg.Properties.Verify(); err != nil {
 		return err
 	}
@@ -330,9 +334,12 @@ func (cfg *WriterConfig) SetDefaults() {
 	if cfg.ParserConfig == nil {
 		cfg.ParserConfig = &lz.DHPConfig{}
 	}
-	if cfg.WindowSize > 0 {
-		fixBufConfig(cfg.ParserConfig, cfg.WindowSize)
+	if cfg.WindowSize == 0 {
+		cfg.ParserConfig.SetDefaults()
+		cfg.WindowSize = cfg.ParserConfig.BufConfig().WindowSize
 	}
+	fixBufConfig(cfg.ParserConfig, cfg.WindowSize)
+	cfg.ParserConfig.SetDefaults()
 
 	var zeroProps = Properties{}
 	if !cfg.FixedProperties && cfg.Properties == zeroProps {
@@ -348,6 +355,7 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 // NewWriterConfig creates a new LZMA writer using the parameter provided by
 // cfg.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
+	cfg = cfg.Clone()
 	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -358,7 +366,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	windowSize := int64(parser.ParserConfig().BufConfig().WindowSize)
+	windowSize := int64(parser.BufferConfig().WindowSize)
 	if !(0 <= windowSize && windowSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}

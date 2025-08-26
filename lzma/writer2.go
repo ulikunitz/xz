@@ -126,6 +126,10 @@ func (cfg *Writer2Config) Verify() error {
 		return errors.New("lzma: Writer2Config field LZCfg is nil")
 	}
 
+	if err = cfg.ParserConfig.Verify(); err != nil {
+		return err
+	}
+
 	if err = cfg.Properties.Verify(); err != nil {
 		return err
 	}
@@ -183,10 +187,14 @@ func (cfg *Writer2Config) SetDefaults() {
 		dhsCfg := &lz.DHPConfig{WindowSize: cfg.WindowSize}
 		cfg.ParserConfig = dhsCfg
 
+	} else if cfg.WindowSize > 0 {
+		bc := cfg.ParserConfig.BufConfig()
+		bc.WindowSize = cfg.WindowSize
+		cfg.ParserConfig.SetBufConfig(bc)
 	}
-	if cfg.WindowSize > 0 {
-		fixBufConfig(cfg.ParserConfig, cfg.WindowSize)
-	}
+	cfg.ParserConfig.SetDefaults()
+	bc := cfg.ParserConfig.BufConfig()
+	fixBufConfig(cfg.ParserConfig, bc.WindowSize)
 
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.FixedProperties {
