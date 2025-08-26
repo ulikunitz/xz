@@ -366,7 +366,7 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	windowSize := int64(parser.BufferConfig().WindowSize)
+	windowSize := int64(parser.ParserConfig().BufConfig().WindowSize)
 	if !(0 <= windowSize && windowSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}
