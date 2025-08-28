@@ -19,7 +19,7 @@ import (
 // ReaderConfig stores the parameters for the reader of the classic LZMA
 // format.
 type ReaderConfig struct {
-	// Since v0.5.14 this parameter sets an upper limit for a .lzma file's 
+	// Since v0.5.14 this parameter sets an upper limit for a .lzma file's
 	// dictionary size. This helps to mitigate problems with mangled
 	// headers.
 	DictCap int

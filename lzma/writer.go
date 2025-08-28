@@ -13,7 +13,7 @@ import (
 // MinDictCap and MaxDictCap provide the range of supported dictionary
 // capacities.
 const (
-	MinDictCap  = 1 << 12
+	MinDictCap = 1 << 12
 	MaxDictCap = 1<<32 - 1
 )
 

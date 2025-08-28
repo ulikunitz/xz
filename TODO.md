@@ -1,14 +1,5 @@
 # TODO list
 
-## Release v0.5.14
-
-* If the DictionarySize is larger than the UncompressedSize set it to
-  UncompressedSize
-* make a Header() (h Header, ok bool) function so the user can implement its own
-  policy
-* Add documentation to Reader to explain the situation
-* Add a TODO for the rewrite version
-
 ## Release v0.6
 
 1. Review encoder and check for lzma improvements under xz.
@@ -90,6 +81,13 @@
 * `git push`
 
 ## Log
+
+## 2025-08-28
+
+Release v0.5.14 addresses the security vulnerability CVE-2025-58058. If you put
+bytes in from of a LZMA stream, the header might not be read correctly and
+memory for the dictionary buffer allocated. I have implemented mitigations for
+the problem.
 
 ### 2025-08-20
 
