@@ -370,9 +370,9 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 	if !(0 <= windowSize && windowSize <= math.MaxUint32) {
 		return nil, errors.New("lzma: dictSize out of range")
 	}
-	p := params{
-		props:    cfg.Properties,
-		dictSize: uint32(windowSize),
+	p := Header{
+		Properties: cfg.Properties,
+		DictSize:   uint32(windowSize),
 	}
 	if cfg.FixedSize {
 		p.uncompressedSize = uint64(cfg.Size)

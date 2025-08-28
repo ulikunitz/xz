@@ -18,19 +18,19 @@ func Stat(r io.Reader) (info Info, err error) {
 	if _, err = io.ReadFull(z, p); err != nil {
 		return info, err
 	}
-	var params params
-	if err = params.UnmarshalBinary(p); err != nil {
+	var hdr Header
+	if err = hdr.UnmarshalBinary(p); err != nil {
 		return info, err
 	}
-	if err = params.Verify(); err != nil {
+	if err = hdr.Verify(); err != nil {
 		return info, err
 	}
 
 	switch {
-	case params.uncompressedSize == EOSSize:
+	case hdr.uncompressedSize == EOSSize:
 		info.Uncompressed = -1
-	case params.uncompressedSize <= math.MaxInt64:
-		info.Uncompressed = int64(params.uncompressedSize)
+	case hdr.uncompressedSize <= math.MaxInt64:
+		info.Uncompressed = int64(hdr.uncompressedSize)
 	default:
 		return info, errors.New("lzma: size overflow")
 	}
@@ -45,13 +45,12 @@ func Stat(r io.Reader) (info Info, err error) {
 		}
 	}
 
-	if uint64(params.dictSize) > math.MaxInt {
+	if uint64(hdr.DictSize) > math.MaxInt {
 		return info, errors.New("lzma: dictSize too large")
 	}
-	d := int(params.dictSize)
 
-	rr := new(reader)
-	err = rr.init(z, d, params.props, params.uncompressedSize)
+	rr := new(Reader)
+	err = rr.init(z, hdr)
 	if err != nil {
 		return info, err
 	}

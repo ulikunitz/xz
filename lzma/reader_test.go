@@ -14,12 +14,12 @@ import (
 )
 
 func TestHeader(t *testing.T) {
-	tests := []params{
+	tests := []Header{
 		{Properties{3, 0, 2}, 1 << 15, EOSSize},
 	}
 	for _, tc := range tests {
 		s, _ := tc.AppendBinary(nil)
-		var p params
+		var p Header
 		if err := p.UnmarshalBinary(s); err != nil {
 			t.Fatalf("h.parse error %s", err)
 		}
