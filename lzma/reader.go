@@ -7,13 +7,63 @@ package lzma
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 
 	"github.com/ulikunitz/lz"
 )
 
-// Reader supports the reading of an LZMA stream.
+// ReaderConfig stores the parameters for the reader of the classic LZMA
+// format.
+type ReaderConfig struct {
+	// Since v0.5.14 this parameter sets an upper limit for a .lzma file's
+	// dictionary size. This helps to mitigate problems with mangled
+	// headers.
+	DictCap int
+}
+
+// setDefaults converts the zero values of the configuration to the default values.
+func (c *ReaderConfig) setDefaults() {
+	if c.DictCap == 0 {
+		// set an upper limit of 2 GB for dictionary capacity to address
+		// the zero prefix security issue.
+		c.DictCap = 1 << 31
+		// original: c.DictCap = 8 * 1024 * 1024
+	}
+}
+
+// Verify checks the reader configuration for errors. Zero values will
+// be replaced by default values.
+func (c *ReaderConfig) Verify() error {
+	if !(minWindowSize <= c.DictCap && int64(c.DictCap) <= maxDictSize) {
+		return errors.New("lzma: dictionary capacity is out of range")
+	}
+	return nil
+}
+
+// Reader provides a reader for LZMA files or streams.
+//
+// # Security concerns
+//
+// Note that LZMA format doesn't support a magic marker in the header. So
+// [NewReader] cannot determine whether it reads the actual header. For instance
+// the LZMA stream might have a zero byte in front of the reader, leading to
+// larger dictionary sizes and file sizes. The code will detect later that there
+// are problems with the stream, but the dictionary has already been allocated
+// and this might consume a lot of memory.
+//
+// Version 0.5.14 introduces built-in mitigations:
+//
+//   - The [ReaderConfig] DictCap field is now interpreted as a limit for the
+//     dictionary size.
+//   - The default is 2 Gigabytes (2^31 bytes).
+//   - Users can check with the [Reader.Header] method what the actual values are in
+//     their LZMA files and set a smaller limit using [ReaderConfig].
+//   - The dictionary size doesn't exceed the larger of the file size and
+//     the minimum dictionary size. This is another measure to prevent huge
+//     memory allocations for the dictionary.
+//   - The code supports stream sizes only up to a pebibyte (1024^5).
 type Reader struct {
 	decoder
 	// size < 0 means we wait for EOS
@@ -90,8 +140,47 @@ func (h *Header) UnmarshalBinary(x []byte) error {
 
 func (r *Reader) Header() Header { return r.hdr }
 
-// NewReader creates a new reader for the LZMA streams.
+// We support only files not larger than 1 << 50 bytes (a pebibyte, 1024^5).
+const maxStreamSize = 1 << 50
+
+// ErrDictSize reports about an error of the dictionary size.
+type ErrDictSize struct {
+	ConfigDictCap  int
+	HeaderDictSize uint32
+	Message        string
+}
+
+// Error returns the error message.
+func (e *ErrDictSize) Error() string {
+	return e.Message
+}
+
+func newErrDictSize(messageformat string,
+	configDictCap int, headerDictSize uint32,
+	args ...interface{}) *ErrDictSize {
+	newArgs := make([]interface{}, len(args)+2)
+	newArgs[0] = configDictCap
+	newArgs[1] = headerDictSize
+	copy(newArgs[2:], args)
+	return &ErrDictSize{
+		ConfigDictCap:  configDictCap,
+		HeaderDictSize: headerDictSize,
+		Message:        fmt.Sprintf(messageformat, newArgs...),
+	}
+}
+
+// NewReader creates a new reader for an LZMA stream.
 func NewReader(z io.Reader) (r *Reader, err error) {
+	return NewReaderConfig(z, ReaderConfig{})
+}
+
+// NewReaderConfig creates a new reader for the LZMA stream.
+func NewReaderConfig(z io.Reader, cfg ReaderConfig) (r *Reader, err error) {
+	cfg.setDefaults()
+	if err = cfg.Verify(); err != nil {
+		return nil, err
+	}
+
 	var p = make([]byte, headerLen)
 	if _, err = io.ReadFull(z, p); err != nil {
 		return nil, err
@@ -100,7 +189,14 @@ func NewReader(z io.Reader) (r *Reader, err error) {
 	if err = hdr.UnmarshalBinary(p); err != nil {
 		return nil, err
 	}
+	hdrOrig := hdr
 
+	if int64(cfg.DictCap) < int64(hdr.DictSize) {
+		return nil, newErrDictSize(
+			"lzma: header dictionary size %[2]d exceeds configured dictionary capacity %[1]d",
+			cfg.DictCap, hdr.DictSize,
+		)
+	}
 	// Mitigation for CVE-2025-58058
 	if uint64(hdr.DictSize) > hdr.uncompressedSize {
 		hdr.DictSize = uint32(hdr.uncompressedSize)
@@ -126,6 +222,7 @@ func NewReader(z io.Reader) (r *Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
+	rr.hdr = hdrOrig
 
 	return rr, nil
 }
@@ -146,6 +243,9 @@ func (r *Reader) init(z io.Reader, hdr Header) error {
 		r.size = int64(hdr.uncompressedSize)
 	default:
 		return errors.New("lzma: size overflow")
+	}
+	if r.size > maxStreamSize {
+		return errors.New("lzma: stream size too large")
 	}
 
 	br, ok := z.(io.ByteReader)
