@@ -28,9 +28,9 @@ type ReaderConfig struct {
 // fill converts the zero values of the configuration to the default values.
 func (c *ReaderConfig) fill() {
 	if c.DictCap == 0 {
-		// set an upper limit of 2 GB for dictionary capacity to address
-		// the zero prefix security issue.
-		c.DictCap = 1 << 31-1
+		// set an upper limit of 2 GiB-1 for dictionary capacity
+		// to address the zero prefix security issue.
+		c.DictCap = (1 << 31) - 1
 		// original: c.DictCap = 8 * 1024 * 1024
 	}
 }
