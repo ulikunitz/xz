@@ -1,3 +1,6 @@
+[![CodeQL Advanced](https://github.com/ulikunitz/xz/actions/workflows/codeql.yml/badge.svg)](https://github.com/ulikunitz/xz/actions/workflows/codeql.yml)
+[![Test on Linux/amd64, Linux/x86, and Windows/amd64](https://github.com/ulikunitz/xz/actions/workflows/go-test-platforms.yml/badge.svg)](https://github.com/ulikunitz/xz/actions/workflows/go-test-platforms.yml)
+
 # Package xz
 
 This Go language package supports the reading and writing of xz
@@ -77,7 +80,7 @@ To decompress it use the following command.
 
 ## Security & Vulnerabilities
 
-The security policy is documented in [SECURITY.md](SECURITY.md). 
+The security policy is documented in [SECURITY.md](SECURITY.md).
 
 The software is not affected by the supply chain attack on the original xz
 implementation, [CVE-2024-3094](https://nvd.nist.gov/vuln/detail/CVE-2024-3094).
