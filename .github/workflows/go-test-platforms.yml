@@ -28,9 +28,4 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-
-      # Split testing into parts to see which part (if any) is slow. Dependency
-      # downloads can be for instance.
-      - run: go build -race
-      - run: go test -race -c ./...
       - run: go test -race ./...
