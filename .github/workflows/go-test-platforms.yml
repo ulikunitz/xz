@@ -26,6 +26,7 @@ jobs:
       - run: GOARCH=386 go build
       - run: GOARCH=386 go test -c ./...
       - run: GOARCH=386 go test ./...
+
   go-test-windows:
     runs-on: windows-latest
     steps:
