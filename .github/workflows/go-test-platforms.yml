@@ -1,0 +1,42 @@
+name: Test on Linux/amd64, Linux/x86, and Windows/amd64
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  go-test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Split testing into parts to see which part (if any) is slow. Dependency
+      # downloads can be for instance.
+      - run: go build -race
+      - run: go test -race -c ./...
+      - run: go test -race ./...
+
+      # The -race detector is not available on 386, so let's not use it here:
+      # https://go.dev/doc/articles/race_detector
+      - run: GOARCH=386 go build
+      - run: GOARCH=386 go test -c ./...
+      - run: GOARCH=386 go test ./...
+  go-test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Split testing into parts to see which part (if any) is slow. Dependency
+      # downloads can be for instance.
+      - run: go build -race
+      - run: go test -race -c ./...
+      - run: go test -race ./...
