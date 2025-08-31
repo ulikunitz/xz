@@ -1,5 +1,8 @@
 name: Test on Linux/amd64, Linux/x86, and Windows/amd64
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ master ]
