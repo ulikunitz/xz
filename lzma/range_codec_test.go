@@ -1,4 +1,4 @@
-package olzma
+package lzma
 
 import (
 	"bytes"
@@ -33,13 +33,13 @@ func TestDecProb(t *testing.T) {
 	}
 }
 
-type encoder interface {
+type tencoder interface {
 	directEncodeBit(b uint32) error
 	encodeBit(b uint32, p *prob) error
 	Close() error
 }
 
-func encodeByte(e encoder, b uint8, p []prob) error {
+func encodeByte(e tencoder, b uint8, p []prob) error {
 	x := uint32(b)
 	e.directEncodeBit(x)
 	var err error
@@ -67,12 +67,12 @@ func encodeByte(e encoder, b uint8, p []prob) error {
 	return nil
 }
 
-type decoder interface {
+type tdecoder interface {
 	directDecodeBit() (uint32, error)
 	decodeBit(p *prob) (uint32, error)
 }
 
-func decodeByte(d decoder, p []prob) (uint8, error) {
+func decodeByte(d tdecoder, p []prob) (uint8, error) {
 	x := uint32(0)
 	var err error
 	if x, err = d.directDecodeBit(); err != nil {

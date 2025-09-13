@@ -6,7 +6,6 @@ package lzma
 
 import (
 	"errors"
-	"io"
 	"math/bits"
 )
 
@@ -152,43 +151,6 @@ func (s *state) litState(prev byte, dictHead int64) uint32 {
 	return litState
 }
 
-// moveBits defines the number of bits used for the updates of probability
-// values.
-const moveBits = 5
-
-// probBits defines the number of bits of a probability value.
-const probBits = 11
-
-// probInit defines 0.5 as initial value for prob values.
-const probInit prob = 1 << (probBits - 1)
-
-// Type prob represents probabilities. The type can also be used to encode and
-// decode single bits.
-type prob uint16
-
-// IncProb increases the probability. The Increase is proportional to the
-// difference of 1 and the probability value.
-func incProb(p prob) prob {
-	return p + ((1<<probBits)-p)>>moveBits
-}
-
-// decProb decreases the probability. The decrease is proportional to the
-// probability value.
-func decProb(p prob) prob {
-	return p - p>>moveBits
-}
-
-// Computes the new bound for a given range using the probability value.
-func (p prob) bound(r uint32) uint32 {
-	return (r >> probBits) * uint32(p)
-}
-
-// Bits returns 1. One is the number of bits that can be encoded or decoded
-// with a single prob value.
-func (p prob) Bits() int {
-	return 1
-}
-
 // minMatchLen and maxMatchLen give the minimum and maximum values for
 // encoding and decoding length values. minMatchLen is also used as base
 // for the encoded length values.
@@ -243,21 +205,21 @@ func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
 		return errors.New("lengthCodec.Encode: l out of range")
 	}
 	if l < 8 {
-		if err = e.EncodeBit(0, &lc.choice[0]); err != nil {
+		if err = e.encodeBit(0, &lc.choice[0]); err != nil {
 			return
 		}
 		return lc.low[posState].Encode(e, l)
 	}
-	if err = e.EncodeBit(1, &lc.choice[0]); err != nil {
+	if err = e.encodeBit(1, &lc.choice[0]); err != nil {
 		return
 	}
 	if l < 16 {
-		if err = e.EncodeBit(0, &lc.choice[1]); err != nil {
+		if err = e.encodeBit(0, &lc.choice[1]); err != nil {
 			return
 		}
 		return lc.mid[posState].Encode(e, l-8)
 	}
-	if err = e.EncodeBit(1, &lc.choice[1]); err != nil {
+	if err = e.encodeBit(1, &lc.choice[1]); err != nil {
 		return
 	}
 	if err = lc.high.Encode(e, l-16); err != nil {
@@ -312,7 +274,7 @@ func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
 	m := uint32(1)
 	for i := int(tc.bits) - 1; i >= 0; i-- {
 		b := (v >> i) & 1
-		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
+		if err := e.encodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
 		// TODO: remove from the last run through the loop
@@ -357,7 +319,7 @@ func (tc *treeReverseCodec) Encode(v uint32, e *rangeEncoder) (err error) {
 	m := uint32(1)
 	for i := uint(0); i < uint(tc.bits); i++ {
 		b := (v >> i) & 1
-		if err := e.EncodeBit(b, &tc.probs[m]); err != nil {
+		if err := e.encodeBit(b, &tc.probs[m]); err != nil {
 			return err
 		}
 		m = (m << 1) | b
@@ -422,102 +384,6 @@ func (t *probTree) Bits() int {
 	return int(t.bits)
 }
 
-// rangeDecoder decodes single bits of the range encoding stream.
-type rangeDecoder struct {
-	br     io.ByteReader
-	nrange uint32
-	code   uint32
-}
-
-// init initializes the rangeDecoder. It reads five bytes from the stream and
-// may return errors.
-func (d *rangeDecoder) init(br io.ByteReader) error {
-	*d = rangeDecoder{br: br, nrange: 0xffffffff}
-
-	b, err := d.br.ReadByte()
-	if err != nil {
-		return err
-	}
-	if b != 0 {
-		return errors.New("lzma: first byte of LZMA stream not zero")
-	}
-	for i := 0; i < 4; i++ {
-		if err = d.updateCode(); err != nil {
-			return err
-		}
-	}
-	if d.code >= d.nrange {
-		return errors.New("lzma: d.code >= d.nrange")
-	}
-	return nil
-}
-
-// possiblyAtEnd checks whether the decoder may be at the end of the stream.
-func (d *rangeDecoder) possiblyAtEnd() bool {
-	return d.code == 0
-}
-
-// directDecodeBit decodes a bit with probability 1/2. The return value b will
-// contain the bit at the least-significant position. All other bits will be
-// zero.
-func (d *rangeDecoder) directDecodeBit() (b uint32, err error) {
-	nrange := d.nrange >> 1
-	d.code -= nrange
-	t := 0 - (d.code >> 31)
-	d.code += nrange & t
-	b = (t + 1) & 1
-
-	// d.code will stay less then d.nrange
-
-	// normalize
-	// assume d.code < d.nrange
-	const top = 1 << 24
-	if nrange >= top {
-		d.nrange = nrange
-		return b, nil
-	}
-	d.nrange = nrange << 8
-	// d.code < d.nrange will be maintained
-	return b, d.updateCode()
-}
-
-// decodeBit decodes a single bit. The bit will be returned at the
-// least-significant position. All other bits will be zero. The probability
-// value will be updated.
-func (d *rangeDecoder) decodeBit(p *prob) (b uint32, err error) {
-	nrange := d.nrange
-	bound := p.bound(nrange)
-	if d.code < bound {
-		*p = incProb(*p)
-		b = 0
-		nrange = bound
-	} else {
-		*p = decProb(*p)
-		b = 1
-		d.code -= bound
-		nrange -= bound
-	}
-	// normalize
-	// assume d.code < d.nrange
-	if nrange >= (1 << 24) {
-		d.nrange = nrange
-		return b, nil
-	}
-	d.nrange = nrange << 8
-	// d.code < d.nrange will be maintained
-	return b, d.updateCode()
-}
-
-// updateCode reads a new byte into the code.
-func (d *rangeDecoder) updateCode() error {
-	b, err := d.br.ReadByte()
-	if err != nil {
-		return err
-	}
-	d.code = (d.code << 8) | uint32(b)
-	return nil
-}
-
 // literalCodec supports the encoding of literal. It provides 768 probability
 // values per literal state. The upper 512 probabilities are used with the
 // context of a match bit.
@@ -565,7 +431,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 			bit := (r >> 7) & 1
 			r <<= 1
 			i := ((1 + matchBit) << 8) | symbol
-			err = e.EncodeBit(bit, &probs[i])
+			err = e.encodeBit(bit, &probs[i])
 			if err != nil {
 				return
 			}
@@ -581,7 +447,7 @@ func (c *literalCodec) Encode(e *rangeEncoder, s byte,
 	for symbol < 0x100 {
 		bit := (r >> 7) & 1
 		r <<= 1
-		err = e.EncodeBit(bit, &probs[symbol])
+		err = e.encodeBit(bit, &probs[symbol])
 		if err != nil {
 			return
 		}
@@ -791,7 +657,7 @@ func (dc directCodec) Bits() int {
 // bits. The most-significant bit is encoded first.
 func (dc directCodec) Encode(e *rangeEncoder, v uint32) error {
 	for i := int(dc) - 1; i >= 0; i-- {
-		if err := e.DirectEncodeBit(v >> uint(i)); err != nil {
+		if err := e.directEncodeBit(v >> uint(i)); err != nil {
 			return err
 		}
 	}

@@ -34,7 +34,7 @@ func (e *encoder) byteAtEnd(i int64) byte {
 func (e *encoder) writeLiteral(c byte) error {
 	state, state2, _ := e.state.states(e.pos)
 	var err error
-	if err = e.re.EncodeBit(0, &e.state.s2[state2].isMatch); err != nil {
+	if err = e.re.encodeBit(0, &e.state.s2[state2].isMatch); err != nil {
 		return err
 	}
 	litState := e.state.litState(e.byteAtEnd(1), e.pos)
@@ -67,7 +67,7 @@ func (e *encoder) writeMatch(dist, matchLen uint32) error {
 			matchLen, dist, e.state.rep[0])
 	}
 	state, state2, posState := e.state.states(e.pos)
-	if err = e.re.EncodeBit(1, &e.state.s2[state2].isMatch); err != nil {
+	if err = e.re.encodeBit(1, &e.state.s2[state2].isMatch); err != nil {
 		return err
 	}
 	g := 0
@@ -77,7 +77,7 @@ func (e *encoder) writeMatch(dist, matchLen uint32) error {
 		}
 	}
 	b := iverson(g < 4)
-	if err = e.re.EncodeBit(b, &e.state.s1[state].isRep); err != nil {
+	if err = e.re.encodeBit(b, &e.state.s1[state].isRep); err != nil {
 		return err
 	}
 	n := matchLen - minMatchLen
@@ -97,13 +97,13 @@ func (e *encoder) writeMatch(dist, matchLen uint32) error {
 		return nil
 	}
 	b = iverson(g != 0)
-	if err = e.re.EncodeBit(b, &e.state.s1[state].isRepG0); err != nil {
+	if err = e.re.encodeBit(b, &e.state.s1[state].isRepG0); err != nil {
 		return err
 	}
 	if b == 0 {
 		// g == 0
 		b = uint32(iverson(matchLen != 1))
-		err = e.re.EncodeBit(b, &e.state.s2[state2].isRepG0Long)
+		err = e.re.encodeBit(b, &e.state.s2[state2].isRepG0Long)
 		if err != nil {
 			return err
 		}
@@ -115,14 +115,14 @@ func (e *encoder) writeMatch(dist, matchLen uint32) error {
 	} else {
 		// g in {1,2,3}
 		b = uint32(iverson(g != 1))
-		err = e.re.EncodeBit(b, &e.state.s1[state].isRepG1)
+		err = e.re.encodeBit(b, &e.state.s1[state].isRepG1)
 		if err != nil {
 			return err
 		}
 		if b == 1 {
 			// g in {2,3}
 			b = iverson(g != 2)
-			err = e.re.EncodeBit(b, &e.state.s1[state].isRepG2)
+			err = e.re.encodeBit(b, &e.state.s1[state].isRepG2)
 			if err != nil {
 				return err
 			}
