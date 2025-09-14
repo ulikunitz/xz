@@ -37,6 +37,12 @@ func (p prob) bound(r uint32) uint32 {
 	return (r >> probBits) * uint32(p)
 }
 
+type rEncoder interface {
+	directEncodeBit(b uint32) error
+	encodeBit(b uint32, p *prob) error
+	Close() error
+}
+
 type rangeBitCounter struct {
 	_bits  int64
 	low    uint64
@@ -48,6 +54,14 @@ func (c *rangeBitCounter) init() {
 		nrange: 1<<32 - 1,
 	}
 }
+
+func (c *rangeBitCounter) fromRangeEncoder(e *rangeEncoder) {
+	*c = rangeBitCounter{
+		low:    e.low,
+		nrange: e.nrange,
+	}
+}
+
 
 func (c *rangeBitCounter) directEncodeBit(b uint32) error {
 	c.nrange >>= 1

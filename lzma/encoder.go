@@ -14,8 +14,8 @@ import (
 type encoder struct {
 	window lz.Parser
 	state  state
-	pos    int64
 	re     rangeEncoder
+	pos    int64
 }
 
 // byteAtEnd returns the byte with the offset i to the end of the encoding.

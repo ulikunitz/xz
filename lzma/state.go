@@ -199,7 +199,7 @@ func (lc *lengthCodec) init() {
 // subtracting minMatchLen (2) from the actual length.
 //
 //	l = length - minMatchLen
-func (lc *lengthCodec) Encode(e *rangeEncoder, l uint32, posState uint32,
+func (lc *lengthCodec) Encode(e rEncoder, l uint32, posState uint32,
 ) (err error) {
 	if l > maxMatchLen-minMatchLen {
 		return errors.New("lengthCodec.Encode: l out of range")
@@ -270,7 +270,7 @@ func (tc *treeCodec) deepCopy(src *treeCodec) {
 }
 
 // Encode uses the range encoder to encode a fixed-bit-size value.
-func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
+func (tc *treeCodec) Encode(e rEncoder, v uint32) (err error) {
 	m := uint32(1)
 	for i := int(tc.bits) - 1; i >= 0; i-- {
 		b := (v >> i) & 1
@@ -315,7 +315,7 @@ func (tc *treeReverseCodec) init(bits int) { tc.probTree.init(bits) }
 
 // Encode uses range encoder to encode a fixed-bit-size value. The range
 // encoder may cause errors.
-func (tc *treeReverseCodec) Encode(v uint32, e *rangeEncoder) (err error) {
+func (tc *treeReverseCodec) Encode(v uint32, e rEncoder) (err error) {
 	m := uint32(1)
 	for i := uint(0); i < uint(tc.bits); i++ {
 		b := (v >> i) & 1
@@ -416,9 +416,7 @@ func (c *literalCodec) init(lc, lp int) {
 
 // Encode encodes the byte s using a range encoder as well as the current LZMA
 // encoder state, a match byte and the literal state.
-func (c *literalCodec) Encode(e *rangeEncoder, s byte,
-	state uint32, match byte, litState uint32,
-) (err error) {
+func (c *literalCodec) Encode(e rEncoder, s byte, state uint32, match byte, litState uint32) (err error) {
 	k := litState * 0x300
 	probs := c.probs[k : k+0x300]
 	symbol := uint32(1)
@@ -573,7 +571,7 @@ func lenState(l uint32) uint32 {
 // the full range of uint32 values. To get the distance offset the actual match
 // distance has to be decreased by 1. A distance offset of 0xffffffff (eos)
 // indicates the end of the stream.
-func (dc *distCodec) Encode(e *rangeEncoder, dist uint32, l uint32) (err error) {
+func (dc *distCodec) Encode(e rEncoder, dist uint32, l uint32) (err error) {
 	// Compute the posSlot using nlz32
 	var posSlot uint32
 	var _bits uint32
@@ -655,7 +653,7 @@ func (dc directCodec) Bits() int {
 
 // Encode uses the range encoder to encode a value with the fixed number of
 // bits. The most-significant bit is encoded first.
-func (dc directCodec) Encode(e *rangeEncoder, v uint32) error {
+func (dc directCodec) Encode(e rEncoder, v uint32) error {
 	for i := int(dc) - 1; i >= 0; i-- {
 		if err := e.directEncodeBit(v >> uint(i)); err != nil {
 			return err
