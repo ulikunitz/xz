@@ -14,6 +14,17 @@ func putLE32(p []byte, x uint32) {
 	p[3] = byte(x >> 24)
 }
 
+// _getLE64 loads a uint64 value from the p field. This function will be inlined
+// and compiled into a simple move on little-endian 64 bit architectures.
+//
+// If p is too small the function will panic.
+func _getLE64(p []byte) uint64 {
+        _ = p[7]
+        return uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 |
+                uint64(p[3])<<24 | uint64(p[4])<<32 | uint64(p[5])<<40 |
+                uint64(p[6])<<48 | uint64(p[7])<<56
+}
+
 // getLE32 reads a uint32 value from the slice p. Slice p must have at least
 // length 4.
 func getLE32(p []byte) uint32 {

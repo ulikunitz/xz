@@ -40,6 +40,7 @@
         "OSAP",
         "Probs",
         "Unmarshal",
+        "bcfg",
         "bhdr",
         "bodgit",
         "breader",
