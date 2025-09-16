@@ -10,6 +10,101 @@ import (
 // This file will include an optimized parser that relies on lzma encoder to
 // compute the costs for the matches and literals.
 
+type optParser struct {
+	bucketDict
+
+	OPConfig
+
+	encoder *encoder
+}
+
+type OPConfig struct {
+	InputLen int
+	HashBits int
+
+	ShrinkSize int
+	BufferSize int
+	WindowSize int
+	BlockSize  int
+}
+
+func (cfg *OPConfig) Clone() lz.ParserConfig {
+	x := *cfg
+	return &x
+}
+
+func (cfg *OPConfig) UnmarshalJSON(p []byte) error {
+	*cfg = OPConfig{}
+	return lz.UnmarshalJSON(cfg, p)
+}
+
+func (cfg *OPConfig) MarshalJSON() (p []byte, err error) {
+	return lz.MarshalJSON(cfg)
+}
+
+func (cfg *OPConfig) BufConfig() lz.BufConfig {
+	bc := lz.GetBufConfig(cfg)
+	return bc
+}
+
+func (cfg *OPConfig) SetBufConfig(bc lz.BufConfig) {
+	lz.SetBufConfig(cfg, bc)
+}
+
+func (cfg *OPConfig) SetDefaults() {
+	bc := lz.GetBufConfig(cfg)
+	bc.SetDefaults()
+	lz.SetBufConfig(cfg, bc)
+	bcfg, _ := bucketCfg(cfg)
+	bcfg.SetDefaults()
+	setBucketCfg(cfg, bcfg)
+}
+
+func (cfg *OPConfig) Verify() error {
+	bc := lz.GetBufConfig(cfg)
+	var err error
+	if err = bc.Verify(); err != nil {
+		return err
+	}
+	bcfg, _ := bucketCfg(cfg)
+	err = bcfg.Verify()
+	return err
+}
+
+func (cfg OPConfig) NewParser() (p lz.Parser, err error) {
+	op := new(optParser)
+	if err = op.init(cfg); err != nil {
+		return nil, err
+	}
+	return op, nil
+}
+
+func (p *optParser) init(cfg OPConfig) error {
+	cfg.SetDefaults()
+	if err := cfg.Verify(); err != nil {
+		return err
+	}
+
+	bcfg, _ := bucketCfg(&cfg)
+	bc := lz.GetBufConfig(&cfg)
+	if err := p.bucketDict.init(bcfg, bc); err != nil {
+		return err
+	}
+
+	p.OPConfig = cfg
+
+	return nil
+}
+
+func (p *optParser) ParserConfig() lz.ParserConfig {
+	return &p.OPConfig
+}
+
+func (p *optParser) Parse(blk *lz.Block, flags int) (n int, err error) {
+	// TODO
+	panic("TODO")
+}
+
 // prime is used by [hashValue]
 const prime = 9920624304325388887
 
@@ -150,7 +245,7 @@ func (cfg *bucketConfig) SetDefaults() {
 	}
 }
 
-func (cfg *bucketConfig) Validate() error {
+func (cfg *bucketConfig) Verify() error {
 	if !(2 <= cfg.InputLen && cfg.InputLen <= 8) {
 		return fmt.Errorf("lz: InputLen must be in the range [2,8]")
 	}
