@@ -16,6 +16,17 @@ type optParser struct {
 	OPConfig
 
 	encoder *encoder
+
+	optTable []optItem
+}
+
+const maxCost = (1 << 64) - 1
+
+type optItem struct {
+	cost    uint64
+	counter *counter
+	len     uint32
+	offset  uint32
 }
 
 type OPConfig struct {
@@ -92,6 +103,8 @@ func (p *optParser) init(cfg OPConfig) error {
 	}
 
 	p.OPConfig = cfg
+
+	p.optTable = make([]optItem, cfg.BlockSize+1)
 
 	return nil
 }
