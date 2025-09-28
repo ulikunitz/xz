@@ -4,8 +4,12 @@
 
 ### Work
 
+- while optParser is very good at compression, it is very slow. Find ways to
+  accelerate the parser.
+    - investigate patterns for cost updates
+    - if a match doesn't produce low costs are the shorter matches produce lower
+      costs
 - Fuzz the xz Writer and xz Reader by varying the thread numbers and the input.
-
 - Review all WriteClosers and ReadClosers for proper error handling. Define what
   proper error handling is. Write tests for it using testing/iotest. 
 - Review the Verify code. Define upper limits for everything.

@@ -4,6 +4,8 @@
 
 package lzma
 
+import "math/bits"
+
 // putLE32 write a uint32 value into the slice p using little endian encoding.
 // The p slice must have at least length four.
 func putLE32(p []byte, x uint32) {
@@ -19,10 +21,10 @@ func putLE32(p []byte, x uint32) {
 //
 // If p is too small the function will panic.
 func _getLE64(p []byte) uint64 {
-        _ = p[7]
-        return uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 |
-                uint64(p[3])<<24 | uint64(p[4])<<32 | uint64(p[5])<<40 |
-                uint64(p[6])<<48 | uint64(p[7])<<56
+	_ = p[7]
+	return uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 |
+		uint64(p[3])<<24 | uint64(p[4])<<32 | uint64(p[5])<<40 |
+		uint64(p[6])<<48 | uint64(p[7])<<56
 }
 
 // getLE32 reads a uint32 value from the slice p. Slice p must have at least
@@ -35,6 +37,16 @@ func getLE32(p []byte) uint32 {
 	x |= uint32(p[2]) << 16
 	x |= uint32(p[3]) << 24
 	return x
+}
+
+// _getLE32 loads a uint32 value from the p field. This function will be inlined
+// and compiled into a simple move on little-endian architectures.
+//
+// If p is too small the function will panic.
+func _getLE32(p []byte) uint32 {
+	_ = p[3]
+	return uint32(p[0]) | uint32(p[1])<<8 | uint32(p[2])<<16 |
+		uint32(p[3])<<24
 }
 
 // putLE64 writes a uint64 value into the slice p using little endian encoding.
@@ -80,4 +92,39 @@ func putBE16(p []byte, x uint16) {
 	_ = p[1]
 	p[0] = uint8(x >> 8)
 	p[1] = uint8(x)
+}
+
+// lcp computes the length of the longest common prefix between p and q.
+func lcp(p, q []byte) int {
+	if len(q) > len(p) {
+		p, q = q, p
+	}
+	n := 0
+	for len(q) >= 8 {
+		x := _getLE64(p) ^ _getLE64(q)
+		k := bits.TrailingZeros64(x) >> 3
+		n += k
+		if k < 8 {
+			return n
+		}
+		q = q[8:]
+		p = p[8:]
+	}
+	if len(q) >= 4 {
+		x := _getLE32(p) ^ _getLE32(q)
+		k := bits.TrailingZeros32(x) >> 3
+		n += k
+		if k < 4 {
+			return n
+		}
+		q = q[4:]
+		p = p[4:]
+	}
+	for i, b := range q {
+		if p[i] != b {
+			break
+		}
+		n++
+	}
+	return n
 }

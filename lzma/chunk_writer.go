@@ -56,6 +56,9 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 	}
 	w.state.init(props)
 	w.startChunk()
+	setUpdateEncoder(parser, func() *encoder {
+		return &w.encoder
+	})
 	return nil
 }
 

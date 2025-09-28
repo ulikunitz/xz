@@ -210,3 +210,67 @@ func TestWriter2ConfigDictSize(t *testing.T) {
 		t.Fatalf("sbCfg.windowSize %d; want %d", bc.WindowSize, 4098)
 	}
 }
+
+func TestOptParser(t *testing.T) {
+	const file = "../testdata/enwik7"
+	const size = 500
+
+	cfg := Writer2Config{
+		ParserConfig: &OPConfig{
+			InputLen: 4,
+			HashBits: 24,
+		},
+	}
+
+	var buf bytes.Buffer
+
+	w, err := NewWriter2Config(&buf, cfg)
+	if err != nil {
+		t.Fatalf("NewWriter2Config error %s", err)
+	}
+	defer w.Close()
+	dictSize := w.DictSize()
+
+	h := sha256.New()
+	mw := io.MultiWriter(w, h)
+
+	f, err := os.Open(file)
+	if err != nil {
+		t.Fatalf("os.Open(%q) error %s", file, err)
+	}
+	defer f.Close()
+
+	lf := io.LimitReader(f, size)
+
+	if _, err = io.Copy(mw, lf); err != nil {
+		t.Fatalf("io.Copy(mw, f) error %s", err)
+	}
+
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close() error %s", err)
+	}
+
+	sum1 := h.Sum(nil)
+
+	t.Logf("compressed from %d to %d bytes", size, buf.Len())
+
+	h.Reset()
+	r, err := NewReader2(&buf, dictSize)
+	if err != nil {
+		t.Fatalf("NewReader2 error %s", err)
+	}
+	defer r.Close()
+
+	if _, err = io.Copy(h, r); err != nil {
+		t.Fatalf("io.Copy(h, r) error %s", err)
+	}
+	if err = r.Close(); err != nil {
+		t.Fatalf("r.Close() error %s", err)
+	}
+
+	sum2 := h.Sum(nil)
+
+	if !bytes.Equal(sum1, sum2) {
+		t.Fatalf("hash sums differ")
+	}
+}

@@ -63,6 +63,9 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
 
 	w.state.init(p)
 	w.re.init(bw)
+	setUpdateEncoder(parser, func() *encoder {
+		return &w.encoder
+	})
 }
 
 // Close closes the input stream.

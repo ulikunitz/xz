@@ -62,7 +62,6 @@ func (c *rangeBitCounter) fromRangeEncoder(e *rangeEncoder) {
 	}
 }
 
-
 func (c *rangeBitCounter) directEncodeBit(b uint32) error {
 	c.nrange >>= 1
 	c.low += uint64(c.nrange) & (0 - (uint64(b) & 1))

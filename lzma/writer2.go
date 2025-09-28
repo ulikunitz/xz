@@ -183,11 +183,14 @@ func fixBufConfig(cfg lz.ParserConfig, windowSize int) {
 // SetDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
 func (cfg *Writer2Config) SetDefaults() {
+	if cfg.WindowSize == 0 {
+		cfg.WindowSize = 8 << 20
+	}
 	if cfg.ParserConfig == nil {
 		dhsCfg := &lz.DHPConfig{WindowSize: cfg.WindowSize}
 		cfg.ParserConfig = dhsCfg
 
-	} else if cfg.WindowSize > 0 {
+	} else {
 		bc := cfg.ParserConfig.BufConfig()
 		bc.WindowSize = cfg.WindowSize
 		cfg.ParserConfig.SetBufConfig(bc)
