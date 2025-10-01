@@ -2,11 +2,26 @@ package lzma
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"reflect"
 	"slices"
 
 	"github.com/ulikunitz/lz"
 )
+
+var logger *slog.Logger
+
+func init() {
+	f, err := os.CreateTemp(".", "op_*.out")
+	if err != nil {
+		panic(err)
+	}
+	h := slog.NewJSONHandler(f, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})
+	logger = slog.New(h)
+}
 
 // This file will include an optimized parser that relies on lzma encoder to
 // compute the costs for the matches and literals.
@@ -72,17 +87,17 @@ func (s *optParser) addLiteral(b uint32) error {
 	return nil
 }
 
-func (s *optParser) addMatch(dist, matchLen uint32) error {
+func (s *optParser) addMatch(dist, matchLen uint32) (updated bool, err error) {
 	if !(minMatchLen <= matchLen && matchLen <= maxMatchLen) {
-		return fmt.Errorf("lzma: match length %d out of range", matchLen)
+		return false, fmt.Errorf("lzma: match length %d out of range", matchLen)
 	}
 	if !(0 < int(dist) && int(dist) <= s.WindowSize) {
-		return fmt.Errorf("lzma: match distance %d out of range", dist)
+		return false, fmt.Errorf("lzma: match distance %d out of range", dist)
 	}
 	k := s.i - s.W
 	kB := k + int(matchLen)
 	if kB >= len(s.optTable) {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"lzma: match at i=%d with length %d exceeds the block size",
 			s.i, matchLen)
 	}
@@ -91,17 +106,17 @@ func (s *optParser) addMatch(dist, matchLen uint32) error {
 	ctr.copy(itemA.counter)
 	n := ctr.bits()
 	if err := ctr.writeMatch(dist, matchLen); err != nil {
-		return err
+		return false, err
 	}
 	cost := itemA.cost + uint64(ctr.bits()-n)
 	if cost >= itemB.cost {
-		return nil
+		return false, nil
 	}
 	itemB.cost = cost
 	itemB.len = matchLen
 	itemB.offset = dist
 	itemB.counter = ctr
-	return nil
+	return true, nil
 }
 
 func (s *optParser) fillBlock(blk *lz.Block, flags int) (n int, err error) {
@@ -305,10 +320,24 @@ func (s *optParser) Parse(blk *lz.Block, flags int) (n int, err error) {
 				ke = maxMatchLen
 			}
 			for ; ke >= minMatchLen; ke-- {
-				err = s.addMatch(uint32(oe), uint32(ke))
+				updated, err := s.addMatch(uint32(oe), uint32(ke))
 				if err != nil {
 					return 0, err
 				}
+
+				// TODO remove
+				var str string
+				if updated {
+					str = "add match"
+				} else {
+					str = "skip match"
+				}
+				logger.Debug(str,
+					slog.Int("i", s.i),
+					slog.Int("len", ke),
+					slog.Int("dist", oe),
+					slog.String("val", fmt.Sprintf("0x%08x", v)),
+				)
 			}
 		}
 		s.add(h, uint32(s.i), v)
