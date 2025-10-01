@@ -1,14 +1,29 @@
 # TODO list
 
-## Release v0.6
+## Release v0.7
 
 ### Work
 
+#### OptParser
+
+- write benchmark for optParser using Silesia with sub-benchmarks per file and
+  using Silesia corpus in optdb
+- support env variable to trigger log file for specific parts of the silesia
+  corpus
+- process log file with database
+- run experiments
+- chain upward
+- chain downward
+- use delta in bits instead of boolean
 - while optParser is very good at compression, it is very slow. Find ways to
   accelerate the parser.
     - investigate patterns for cost updates
+    - use slog to create JSON file
     - if a match doesn't produce low costs are the shorter matches produce lower
       costs
+
+### Additional Tasks
+
 - Fuzz the xz Writer and xz Reader by varying the thread numbers and the input.
 - Review all WriteClosers and ReadClosers for proper error handling. Define what
   proper error handling is. Write tests for it using testing/iotest. 
