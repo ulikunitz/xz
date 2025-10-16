@@ -14,9 +14,13 @@
     "words": [],
     "ignoreWords": [
         "Probs",
+        "bufw",
+        "foofoobar",
         "lzma",
+        "nrange",
         "serr",
-        "ulikunitz"
+        "ulikunitz",
+        "werr"
     ],
     "import": []
 }

@@ -157,7 +157,6 @@ func TestBadExamples(t *testing.T) {
 	}
 }
 
-/* TODO
 func TestMinDictSize(t *testing.T) {
 	const file = "testdata/examples/a.txt"
 	uncompressed, err := os.ReadFile(file)
@@ -167,15 +166,12 @@ func TestMinDictSize(t *testing.T) {
 	f := bytes.NewReader(uncompressed)
 
 	buf := new(bytes.Buffer)
-	cfg := WriterConfig{}
-	cfg.SetDefaults()
-	bc := cfg.ParserConfig.BufConfig()
-	bc.WindowSize = 4096
-	bc.ShrinkSize = 1024
-	cfg.ParserConfig.SetBufConfig(bc)
-	w, err := NewWriterConfig(buf, cfg)
+	opts := &WriterOptions{
+		WindowSize: 4096,
+	}
+	w, err := NewWriterOptions(buf, opts)
 	if err != nil {
-		t.Fatalf("WriterConfig(%+v).NewWriter(buf) error %s", cfg, err)
+		t.Fatalf("NewWriterOptions(buf, %+v) error %s", opts, err)
 	}
 	defer w.Close()
 	if _, err = io.Copy(w, f); err != nil {
@@ -202,4 +198,3 @@ func TestMinDictSize(t *testing.T) {
 		t.Fatalf("got %q; want %q", u, uncompressed)
 	}
 }
-*/
