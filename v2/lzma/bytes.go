@@ -81,7 +81,6 @@ func getLE64(p []byte) uint64 {
 	return x
 }
 
-/* TODO
 // getBE16 reads a uin16 value from slice p using big endian encoding. The
 // length of p must be at least 2 bytes.
 func getBE16(p []byte) uint16 {
@@ -96,7 +95,6 @@ func putBE16(p []byte, x uint16) {
 	p[0] = uint8(x >> 8)
 	p[1] = uint8(x)
 }
-*/
 
 /* TODO
 // lcp computes the length of the longest common prefix between p and q.

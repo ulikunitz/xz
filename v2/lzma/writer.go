@@ -245,10 +245,6 @@ func (opts *WriterOptions) verify() error {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
 
-	if opts.ParserOptions == nil {
-		return errors.New("lzma: no LZ parser configuration provided")
-	}
-
 	if err = opts.Properties.Verify(); err != nil {
 		return err
 	}
@@ -264,10 +260,6 @@ func (opts *WriterOptions) setDefaults() {
 	if opts.WindowSize == 0 {
 		opts.WindowSize = 8 << 20
 	}
-	if opts.ParserOptions == nil {
-		opts.ParserOptions = parserPresets(6)
-	}
-
 	var zeroProps = Properties{}
 	if !opts.FixedProperties && opts.Properties == zeroProps {
 		opts.Properties = Properties{3, 0, 2}
@@ -290,9 +282,9 @@ func NewWriterOptions(z io.Writer, opts *WriterOptions) (w io.WriteCloser, err e
 		return nil, err
 	}
 
-	opts.ParserOptions.SetWindowSize(opts.WindowSize)
+	opts.ParserOptions.WindowSize = opts.WindowSize
 	var parser lz.Parser
-	if parser, err = opts.ParserOptions.NewParser(); err != nil {
+	if parser, err = lz.NewParser(&opts.ParserOptions); err != nil {
 		return nil, err
 	}
 
