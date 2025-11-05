@@ -4,3 +4,5 @@ github.com/ulikunitz/lz v0.6.3 h1:3ToYUeH83M7fBCJUfFlp2eSFBz0zzKZHVxvl+5Eeg+o=
 github.com/ulikunitz/lz v0.6.3/go.mod h1:kOcqmi51jCj0bKudgng90P1ho4uyQLKzkGaoPBhS+pE=
 github.com/ulikunitz/lz v0.6.4 h1:KJQbrdLkaNTOUNcKp3Er6DKyA3U6nMPGL7qGdUldMtc=
 github.com/ulikunitz/lz v0.6.4/go.mod h1:kOcqmi51jCj0bKudgng90P1ho4uyQLKzkGaoPBhS+pE=
+github.com/ulikunitz/lz v0.6.5 h1:tKFaKYVxksgXZQtQqSwO9Qw926b+pBBNzjgk5nlgeyo=
+github.com/ulikunitz/lz v0.6.5/go.mod h1:kOcqmi51jCj0bKudgng90P1ho4uyQLKzkGaoPBhS+pE=

@@ -11,6 +11,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ulikunitz/lz"
@@ -90,7 +91,6 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 
 func TestChunkWriterReader(t *testing.T) {
 	tests := []func() (io.Reader, error){
-		/* TODO
 		func() (io.Reader, error) {
 			return strings.NewReader("=====foofoobar==foobar===="),
 				nil
@@ -109,7 +109,6 @@ func TestChunkWriterReader(t *testing.T) {
 			}
 			return io.LimitReader(f, 300000), nil
 		},
-		*/
 		func() (io.Reader, error) {
 			return os.Open("testdata/enwik7")
 		},

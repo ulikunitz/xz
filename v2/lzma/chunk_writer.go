@@ -137,16 +137,13 @@ loop:
 			}
 		}
 
-		_, err := w.parser.Parse(&w.blk, 0, 0)
-		if err != nil {
-			if err == lz.ErrEndOfBuffer {
-				w.blk.Literals = w.blk.Literals[:0]
-				w.blk.Sequences = w.blk.Sequences[:0]
-				return err
-			}
-			return err
+		n, err := w.parser.Parse(&w.blk, 0, 0)
+		if n > 0 {
+			continue
 		}
-
+		w.blk.Sequences = w.blk.Sequences[:0]
+		w.blk.Literals = w.blk.Literals[:0]
+		return err
 	}
 
 	return nil
@@ -302,7 +299,15 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.parser.Prune(0)
+
+		u := int64(0)
+		if w.pos-w.start <= int64(maxChunkSize) {
+			// We need to preserve the data if the compressed data
+			// is larger than the original data.
+			buf := w.parser.Buf()
+			u = w.start - buf.Off
+		}
+		w.parser.Prune(int(u))
 	}
 }
 
