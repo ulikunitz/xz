@@ -58,10 +58,10 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
 
-	po := parserPresets(5)
-	parser, err := lz.NewParser(&po)
+	po := presetParserOptions(5)
+	parser, err := po.NewParser()
 	if err != nil {
-		t.Fatalf("lzcfg.NewParser() error %s", err)
+		t.Fatalf("po.NewParser() error %s", err)
 	}
 	if err = cw.init(buf, parser, []byte(s), Properties{3, 0, 2}); err != nil {
 		t.Fatalf("cw.init() error %s", err)
@@ -72,7 +72,7 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 
 	var cr chunkReader
 	po = parser.Options()
-	dictSize := po.WindowSize
+	dictSize := lz.WindowSize(po)
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
@@ -107,7 +107,7 @@ func TestChunkWriterReader(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			return io.LimitReader(f, 300000), nil
+			return io.LimitReader(f, 2000000), nil
 		},
 		func() (io.Reader, error) {
 			return os.Open("testdata/enwik7")
@@ -140,10 +140,10 @@ func TestChunkWriterReader(t *testing.T) {
 			hIn := sha256.New()
 			z := io.TeeReader(r, hIn)
 			var cw chunkWriter
-			po := parserPresets(5)
-			parser, err := lz.NewParser(&po)
+			po := presetParserOptions(5)
+			parser, err := po.NewParser()
 			if err != nil {
-				t.Fatalf("lzcfg.NewParser() error %s", err)
+				t.Fatalf("po.NewParser() error %s", err)
 			}
 			buf := new(bytes.Buffer)
 			err = cw.init(buf, parser, nil, Properties{3, 0, 2})
@@ -163,7 +163,7 @@ func TestChunkWriterReader(t *testing.T) {
 
 			var cr chunkReader
 			po = parser.Options()
-			dictSize := po.WindowSize
+			dictSize := lz.WindowSize(po)
 			t.Logf("dictSize: %d", dictSize)
 			if err = cr.init(buf, dictSize); err != nil {
 				t.Fatalf("cr.init() error %s", err)
@@ -193,8 +193,8 @@ func TestChunkClose(t *testing.T) {
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
-	po := parserPresets(5)
-	parser, err := lz.NewParser(&po)
+	po := presetParserOptions(5)
+	parser, err := po.NewParser()
 	if err != nil {
 		t.Fatalf("lzcfg.NewParser() error %s", err)
 	}
@@ -207,7 +207,7 @@ func TestChunkClose(t *testing.T) {
 
 	var cr chunkReader
 	po = parser.Options()
-	dictSize := po.WindowSize
+	dictSize := lz.WindowSize(po)
 	if err = cr.init(buf, dictSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}

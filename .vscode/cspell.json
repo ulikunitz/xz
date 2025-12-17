@@ -15,11 +15,15 @@
     "ignoreWords": [
         "CCSP",
         "CCSPD",
+        "CEOS",
         "Probs",
         "bufw",
+        "enwik",
         "foofoobar",
+        "lzcfg",
         "lzma",
         "nrange",
+        "popts",
         "serr",
         "ulikunitz",
         "werr"

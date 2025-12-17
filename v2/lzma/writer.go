@@ -44,6 +44,8 @@ type writer struct {
 	eos    bool
 	err    error
 	bufw   *bufio.Writer
+
+	winSize int
 }
 
 // init initializes a writer. eos tells the writer whether an end-of-stream
@@ -64,8 +66,9 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
 			Literals:  w.blk.Literals[:0],
 		},
 
-		bufw: bufw,
-		eos:  eos,
+		bufw:    bufw,
+		eos:     eos,
+		winSize: lz.WindowSize(parser.Options()),
 	}
 
 	w.state.init(p)
@@ -106,7 +109,7 @@ var errClosed = errors.New("lzma: already closed")
 // clearBuffer reads data from the buffer and encodes it.
 func (w *writer) clearBuffer() error {
 	for {
-		_, err := w.parser.Parse(&w.blk, 0, 0)
+		_, err := w.parser.Parse(&w.blk, 0)
 		if err != nil {
 			if err == lz.ErrEndOfBuffer {
 				return nil
@@ -179,7 +182,7 @@ func (w *writer) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.parser.Prune(0)
+		w.parser.Prune(w.winSize)
 	}
 }
 
@@ -234,7 +237,7 @@ type WriterOptions struct {
 
 	// ParserOptions provides the LZ parser options. It defines which
 	// parser will be used with what parameters.
-	ParserOptions lz.ParserOptions
+	ParserOptions lz.Configurator
 }
 
 // Verify checks the validity of the writer configuration parameter.
@@ -251,6 +254,20 @@ func (opts *WriterOptions) verify() error {
 	if opts.FixedSize && opts.Size < 0 {
 		return errors.New("lzma: Size must be >= 0")
 	}
+
+	winSize := lz.WindowSize(opts.ParserOptions)
+	bufSize := lz.BufferSize(opts.ParserOptions)
+
+	if opts.WindowSize != winSize {
+		return errors.New("lzma: WindowSize conflicts with ParserOptions")
+	}
+	if !(0 < winSize) {
+		return errors.New("lzma: WindowSize must be > 0")
+	}
+	if !(bufSize > winSize) {
+		return errors.New("lzma: BufferSize must be greater than WindowSize")
+	}
+
 	return nil
 }
 
@@ -263,6 +280,17 @@ func (opts *WriterOptions) setDefaults() {
 	var zeroProps = Properties{}
 	if !opts.FixedProperties && opts.Properties == zeroProps {
 		opts.Properties = Properties{3, 0, 2}
+	}
+	if opts.ParserOptions == nil {
+		opts.ParserOptions = presetParserOptions(5)
+	}
+	err := lz.SetWindowSize(opts.ParserOptions, opts.WindowSize)
+	if err != nil {
+		panic(err)
+	}
+	err = lz.SetBufferSize(opts.ParserOptions, opts.WindowSize*2)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -282,9 +310,8 @@ func NewWriterOptions(z io.Writer, opts *WriterOptions) (w io.WriteCloser, err e
 		return nil, err
 	}
 
-	opts.ParserOptions.WindowSize = opts.WindowSize
-	var parser lz.Parser
-	if parser, err = lz.NewParser(&opts.ParserOptions); err != nil {
+	parser, err := opts.ParserOptions.NewParser()
+	if err != nil {
 		return nil, err
 	}
 

@@ -35,6 +35,9 @@ type chunkWriter struct {
 	dirReset bool
 	// spReset is true if spReset has been done
 	spReset bool
+
+	// windowSize
+	winSize int
 }
 
 // init initializes the chunkWriter. A set of initial data can be provided
@@ -44,6 +47,13 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 	if err := parser.Reset(data); err != nil {
 		return err
 	}
+	popts := parser.Options()
+	winSize := lz.WindowSize(popts)
+	bufSize := lz.BufferSize(popts)
+	if !(winSize < bufSize) {
+		return fmt.Errorf("lzma: window size %d >= buffer size %d",
+			winSize, bufSize)
+	}
 	*w = chunkWriter{
 		parser:  parser,
 		encoder: encoder{window: parser},
@@ -51,8 +61,9 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
 		},
-		buf: w.buf,
-		w:   z,
+		buf:     w.buf,
+		w:       z,
+		winSize: lz.WindowSize(parser.Options()),
 	}
 	w.state.init(props)
 	w.startChunk()
@@ -137,7 +148,7 @@ loop:
 			}
 		}
 
-		n, err := w.parser.Parse(&w.blk, 0, 0)
+		n, err := w.parser.Parse(&w.blk, 0)
 		if n > 0 {
 			continue
 		}
@@ -299,15 +310,7 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-
-		u := int64(0)
-		if w.pos-w.start <= int64(maxChunkSize) {
-			// We need to preserve the data if the compressed data
-			// is larger than the original data.
-			buf := w.parser.Buf()
-			u = w.start - buf.Off
-		}
-		w.parser.Prune(int(u))
+		w.parser.Prune(w.winSize)
 	}
 }
 
@@ -353,5 +356,5 @@ func (w *chunkWriter) Close() error {
 
 // DictSize returns the dictionary size for the chunk writer.
 func (w *chunkWriter) DictSize() int {
-	return w.parser.Options().WindowSize
+	return lz.WindowSize(w.parser.Options())
 }
