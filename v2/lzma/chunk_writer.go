@@ -18,6 +18,8 @@ const (
 	maxChunkSize = 1 << 16
 	// maximum uncompressed chunk size
 	maxUncompressedChunkSize = 1 << 21
+	// block size used by Parse
+	blockSize = 128 << 10
 )
 
 // chunkWriter is a writer that creates a series of LZMA2 chunks.
@@ -35,9 +37,6 @@ type chunkWriter struct {
 	dirReset bool
 	// spReset is true if spReset has been done
 	spReset bool
-
-	// windowSize
-	winSize int
 }
 
 // init initializes the chunkWriter. A set of initial data can be provided
@@ -49,10 +48,15 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 	}
 	popts := parser.Options()
 	winSize := lz.WindowSize(popts)
+	retentionSize := lz.RetentionSize(popts)
 	bufSize := lz.BufferSize(popts)
-	if !(winSize < bufSize) {
-		return fmt.Errorf("lzma: window size %d >= buffer size %d",
-			winSize, bufSize)
+	if retentionSize != winSize {
+		return fmt.Errorf("lzma: retention size %d != window size %d",
+			retentionSize, winSize)
+	}
+	if !(retentionSize < bufSize) {
+		return fmt.Errorf("lzma: retentions size %d >= buffer size %d",
+			retentionSize, bufSize)
 	}
 	*w = chunkWriter{
 		parser:  parser,
@@ -61,9 +65,8 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
 		},
-		buf:     w.buf,
-		w:       z,
-		winSize: lz.WindowSize(parser.Options()),
+		buf: w.buf,
+		w:   z,
 	}
 	w.state.init(props)
 	w.startChunk()
@@ -148,7 +151,7 @@ loop:
 			}
 		}
 
-		n, err := w.parser.Parse(&w.blk, 0)
+		n, err := w.parser.Parse(&w.blk, blockSize, 0)
 		if n > 0 {
 			continue
 		}
@@ -310,7 +313,6 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.parser.Prune(w.winSize)
 	}
 }
 

@@ -7,6 +7,7 @@ package lzma
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/ulikunitz/lz"
@@ -31,7 +32,9 @@ func NewRawWriter(z io.Writer, parser lz.Parser, p Properties, eos bool) (w io.W
 	}
 
 	wr := new(writer)
-	wr.init(z, parser, p, eos)
+	if err = wr.init(z, parser, p, eos); err != nil {
+		return nil, err
+	}
 	return wr, nil
 }
 
@@ -44,18 +47,29 @@ type writer struct {
 	eos    bool
 	err    error
 	bufw   *bufio.Writer
-
-	winSize int
 }
 
 // init initializes a writer. eos tells the writer whether an end-of-stream
 // marker should be written.
-func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
+func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) error {
 	var bufw *bufio.Writer
 	bw, ok := z.(io.ByteWriter)
 	if !ok {
 		bufw = bufio.NewWriter(z)
 		bw = bufw
+	}
+
+	popts := parser.Options()
+	winSize := lz.WindowSize(popts)
+	retentionSize := lz.RetentionSize(popts)
+	bufSize := lz.BufferSize(popts)
+	if retentionSize != winSize {
+		return fmt.Errorf("lzma: retention size %d != window size %d",
+			retentionSize, winSize)
+	}
+	if !(retentionSize < bufSize) {
+		return fmt.Errorf("lzma: retentions size %d >= buffer size %d",
+			retentionSize, bufSize)
 	}
 
 	*w = writer{
@@ -66,9 +80,8 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
 			Literals:  w.blk.Literals[:0],
 		},
 
-		bufw:    bufw,
-		eos:     eos,
-		winSize: lz.WindowSize(parser.Options()),
+		bufw: bufw,
+		eos:  eos,
 	}
 
 	w.state.init(p)
@@ -76,6 +89,7 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) {
 	setUpdateEncoder(parser, func() *encoder {
 		return &w.encoder
 	})
+	return nil
 }
 
 // Close closes the input stream.
@@ -109,7 +123,7 @@ var errClosed = errors.New("lzma: already closed")
 // clearBuffer reads data from the buffer and encodes it.
 func (w *writer) clearBuffer() error {
 	for {
-		_, err := w.parser.Parse(&w.blk, 0)
+		_, err := w.parser.Parse(&w.blk, blockSize, 0)
 		if err != nil {
 			if err == lz.ErrEndOfBuffer {
 				return nil
@@ -182,7 +196,6 @@ func (w *writer) Write(p []byte) (n int, err error) {
 			w.err = err
 			return n, err
 		}
-		w.parser.Prune(w.winSize)
 	}
 }
 
@@ -337,11 +350,15 @@ func NewWriterOptions(z io.Writer, opts *WriterOptions) (w io.WriteCloser, err e
 
 	if opts.FixedSize {
 		lw := &limitWriter{n: opts.Size}
-		lw.w.init(z, parser, opts.Properties, false)
+		if err := lw.w.init(z, parser, opts.Properties, false); err != nil {
+			return nil, err
+		}
 		return lw, nil
 	}
 
 	wr := new(writer)
-	wr.init(z, parser, opts.Properties, true)
+	if err := wr.init(z, parser, opts.Properties, true); err != nil {
+		return nil, err
+	}
 	return wr, nil
 }

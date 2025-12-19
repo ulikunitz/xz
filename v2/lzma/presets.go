@@ -5,7 +5,6 @@ import "github.com/ulikunitz/lz"
 func presetParserOptions(i int) lz.Configurator {
 	_ = i
 	opts := &lz.GreedyParserOptions{
-		BlockSize: 128 << 10,
 		MatcherOptions: &lz.GenericMatcherOptions{
 			MinMatchLen: 2,
 			MaxMatchLen: 273,
