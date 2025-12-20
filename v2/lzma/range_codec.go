@@ -3,7 +3,6 @@ package lzma
 import (
 	"errors"
 	"io"
-	"math/bits"
 )
 
 // moveBits defines the number of bits used for the updates of probability
@@ -43,6 +42,7 @@ type rEncoder interface {
 	Close() error
 }
 
+/* TODO: check whether this is still required
 type rangeBitCounter struct {
 	_bits  int64
 	low    uint64
@@ -118,6 +118,7 @@ func (c *rangeBitCounter) bits() int64 {
 	n += int64(bits.LeadingZeros32(c.nrange))
 	return n
 }
+*/
 
 // rangeEncoder implements range encoding of single bits. The low value can
 // overflow therefore we need uint64. The cache value is used to handle
