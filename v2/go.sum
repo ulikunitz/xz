@@ -1,10 +1,6 @@
-github.com/ulikunitz/lz v0.6.5 h1:tKFaKYVxksgXZQtQqSwO9Qw926b+pBBNzjgk5nlgeyo=
-github.com/ulikunitz/lz v0.6.5/go.mod h1:kOcqmi51jCj0bKudgng90P1ho4uyQLKzkGaoPBhS+pE=
-github.com/ulikunitz/lz v0.6.6 h1:xHuVRT3RDemnsoZiZA+94rQ7tVMLQBNm7620MgfDS+I=
-github.com/ulikunitz/lz v0.6.6/go.mod h1:kOcqmi51jCj0bKudgng90P1ho4uyQLKzkGaoPBhS+pE=
-github.com/ulikunitz/lz v0.6.7 h1:yiPfCOqA//cYk7Vy/dnaWJaWhEEG/mF7L6NtcmCpLgk=
-github.com/ulikunitz/lz v0.6.7/go.mod h1:7LLNMF+PbobzOrHHNTrUu7Tq8jKDgahkRO5lyj3gNz0=
-github.com/ulikunitz/lz v0.6.8 h1:2Ocy/Ivo3A2ZsM5j96Pt2PJT9wO0DrmVgTYputs7VMs=
-github.com/ulikunitz/lz v0.6.8/go.mod h1:7LLNMF+PbobzOrHHNTrUu7Tq8jKDgahkRO5lyj3gNz0=
 github.com/ulikunitz/lz v0.6.9 h1:CdneT/J7k7pfhk5HV0mr1PsESKAEGlpfMNT8DmrAKsg=
 github.com/ulikunitz/lz v0.6.9/go.mod h1:7LLNMF+PbobzOrHHNTrUu7Tq8jKDgahkRO5lyj3gNz0=
+github.com/ulikunitz/lz v0.6.10 h1:BUg2Nx9RL0QPDS+WMfctfKb73iKgg7dtTFNIFdEuiJA=
+github.com/ulikunitz/lz v0.6.10/go.mod h1:7LLNMF+PbobzOrHHNTrUu7Tq8jKDgahkRO5lyj3gNz0=
+github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
+github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

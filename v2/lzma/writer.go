@@ -309,15 +309,12 @@ func (opts *WriterOptions) setDefaults() {
 
 // NewWriter creates a new LZMA writer.
 func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
-	return NewWriterOptions(z, nil)
+	return NewWriterOptions(z, WriterOptions{})
 }
 
 // NewWriterOptions creates a new LZMA writer using the parameter provided by
 // cfg.
-func NewWriterOptions(z io.Writer, opts *WriterOptions) (w io.WriteCloser, err error) {
-	if opts == nil {
-		opts = &WriterOptions{}
-	}
+func NewWriterOptions(z io.Writer, opts WriterOptions) (w io.WriteCloser, err error) {
 	opts.setDefaults()
 	if err = opts.verify(); err != nil {
 		return nil, err

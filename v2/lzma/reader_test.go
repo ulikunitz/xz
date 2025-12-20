@@ -166,7 +166,7 @@ func TestMinDictSize(t *testing.T) {
 	f := bytes.NewReader(uncompressed)
 
 	buf := new(bytes.Buffer)
-	opts := &WriterOptions{
+	opts := WriterOptions{
 		WindowSize: 4096,
 	}
 	w, err := NewWriterOptions(buf, opts)
