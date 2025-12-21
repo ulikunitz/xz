@@ -1,70 +1,16 @@
 # TODO list
 
-## Release v0.6
+## Release v1
 
-1. Review encoder and check for lzma improvements under xz.
-2. Fix binary tree matcher.
-3. Compare compression ratio with xz tool using comparable parameters and optimize parameters
-4. rename operation action and make it a simple type of size 8
-5. make maxMatches, wordSize parameters
-6. stop searching after a certain length is found (parameter sweetLen)
-
-## Release v0.7
-
-1. Optimize code
-2. Do statistical analysis to get linear presets.
-3. Test sync.Pool compatability for xz and lzma Writer and Reader
-4. Fuzz optimized code.
-
-## Release v0.8
-
-1. Support parallel go routines for writing and reading xz files.
-2. Support a ReaderAt interface for xz files with small block sizes.
-3. Improve compatibility between gxz and xz
-4. Provide manual page for gxz
-
-## Release v0.9
-
-1. Improve documentation
-2. Fuzz again
-
-## Release v1.0
-
-1. Full functioning gxz
+Make the current v0.5.x the v1.0.0 and promise to maintain it forever.
 2. Add godoc URL to README.md (godoc.org)
-3. Resolve all issues.
-4. Define release candidates.
-5. Public announcement.
 
-## Package lzma
+## Release v2
 
-### v0.6
-
-* Rewrite Encoder into a simple greedy one-op-at-a-time encoder including
-  * simple scan at the dictionary head for the same byte
-  * use the killer byte (requiring matches to get longer, the first test should be the byte that would make the match longer)
-
-## Optimizations
-
-* There may be a lot of false sharing in lzma. State; check whether this  can be improved by reorganizing the internal structure of it.
-
-* Check whether batching encoding and decoding improves speed.
-
-### DAG optimizations
-
-* Use full buffer to create minimal bit-length above range encoder.
-* Might be too slow (see v0.4)
-
-### Different match finders
-
-* hashes with 2, 3 characters additional to 4 characters
-* binary trees with 2-7 characters (uint64 as key, use uint32 as
-
-  pointers into a an array)
-
-* rb-trees with 2-7 characters (uint64 as key, use uint32 as pointers
-
-  into an array with bit-steeling for the colors)
+1. Implement the optimizing parser for LZMA2 and review the old xz
+   presets for the rest.
+2. Compare compression ratios and speed.
+3. stop searching after a certain length is found (parameter sweetLen)
 
 ## Release Procedure
 
