@@ -17,13 +17,11 @@ import (
 	"hash"
 	"io"
 	"runtime"
-
-	"github.com/ulikunitz/xz/v2/lzma"
 )
 
 var errReaderClosed = errors.New("xz: reader closed")
 
-// ReaderConfig defines the parameters for the xz reader. The SingleStream
+// ReaderOptions defines the parameters for the xz reader. The SingleStream
 // parameter requests the reader to assume that the underlying stream contains
 // only a single stream without padding.
 //
@@ -31,7 +29,7 @@ var errReaderClosed = errors.New("xz: reader closed")
 // file. It only has an effect if the file was encoded in a way that it created
 // blocks with the compressed size set in the headers. If Workers not 1 the
 // Workers variable in LZMAConfig will be ignored.
-type ReaderConfig struct {
+type ReaderOptions struct {
 	// Workers defines the number of readers for parallel reading. The
 	// default is the value of GOMAXPROCS.
 	Workers int
@@ -50,7 +48,7 @@ type ReaderConfig struct {
 }
 
 // UnmarshalJSON parses JSON and sets the ReaderConfig accordingly.
-func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
+func (cfg *ReaderOptions) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
 		Format       string
@@ -66,7 +64,7 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 		return errors.New(
 			"xz: Format JSON property must have value XZ")
 	}
-	*cfg = ReaderConfig{
+	*cfg = ReaderOptions{
 		Workers:      s.Workers,
 		SingleStream: s.SingleStream,
 		LZMAParallel: s.LZMAParallel,
@@ -76,7 +74,7 @@ func (cfg *ReaderConfig) UnmarshalJSON(p []byte) error {
 }
 
 // MarshalJSON creates the jason structure for a ReaderConfig value.
-func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
+func (cfg *ReaderOptions) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format       string
 		Workers      int  `json:",omitempty"`
@@ -93,55 +91,28 @@ func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
 	return json.Marshal(&s)
 }
 
-// SetDefaults sets the defaults in ReaderConfig.
-func (cfg *ReaderConfig) SetDefaults() {
-	if cfg.LZMAParallel {
-		lzmaCfg := lzma.Reader2Options{
-			Workers:  cfg.Workers,
-			WorkSize: cfg.LZMAWorkSize,
-		}
-		lzmaCfg.SetDefaults()
-		cfg.Workers = lzmaCfg.Workers
-		cfg.LZMAWorkSize = lzmaCfg.WorkSize
-	} else {
-		if cfg.Workers == 0 {
-			cfg.Workers = runtime.GOMAXPROCS(0)
-		}
+// setDefaults sets the defaults in ReaderOptions.
+func (cfg *ReaderOptions) setDefaults() {
+	if cfg.Workers == 0 {
+		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
 }
 
-// Verify checks the reader parameters for Validity. Zero values will be
+// verify checks the reader parameters for Validity. Zero values will be
 // replaced by default values.
-func (cfg *ReaderConfig) Verify() error {
+func (cfg *ReaderOptions) verify() error {
 	if cfg == nil {
 		return errors.New("xz: reader parameters are nil")
 	}
-
-	var lzmaCfg lzma.Reader2Options
-	if cfg.LZMAParallel {
-		lzmaCfg = lzma.Reader2Options{
-			Workers:  cfg.Workers,
-			WorkSize: cfg.LZMAWorkSize,
-		}
-	} else {
-		if cfg.Workers < 1 {
-			return errors.New("xz: reader workers must be >= 1")
-		}
-		lzmaCfg = lzma.Reader2Options{
-			Workers:  1,
-			WorkSize: cfg.LZMAWorkSize,
-		}
-	}
-	lzmaCfg.SetDefaults()
-	if err := lzmaCfg.Verify(); err != nil {
-		return err
+	if cfg.Workers < 1 {
+		return errors.New("xz: reader workers must be >= 1")
 	}
 
 	return nil
 }
 
 // newFilterReader constructs the reader for the given filter.
-func (cfg *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
+func (cfg *ReaderOptions) newFilterReader(r io.Reader, f []filter) (fr io.ReadCloser, err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
@@ -167,7 +138,7 @@ type streamReader interface {
 
 // reader supports the reading of one or multiple xz streams.
 type reader struct {
-	cfg ReaderConfig
+	cfg ReaderOptions
 
 	xz io.Reader
 	sr streamReader
@@ -177,25 +148,25 @@ type reader struct {
 
 // NewReader creates an io.ReadCloser. The function should never fail.
 func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
-	r, err = NewReaderConfig(xz, ReaderConfig{})
+	r, err = NewReaderOptions(xz, ReaderOptions{})
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-// NewReaderConfig creates an xz reader using the provided configuration. If
+// NewReaderOptions creates an xz reader using the provided configuration. If
 // Workers are larger than one, the LZMA reader will only use single-threaded
 // workers.
-func NewReaderConfig(xz io.Reader, cfg ReaderConfig) (r io.ReadCloser, err error) {
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+func NewReaderOptions(xz io.Reader, options ReaderOptions) (r io.ReadCloser, err error) {
+	options.setDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
 
-	rp := &reader{cfg: cfg}
+	rp := &reader{cfg: options}
 
-	if cfg.Workers <= 1 || cfg.LZMAParallel {
+	if options.Workers <= 1 || options.LZMAParallel {
 		// for the single thread reader we are buffering
 		rp.xz = bufio.NewReader(xz)
 		rp.sr = newSingleThreadStreamReader(rp.xz, &rp.cfg)
@@ -285,7 +256,7 @@ func (lr *countingReader) Read(p []byte) (n int, err error) {
 
 // blockReader supports the reading of a block.
 type blockReader struct {
-	cfg *ReaderConfig
+	cfg *ReaderOptions
 
 	hash hash.Hash
 
@@ -302,7 +273,7 @@ type blockReader struct {
 }
 
 // init initializes the block reader.
-func (br *blockReader) init(xz io.Reader, cfg *ReaderConfig, h hash.Hash) {
+func (br *blockReader) init(xz io.Reader, cfg *ReaderOptions, h hash.Hash) {
 	*br = blockReader{
 		cfg:  cfg,
 		xz:   xz,
@@ -451,7 +422,7 @@ func (br *blockReader) Close() error {
 
 // stReader provides the single-threaded stream reader.
 type stReader struct {
-	cfg *ReaderConfig
+	cfg *ReaderOptions
 	xz  io.Reader
 
 	br    blockReader
@@ -463,7 +434,7 @@ type stReader struct {
 
 // newSingleThreadStreamReader provides a streamReader. Note that it requires
 // the header before Read can be called.
-func newSingleThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
+func newSingleThreadStreamReader(xz io.Reader, cfg *ReaderOptions) streamReader {
 	return &stReader{cfg: cfg, xz: xz}
 }
 
@@ -632,8 +603,8 @@ func readTail(xz io.Reader, rindex []record, flags byte) error {
 
 // mtReader supports the multi-threaded reading of LZMA streams.
 type mtReader struct {
-	cfg *ReaderConfig
-	xz  io.Reader
+	opts *ReaderOptions
+	xz   io.Reader
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -681,8 +652,8 @@ type mtrWorkerTask struct {
 
 // newMultiThreadStreamReader creates multithreaded reader. Note that reset with
 // a header must be called before Read can be used.
-func newMultiThreadStreamReader(xz io.Reader, cfg *ReaderConfig) streamReader {
-	return &mtReader{xz: xz, cfg: cfg}
+func newMultiThreadStreamReader(xz io.Reader, options *ReaderOptions) streamReader {
+	return &mtReader{xz: xz, opts: options}
 }
 
 // reset provides the header information to the multi-threaded stream reader. It
@@ -694,15 +665,15 @@ func (sr *mtReader) reset(hdr header) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	*sr = mtReader{
 		xz:       sr.xz,
-		cfg:      sr.cfg,
+		opts:     sr.opts,
 		ctx:      ctx,
 		cancel:   cancel,
 		errCh:    make(chan error, 1),
-		streamCh: make(chan mtrStreamTask, sr.cfg.Workers),
-		workCh:   make(chan mtrWorkerTask, sr.cfg.Workers),
+		streamCh: make(chan mtrStreamTask, sr.opts.Workers),
+		workCh:   make(chan mtrWorkerTask, sr.opts.Workers),
 		flags:    hdr.flags,
 	}
-	go mtrStream(ctx, sr.xz, sr.cfg, sr.flags, sr.streamCh, sr.workCh,
+	go mtrStream(ctx, sr.xz, sr.opts, sr.flags, sr.streamCh, sr.workCh,
 		sr.errCh)
 	return nil
 }
@@ -793,7 +764,7 @@ func (sr *mtReader) Close() error {
 // mtrStream provides the go routine that creates the work for the
 // multi-threaded readers. It also supports blocks that cannot be read in
 // parallel, because they are not providing the compressed size.
-func mtrStream(ctx context.Context, xz io.Reader, cfg *ReaderConfig, flags byte,
+func mtrStream(ctx context.Context, xz io.Reader, cfg *ReaderOptions, flags byte,
 	streamCh chan<- mtrStreamTask, workCh chan mtrWorkerTask,
 	errCh chan<- error) {
 
@@ -906,7 +877,7 @@ func (r *blockResultReader) Close() error { return nil }
 func (r *blockResultReader) record() record { return r.rec }
 
 // mtrWork is the worker go routine for the multi-threaded stream reader.
-func mtrWork(ctx context.Context, cfg *ReaderConfig, flag byte,
+func mtrWork(ctx context.Context, cfg *ReaderOptions, flag byte,
 	workCh <-chan mtrWorkerTask, errCh chan<- error) {
 	send := func(err error) (stop bool) {
 		select {

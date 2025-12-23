@@ -313,24 +313,24 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 }
 
 // NewWriterOptions creates a new LZMA writer using the parameter provided by
-// cfg.
-func NewWriterOptions(z io.Writer, opts WriterOptions) (w io.WriteCloser, err error) {
-	opts.setDefaults()
-	if err = opts.verify(); err != nil {
+// options.
+func NewWriterOptions(z io.Writer, options WriterOptions) (w io.WriteCloser, err error) {
+	options.setDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
 
-	parser, err := opts.ParserOptions.NewParser()
+	parser, err := options.ParserOptions.NewParser()
 	if err != nil {
 		return nil, err
 	}
 
 	p := Header{
-		Properties: opts.Properties,
-		DictSize:   uint32(opts.WindowSize),
+		Properties: options.Properties,
+		DictSize:   uint32(options.WindowSize),
 	}
-	if opts.FixedSize {
-		p.uncompressedSize = uint64(opts.Size)
+	if options.FixedSize {
+		p.uncompressedSize = uint64(options.Size)
 	} else {
 		p.uncompressedSize = EOSSize
 	}
@@ -345,16 +345,16 @@ func NewWriterOptions(z io.Writer, opts WriterOptions) (w io.WriteCloser, err er
 		return nil, err
 	}
 
-	if opts.FixedSize {
-		lw := &limitWriter{n: opts.Size}
-		if err := lw.w.init(z, parser, opts.Properties, false); err != nil {
+	if options.FixedSize {
+		lw := &limitWriter{n: options.Size}
+		if err := lw.w.init(z, parser, options.Properties, false); err != nil {
 			return nil, err
 		}
 		return lw, nil
 	}
 
 	wr := new(writer)
-	if err := wr.init(z, parser, opts.Properties, true); err != nil {
+	if err := wr.init(z, parser, options.Properties, true); err != nil {
 		return nil, err
 	}
 	return wr, nil

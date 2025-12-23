@@ -25,10 +25,10 @@ const defaultParallelBlockSize = 256 << 10
 // maxInt64 defines the maximum 64-bit signed integer.
 const maxInt64 = 1<<63 - 1
 
-// WriterConfig describe the parameters for an xz writer. CRC64 is used as the
+// WriterOptions describe the parameters for an xz writer. CRC64 is used as the
 // default checksum despite the XZ specification saying a decoder must only
 // support CRC32.
-type WriterConfig struct {
+type WriterOptions struct {
 	// WindowSize sets the dictionary size.
 	WindowSize int
 
@@ -98,8 +98,8 @@ func (c *checksum) MarshalText() (data []byte, err error) {
 	return data, nil
 }
 
-// UnmarshalJSON parses a JSON value and set the WriterConfig value accordingly.
-func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
+// UnmarshalJSON parses a JSON value and set the WriterOptions value accordingly.
+func (opts *WriterOptions) UnmarshalJSON(p []byte) error {
 	var err error
 	s := struct {
 		Format          string
@@ -132,9 +132,9 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("xz.WriterConfig.UnmarshalJSON: %w", err)
+		return fmt.Errorf("xz.WriterOptions.UnmarshalJSON: %w", err)
 	}
-	*cfg = WriterConfig{
+	*opts = WriterOptions{
 		WindowSize: s.WindowSize,
 		Properties: lzma.Properties{
 			LC: s.LC,
@@ -153,8 +153,8 @@ func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-// MarshalJSON creates the JSON representation of the WriterConfig value.
-func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
+// MarshalJSON creates the JSON representation of the WriterOptions value.
+func (opts *WriterOptions) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
 		WindowSize      int             `json:",omitempty"`
@@ -171,83 +171,70 @@ func (cfg *WriterConfig) MarshalJSON() (p []byte, err error) {
 		NoChecksum      bool            `json:",omitempty"`
 	}{
 		Format:          "XZ",
-		WindowSize:      cfg.WindowSize,
-		LC:              cfg.Properties.LC,
-		LP:              cfg.Properties.LP,
-		PB:              cfg.Properties.PB,
-		FixedProperties: cfg.FixedProperties,
-		Workers:         cfg.Workers,
-		LZMAParallel:    cfg.LZMAParallel,
-		LZMAWorkSize:    cfg.LZMAWorkSize,
-		ParserOptions:   cfg.ParserOptions,
-		XZBlockSize:     cfg.XZBlockSize,
-		Checksum:        checksum(cfg.Checksum),
-		NoChecksum:      cfg.NoChecksum,
+		WindowSize:      opts.WindowSize,
+		LC:              opts.Properties.LC,
+		LP:              opts.Properties.LP,
+		PB:              opts.Properties.PB,
+		FixedProperties: opts.FixedProperties,
+		Workers:         opts.Workers,
+		LZMAParallel:    opts.LZMAParallel,
+		LZMAWorkSize:    opts.LZMAWorkSize,
+		ParserOptions:   opts.ParserOptions,
+		XZBlockSize:     opts.XZBlockSize,
+		Checksum:        checksum(opts.Checksum),
+		NoChecksum:      opts.NoChecksum,
 	}
 	return json.Marshal(&s)
 }
 
-// SetDefaults applies the defaults to the xz writer configuration.
-func (cfg *WriterConfig) SetDefaults() {
+// setDefaults applies the defaults to the xz writer configuration.
+func (opts *WriterOptions) setDefaults() {
 
 	preset := Preset(5)
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = preset.WindowSize
+	if opts.WindowSize == 0 {
+		opts.WindowSize = preset.WindowSize
 	}
-	if cfg.Properties == (lzma.Properties{}) {
-		cfg.Properties = preset.Properties
+	if opts.Properties == (lzma.Properties{}) {
+		opts.Properties = preset.Properties
 	}
-	if cfg.Workers == 0 {
-		cfg.Workers = runtime.GOMAXPROCS(0)
+	if opts.Workers == 0 {
+		opts.Workers = runtime.GOMAXPROCS(0)
 	}
-	if cfg.Workers <= 1 {
-		cfg.XZBlockSize = maxInt64
+	if opts.Workers <= 1 {
+		opts.XZBlockSize = maxInt64
 	} else {
-		cfg.XZBlockSize = defaultParallelBlockSize
+		opts.XZBlockSize = defaultParallelBlockSize
 	}
-	if cfg.Checksum == 0 {
-		cfg.Checksum = CRC64
+	if opts.Checksum == 0 {
+		opts.Checksum = CRC64
 	}
-	if cfg.NoChecksum {
-		cfg.Checksum = None
+	if opts.NoChecksum {
+		opts.Checksum = None
 	}
 }
 
-// Verify checks the configuration for errors. Zero values will be
+// verify checks the configuration for errors. Zero values will be
 // replaced by default values.
-func (cfg *WriterConfig) Verify() error {
-	if cfg == nil {
+func (opts *WriterOptions) verify() error {
+	if opts == nil {
 		return errors.New("xz: writer configuration is nil")
 	}
-	lzmaCfg := lzma.Writer2Options{
-		WindowSize:      cfg.WindowSize,
-		Properties:      cfg.Properties,
-		FixedProperties: cfg.FixedProperties,
-		ParserOptions:   cfg.ParserOptions,
-	}
-	if cfg.LZMAParallel {
-		lzmaCfg.Workers = cfg.Workers
-		lzmaCfg.WorkSize = cfg.LZMAWorkSize
-	} else {
-		lzmaCfg.Workers = 1
-		lzmaCfg.WorkSize = 0
-	}
-	if !cfg.LZMAParallel {
-		if !(1 <= cfg.Workers) {
+	if !opts.LZMAParallel {
+		if !(1 <= opts.Workers) {
 			return errors.New("xz: Workers must be positive")
 		}
 	}
-	if cfg.XZBlockSize <= 0 {
+	if opts.XZBlockSize <= 0 {
 		return errors.New("xz: block size out of range")
 	}
-	if err := verifyFlags(cfg.Checksum); err != nil {
+	if err := verifyFlags(opts.Checksum); err != nil {
 		return err
 	}
 	return nil
 }
 
 // filters creates the filter list for the given parameters.
-func filters(cfg *WriterConfig) []filter {
+func filters(cfg *WriterOptions) []filter {
 	return []filter{&lzmaFilter{
 		int64(cfg.WindowSize)}}
 }
@@ -274,7 +261,7 @@ func verifyFilters(f []filter) error {
 
 // newFilterWriteCloser converts a filter list into a WriteCloser that
 // can be used by a blockWriter.
-func newFilterWriteCloser(w io.Writer, f []filter, c *WriterConfig) (fw io.WriteCloser, err error) {
+func newFilterWriteCloser(w io.Writer, f []filter, c *WriterOptions) (fw io.WriteCloser, err error) {
 	fw = nopWriteCloser(w)
 	for i := len(f) - 1; i >= 0; i-- {
 		fw, err = f[i].writeCloser(fw, c)
@@ -316,7 +303,7 @@ var errNoSpace = errors.New("xz: no space")
 var errWriterClosed = errors.New("xz: writer is closed")
 
 type blockWriter struct {
-	cfg WriterConfig
+	cfg WriterOptions
 
 	// filter array
 	f []filter
@@ -332,7 +319,7 @@ type blockWriter struct {
 	err error
 }
 
-func newBlockWriter(w io.Writer, cfg *WriterConfig) (bw *blockWriter, err error) {
+func newBlockWriter(w io.Writer, cfg *WriterOptions) (bw *blockWriter, err error) {
 
 	h, err := newHash(cfg.Checksum)
 	if err != nil {
@@ -496,29 +483,29 @@ type WriteFlushCloser interface {
 }
 
 // NewWriter creates a new Writer for xz-compressed data. The Writer uses the
-// preset #5. See [Preset] and [NewWriterConfig] for changing the parameters.
+// preset #5. See [Preset] and [NewWriterOptions] for changing the parameters.
 func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
-	return NewWriterConfig(xz, Preset(5))
+	return NewWriterOptions(xz, Preset(5))
 }
 
-// NewWriterConfig creates a WriteFlushCloser instance. If multi-threading is
+// NewWriterOptions creates a WriteFlushCloser instance. If multi-threading is
 // requested by a Workers configuration larger than 1, single threading will be
 // requested for the LZMA writer by setting the Workers variable there to 1.
-func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+func NewWriterOptions(xz io.Writer, options WriterOptions) (w WriteFlushCloser, err error) {
+	options.setDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
 
-	if cfg.Workers <= 1 || cfg.LZMAParallel {
-		return newStreamWriter(xz, &cfg)
+	if options.Workers <= 1 || options.LZMAParallel {
+		return newStreamWriter(xz, &options)
 	}
 
-	return newMTWriter(xz, &cfg)
+	return newMTWriter(xz, &options)
 }
 
 type streamWriter struct {
-	cfg WriterConfig
+	cfg WriterOptions
 
 	xz    io.Writer
 	bw    *blockWriter
@@ -552,7 +539,7 @@ func writeTail(xz io.Writer, index []record, flags byte) (n int64, err error) {
 	return n, err
 }
 
-func newStreamWriter(xz io.Writer, cfg *WriterConfig) (sw *streamWriter, err error) {
+func newStreamWriter(xz io.Writer, cfg *WriterOptions) (sw *streamWriter, err error) {
 	_, err = writeHeader(xz, cfg.Checksum)
 	if err != nil {
 		return nil, err
@@ -649,7 +636,7 @@ type mtwTask struct {
 }
 
 type mtWriter struct {
-	cfg WriterConfig
+	opts WriterOptions
 
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -662,21 +649,21 @@ type mtWriter struct {
 	err     error
 }
 
-func newMTWriter(xz io.Writer, cfg *WriterConfig) (mtw *mtWriter, err error) {
+func newMTWriter(xz io.Writer, options *WriterOptions) (mtw *mtWriter, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mtw = &mtWriter{
-		cfg: *cfg,
+		opts: *options,
 
 		ctx:      ctx,
 		cancel:   cancel,
 		errCh:    make(chan error, 1),
-		taskCh:   make(chan mtwTask, cfg.Workers),
-		streamCh: make(chan mtwStreamTask, cfg.Workers),
+		taskCh:   make(chan mtwTask, options.Workers),
+		streamCh: make(chan mtwStreamTask, options.Workers),
 
-		buf: make([]byte, 0, cfg.XZBlockSize),
+		buf: make([]byte, 0, options.XZBlockSize),
 	}
 
-	go mtwStream(ctx, xz, cfg, mtw.streamCh, mtw.errCh)
+	go mtwStream(ctx, xz, options, mtw.streamCh, mtw.errCh)
 
 	return mtw, nil
 }
@@ -695,7 +682,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 	}
 
 	for len(p) > 0 {
-		k := mtw.cfg.XZBlockSize - int64(len(mtw.buf))
+		k := mtw.opts.XZBlockSize - int64(len(mtw.buf))
 		if int64(len(p)) < k {
 			mtw.buf = append(mtw.buf, p...)
 			n += len(p)
@@ -703,8 +690,8 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 		}
 		mtw.buf = append(mtw.buf, p[:k]...)
 
-		if mtw.workers < mtw.cfg.Workers {
-			go mtwWorker(mtw.ctx, &mtw.cfg, mtw.taskCh, mtw.errCh)
+		if mtw.workers < mtw.opts.Workers {
+			go mtwWorker(mtw.ctx, &mtw.opts, mtw.taskCh, mtw.errCh)
 			mtw.workers++
 		}
 
@@ -723,7 +710,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 		}
 		n += int(k)
 		p = p[k:]
-		mtw.buf = make([]byte, 0, mtw.cfg.XZBlockSize)
+		mtw.buf = make([]byte, 0, mtw.opts.XZBlockSize)
 	}
 
 	return n, nil
@@ -748,8 +735,8 @@ func (mtw *mtWriter) flush(close bool) error {
 	)
 
 	if len(mtw.buf) > 0 {
-		if mtw.workers < mtw.cfg.Workers {
-			go mtwWorker(mtw.ctx, &mtw.cfg, mtw.taskCh, mtw.errCh)
+		if mtw.workers < mtw.opts.Workers {
+			go mtwWorker(mtw.ctx, &mtw.opts, mtw.taskCh, mtw.errCh)
 			mtw.workers++
 		}
 		blockCh = make(chan mtwBlock, 1)
@@ -759,7 +746,7 @@ func (mtw *mtWriter) flush(close bool) error {
 			recv(err)
 			return err
 		}
-		mtw.buf = make([]byte, 0, mtw.cfg.XZBlockSize)
+		mtw.buf = make([]byte, 0, mtw.opts.XZBlockSize)
 	}
 
 	flushCh := make(chan struct{})
@@ -798,7 +785,7 @@ func (mtw *mtWriter) Close() error {
 	return nil
 }
 
-func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterConfig,
+func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterOptions,
 	streamCh <-chan mtwStreamTask, errCh chan<- error) {
 
 	send := func(err error) (stop bool) {
@@ -865,7 +852,7 @@ func mtwStream(ctx context.Context, xz io.Writer, cfg *WriterConfig,
 	}
 }
 
-func mtwWorker(ctx context.Context, cfg *WriterConfig, taskCh <-chan mtwTask,
+func mtwWorker(ctx context.Context, cfg *WriterOptions, taskCh <-chan mtwTask,
 	errCh chan<- error) {
 
 	send := func(err error) (stop bool) {

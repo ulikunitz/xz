@@ -23,8 +23,8 @@ type ReaderOptions struct {
 	DictCap int
 }
 
-// SetDefaults converts the zero values of the configuration to the default values.
-func (c *ReaderOptions) SetDefaults() {
+// setDefaults converts the zero values of the configuration to the default values.
+func (c *ReaderOptions) setDefaults() {
 	if c.DictCap == 0 {
 		// set an upper limit of 2 GB for dictionary capacity to address
 		// the zero prefix security issue.
@@ -32,9 +32,9 @@ func (c *ReaderOptions) SetDefaults() {
 	}
 }
 
-// Verify checks the reader configuration for errors. Zero values will
+// verify checks the reader configuration for errors. Zero values will
 // be replaced by default values.
-func (c *ReaderOptions) Verify() error {
+func (c *ReaderOptions) verify() error {
 	if !(minDictSize <= c.DictCap && int64(c.DictCap) <= maxDictSize) {
 		return errors.New("lzma: dictionary capacity is out of range")
 	}
@@ -170,16 +170,13 @@ func newErrDictSize(messageFormat string,
 
 // NewReader creates a new reader for an LZMA stream.
 func NewReader(z io.Reader) (r *Reader, err error) {
-	return NewReaderOptions(z, nil)
+	return NewReaderOptions(z, ReaderOptions{})
 }
 
 // NewReaderOptions creates a new reader for the LZMA stream.
-func NewReaderOptions(z io.Reader, opts *ReaderOptions) (r *Reader, err error) {
-	if opts == nil {
-		opts = &ReaderOptions{}
-	}
-	opts.SetDefaults()
-	if err = opts.Verify(); err != nil {
+func NewReaderOptions(z io.Reader, options ReaderOptions) (r *Reader, err error) {
+	options.setDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
 
@@ -193,10 +190,10 @@ func NewReaderOptions(z io.Reader, opts *ReaderOptions) (r *Reader, err error) {
 	}
 	hdrOrig := hdr
 
-	if int64(opts.DictCap) < int64(hdr.DictSize) {
+	if int64(options.DictCap) < int64(hdr.DictSize) {
 		return nil, newErrDictSize(
 			"lzma: header dictionary size %[2]d exceeds configured dictionary capacity %[1]d",
-			opts.DictCap, hdr.DictSize,
+			options.DictCap, hdr.DictSize,
 		)
 	}
 	// Mitigation for CVE-2025-58058

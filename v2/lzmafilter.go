@@ -60,11 +60,11 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 }
 
 // reader creates a new reader for the LZMA2 filter.
-func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err error) {
+func (f lzmaFilter) reader(r io.Reader, c *ReaderOptions) (fr io.ReadCloser, err error) {
 
 	if c == nil {
-		c = &ReaderConfig{}
-		c.SetDefaults()
+		c = &ReaderOptions{}
+		c.setDefaults()
 	}
 
 	var cfg lzma.Reader2Options
@@ -94,11 +94,11 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 }
 
 // writeCloser creates a io.WriteCloser for the LZMA2 filter.
-func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
+func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterOptions,
 ) (fw io.WriteCloser, err error) {
 	if c == nil {
-		c = &WriterConfig{}
-		c.SetDefaults()
+		c = &WriterOptions{}
+		c.setDefaults()
 	}
 
 	cfg := lzma.Writer2Options{

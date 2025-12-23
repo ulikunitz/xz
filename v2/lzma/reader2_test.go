@@ -118,7 +118,7 @@ func TestReader2JSON(t *testing.T) {
 	var err error
 	var cfg Reader2Options
 	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+	if err = cfg.verify(); err != nil {
 		t.Fatalf("cfg.Verify() error %s", err)
 	}
 	p, err := json.MarshalIndent(&cfg, "", "  ")

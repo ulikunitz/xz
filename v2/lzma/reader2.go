@@ -29,7 +29,7 @@ type Reader2Options struct {
 }
 
 // UnmarshalJSON parses the JSON representation for Reader2Config.
-func (cfg *Reader2Options) UnmarshalJSON(p []byte) error {
+func (opts *Reader2Options) UnmarshalJSON(p []byte) error {
 	var err error
 	var s struct {
 		Format     string
@@ -44,7 +44,7 @@ func (cfg *Reader2Options) UnmarshalJSON(p []byte) error {
 		return errors.New(
 			"lzma: Format JSON property muse have value LZMA")
 	}
-	*cfg = Reader2Options{
+	*opts = Reader2Options{
 		WindowSize: s.WindowSize,
 		Workers:    s.Workers,
 		WorkSize:   s.WorkSize,
@@ -53,7 +53,7 @@ func (cfg *Reader2Options) UnmarshalJSON(p []byte) error {
 }
 
 // MarshalJSON produces the JSON configuration for the Reader2Config value.
-func (cfg *Reader2Options) MarshalJSON() (p []byte, err error) {
+func (opts *Reader2Options) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format     string
 		WindowSize int `json:",omitempty"`
@@ -61,26 +61,26 @@ func (cfg *Reader2Options) MarshalJSON() (p []byte, err error) {
 		WorkSize   int `json:",omitempty"`
 	}{
 		Format:     "LZMA2Reader",
-		WindowSize: cfg.WindowSize,
-		Workers:    cfg.Workers,
-		WorkSize:   cfg.WorkSize,
+		WindowSize: opts.WindowSize,
+		Workers:    opts.Workers,
+		WorkSize:   opts.WorkSize,
 	}
 	return json.Marshal(&s)
 }
 
-// Verify checks the validity of dictionary size.
-func (cfg *Reader2Options) Verify() error {
-	if cfg.WindowSize < minDictSize {
+// verify checks the validity of dictionary size.
+func (opts *Reader2Options) verify() error {
+	if opts.WindowSize < minDictSize {
 		return fmt.Errorf(
 			"lzma: dictionary size must be larger or"+
 				" equal %d bytes", minDictSize)
 	}
 
-	if cfg.Workers <= 0 {
+	if opts.Workers <= 0 {
 		return errors.New("lzma: Worker must be larger than 0")
 	}
 
-	if cfg.WorkSize <= 0 {
+	if opts.WorkSize <= 0 {
 		return errors.New(
 			"lzma: WorkerBufferSize must be greater than 0")
 	}
@@ -90,17 +90,17 @@ func (cfg *Reader2Options) Verify() error {
 
 // SetDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
-func (cfg *Reader2Options) SetDefaults() {
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 << 20
+func (opts *Reader2Options) SetDefaults() {
+	if opts.WindowSize == 0 {
+		opts.WindowSize = 8 << 20
 	}
 
-	if cfg.Workers == 0 {
-		cfg.Workers = 1
+	if opts.Workers == 0 {
+		opts.Workers = 1
 	}
 
-	if cfg.WorkSize == 0 {
-		cfg.WorkSize = 1 << 20
+	if opts.WorkSize == 0 {
+		opts.WorkSize = 1 << 20
 	}
 }
 
@@ -113,17 +113,17 @@ func NewReader2(z io.Reader, dictSize int) (r io.ReadCloser, err error) {
 // NewReader2Options generates an LZMA2 reader using the configuration parameter
 // attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
-func NewReader2Options(z io.Reader, cfg Reader2Options) (r io.ReadCloser, err error) {
-	cfg.SetDefaults()
-	if err = cfg.Verify(); err != nil {
+func NewReader2Options(z io.Reader, options Reader2Options) (r io.ReadCloser, err error) {
+	options.SetDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
-	if cfg.Workers <= 1 {
+	if options.Workers <= 1 {
 		var cr chunkReader
-		cr.init(z, cfg.WindowSize)
+		cr.init(z, options.WindowSize)
 		return io.NopCloser(&cr), nil
 	}
-	return newMTReader(cfg, z), nil
+	return newMTReader(options, z), nil
 }
 
 // mtReaderTask describes a single decompression task.

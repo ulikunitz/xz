@@ -16,6 +16,7 @@
         "CCSP",
         "CCSPD",
         "CEOS",
+        "Inval",
         "Probs",
         "bufw",
         "cerr",
@@ -30,10 +31,12 @@
         "rcfg",
         "rindex",
         "serr",
+        "sigch",
         "txtlen",
         "ulikunitz",
         "wcfg",
-        "werr"
+        "werr",
+        "xlog"
     ],
     "import": []
 }

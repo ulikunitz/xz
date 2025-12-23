@@ -25,7 +25,7 @@ func TestPreset(t *testing.T) {
 			cfg := Preset(p)
 			h1 := sha256.New()
 			var buf bytes.Buffer
-			w, err := NewWriterConfig(&buf, cfg)
+			w, err := NewWriterOptions(&buf, cfg)
 			if err != nil {
 				t.Errorf("NewWriterConfig error %s", err)
 				return

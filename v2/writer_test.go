@@ -149,7 +149,7 @@ func TestWriterNoneCheck(t *testing.T) {
 
 	buf.Reset()
 
-	w, err := NewWriterConfig(&buf, WriterConfig{NoChecksum: true})
+	w, err := NewWriterOptions(&buf, WriterOptions{NoChecksum: true})
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -286,7 +286,7 @@ func TestWriterFlush(t *testing.T) {
 }
 
 func TestWriterJSON(t *testing.T) {
-	cfg := WriterConfig{
+	cfg := WriterOptions{
 		Workers:  3,
 		Checksum: CRC64,
 	}
@@ -295,7 +295,7 @@ func TestWriterJSON(t *testing.T) {
 		t.Fatalf("json.MarshalIndent error %s", err)
 	}
 	t.Logf("json:\n%s", p)
-	var cfg1 WriterConfig
+	var cfg1 WriterOptions
 	err = json.Unmarshal(p, &cfg1)
 	if err != nil {
 		t.Fatalf("json.Unmarshal error %s", err)

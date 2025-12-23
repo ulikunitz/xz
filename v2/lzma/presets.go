@@ -10,7 +10,7 @@ func presetParserOptions(i int) lz.Configurator {
 			MaxMatchLen: 273,
 			WindowSize:  1 << 20,
 			BufferSize:  2 << 20,
-			MapperOptions: &lz.HashOptions{
+			MapperOptions: lz.HashOptions{
 				InputLen: 2,
 				HashBits: 16,
 			},

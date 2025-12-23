@@ -199,20 +199,20 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 }
 
 // NewWriter2Options constructs an LZMA2 writer for a specific configuration.
-// Note that the implementation for cfg.Workers > 1 uses go routines.
-func NewWriter2Options(z io.Writer, cfg Writer2Options) (w Writer2, err error) {
-	cfg.setDefaults()
-	if err = cfg.verify(); err != nil {
+// Note that the implementation for options.Workers > 1 uses go routines.
+func NewWriter2Options(z io.Writer, options Writer2Options) (w Writer2, err error) {
+	options.setDefaults()
+	if err = options.verify(); err != nil {
 		return nil, err
 	}
 
-	if cfg.Workers == 1 {
-		parser, err := cfg.ParserOptions.NewParser()
+	if options.Workers == 1 {
+		parser, err := options.ParserOptions.NewParser()
 		if err != nil {
 			return nil, err
 		}
 		var cw chunkWriter
-		if err = cw.init(z, parser, nil, cfg.Properties); err != nil {
+		if err = cw.init(z, parser, nil, options.Properties); err != nil {
 			return nil, err
 		}
 		return &cw, nil
@@ -221,14 +221,14 @@ func NewWriter2Options(z io.Writer, cfg Writer2Options) (w Writer2, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mw := &mtWriter{
 		// extra margin is an optimization for the sequencers
-		buf:    make([]byte, 0, cfg.WorkSize+7),
+		buf:    make([]byte, 0, options.WorkSize+7),
 		ctx:    ctx,
 		cancel: cancel,
-		taskCh: make(chan mtwTask, cfg.Workers),
-		outCh:  make(chan mtwOutput, cfg.Workers),
+		taskCh: make(chan mtwTask, options.Workers),
+		outCh:  make(chan mtwOutput, options.Workers),
 		errCh:  make(chan error, 1),
 		z:      z,
-		cfg:    cfg,
+		cfg:    options,
 	}
 
 	go mtwWriteOutput(mw.ctx, mw.outCh, mw.z, mw.errCh)

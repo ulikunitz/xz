@@ -42,15 +42,10 @@ func FuzzXZ(f *testing.F) {
 		if !(0 <= workers && workers <= 32) {
 			t.Skip()
 		}
-		wc := xz.WriterConfig{Workers: workers}
-		wc.SetDefaults()
-		var err error
-		if err = wc.Verify(); err != nil {
-			t.Skip()
-		}
+		wc := xz.WriterOptions{Workers: workers}
 		h1 := sha256.New()
 		var buf bytes.Buffer
-		w, err := xz.NewWriterConfig(&buf, wc)
+		w, err := xz.NewWriterOptions(&buf, wc)
 		if err != nil {
 			t.Fatalf("NewWriterConfig(&buf, %+v) error %s", wc, err)
 		}
@@ -68,12 +63,8 @@ func FuzzXZ(f *testing.F) {
 			t.Fatalf("w.Close() error %s", err)
 		}
 		h2 := sha256.New()
-		rc := xz.ReaderConfig{Workers: workers}
-		rc.SetDefaults()
-		if err = rc.Verify(); err != nil {
-			t.Fatalf("rc.Verify() for %+v error %s", rc, err)
-		}
-		r, err := xz.NewReaderConfig(&buf, rc)
+		rc := xz.ReaderOptions{Workers: workers}
+		r, err := xz.NewReaderOptions(&buf, rc)
 		if err != nil {
 			t.Fatalf("xz.NewReaderConfig(&buf, %+v) error %s",
 				rc, err)
@@ -169,8 +160,8 @@ func TestReadSingleStream(t *testing.T) {
 	}
 	defer f.Close()
 
-	cfg := xz.ReaderConfig{SingleStream: true}
-	r, err := xz.NewReaderConfig(f, cfg)
+	cfg := xz.ReaderOptions{SingleStream: true}
+	r, err := xz.NewReaderOptions(f, cfg)
 	if err != nil {
 		t.Fatalf("xz.NewReaderConfig(f, %+v) error %s", cfg, err)
 	}
@@ -196,7 +187,7 @@ func TestReadSingleStream(t *testing.T) {
 		t.Fatalf("io.Copy(io.Discard, r) error %s", err)
 	}
 
-	r, err = xz.NewReaderConfig(f, cfg)
+	r, err = xz.NewReaderOptions(f, cfg)
 	if err != nil {
 		t.Fatalf("xz.NewReaderConfig(f, %+v) error %s", cfg, err)
 	}

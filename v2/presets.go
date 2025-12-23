@@ -13,14 +13,14 @@ import (
 // Preset returns a WriterConfig with preset parameters. Supported
 // presets are ranging from 1 to 9 from fast to slow with increasing compression
 // rate.
-func Preset(n int) WriterConfig {
+func Preset(n int) WriterOptions {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))
 	}
 	return presets[n-1]
 }
 
-var presets = []WriterConfig{
+var presets = []WriterOptions{
 	0: {
 		WindowSize: 1024 << 10,
 		Properties: lzma.Properties{LC: 1, LP: 1, PB: 3},
