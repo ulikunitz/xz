@@ -1,5 +1,9 @@
 # TODO list
 
+## Check header parsing
+
+Ensure that wrong header parsing doesn't consume too much memory.
+
 ## Release v1
 
 Make the current v0.5.x the v1.0.0 and promise to maintain it forever.
