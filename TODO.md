@@ -1,13 +1,42 @@
 # TODO list
 
-## Check header parsing
+## Outstanding work for v2
+
+### review options
+
+* lzma package
+* xz package
+
+### tag versions
+
+### improve pizza to support options
+
+### Add the various lz methods
+
+### Work on the preset functions for LZMA and XZ
+
+### Check header parsing
 
 * Ensure that wrong header parsing doesn't consume too much memory.
+
+### Statistics
+
+* create the comparison graph (ratio vs. speed)
+
+### Review documentation
+
+* lz
+* lzma
+* xz
+* xz/README.md
+* pizza
+* pizza/README.md
+* create CHANGELOG.md for xz and replace relnotes directory
+* review release procedure
 
 ## Release v1
 
 Make the current v0.5.x the v1.0.0 and promise to maintain it forever.
-2. Add godoc URL to README.md (godoc.org)
 
 ## Release v2
 
@@ -21,7 +50,7 @@ Make the current v0.5.x the v1.0.0 and promise to maintain it forever.
 
 * execute goch -l for all packages; probably with lower param like 0.5.
 * check orthography with gospell
-* Write release notes in doc/relnotes.
+* Write release notes in doc/relnotes
 * Update README.md
 * xb copyright . in xz directory to ensure all new files have Copyright header
 * `VERSION=<version> go generate github.com/ulikunitz/xz/...` to update version files
@@ -170,7 +199,7 @@ using the operations buffer to be able to go back, if I intend to do so.
 ### 2015-10-21
 
 I have restarted the work on the library. While trying to implement
-LZMA2, I discovered that I need to resimplify the encoder and decoder
+LZMA2, I discovered that I need to simplify the encoder and decoder
 functions. The option approach is too complicated. Using a limited byte
 writer and not caring for written bytes at all and not to try to handle
 uncompressed data simplifies the LZMA encoder and decoder much.
