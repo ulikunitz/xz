@@ -67,14 +67,14 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 		c.SetDefaults()
 	}
 
-	var cfg lzma.Reader2Config
+	var cfg lzma.Reader2Options
 	if c.LZMAParallel {
-		cfg = lzma.Reader2Config{
+		cfg = lzma.Reader2Options{
 			Workers:  c.Workers,
 			WorkSize: c.LZMAWorkSize,
 		}
 	} else {
-		cfg = lzma.Reader2Config{
+		cfg = lzma.Reader2Options{
 			Workers:  1,
 			WorkSize: c.LZMAWorkSize,
 		}
@@ -86,7 +86,7 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 	}
 	cfg.WindowSize = dc
 
-	fr, err = lzma.NewReader2Config(r, cfg)
+	fr, err = lzma.NewReader2Options(r, cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -27,10 +27,12 @@
         "nrange",
         "popts",
         "randtxt",
+        "rcfg",
         "rindex",
         "serr",
         "txtlen",
         "ulikunitz",
+        "wcfg",
         "werr"
     ],
     "import": []

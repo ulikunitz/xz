@@ -96,7 +96,7 @@ func (cfg *ReaderConfig) MarshalJSON() (p []byte, err error) {
 // SetDefaults sets the defaults in ReaderConfig.
 func (cfg *ReaderConfig) SetDefaults() {
 	if cfg.LZMAParallel {
-		lzmaCfg := lzma.Reader2Config{
+		lzmaCfg := lzma.Reader2Options{
 			Workers:  cfg.Workers,
 			WorkSize: cfg.LZMAWorkSize,
 		}
@@ -117,9 +117,9 @@ func (cfg *ReaderConfig) Verify() error {
 		return errors.New("xz: reader parameters are nil")
 	}
 
-	var lzmaCfg lzma.Reader2Config
+	var lzmaCfg lzma.Reader2Options
 	if cfg.LZMAParallel {
-		lzmaCfg = lzma.Reader2Config{
+		lzmaCfg = lzma.Reader2Options{
 			Workers:  cfg.Workers,
 			WorkSize: cfg.LZMAWorkSize,
 		}
@@ -127,7 +127,7 @@ func (cfg *ReaderConfig) Verify() error {
 		if cfg.Workers < 1 {
 			return errors.New("xz: reader workers must be >= 1")
 		}
-		lzmaCfg = lzma.Reader2Config{
+		lzmaCfg = lzma.Reader2Options{
 			Workers:  1,
 			WorkSize: cfg.LZMAWorkSize,
 		}

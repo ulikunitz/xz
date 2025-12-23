@@ -13,12 +13,12 @@ import (
 	"io"
 )
 
-// Reader2Config provides the dictionary size parameter for a LZMA2 reader.
+// Reader2Options provides the dictionary size parameter for a LZMA2 reader.
 //
 // Note that the parallel decoding will only work if the stream has been encoded
 // with multiple workers and the WorkerBufferSize is large enough. If the worker
 // buffer size is too small no worker thread will be used for decompression.
-type Reader2Config struct {
+type Reader2Options struct {
 	// WindowSize provides the maximum dictionary size supported.
 	WindowSize int
 	// Workers gives the maximum number of decompressing workers.
@@ -29,7 +29,7 @@ type Reader2Config struct {
 }
 
 // UnmarshalJSON parses the JSON representation for Reader2Config.
-func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
+func (cfg *Reader2Options) UnmarshalJSON(p []byte) error {
 	var err error
 	var s struct {
 		Format     string
@@ -40,11 +40,11 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
 	}
-	if s.Format != "LZMA2" {
+	if s.Format != "LZMA2Reader" {
 		return errors.New(
 			"lzma: Format JSON property muse have value LZMA")
 	}
-	*cfg = Reader2Config{
+	*cfg = Reader2Options{
 		WindowSize: s.WindowSize,
 		Workers:    s.Workers,
 		WorkSize:   s.WorkSize,
@@ -53,14 +53,14 @@ func (cfg *Reader2Config) UnmarshalJSON(p []byte) error {
 }
 
 // MarshalJSON produces the JSON configuration for the Reader2Config value.
-func (cfg *Reader2Config) MarshalJSON() (p []byte, err error) {
+func (cfg *Reader2Options) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format     string
 		WindowSize int `json:",omitempty"`
 		Workers    int `json:",omitempty"`
 		WorkSize   int `json:",omitempty"`
 	}{
-		Format:     "LZMA2",
+		Format:     "LZMA2Reader",
 		WindowSize: cfg.WindowSize,
 		Workers:    cfg.Workers,
 		WorkSize:   cfg.WorkSize,
@@ -69,7 +69,7 @@ func (cfg *Reader2Config) MarshalJSON() (p []byte, err error) {
 }
 
 // Verify checks the validity of dictionary size.
-func (cfg *Reader2Config) Verify() error {
+func (cfg *Reader2Options) Verify() error {
 	if cfg.WindowSize < minDictSize {
 		return fmt.Errorf(
 			"lzma: dictionary size must be larger or"+
@@ -90,7 +90,7 @@ func (cfg *Reader2Config) Verify() error {
 
 // SetDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
-func (cfg *Reader2Config) SetDefaults() {
+func (cfg *Reader2Options) SetDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 << 20
 	}
@@ -107,13 +107,13 @@ func (cfg *Reader2Config) SetDefaults() {
 // NewReader2 creates a LZMA2 reader. Note that the interface is a ReadCloser,
 // so it has to be closed after usage.
 func NewReader2(z io.Reader, dictSize int) (r io.ReadCloser, err error) {
-	return NewReader2Config(z, Reader2Config{WindowSize: dictSize})
+	return NewReader2Options(z, Reader2Options{WindowSize: dictSize})
 }
 
-// NewReader2Config generates an LZMA2 reader using the configuration parameter
+// NewReader2Options generates an LZMA2 reader using the configuration parameter
 // attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
-func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err error) {
+func NewReader2Options(z io.Reader, cfg Reader2Options) (r io.ReadCloser, err error) {
 	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ type mtReader struct {
 
 // newMTReader creates a new multithreading reader. Note that Close must be
 // called to clean up.
-func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
+func newMTReader(cfg Reader2Options, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
 	tskCh := make(chan mtReaderTask, cfg.Workers)
 	outCh := make(chan mtReaderTask, cfg.Workers)
@@ -201,7 +201,7 @@ func (r *mtReader) Close() error {
 
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
 // started as go routine.
-func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan mtReaderTask) {
+func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Options, tskCh, outCh chan mtReaderTask) {
 	r := &hdrReader{r: z}
 	workers := 0
 	for ctx.Err() == nil {

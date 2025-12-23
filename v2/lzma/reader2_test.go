@@ -4,38 +4,47 @@
 
 package lzma
 
-/*
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"testing"
+)
+
 func TestReader2(t *testing.T) {
 	tests := []struct {
-		wcfg Writer2Config
-		rcfg Reader2Config
+		wcfg Writer2Options
+		rcfg Reader2Options
 	}{
 		{
-			Writer2Config{
+			Writer2Options{
 				Workers:  3,
 				WorkSize: 100000,
 			},
-			Reader2Config{
+			Reader2Options{
 				Workers:  3,
 				WorkSize: 100000,
 			},
 		},
 		{
-			Writer2Config{
+			Writer2Options{
 				Workers:  3,
 				WorkSize: 50000,
 			},
-			Reader2Config{
+			Reader2Options{
 				Workers:  3,
 				WorkSize: 100000,
 			},
 		},
 		{
-			Writer2Config{
+			Writer2Options{
 				Workers:  3,
 				WorkSize: 100000,
 			},
-			Reader2Config{
+			Reader2Options{
 				Workers:  3,
 				WorkSize: 50000,
 			},
@@ -56,9 +65,9 @@ func TestReader2(t *testing.T) {
 			h1 := sha256.New()
 
 			buf := new(bytes.Buffer)
-			w, err := NewWriter2Config(buf, tc.wcfg)
+			w, err := NewWriter2Options(buf, tc.wcfg)
 			if err != nil {
-				t.Fatalf("NewWriter2Config error %s", err)
+				t.Fatalf("NewWriter2Options error %s", err)
 			}
 			defer w.Close()
 			dictSize := w.DictSize()
@@ -80,9 +89,9 @@ func TestReader2(t *testing.T) {
 			if rcfg.WindowSize == 0 {
 				rcfg.WindowSize = dictSize
 			}
-			r, err := NewReader2Config(buf, rcfg)
+			r, err := NewReader2Options(buf, rcfg)
 			if err != nil {
-				t.Fatalf("NewReader2Config(buf, %+v) error %s",
+				t.Fatalf("NewReader2Options(buf, %+v) error %s",
 					rcfg, err)
 			}
 			defer r.Close()
@@ -104,12 +113,10 @@ func TestReader2(t *testing.T) {
 		})
 	}
 }
-*/
 
-/*
 func TestReader2JSON(t *testing.T) {
 	var err error
-	var cfg Reader2Config
+	var cfg Reader2Options
 	cfg.SetDefaults()
 	if err = cfg.Verify(); err != nil {
 		t.Fatalf("cfg.Verify() error %s", err)
@@ -120,7 +127,7 @@ func TestReader2JSON(t *testing.T) {
 	}
 	t.Logf("JSON:\n%s", p)
 
-	var cfg1 Reader2Config
+	var cfg1 Reader2Options
 	if err = json.Unmarshal(p, &cfg1); err != nil {
 		t.Fatalf("Unmarshal error %s", err)
 	}
@@ -128,4 +135,3 @@ func TestReader2JSON(t *testing.T) {
 		t.Fatalf("json.Unmarshal: got %+v, want %+v", cfg1, cfg)
 	}
 }
-*/
