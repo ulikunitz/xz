@@ -2,7 +2,7 @@
 
 ## Check header parsing
 
-Ensure that wrong header parsing doesn't consume too much memory.
+* Ensure that wrong header parsing doesn't consume too much memory.
 
 ## Release v1
 
@@ -15,6 +15,7 @@ Make the current v0.5.x the v1.0.0 and promise to maintain it forever.
    presets for the rest.
 2. Compare compression ratios and speed.
 3. stop searching after a certain length is found (parameter sweetLen)
+4. support runners for v2
 
 ## Release Procedure
 
