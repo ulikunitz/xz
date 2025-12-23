@@ -19,6 +19,12 @@
 
 * Ensure that wrong header parsing doesn't consume too much memory.
 
+### Testing and fuzzing
+
+* Create fuzzer for lzma
+* Run all tests
+* Run all fuzzers
+
 ### Statistics
 
 * create the comparison graph (ratio vs. speed)
