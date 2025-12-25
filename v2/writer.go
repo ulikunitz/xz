@@ -31,6 +31,8 @@ const maxInt64 = 1<<63 - 1
 type WriterOptions struct {
 	// WindowSize sets the dictionary size.
 	WindowSize int
+	// BufferSize sets the size of the buffer used by the LZ parser.
+	BufferSize int
 
 	// Properties for the LZMA algorithm.
 	Properties lzma.Properties
@@ -125,7 +127,7 @@ func (opts *WriterOptions) UnmarshalJSON(p []byte) error {
 	}
 	var parserOptions lz.Configurator
 	if len(s.ParserOptions) > 0 {
-		parserOptions, err = lz.UnmarshalJSONOptions(s.ParserOptions)
+		parserOptions, err = lz.ParseJSON(s.ParserOptions)
 		if err != nil {
 			return fmt.Errorf("lz.ParseJSON(%q): %w",
 				s.ParserOptions, err)

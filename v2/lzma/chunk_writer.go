@@ -46,21 +46,9 @@ func (w *chunkWriter) init(z io.Writer, parser lz.Parser, data []byte,
 	if err := parser.Reset(data); err != nil {
 		return err
 	}
-	popts := parser.Options()
-	winSize := lz.WindowSize(popts)
-	retentionSize := lz.RetentionSize(popts)
-	bufSize := lz.BufferSize(popts)
-	if retentionSize != winSize {
-		return fmt.Errorf("lzma: retention size %d != window size %d",
-			retentionSize, winSize)
-	}
-	if !(retentionSize < bufSize) {
-		return fmt.Errorf("lzma: retentions size %d >= buffer size %d",
-			retentionSize, bufSize)
-	}
 	*w = chunkWriter{
 		parser:  parser,
-		encoder: encoder{window: parser},
+		encoder: encoder{parser: parser},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -243,7 +231,7 @@ func (w *chunkWriter) finishChunk() error {
 			return err
 		}
 
-		k, err := w.window.ReadAt(p[3:], w.start)
+		k, err := w.parser.ReadAt(p[3:], w.start)
 		if err != nil {
 			return err
 		}
@@ -300,7 +288,7 @@ func (w *chunkWriter) Write(p []byte) (n int, err error) {
 	}
 	for {
 		var k int
-		k, err = w.window.Write(p[n:])
+		k, err = w.parser.Write(p[n:])
 		n += k
 		if err == nil {
 			return n, nil
@@ -356,7 +344,7 @@ func (w *chunkWriter) Close() error {
 	return nil
 }
 
-// DictSize returns the dictionary size for the chunk writer.
-func (w *chunkWriter) DictSize() int {
-	return lz.WindowSize(w.parser.Options())
+// WindowSize returns the window size for the chunk writer.
+func (w *chunkWriter) WindowSize() int {
+	return w.parser.WindowSize()
 }

@@ -21,39 +21,38 @@ func TestReader2(t *testing.T) {
 	}{
 		{
 			Writer2Options{
-				Workers:  3,
-				WorkSize: 100000,
+				Workers:    3,
+				WindowSize: 100000,
 			},
 			Reader2Options{
-				Workers:  3,
-				WorkSize: 100000,
+				Workers:    3,
+				WindowSize: 100000,
 			},
 		},
 		{
 			Writer2Options{
-				Workers:  3,
-				WorkSize: 50000,
+				Workers:    3,
+				WindowSize: 50000,
 			},
 			Reader2Options{
-				Workers:  3,
-				WorkSize: 100000,
+				Workers:    3,
+				WindowSize: 100000,
 			},
 		},
 		{
 			Writer2Options{
-				Workers:  3,
-				WorkSize: 100000,
+				Workers:    3,
+				WindowSize: 100000,
 			},
 			Reader2Options{
-				Workers:  3,
-				WorkSize: 50000,
+				Workers:    3,
+				WindowSize: 50000,
 			},
 		},
 		{},
 	}
 
 	for i, tc := range tests {
-		tc := tc
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			const file = "testdata/enwik7"
 			f, err := os.Open(file)
@@ -70,8 +69,7 @@ func TestReader2(t *testing.T) {
 				t.Fatalf("NewWriter2Options error %s", err)
 			}
 			defer w.Close()
-			dictSize := w.DictSize()
-			t.Logf("dictSize: %d", dictSize)
+			windowSize := w.WindowSize()
 
 			n1, err := io.Copy(w, io.TeeReader(f, h1))
 			if err != nil {
@@ -86,8 +84,8 @@ func TestReader2(t *testing.T) {
 			t.Logf("compressed: %d, uncompressed: %d", buf.Len(), n1)
 
 			rcfg := tc.rcfg
-			if rcfg.WindowSize == 0 {
-				rcfg.WindowSize = dictSize
+			if rcfg.WindowSize < tc.wcfg.WindowSize {
+				rcfg.WindowSize = windowSize
 			}
 			r, err := NewReader2Options(buf, rcfg)
 			if err != nil {

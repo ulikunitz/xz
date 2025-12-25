@@ -22,7 +22,7 @@ func Stat(r io.Reader) (info Info, err error) {
 	if err = hdr.UnmarshalBinary(p); err != nil {
 		return info, err
 	}
-	if err = hdr.Verify(); err != nil {
+	if err = hdr.verify(); err != nil {
 		return info, err
 	}
 

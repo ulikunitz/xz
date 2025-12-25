@@ -7,7 +7,6 @@ package lzma
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/ulikunitz/lz"
@@ -27,7 +26,7 @@ func setUpdateEncoder(p lz.Parser, updateEncoder func() *encoder) {
 // whether an end of stream marker will be written.
 func NewRawWriter(z io.Writer, parser lz.Parser, p Properties, eos bool) (w io.WriteCloser, err error) {
 
-	if err = p.Verify(); err != nil {
+	if err = p.verify(); err != nil {
 		return nil, err
 	}
 
@@ -58,23 +57,9 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) err
 		bufw = bufio.NewWriter(z)
 		bw = bufw
 	}
-
-	popts := parser.Options()
-	winSize := lz.WindowSize(popts)
-	retentionSize := lz.RetentionSize(popts)
-	bufSize := lz.BufferSize(popts)
-	if retentionSize != winSize {
-		return fmt.Errorf("lzma: retention size %d != window size %d",
-			retentionSize, winSize)
-	}
-	if !(retentionSize < bufSize) {
-		return fmt.Errorf("lzma: retentions size %d >= buffer size %d",
-			retentionSize, bufSize)
-	}
-
 	*w = writer{
 		parser:  parser,
-		encoder: encoder{window: parser},
+		encoder: encoder{parser: parser},
 		blk: lz.Block{
 			Sequences: w.blk.Sequences[:0],
 			Literals:  w.blk.Literals[:0],
@@ -183,7 +168,7 @@ func (w *writer) Write(p []byte) (n int, err error) {
 		return 0, w.err
 	}
 	for {
-		k, err := w.window.Write(p[n:])
+		k, err := w.parser.Write(p[n:])
 		n += k
 		if err == nil {
 			return n, nil
@@ -261,24 +246,11 @@ func (opts *WriterOptions) verify() error {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
 
-	if err = opts.Properties.Verify(); err != nil {
+	if err = opts.Properties.verify(); err != nil {
 		return err
 	}
 	if opts.FixedSize && opts.Size < 0 {
 		return errors.New("lzma: Size must be >= 0")
-	}
-
-	winSize := lz.WindowSize(opts.ParserOptions)
-	bufSize := lz.BufferSize(opts.ParserOptions)
-
-	if opts.WindowSize != winSize {
-		return errors.New("lzma: WindowSize conflicts with ParserOptions")
-	}
-	if !(0 < winSize) {
-		return errors.New("lzma: WindowSize must be > 0")
-	}
-	if !(bufSize > winSize) {
-		return errors.New("lzma: BufferSize must be greater than WindowSize")
 	}
 
 	return nil
@@ -297,14 +269,6 @@ func (opts *WriterOptions) setDefaults() {
 	if opts.ParserOptions == nil {
 		opts.ParserOptions = presetParserOptions(5)
 	}
-	err := lz.SetWindowSize(opts.ParserOptions, opts.WindowSize)
-	if err != nil {
-		panic(err)
-	}
-	err = lz.SetBufferSize(opts.ParserOptions, opts.WindowSize*2)
-	if err != nil {
-		panic(err)
-	}
 }
 
 // NewWriter creates a new LZMA writer.
@@ -320,7 +284,8 @@ func NewWriterOptions(z io.Writer, options WriterOptions) (w io.WriteCloser, err
 		return nil, err
 	}
 
-	parser, err := options.ParserOptions.NewParser()
+	parser, err := options.ParserOptions.NewParser(options.WindowSize,
+		options.WindowSize, 2*options.WindowSize)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +299,7 @@ func NewWriterOptions(z io.Writer, options WriterOptions) (w io.WriteCloser, err
 	} else {
 		p.uncompressedSize = EOSSize
 	}
-	if err = p.Verify(); err != nil {
+	if err = p.verify(); err != nil {
 		panic(err)
 	}
 	data, err := p.AppendBinary(nil)

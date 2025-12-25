@@ -21,11 +21,11 @@ import (
 type Reader2Options struct {
 	// WindowSize provides the maximum dictionary size supported.
 	WindowSize int
+	// BufferSize give the size of the decoder buffer and if there are more
+	// workers than 1, gives the work size for each worker.
+	BufferSize int
 	// Workers gives the maximum number of decompressing workers.
 	Workers int
-	// WorkSize give the maximum size of uncompressed data that can be
-	// decoded by a single worker.
-	WorkSize int
 }
 
 // UnmarshalJSON parses the JSON representation for Reader2Config.
@@ -34,8 +34,8 @@ func (opts *Reader2Options) UnmarshalJSON(p []byte) error {
 	var s struct {
 		Format     string
 		WindowSize int `json:",omitempty"`
+		BufferSize int `json:",omitempty"`
 		Workers    int `json:",omitempty"`
-		WorkSize   int `json:",omitempty"`
 	}
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
@@ -46,8 +46,8 @@ func (opts *Reader2Options) UnmarshalJSON(p []byte) error {
 	}
 	*opts = Reader2Options{
 		WindowSize: s.WindowSize,
+		BufferSize: s.BufferSize,
 		Workers:    s.Workers,
-		WorkSize:   s.WorkSize,
 	}
 	return nil
 }
@@ -57,13 +57,13 @@ func (opts *Reader2Options) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format     string
 		WindowSize int `json:",omitempty"`
+		BufferSize int `json:",omitempty"`
 		Workers    int `json:",omitempty"`
-		WorkSize   int `json:",omitempty"`
 	}{
 		Format:     "LZMA2Reader",
 		WindowSize: opts.WindowSize,
+		BufferSize: opts.BufferSize,
 		Workers:    opts.Workers,
-		WorkSize:   opts.WorkSize,
 	}
 	return json.Marshal(&s)
 }
@@ -80,34 +80,54 @@ func (opts *Reader2Options) verify() error {
 		return errors.New("lzma: Worker must be larger than 0")
 	}
 
-	if opts.WorkSize <= 0 {
-		return errors.New(
-			"lzma: WorkerBufferSize must be greater than 0")
+	if !(opts.WindowSize <= opts.BufferSize) {
+		return fmt.Errorf(
+			"lzma: BufferSize=%d must be greater than"+
+				" or equal WindowSize=%d for single-threaded"+
+				" reader",
+			opts.BufferSize, opts.WindowSize)
 	}
-
 	return nil
 }
 
 // SetDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
 func (opts *Reader2Options) SetDefaults() {
-	if opts.WindowSize == 0 {
-		opts.WindowSize = 8 << 20
-	}
-
 	if opts.Workers == 0 {
 		opts.Workers = 1
 	}
 
-	if opts.WorkSize == 0 {
-		opts.WorkSize = 1 << 20
+	if opts.Workers == 1 {
+		if opts.WindowSize == 0 {
+			if opts.BufferSize > 0 {
+				opts.WindowSize = opts.BufferSize / 2
+			} else {
+				opts.WindowSize = 8 << 20
+			}
+		}
+		if opts.BufferSize == 0 {
+			opts.BufferSize = 2 * opts.WindowSize
+		}
+		return
+	}
+
+	if opts.WindowSize == 0 {
+		if opts.BufferSize > 0 {
+			opts.WindowSize = opts.BufferSize
+		} else {
+			opts.WindowSize = 8 << 20
+		}
+	}
+
+	if opts.BufferSize == 0 {
+		opts.BufferSize = opts.WindowSize
 	}
 }
 
 // NewReader2 creates a LZMA2 reader. Note that the interface is a ReadCloser,
 // so it has to be closed after usage.
-func NewReader2(z io.Reader, dictSize int) (r io.ReadCloser, err error) {
-	return NewReader2Options(z, Reader2Options{WindowSize: dictSize})
+func NewReader2(z io.Reader, windowSize int) (r io.ReadCloser, err error) {
+	return NewReader2Options(z, Reader2Options{WindowSize: windowSize})
 }
 
 // NewReader2Options generates an LZMA2 reader using the configuration parameter
@@ -206,11 +226,11 @@ func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Options, tskCh, ou
 	workers := 0
 	for ctx.Err() == nil {
 		buf := new(bytes.Buffer)
-		buf.Grow(cfg.WorkSize)
+		buf.Grow(cfg.BufferSize)
 		tsk := mtReaderTask{
 			rCh: make(chan io.Reader, 1),
 		}
-		size, parallel, err := splitStream(buf, r, cfg.WorkSize)
+		size, parallel, err := splitStream(buf, r, cfg.BufferSize)
 		if err != nil && err != io.EOF {
 			tsk.rCh <- &errReader{err: err}
 			select {

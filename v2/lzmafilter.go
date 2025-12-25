@@ -70,13 +70,13 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderOptions) (fr io.ReadCloser, err
 	var cfg lzma.Reader2Options
 	if c.LZMAParallel {
 		cfg = lzma.Reader2Options{
-			Workers:  c.Workers,
-			WorkSize: c.LZMAWorkSize,
+			Workers:    c.Workers,
+			BufferSize: c.LZMAWorkSize,
 		}
 	} else {
 		cfg = lzma.Reader2Options{
-			Workers:  1,
-			WorkSize: c.LZMAWorkSize,
+			Workers:    1,
+			BufferSize: c.LZMAWorkSize,
 		}
 	}
 	dc := int(f.dictSize)
@@ -103,17 +103,18 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterOptions,
 
 	cfg := lzma.Writer2Options{
 		WindowSize:      c.WindowSize,
+		BufferSize:      c.BufferSize,
 		Properties:      c.Properties,
 		FixedProperties: c.FixedProperties,
 		ParserOptions:   c.ParserOptions,
 	}
 	if c.LZMAParallel {
 		cfg.Workers = c.Workers
-		cfg.WorkSize = c.LZMAWorkSize
 	} else {
 		cfg.Workers = 1
-		cfg.WorkSize = c.LZMAWorkSize
 	}
+
+	// TODO: check
 	dc := int(f.dictSize)
 	if dc < 1 {
 		return nil, errors.New("xz: LZMA2 filter parameter " +

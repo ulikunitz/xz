@@ -13,8 +13,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/ulikunitz/lz"
 )
 
 func TestChunkHeader(t *testing.T) {
@@ -58,8 +56,9 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
 
+	const winSize = 1 << 20
 	po := presetParserOptions(5)
-	parser, err := po.NewParser()
+	parser, err := po.NewParser(winSize, winSize, 2*winSize)
 	if err != nil {
 		t.Fatalf("po.NewParser() error %s", err)
 	}
@@ -72,8 +71,7 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 
 	var cr chunkReader
 	po = parser.Options()
-	dictSize := lz.WindowSize(po)
-	if err = cr.init(buf, dictSize); err != nil {
+	if err = cr.init(buf, winSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
 
@@ -90,6 +88,8 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 }
 
 func TestChunkWriterReader(t *testing.T) {
+	const winSize = 1 << 20
+
 	tests := []func() (io.Reader, error){
 		func() (io.Reader, error) {
 			return strings.NewReader("=====foofoobar==foobar===="),
@@ -141,7 +141,7 @@ func TestChunkWriterReader(t *testing.T) {
 			z := io.TeeReader(r, hIn)
 			var cw chunkWriter
 			po := presetParserOptions(5)
-			parser, err := po.NewParser()
+			parser, err := po.NewParser(winSize, winSize, 2*winSize)
 			if err != nil {
 				t.Fatalf("po.NewParser() error %s", err)
 			}
@@ -163,9 +163,7 @@ func TestChunkWriterReader(t *testing.T) {
 
 			var cr chunkReader
 			po = parser.Options()
-			dictSize := lz.WindowSize(po)
-			t.Logf("dictSize: %d", dictSize)
-			if err = cr.init(buf, dictSize); err != nil {
+			if err = cr.init(buf, winSize); err != nil {
 				t.Fatalf("cr.init() error %s", err)
 			}
 
@@ -189,12 +187,13 @@ func TestChunkWriterReader(t *testing.T) {
 }
 
 func TestChunkClose(t *testing.T) {
+	const winSize = 1 << 20
 	const s = "=====foofoobar==foobar===="
 
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
 	po := presetParserOptions(5)
-	parser, err := po.NewParser()
+	parser, err := po.NewParser(winSize, winSize, 2*winSize)
 	if err != nil {
 		t.Fatalf("lzcfg.NewParser() error %s", err)
 	}
@@ -207,8 +206,7 @@ func TestChunkClose(t *testing.T) {
 
 	var cr chunkReader
 	po = parser.Options()
-	dictSize := lz.WindowSize(po)
-	if err = cr.init(buf, dictSize); err != nil {
+	if err = cr.init(buf, winSize); err != nil {
 		t.Fatalf("cr.init() error %s", err)
 	}
 

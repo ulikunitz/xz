@@ -80,7 +80,7 @@ const EOSSize uint64 = 1<<64 - 1
 // an EOS marker use [EOSSize] for uncompressedSize. The dictSize must be
 // positive (>=0).
 func NewRawReader(z io.Reader, hdr Header) (r *Reader, err error) {
-	if err = hdr.Verify(); err != nil {
+	if err = hdr.verify(); err != nil {
 		return nil, err
 	}
 	rr := new(Reader)
@@ -104,14 +104,14 @@ type Header struct {
 }
 
 // Verify checks the parameters for correctness.
-func (h Header) Verify() error {
+func (h Header) verify() error {
 	if uint64(h.DictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
 	}
 	if h.DictSize < minDictSize {
 		return errors.New("lzma: dictSize is too small")
 	}
-	return h.Properties.Verify()
+	return h.Properties.verify()
 }
 
 // AppendBinary adds the header to the slice s.
@@ -208,7 +208,7 @@ func NewReaderOptions(z io.Reader, options ReaderOptions) (r *Reader, err error)
 	if hdr.DictSize < minDictSize {
 		hdr.DictSize = minDictSize
 	}
-	if err = hdr.Verify(); err != nil {
+	if err = hdr.verify(); err != nil {
 		return nil, err
 	}
 

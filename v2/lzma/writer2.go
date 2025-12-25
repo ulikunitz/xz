@@ -20,6 +20,9 @@ import (
 type Writer2Options struct {
 	// WindowSize sets the dictionary size.
 	WindowSize int
+	// BufferSize sets the size of the buffer used by the LZ parser. It
+	// defines the work size for parallel compression.
+	BufferSize int
 
 	// Properties for the LZMA algorithm.
 	Properties Properties
@@ -28,8 +31,6 @@ type Writer2Options struct {
 
 	// Number of workers processing data.
 	Workers int
-	// Size of buffer used by the worker.
-	WorkSize int
 
 	// Options for the LZ parser.
 	ParserOptions lz.Configurator
@@ -42,12 +43,12 @@ func (cfg *Writer2Options) UnmarshalJSON(p []byte) error {
 	s := struct {
 		Format          string
 		WindowSize      int             `json:",omitempty"`
+		BufferSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
 		PB              int             `json:",omitempty"`
 		FixedProperties bool            `json:",omitempty"`
 		Workers         int             `json:",omitempty"`
-		WorkSize        int             `json:",omitempty"`
 		ParserOptions   json.RawMessage `json:",omitempty"`
 	}{}
 	if err = json.Unmarshal(p, &s); err != nil {
@@ -59,7 +60,7 @@ func (cfg *Writer2Options) UnmarshalJSON(p []byte) error {
 	}
 	var parserOptions lz.Configurator
 	if len(s.ParserOptions) > 0 {
-		parserOptions, err = lz.UnmarshalJSONOptions(s.ParserOptions)
+		parserOptions, err = lz.ParseJSON(s.ParserOptions)
 		if err != nil {
 			return fmt.Errorf("lz.UnmarshalJSONOptions(%q): %w",
 				s.ParserOptions, err)
@@ -67,6 +68,7 @@ func (cfg *Writer2Options) UnmarshalJSON(p []byte) error {
 	}
 	*cfg = Writer2Options{
 		WindowSize: s.WindowSize,
+		BufferSize: s.BufferSize,
 		Properties: Properties{
 			LC: s.LC,
 			LP: s.LP,
@@ -74,7 +76,6 @@ func (cfg *Writer2Options) UnmarshalJSON(p []byte) error {
 		},
 		FixedProperties: s.FixedProperties,
 		Workers:         s.Workers,
-		WorkSize:        s.WorkSize,
 		ParserOptions:   parserOptions,
 	}
 	return nil
@@ -85,22 +86,22 @@ func (cfg *Writer2Options) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
 		WindowSize      int             `json:",omitempty"`
+		BufferSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
 		PB              int             `json:",omitempty"`
 		FixedProperties bool            `json:",omitempty"`
 		Workers         int             `json:",omitempty"`
-		WorkSize        int             `json:",omitempty"`
 		ParserOptions   lz.Configurator `json:",omitempty"`
 	}{
 		Format:          "LZMA2",
 		WindowSize:      cfg.WindowSize,
+		BufferSize:      cfg.BufferSize,
 		LC:              cfg.Properties.LC,
 		LP:              cfg.Properties.LP,
 		PB:              cfg.Properties.PB,
 		FixedProperties: cfg.FixedProperties,
 		Workers:         cfg.Workers,
-		WorkSize:        cfg.WorkSize,
 		ParserOptions:   cfg.ParserOptions,
 	}
 	return json.Marshal(&s)
@@ -114,75 +115,66 @@ func (cfg *Writer2Options) verify() error {
 		return errors.New("lzma: Writer2Options pointer must not be nil")
 	}
 
+	if cfg.WindowSize <= 0 {
+		return errors.New("lzma: WindowSize must be larger than 0")
+	}
+	if !(cfg.WindowSize <= cfg.BufferSize) {
+		return errors.New(
+			"lzma: BufferSize must be larger or equal than WindowSize")
+	}
+
 	if cfg.ParserOptions == nil {
 		return errors.New("lzma: Writer2Options field LZCfg is nil")
 	}
 
-	if err = cfg.Properties.Verify(); err != nil {
+	if err = cfg.Properties.verify(); err != nil {
 		return err
 	}
 
-	if cfg.Workers < 0 {
+	if cfg.Workers < 1 {
 		return errors.New("lzma: Worker must be larger than 0")
 	}
 
-	if cfg.Workers > 1 && cfg.WorkSize <= 0 {
-		return errors.New(
-			"lzma: WorkerBufferSize must be greater than 0")
-	}
-
-	if cfg.Workers > 1 {
-		bufferSize := lz.BufferSize(cfg.ParserOptions)
-		if cfg.WorkSize > bufferSize {
-			return errors.New(
-				"lzma: sequence buffer size must be" +
-					" less or equal than worker buffer size")
-		}
-	}
-
-	return nil
-}
-
-// fixParserOptions computes the sequence buffer configuration in a way that
-// works for lzma.
-func fixParserOptions(cfg lz.Configurator, windowSize int) error {
-	var err error
-	if err = lz.SetWindowSize(cfg, windowSize); err != nil {
-		return err
-	}
-	if err = lz.SetRetentionSize(cfg, windowSize); err != nil {
-		return err
-	}
-	bufferSize := max(2*windowSize, 256<<10)
-	if err = lz.SetBufferSize(cfg, bufferSize); err != nil {
-		return err
-	}
 	return nil
 }
 
 // setDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
 func (cfg *Writer2Options) setDefaults() {
-	if cfg.WindowSize == 0 {
-		cfg.WindowSize = 8 << 20
+	if cfg.Workers == 0 {
+		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
 	if cfg.ParserOptions == nil {
 		cfg.ParserOptions = presetParserOptions(5)
 	}
-	fixParserOptions(cfg.ParserOptions, cfg.WindowSize)
-
 	var zeroProps = Properties{}
 	if cfg.Properties == zeroProps && !cfg.FixedProperties {
 		cfg.Properties = Properties{3, 0, 2}
 	}
 
-	if cfg.Workers == 0 {
-		cfg.Workers = runtime.GOMAXPROCS(0)
+	if cfg.Workers == 1 {
+		if cfg.WindowSize == 0 {
+			if cfg.BufferSize > 0 {
+				cfg.WindowSize = cfg.BufferSize / 2
+			} else {
+				cfg.WindowSize = 8 << 20
+			}
+		}
+		if cfg.BufferSize == 0 {
+			cfg.BufferSize = 2 * cfg.WindowSize
+		}
+		return
 	}
 
-	if cfg.WorkSize == 0 && cfg.Workers > 1 {
-		cfg.WorkSize = max(1<<20, 2*cfg.WindowSize)
-		lz.SetBufferSize(cfg.ParserOptions, cfg.WorkSize)
+	if cfg.WindowSize == 0 {
+		if cfg.BufferSize > 0 {
+			cfg.WindowSize = cfg.BufferSize
+		} else {
+			cfg.WindowSize = 8 << 20
+		}
+	}
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = cfg.WindowSize
 	}
 }
 
@@ -190,7 +182,7 @@ func (cfg *Writer2Options) setDefaults() {
 type Writer2 interface {
 	io.WriteCloser
 	Flush() error
-	DictSize() int
+	WindowSize() int
 }
 
 // NewWriter2 generates an LZMA2 writer for the default configuration.
@@ -207,7 +199,9 @@ func NewWriter2Options(z io.Writer, options Writer2Options) (w Writer2, err erro
 	}
 
 	if options.Workers == 1 {
-		parser, err := options.ParserOptions.NewParser()
+		parser, err := options.ParserOptions.NewParser(
+			options.WindowSize, options.WindowSize,
+			options.BufferSize)
 		if err != nil {
 			return nil, err
 		}
@@ -221,14 +215,15 @@ func NewWriter2Options(z io.Writer, options Writer2Options) (w Writer2, err erro
 	ctx, cancel := context.WithCancel(context.Background())
 	mw := &mtWriter{
 		// extra margin is an optimization for the sequencers
-		buf:    make([]byte, 0, options.WorkSize+7),
-		ctx:    ctx,
-		cancel: cancel,
-		taskCh: make(chan mtwTask, options.Workers),
-		outCh:  make(chan mtwOutput, options.Workers),
-		errCh:  make(chan error, 1),
-		z:      z,
-		cfg:    options,
+		buf:        make([]byte, 0, options.BufferSize+7),
+		ctx:        ctx,
+		cancel:     cancel,
+		taskCh:     make(chan mtwTask, options.Workers),
+		outCh:      make(chan mtwOutput, options.Workers),
+		errCh:      make(chan error, 1),
+		z:          z,
+		windowSize: options.WindowSize,
+		cfg:        options,
 	}
 
 	go mtwWriteOutput(mw.ctx, mw.outCh, mw.z, mw.errCh)
@@ -237,20 +232,21 @@ func NewWriter2Options(z io.Writer, options Writer2Options) (w Writer2, err erro
 }
 
 type mtWriter struct {
-	buf     []byte
-	ctx     context.Context
-	cancel  context.CancelFunc
-	taskCh  chan mtwTask
-	outCh   chan mtwOutput
-	errCh   chan error
-	z       io.Writer
-	workers int
-	cfg     Writer2Options
-	err     error
+	buf        []byte
+	ctx        context.Context
+	cancel     context.CancelFunc
+	taskCh     chan mtwTask
+	outCh      chan mtwOutput
+	errCh      chan error
+	z          io.Writer
+	workers    int
+	cfg        Writer2Options
+	err        error
+	windowSize int
 }
 
-func (w *mtWriter) DictSize() int {
-	return lz.WindowSize(w.cfg.ParserOptions)
+func (w *mtWriter) WindowSize() int {
+	return w.windowSize
 }
 
 func (w *mtWriter) Write(p []byte) (n int, err error) {
@@ -265,7 +261,7 @@ func (w *mtWriter) Write(p []byte) (n int, err error) {
 	default:
 	}
 	for len(p) > 0 {
-		k := w.cfg.WorkSize - len(w.buf)
+		k := w.cfg.BufferSize - len(w.buf)
 		if k >= len(p) {
 			w.buf = append(w.buf, p...)
 			n += len(p)
@@ -292,7 +288,7 @@ func (w *mtWriter) Write(p []byte) (n int, err error) {
 		case w.outCh <- mtwOutput{zCh: zCh}:
 		}
 		// extra margin is an optimization for the sequence buffers
-		w.buf = make([]byte, 0, w.cfg.WorkSize+7)
+		w.buf = make([]byte, 0, w.cfg.BufferSize+7)
 		n += k
 		p = p[k:]
 	}
@@ -327,7 +323,7 @@ func (w *mtWriter) Flush() error {
 		case w.taskCh <- mtwTask{data: w.buf, zCh: zCh}:
 		}
 		// extra margin is an optimization for the sequencers
-		w.buf = make([]byte, 0, w.cfg.WorkSize+7)
+		w.buf = make([]byte, 0, w.cfg.BufferSize+7)
 	}
 	select {
 	case err = <-w.errCh:
@@ -413,7 +409,8 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 }
 
 func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Options) {
-	parser, err := cfg.ParserOptions.NewParser()
+	parser, err := cfg.ParserOptions.NewParser(
+		cfg.WindowSize, cfg.WindowSize, cfg.BufferSize)
 	if err != nil {
 		panic(fmt.Errorf("xz: NewParser error %s", err))
 	}

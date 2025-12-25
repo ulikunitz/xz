@@ -16,7 +16,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ulikunitz/lz"
 	"github.com/ulikunitz/xz/v2/internal/randtxt"
 )
 
@@ -28,8 +27,8 @@ func TestWriter2Simple(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewWriter2(buf) error %s", err)
 	}
-	dictSize := w.DictSize()
-	t.Logf("dictSize: %d", dictSize)
+	windowSize := w.WindowSize()
+	t.Logf("Size: %d", windowSize)
 
 	if _, err = io.WriteString(w, s); err != nil {
 		t.Fatalf("io.WriteString(w, %q) error %s", s, err)
@@ -41,7 +40,7 @@ func TestWriter2Simple(t *testing.T) {
 
 	t.Logf("buf.Len() %d; len(s) %d", buf.Len(), len(s))
 
-	r, err := NewReader2(buf, dictSize)
+	r, err := NewReader2(buf, windowSize)
 	if err != nil {
 		t.Fatalf("NewReader2(buf) error %s", err)
 	}
@@ -60,12 +59,9 @@ func TestWriter2Simple(t *testing.T) {
 
 func TestWriter2(t *testing.T) {
 	tests := []Writer2Options{
-		/*
-			{Workers: 1},
-			{WorkerBufferSize: 100000, Workers: 2},
-		*/
-		{WorkSize: 3e5},
-
+		{Workers: 1},
+		{BufferSize: 100000, Workers: 2},
+		{BufferSize: 3e5},
 		{},
 	}
 
@@ -87,8 +83,8 @@ func TestWriter2(t *testing.T) {
 				t.Fatalf("NewWriter2Config error %s", err)
 			}
 			defer w.Close()
-			dictSize := w.DictSize()
-			t.Logf("dictSize: %d", dictSize)
+			windowSize := w.WindowSize()
+			t.Logf("dictSize: %d", windowSize)
 
 			n1, err := io.Copy(w, io.TeeReader(f, h1))
 			if err != nil {
@@ -102,7 +98,7 @@ func TestWriter2(t *testing.T) {
 			}
 			t.Logf("compressed: %d, uncompressed: %d", buf.Len(), n1)
 
-			r, err := NewReader2(buf, dictSize)
+			r, err := NewReader2(buf, windowSize)
 			if err != nil {
 				t.Fatalf("NewReader2(buf) error %s", err)
 			}
@@ -144,9 +140,9 @@ func TestMTWriter(t *testing.T) {
 	if err = w.Close(); err != nil {
 		t.Fatalf("w.Close() error %s", err)
 	}
-	dictSize := w.DictSize()
+	windowSize := w.WindowSize()
 
-	r, err := NewReader2(buf, dictSize)
+	r, err := NewReader2(buf, windowSize)
 	if err != nil {
 		t.Fatalf("NewReader2 error %s", err)
 	}
@@ -187,27 +183,20 @@ func TestWriter2OptionsJSON(t *testing.T) {
 		t.Fatalf("json.Unmarshal error %s", err)
 	}
 	if !reflect.DeepEqual(cfg, cfg1) {
+		if !reflect.DeepEqual(cfg.ParserOptions, cfg1.ParserOptions) {
+			t.Fatalf("ParserOptions differ: got %+v; want %+v",
+				cfg1.ParserOptions, cfg.ParserOptions)
+		}
 		t.Fatalf("json.Unmarshal: got %+v; want %+v",
 			cfg1, cfg)
 	}
 }
 
-func TestWriter2ConfigDictSize(t *testing.T) {
+func TestWriter2OptionsWindowSize(t *testing.T) {
 	cfg := Writer2Options{WindowSize: 4096}
 	cfg.setDefaults()
 	if err := cfg.verify(); err != nil {
-		t.Fatalf("DictSize set without lzCfg: %s", err)
-	}
-
-	lzCfg := presetParserOptions(5)
-	cfg = Writer2Options{
-		ParserOptions: lzCfg,
-		WindowSize:    4098,
-	}
-	cfg.setDefaults()
-	windowSize := lz.WindowSize(lzCfg)
-	if windowSize != 4098 {
-		t.Fatalf("lzCfg windowSize %d; want %d", windowSize, 4098)
+		t.Fatalf("WindowSize set without lzCfg: %s", err)
 	}
 }
 

@@ -36,7 +36,7 @@ func (p *Properties) fromByte(b byte) error {
 
 // Verify verifies the correctness of the properties. It doesn't check the LZMA2
 // condition that LC + LP <= 4.
-func (p Properties) Verify() error {
+func (p Properties) verify() error {
 	if !(0 <= p.LC && p.LC <= 8) {
 		return fmt.Errorf("lzma: LC out of range 0..8")
 	}
