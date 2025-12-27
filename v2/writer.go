@@ -18,13 +18,6 @@ import (
 	"github.com/ulikunitz/xz/v2/lzma"
 )
 
-// defaultParallelBlockSize defines the default block size for more than 1
-// worker as 256 kByte.
-const defaultParallelBlockSize = 256 << 10
-
-// maxInt64 defines the maximum 64-bit signed integer.
-const maxInt64 = 1<<63 - 1
-
 // WriterOptions describe the parameters for an xz writer. CRC64 is used as the
 // default checksum despite the XZ specification saying a decoder must only
 // support CRC32.
@@ -45,17 +38,9 @@ type WriterOptions struct {
 	// LZMA level. (This is an experimental setup and should normally not be
 	// used.)
 	LZMAParallel bool
-	// Size of buffer used by the worker in LZMA work.
-	LZMAWorkSize int
 
 	// Configuration for the LZ parser.
 	ParserOptions lz.Configurator
-
-	// XZBlockSize defines the maximum uncompressed size of a xz-format
-	// block. The default for a single worker setup MaxInt64=2^63-1 and 256
-	// kByte with multiple parallel workers. Note that the XZ block size
-	// differs from the parser block size.
-	XZBlockSize int64
 
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
 	Checksum byte
@@ -106,15 +91,14 @@ func (opts *WriterOptions) UnmarshalJSON(p []byte) error {
 	s := struct {
 		Format          string
 		WindowSize      int             `json:",omitempty"`
+		BufferSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
 		PB              int             `json:",omitempty"`
 		FixedProperties bool            `json:",omitempty"`
 		Workers         int             `json:",omitempty"`
 		LZMAParallel    bool            `json:",omitempty"`
-		LZMAWorkSize    int             `json:",omitempty"`
 		ParserOptions   json.RawMessage `json:",omitempty"`
-		XZBlockSize     int64           `json:",omitempty"`
 		Checksum        checksum        `json:",omitempty"`
 		NoChecksum      bool            `json:",omitempty"`
 	}{}
@@ -138,6 +122,7 @@ func (opts *WriterOptions) UnmarshalJSON(p []byte) error {
 	}
 	*opts = WriterOptions{
 		WindowSize: s.WindowSize,
+		BufferSize: s.BufferSize,
 		Properties: lzma.Properties{
 			LC: s.LC,
 			LP: s.LP,
@@ -146,9 +131,7 @@ func (opts *WriterOptions) UnmarshalJSON(p []byte) error {
 		FixedProperties: s.FixedProperties,
 		Workers:         s.Workers,
 		LZMAParallel:    s.LZMAParallel,
-		LZMAWorkSize:    s.LZMAWorkSize,
 		ParserOptions:   parserOptions,
-		XZBlockSize:     s.XZBlockSize,
 		Checksum:        byte(s.Checksum),
 		NoChecksum:      s.NoChecksum,
 	}
@@ -160,29 +143,27 @@ func (opts *WriterOptions) MarshalJSON() (p []byte, err error) {
 	s := struct {
 		Format          string
 		WindowSize      int             `json:",omitempty"`
+		BufferSize      int             `json:",omitempty"`
 		LC              int             `json:",omitempty"`
 		LP              int             `json:",omitempty"`
 		PB              int             `json:",omitempty"`
 		FixedProperties bool            `json:",omitempty"`
 		Workers         int             `json:",omitempty"`
 		LZMAParallel    bool            `json:",omitempty"`
-		LZMAWorkSize    int             `json:",omitempty"`
 		ParserOptions   lz.Configurator `json:",omitempty"`
-		XZBlockSize     int64           `json:",omitempty"`
 		Checksum        checksum        `json:",omitempty"`
 		NoChecksum      bool            `json:",omitempty"`
 	}{
 		Format:          "XZ",
 		WindowSize:      opts.WindowSize,
+		BufferSize:      opts.BufferSize,
 		LC:              opts.Properties.LC,
 		LP:              opts.Properties.LP,
 		PB:              opts.Properties.PB,
 		FixedProperties: opts.FixedProperties,
 		Workers:         opts.Workers,
 		LZMAParallel:    opts.LZMAParallel,
-		LZMAWorkSize:    opts.LZMAWorkSize,
 		ParserOptions:   opts.ParserOptions,
-		XZBlockSize:     opts.XZBlockSize,
 		Checksum:        checksum(opts.Checksum),
 		NoChecksum:      opts.NoChecksum,
 	}
@@ -191,21 +172,37 @@ func (opts *WriterOptions) MarshalJSON() (p []byte, err error) {
 
 // setDefaults applies the defaults to the xz writer configuration.
 func (opts *WriterOptions) setDefaults() {
-
 	preset := Preset(5)
-	if opts.WindowSize == 0 {
-		opts.WindowSize = preset.WindowSize
-	}
-	if opts.Properties == (lzma.Properties{}) {
-		opts.Properties = preset.Properties
-	}
 	if opts.Workers == 0 {
 		opts.Workers = runtime.GOMAXPROCS(0)
 	}
-	if opts.Workers <= 1 {
-		opts.XZBlockSize = maxInt64
+
+	if opts.Workers == 1 {
+		if opts.WindowSize == 0 {
+			if opts.BufferSize > 0 {
+				opts.WindowSize = max(opts.BufferSize/2, 1)
+			} else {
+				opts.WindowSize = preset.WindowSize
+			}
+		}
+		if opts.BufferSize == 0 {
+			opts.BufferSize = opts.WindowSize * 2
+		}
 	} else {
-		opts.XZBlockSize = defaultParallelBlockSize
+		if opts.WindowSize == 0 {
+			if opts.BufferSize > 0 {
+				opts.WindowSize = opts.BufferSize
+			} else {
+				opts.WindowSize = preset.WindowSize
+			}
+		}
+		if opts.BufferSize == 0 {
+			opts.BufferSize = opts.WindowSize
+		}
+	}
+
+	if opts.Properties == (lzma.Properties{}) && !opts.FixedProperties {
+		opts.Properties = preset.Properties
 	}
 	if opts.Checksum == 0 {
 		opts.Checksum = CRC64
@@ -221,13 +218,17 @@ func (opts *WriterOptions) verify() error {
 	if opts == nil {
 		return errors.New("xz: writer configuration is nil")
 	}
+	if !(0 < opts.WindowSize && opts.WindowSize <= opts.BufferSize) {
+		return errors.New("xz: WindowSize must be positive and " +
+			"less than or equal to BufferSize")
+	}
+	if !(0 < opts.BufferSize) {
+		return errors.New("xz: BufferSize must be positive")
+	}
 	if !opts.LZMAParallel {
 		if !(1 <= opts.Workers) {
 			return errors.New("xz: Workers must be positive")
 		}
-	}
-	if opts.XZBlockSize <= 0 {
-		return errors.New("xz: block size out of range")
 	}
 	if err := verifyFlags(opts.Checksum); err != nil {
 		return err
@@ -393,7 +394,7 @@ func (bw *blockWriter) Write(p []byte) (n int, err error) {
 	if bw.err != nil {
 		return 0, bw.err
 	}
-	k := bw.cfg.XZBlockSize - bw.n
+	k := int64(bw.cfg.BufferSize) - bw.n
 	if k < int64(len(p)) {
 		p = p[:k]
 		err = errNoSpace
@@ -662,7 +663,7 @@ func newMTWriter(xz io.Writer, options *WriterOptions) (mtw *mtWriter, err error
 		taskCh:   make(chan mtwTask, options.Workers),
 		streamCh: make(chan mtwStreamTask, options.Workers),
 
-		buf: make([]byte, 0, options.XZBlockSize),
+		buf: make([]byte, 0, options.BufferSize),
 	}
 
 	go mtwStream(ctx, xz, options, mtw.streamCh, mtw.errCh)
@@ -684,7 +685,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 	}
 
 	for len(p) > 0 {
-		k := mtw.opts.XZBlockSize - int64(len(mtw.buf))
+		k := int64(mtw.opts.BufferSize) - int64(len(mtw.buf))
 		if int64(len(p)) < k {
 			mtw.buf = append(mtw.buf, p...)
 			n += len(p)
@@ -712,7 +713,7 @@ func (mtw *mtWriter) Write(p []byte) (n int, err error) {
 		}
 		n += int(k)
 		p = p[k:]
-		mtw.buf = make([]byte, 0, mtw.opts.XZBlockSize)
+		mtw.buf = make([]byte, 0, mtw.opts.BufferSize)
 	}
 
 	return n, nil
@@ -748,7 +749,7 @@ func (mtw *mtWriter) flush(close bool) error {
 			recv(err)
 			return err
 		}
-		mtw.buf = make([]byte, 0, mtw.opts.XZBlockSize)
+		mtw.buf = make([]byte, 0, mtw.opts.BufferSize)
 	}
 
 	flushCh := make(chan struct{})

@@ -42,9 +42,9 @@ type ReaderOptions struct {
 	// setup is normally not required.)
 	LZMAParallel bool
 
-	// LZMAWorkSize provides the work size to the LZMA layer. It is only
+	// LZMABufferSize provides the buffer size to the LZMA layer. It is only
 	// required if LZMAParallel is set.
-	LZMAWorkSize int
+	LZMABufferSize int
 }
 
 // UnmarshalJSON parses JSON and sets the ReaderConfig accordingly.
@@ -55,7 +55,7 @@ func (cfg *ReaderOptions) UnmarshalJSON(p []byte) error {
 		Workers      int
 		SingleStream bool
 		LZMAParallel bool
-		LZMAWorkSize int
+		LZMABufferSize int
 	}{}
 	if err = json.Unmarshal(p, &s); err != nil {
 		return err
@@ -65,10 +65,10 @@ func (cfg *ReaderOptions) UnmarshalJSON(p []byte) error {
 			"xz: Format JSON property must have value XZ")
 	}
 	*cfg = ReaderOptions{
-		Workers:      s.Workers,
-		SingleStream: s.SingleStream,
-		LZMAParallel: s.LZMAParallel,
-		LZMAWorkSize: s.LZMAWorkSize,
+		Workers:        s.Workers,
+		SingleStream:   s.SingleStream,
+		LZMAParallel:   s.LZMAParallel,
+		LZMABufferSize: s.LZMABufferSize,
 	}
 	return nil
 }
@@ -80,13 +80,13 @@ func (cfg *ReaderOptions) MarshalJSON() (p []byte, err error) {
 		Workers      int  `json:",omitempty"`
 		SingleStream bool `json:",omitempty"`
 		LZMAParallel bool `json:",omitempty"`
-		LZMAWorkSize int  `json:",omitempty"`
+		LZMABufferSize int  `json:",omitempty"`
 	}{
 		Format:       "XZ",
 		Workers:      cfg.Workers,
 		SingleStream: cfg.SingleStream,
 		LZMAParallel: cfg.LZMAParallel,
-		LZMAWorkSize: cfg.LZMAWorkSize,
+		LZMABufferSize: cfg.LZMABufferSize,
 	}
 	return json.Marshal(&s)
 }
