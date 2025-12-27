@@ -75,8 +75,7 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderOptions) (fr io.ReadCloser, err
 		}
 	} else {
 		cfg = lzma.Reader2Options{
-			Workers:    1,
-			BufferSize: c.LZMABufferSize,
+			Workers: 1,
 		}
 	}
 	dc := int(f.dictSize)
