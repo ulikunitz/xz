@@ -4,7 +4,6 @@
 
 ### review options
 
-* lzma package
 * xz package
 
 ### tag versions
@@ -23,7 +22,7 @@
 
 * Create fuzzer for lzma
 * Run all tests
-* Run all fuzzers
+* Run all fuzzers for at least 15 minutes
 
 ### Statistics
 
