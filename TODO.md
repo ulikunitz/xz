@@ -2,17 +2,28 @@
 
 ## Outstanding work for v2
 
-### review options
-
-* xz package
-
-### tag versions
-
 ### improve pizza to support options
 
 ### Add the various lz methods
 
+- greedy single hash
+- greedy-backward single hash
+- greedy double hash
+- greedy-backward double hash
+- greedy bucket hash
+- xz-estimated-bit-length + single hash, double hash and bucket hash
+- xz-optimized-hash + single hash, double hash and bucket hash*
+
+* implement first with generic mappers
+* measure compression rates and speed with a new tool using pizza and xz
+* put all measures in a graph
+* select good variants and optimize them
+* Objective: on all levels 1 to 9 faster and better compression rate
+  in single threaded use case than the xz tool
+
 ### Work on the preset functions for LZMA and XZ
+
+- measure performance
 
 ### Check header parsing
 
