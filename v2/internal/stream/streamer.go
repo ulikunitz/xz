@@ -1,4 +1,4 @@
-// Package stream supports implements Streamers which track the offset in the
+// Package stream implements Streamers which track the offset in the
 // file and allows the discarding of data.
 package stream
 
