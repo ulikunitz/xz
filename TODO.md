@@ -1,9 +1,5 @@
 # TODO list
 
-## Outstanding work for v2
-
-### improve pizza to support options
-
 ### Add the various lz methods
 
 - greedy single hash
@@ -20,6 +16,8 @@
 * select good variants and optimize them
 * Objective: on all levels 1 to 9 faster and better compression rate
   in single threaded use case than the xz tool
+
+### Support .0 policy for go versions for all dependencies
 
 ### Work on the preset functions for LZMA and XZ
 
