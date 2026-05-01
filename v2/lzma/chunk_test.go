@@ -128,7 +128,6 @@ func TestChunkWriterReader(t *testing.T) {
 		},
 	}
 	for i, tc := range tests {
-		tc := tc
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			r, err := tc()
 			if err != nil {

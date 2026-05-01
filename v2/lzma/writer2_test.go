@@ -66,7 +66,6 @@ func TestWriter2(t *testing.T) {
 	}
 
 	for i, cfg := range tests {
-		cfg := cfg
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			const file = "testdata/enwik7"
 			f, err := os.Open(file)

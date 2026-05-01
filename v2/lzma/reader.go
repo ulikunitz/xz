@@ -156,8 +156,8 @@ func (e *ErrDictSize) Error() string {
 
 func newErrDictSize(messageFormat string,
 	configDictCap int, headerDictSize uint32,
-	args ...interface{}) *ErrDictSize {
-	newArgs := make([]interface{}, len(args)+2)
+	args ...any) *ErrDictSize {
+	newArgs := make([]any, len(args)+2)
 	newArgs[0] = configDictCap
 	newArgs[1] = headerDictSize
 	copy(newArgs[2:], args)
