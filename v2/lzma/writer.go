@@ -241,6 +241,8 @@ type writerConfig struct {
 	MaxMatchLen int
 }
 
+// WriterOption provides the interface for options that can be used to
+// configure a LZMA writer.
 type WriterOption interface {
 	updateWriterConfig(*writerConfig) error
 }
@@ -263,6 +265,8 @@ func (o windowSizeOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithWindowSize sets the sliding dictionary window size for writers.
+// It applies to Writer and Writer2.
 func WithWindowSize(windowSize int) AllWriterOption {
 	return windowSizeOption(windowSize)
 }
@@ -290,6 +294,7 @@ func (o propertiesOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithProperties sets the LZMA properties (LC, LP, PB) for the writer.
 func WithProperties(p Properties) AllWriterOption {
 	return propertiesOption(p)
 }
@@ -305,6 +310,9 @@ func (o fixedSizeOption) updateWriterConfig(cfg *writerConfig) error {
 	return nil
 }
 
+// WithFixedSize marks the output stream as having a fixed uncompressed
+// size. The writer will return an error if the written data length differs
+// from the provided size.
 func WithFixedSize(size int64) WriterOption {
 	return fixedSizeOption(size)
 }
@@ -327,6 +335,7 @@ func (o pathFinderOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithPathFinder selects the path finder algorithm used by the LZ parser.
 func WithPathFinder(pathFinder string) AllWriterOption {
 	return pathFinderOption(pathFinder)
 }
@@ -349,6 +358,7 @@ func (o mapperOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithMapper sets the mapper configuration used by the LZ parser.
 func WithMapper(mapper string) AllWriterOption {
 	return mapperOption(mapper)
 }
@@ -380,6 +390,8 @@ func (o minMatchLenOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithMinMatchLen sets the minimum match length for the LZ parser used by
+// the writer.
 func WithMinMatchLen(minMatchLen int) AllWriterOption {
 	return minMatchLenOption(minMatchLen)
 }
@@ -412,6 +424,8 @@ func (o maxMatchLenOption) updateWriter2Config(cfg *writer2Config) error {
 	return nil
 }
 
+// WithMaxMatchLen sets the maximum match length for the LZ parser used by
+// the writer.
 func WithMaxMatchLen(maxMatchLen int) AllWriterOption {
 	return maxMatchLenOption(maxMatchLen)
 }

@@ -35,15 +35,21 @@ type writer2Config struct {
 	MaxMatchLen int
 }
 
+// Writer2Option provides the interface for options that can be used to
+// configure a LZMA2 writer.
 type Writer2Option interface {
 	updateWriter2Config(*writer2Config) error
 }
 
+// AllWriterOption is an option that applies to both single-threaded and
+// multi-threaded writers (Writer and Writer2).
 type AllWriterOption interface {
 	WriterOption
 	Writer2Option
 }
 
+// RW2Option combines Reader2Option and Writer2Option and can be used to
+// configure both LZMA2 readers and writers.
 type RW2Option interface {
 	Reader2Option
 	Writer2Option

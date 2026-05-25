@@ -108,6 +108,9 @@ func (o bufferSizeOption) updateWriter2Config(cfg *writer2Config) error {
 	return updateBufferSize(cfg, int(o))
 }
 
+// WithBufferSize sets the buffer size used by LZMA2 readers and writers.
+// For multithreaded operations this value controls the per-worker buffer
+// size.
 func WithBufferSize(bufferSize int) RW2Option {
 	return bufferSizeOption(bufferSize)
 }

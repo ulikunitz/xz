@@ -116,6 +116,7 @@ func (h *Header) UnmarshalBinary(x []byte) error {
 	return nil
 }
 
+// Header returns the LZMA header that was used to initialize the Reader.
 func (r *Reader) Header() Header { return r.hdr }
 
 // We support only files not larger than 1 << 50 bytes (a pebibyte, 1024^5).
@@ -147,6 +148,8 @@ func newErrDictSize(messageFormat string,
 	}
 }
 
+// ReaderOption provides the interface for options that can be used to
+// configure a LZMA reader.
 type ReaderOption interface {
 	updateReaderConfig(*readerConfig) error
 }
@@ -161,6 +164,9 @@ func (o dictCapOption) updateReaderConfig(c *readerConfig) error {
 	return nil
 }
 
+// WithDictCap sets an upper limit for the dictionary size accepted from the
+// LZMA header. Use this to mitigate excessive memory allocation when
+// reading possibly malformed or malicious streams.
 func WithDictCap(dictCap int) ReaderOption {
 	return dictCapOption(dictCap)
 }
