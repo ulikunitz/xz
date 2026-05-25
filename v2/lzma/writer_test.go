@@ -15,7 +15,7 @@ func TestWriterSimple(t *testing.T) {
 	const s = "=====foofoobar==foobar===="
 
 	buf := new(bytes.Buffer)
-	w, err := NewWriter(buf)
+	w, err := NewWriter(buf, WithWindowSize(128))
 	if err != nil {
 		t.Fatalf("NewWriter(buf) error %s", err)
 	}
@@ -44,4 +44,52 @@ func TestWriterSimple(t *testing.T) {
 	if g != s {
 		t.Fatalf("got %q; want %q", g, s)
 	}
+}
+
+func FuzzWriter(f *testing.F) {
+	f.Add([]byte("a"))
+	f.Add([]byte{})
+	f.Add([]byte("abcabcabcabcabcabcabcabc"))
+	f.Add([]byte("aaaaaaaaaaaaaaaaaaaaaaaaaa"))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		buf := new(bytes.Buffer)
+		w, err := NewWriter(buf, WithWindowSize(128))
+		if err != nil {
+			t.Fatalf("NewWriter(buf) error %s", err)
+		}
+		defer w.Close()
+
+		n, err := w.Write(data)
+		if err != nil {
+			t.Fatalf("w.Write(data) error %s", err)
+		}
+		if n != len(data) {
+			t.Fatalf("w.Write(data) returned n=%d; want %d",
+				n, len(data))
+		}
+		if err = w.Close(); err != nil {
+			t.Fatalf("w.Close() error %s", err)
+		}
+
+		zdata := buf.Bytes()
+		r, err := NewReader(bytes.NewReader(zdata))
+		if err != nil {
+			t.Fatalf("NewReader(bytes.NewReader(zdata)) error %s", err)
+		}
+
+		rbuf := new(bytes.Buffer)
+		c, err := io.Copy(rbuf, r)
+		if err != nil {
+			t.Fatalf("io.Copy(rbuf, r) error %s", err)
+		}
+		if c != int64(len(data)) {
+			t.Fatalf("io.Copy(rbuf, r) returned n=%d; want %d",
+				c, len(data))
+		}
+
+		gdata := rbuf.Bytes()
+		if !bytes.Equal(gdata, data) {
+			t.Fatalf("got %q; want %q", gdata, data)
+		}
+	})
 }

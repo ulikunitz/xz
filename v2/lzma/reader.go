@@ -90,9 +90,6 @@ func (h Header) verify() error {
 	if uint64(h.DictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
 	}
-	if h.DictSize < minDictSize {
-		return errors.New("lzma: dictSize is too small")
-	}
 	return h.Properties.verify()
 }
 
@@ -300,6 +297,10 @@ var ErrEncoding = errors.New("lzma: wrong encoding")
 // fillBuffer refills the buffer.
 func (r *Reader) fillBuffer() error {
 	for {
+		if a := r.lzDecoder.Available(); a < maxMatchLen {
+			return nil
+		}
+
 		seq, err := r.readSeq()
 		if err != nil {
 			s := r.size
@@ -320,7 +321,8 @@ func (r *Reader) fillBuffer() error {
 				panic(err)
 			}
 		} else {
-			_, err = r.lzDecoder.WriteMatch(seq.MatchLen, seq.Offset)
+			_, err = r.lzDecoder.WriteMatch(seq.MatchLen,
+				seq.Offset)
 			if err != nil {
 				return err
 			}
@@ -340,13 +342,9 @@ func (r *Reader) fillBuffer() error {
 
 // Read reads data from the dictionary and refills it if needed.
 func (r *Reader) Read(p []byte) (n int, err error) {
-	k := len(r.lzDecoder.Data) - r.lzDecoder.R
-	if r.err != nil && k == 0 {
-		return 0, r.err
-	}
 	for {
 		// Read from a dictionary never returns an error
-		k, _ = r.lzDecoder.Read(p[n:])
+		k, _ := r.lzDecoder.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
@@ -356,11 +354,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		}
 		if err = r.fillBuffer(); err != nil {
 			r.err = err
-			k := len(r.lzDecoder.Data) - r.lzDecoder.R
-			if k > 0 {
-				continue
-			}
-			return n, err
 		}
 	}
 }

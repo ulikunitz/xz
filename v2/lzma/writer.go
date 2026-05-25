@@ -376,7 +376,7 @@ func NewWriter(z io.Writer, options ...WriterOption) (w io.WriteCloser, err erro
 	parser, err := lz.NewParser(
 		lz.WithWindowSize(cfg.WindowSize),
 		lz.WithRetentionSize(cfg.WindowSize),
-		lz.WithBufferSize(max(2*cfg.WindowSize, blockSize)),
+		lz.WithBufferSize(2*cfg.WindowSize),
 		lz.WithPathFinder(cfg.PathFinder),
 		lz.WithMapper(cfg.Mapper),
 		lz.WithMinMatchLen(cfg.MinMatchLen),
@@ -389,7 +389,7 @@ func NewWriter(z io.Writer, options ...WriterOption) (w io.WriteCloser, err erro
 	if err = cfg.Properties.verify(); err != nil {
 		return nil, err
 	}
-	if !(0 <= cfg.WindowSize && cfg.WindowSize <= maxDictSize) {
+	if !(0 <= cfg.WindowSize && int64(cfg.WindowSize) <= maxDictSize) {
 		return nil, fmt.Errorf("lzma: window size must be between 0 and %d",
 			maxDictSize)
 	}
