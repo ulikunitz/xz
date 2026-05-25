@@ -9,6 +9,9 @@ lzma/reader.txt
 cmd/gxz/gxz
 cmd/xb/xb
 
+# debug file
+__debug*
+
 # test executables
 *.test
 
