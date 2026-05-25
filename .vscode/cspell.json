@@ -30,6 +30,7 @@
         "Mituo",
         "Probs",
         "Tomasz",
+        "abcabcabcabcabcabcabcabc",
         "bodgit",
         "bufr",
         "bufw",
@@ -38,6 +39,7 @@
         "enwik",
         "foofoobar",
         "foofoobarfoobar",
+        "gdata",
         "gflag",
         "goch",
         "gospell",
@@ -51,6 +53,7 @@
         "pflag",
         "popts",
         "randtxt",
+        "rbuf",
         "rcfg",
         "relnotes",
         "rindex",
@@ -60,7 +63,8 @@
         "ulikunitz",
         "wcfg",
         "werr",
-        "xlog"
+        "xlog",
+        "zdata"
     ],
     "import": []
 }
