@@ -71,10 +71,9 @@ func FuzzWriter(f *testing.F) {
 			t.Fatalf("w.Close() error %s", err)
 		}
 
-		zdata := buf.Bytes()
-		r, err := NewReader(bytes.NewReader(zdata))
+		r, err := NewReader(buf)
 		if err != nil {
-			t.Fatalf("NewReader(bytes.NewReader(zdata)) error %s", err)
+			t.Fatalf("NewReader(buf) error %s", err)
 		}
 
 		rbuf := new(bytes.Buffer)

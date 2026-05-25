@@ -248,14 +248,22 @@ type WriterOption interface {
 type windowSizeOption int
 
 func (o windowSizeOption) updateWriterConfig(cfg *writerConfig) error {
-	if o < 0 {
-		return fmt.Errorf("lzma: window size must be non-negative")
+	if o <= 0 {
+		return fmt.Errorf("lzma: window size must be larger than 0")
 	}
 	cfg.WindowSize = int(o)
 	return nil
 }
 
-func WithWindowSize(windowSize int) WriterOption {
+func (o windowSizeOption) updateWriter2Config(cfg *writer2Config) error {
+	if o <= 0 {
+		return fmt.Errorf("lzma: window size must be larger than 0")
+	}
+	cfg.WindowSize = int(o)
+	return nil
+}
+
+func WithWindowSize(windowSize int) AllWriterOption {
 	return windowSizeOption(windowSize)
 }
 
@@ -270,7 +278,19 @@ func (o propertiesOption) updateWriterConfig(cfg *writerConfig) error {
 	return nil
 }
 
-func WithProperties(p Properties) WriterOption {
+func (o propertiesOption) updateWriter2Config(cfg *writer2Config) error {
+	p := Properties(o)
+	if err := p.verify(); err != nil {
+		return err
+	}
+	if !(p.LC+p.LP <= 4) {
+		return fmt.Errorf("lzma: LC + LP must be <= 4")
+	}
+	cfg.Properties = p
+	return nil
+}
+
+func WithProperties(p Properties) AllWriterOption {
 	return propertiesOption(p)
 }
 
@@ -299,7 +319,15 @@ func (o pathFinderOption) updateWriterConfig(cfg *writerConfig) error {
 	return nil
 }
 
-func WithPathFinder(pathFinder string) WriterOption {
+func (o pathFinderOption) updateWriter2Config(cfg *writer2Config) error {
+	if o == "" {
+		return fmt.Errorf("lzma: path finder must be non-empty")
+	}
+	cfg.PathFinder = string(o)
+	return nil
+}
+
+func WithPathFinder(pathFinder string) AllWriterOption {
 	return pathFinderOption(pathFinder)
 }
 
@@ -313,7 +341,15 @@ func (o mapperOption) updateWriterConfig(cfg *writerConfig) error {
 	return nil
 }
 
-func WithMapper(mapper string) WriterOption {
+func (o mapperOption) updateWriter2Config(cfg *writer2Config) error {
+	if o == "" {
+		return fmt.Errorf("lzma: mapper must be non-empty")
+	}
+	cfg.Mapper = string(o)
+	return nil
+}
+
+func WithMapper(mapper string) AllWriterOption {
 	return mapperOption(mapper)
 }
 
@@ -321,20 +357,30 @@ type minMatchLenOption int
 
 func (o minMatchLenOption) updateWriterConfig(cfg *writerConfig) error {
 	if o < minMatchLen {
-		return fmt.Errorf(
-			"lzma: minimum match length must be at least %d",
+		return fmt.Errorf("lzma: minimum match length must be >= %d",
 			minMatchLen)
 	}
 	if o > maxMatchLen {
-		return fmt.Errorf(
-			"lzma: minimum match length must be at most %d",
+		return fmt.Errorf("lzma: minimum match length must be <= %d",
 			maxMatchLen)
 	}
 	cfg.MinMatchLen = int(o)
 	return nil
 }
 
-func WithMinMatchLen(minMatchLen int) WriterOption {
+func (o minMatchLenOption) updateWriter2Config(cfg *writer2Config) error {
+	if o < minMatchLen {
+		return fmt.Errorf("lzma: minimum match length must be >= %d",
+			minMatchLen)
+	}
+	if o > maxMatchLen {
+		return fmt.Errorf("lzma: minimum match length must be <= %d", maxMatchLen)
+	}
+	cfg.MinMatchLen = int(o)
+	return nil
+}
+
+func WithMinMatchLen(minMatchLen int) AllWriterOption {
 	return minMatchLenOption(minMatchLen)
 }
 
@@ -342,17 +388,32 @@ type maxMatchLenOption int
 
 func (o maxMatchLenOption) updateWriterConfig(cfg *writerConfig) error {
 	if o < minMatchLen {
-		return fmt.Errorf(
-			"lzma: maximum match length must be at least %d",
+		return fmt.Errorf("lzma: maximum match length must be >= %d",
 			minMatchLen)
 	}
 	if o > maxMatchLen {
-		return fmt.Errorf(
-			"lzma: maximum match length must be at most %d",
+		return fmt.Errorf("lzma: maximum match length must be <= %d",
 			maxMatchLen)
 	}
 	cfg.MaxMatchLen = int(o)
 	return nil
+}
+
+func (o maxMatchLenOption) updateWriter2Config(cfg *writer2Config) error {
+	if o < minMatchLen {
+		return fmt.Errorf("lzma: maximum match length must be >= %d",
+			minMatchLen)
+	}
+	if o > maxMatchLen {
+		return fmt.Errorf("lzma: maximum match length must be <= %d",
+			maxMatchLen)
+	}
+	cfg.MaxMatchLen = int(o)
+	return nil
+}
+
+func WithMaxMatchLen(maxMatchLen int) AllWriterOption {
+	return maxMatchLenOption(maxMatchLen)
 }
 
 // NewWriter creates a new LZMA writer.
