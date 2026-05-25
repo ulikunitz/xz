@@ -227,20 +227,6 @@ func (r *Reader) init(z io.Reader, hdr Header) error {
 	if int64(hdr.DictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize too large")
 	}
-	winSize := int(hdr.DictSize)
-	bufSize := 2 * winSize
-	if bufSize < 0 {
-		bufSize = math.MaxInt
-	}
-	err := r.lzDecoder.Init(
-		lz.WithWindowSize(winSize),
-		lz.WithBufferSize(bufSize),
-	)
-	if err != nil {
-		return err
-	}
-
-	r.state.init(hdr.Properties)
 
 	switch {
 	case hdr.uncompressedSize == EOSSize:
@@ -254,6 +240,31 @@ func (r *Reader) init(z io.Reader, hdr Header) error {
 		return errors.New("lzma: stream size too large")
 	}
 
+	winSize := max(int(hdr.DictSize), minDictSize)
+	const maxWinSize = min(maxDictSize, math.MaxInt-maxMatchLen)
+	if winSize > maxWinSize {
+		return fmt.Errorf(
+			"lzma: dictionary size must be at most %d",
+			maxWinSize)
+	}
+	bufSize := 2 * winSize
+	if bufSize < 0 {
+		bufSize = math.MaxInt
+	}
+	if r.size >= 0 && bufSize > int(r.size) {
+		bufSize = int(r.size)
+	}
+	bufSize = max(bufSize, winSize+maxMatchLen)
+
+	err := r.lzDecoder.Init(
+		lz.WithWindowSize(winSize),
+		lz.WithBufferSize(bufSize),
+	)
+	if err != nil {
+		return err
+	}
+
+	r.state.init(hdr.Properties)
 	br, ok := z.(io.ByteReader)
 	if !ok {
 		br = bufio.NewReader(z)
@@ -289,9 +300,6 @@ var ErrEncoding = errors.New("lzma: wrong encoding")
 // fillBuffer refills the buffer.
 func (r *Reader) fillBuffer() error {
 	for {
-		if a := r.lzDecoder.BufferSize - len(r.lzDecoder.Data); a < maxMatchLen {
-			break
-		}
 		seq, err := r.readSeq()
 		if err != nil {
 			s := r.size
@@ -328,7 +336,6 @@ func (r *Reader) fillBuffer() error {
 			return err
 		}
 	}
-	return nil
 }
 
 // Read reads data from the dictionary and refills it if needed.
@@ -339,7 +346,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 	for {
 		// Read from a dictionary never returns an error
-		k, _ := r.lzDecoder.Read(p[n:])
+		k, _ = r.lzDecoder.Read(p[n:])
 		n += k
 		if n == len(p) {
 			return n, nil
