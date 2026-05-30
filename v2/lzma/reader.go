@@ -158,7 +158,9 @@ type dictCapOption int
 
 func (o dictCapOption) updateReaderConfig(c *readerConfig) error {
 	if !(minDictSize <= int(o) && int64(o) <= maxDictSize) {
-		return fmt.Errorf("lzma: dictionary capacity is out of range [%d, %d]", minDictSize, maxDictSize)
+		return fmt.Errorf(
+			"lzma: dictionary capacity is out of range [%d, %d]",
+			minDictSize, int64(maxDictSize))
 	}
 	c.DictCap = int(o)
 	return nil

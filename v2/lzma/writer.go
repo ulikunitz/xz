@@ -465,8 +465,9 @@ func NewWriter(z io.Writer, options ...WriterOption) (w io.WriteCloser, err erro
 		return nil, err
 	}
 	if !(0 <= cfg.WindowSize && int64(cfg.WindowSize) <= maxDictSize) {
-		return nil, fmt.Errorf("lzma: window size must be between 0 and %d",
-			maxDictSize)
+		return nil, fmt.Errorf(
+			"lzma: window size must be between 0 and %d",
+			int64(maxDictSize))
 	}
 
 	p := Header{
