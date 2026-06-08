@@ -7,143 +7,102 @@ package lzma
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 )
 
-// Reader2Options provides the dictionary size parameter for a LZMA2 reader.
+// Reader2Config provides the dictionary size parameter for a LZMA2 reader.
 //
 // Note that the parallel decoding will only work if the stream has been encoded
 // with multiple workers and the WorkerBufferSize is large enough. If the worker
 // buffer size is too small no worker thread will be used for decompression.
-type Reader2Options struct {
+type Reader2Config struct {
 	// WindowSize provides the maximum dictionary size supported.
-	WindowSize int
+	WindowSize int `json:",omitzero"`
 	// BufferSize give the size of the decoder buffer and if there are more
 	// workers than 1, gives the work size for each worker.
-	BufferSize int
+	BufferSize int `json:",omitzero"`
 	// Workers gives the maximum number of decompressing workers.
-	Workers int
-}
-
-// UnmarshalJSON parses the JSON representation for Reader2Config.
-func (opts *Reader2Options) UnmarshalJSON(p []byte) error {
-	var err error
-	var s struct {
-		Format     string
-		WindowSize int `json:",omitempty"`
-		BufferSize int `json:",omitempty"`
-		Workers    int `json:",omitempty"`
-	}
-	if err = json.Unmarshal(p, &s); err != nil {
-		return err
-	}
-	if s.Format != "LZMA2Reader" {
-		return errors.New(
-			"lzma: Format JSON property muse have value LZMA")
-	}
-	*opts = Reader2Options{
-		WindowSize: s.WindowSize,
-		BufferSize: s.BufferSize,
-		Workers:    s.Workers,
-	}
-	return nil
-}
-
-// MarshalJSON produces the JSON configuration for the Reader2Config value.
-func (opts *Reader2Options) MarshalJSON() (p []byte, err error) {
-	s := struct {
-		Format     string
-		WindowSize int `json:",omitempty"`
-		BufferSize int `json:",omitempty"`
-		Workers    int `json:",omitempty"`
-	}{
-		Format:     "LZMA2Reader",
-		WindowSize: opts.WindowSize,
-		BufferSize: opts.BufferSize,
-		Workers:    opts.Workers,
-	}
-	return json.Marshal(&s)
+	Workers int `json:",omitzero"`
 }
 
 // verify checks the validity of dictionary size.
-func (opts *Reader2Options) verify() error {
-	if opts.WindowSize < minDictSize {
+func (cfg *Reader2Config) verify() error {
+	if cfg.WindowSize < minDictSize {
 		return fmt.Errorf(
 			"lzma: dictionary size must be larger or"+
 				" equal %d bytes", minDictSize)
 	}
 
-	if opts.Workers <= 0 {
+	if cfg.Workers <= 0 {
 		return errors.New("lzma: Worker must be larger than 0")
 	}
 
-	if !(opts.WindowSize <= opts.BufferSize) {
+	if !(cfg.WindowSize <= cfg.BufferSize) {
 		return fmt.Errorf(
 			"lzma: BufferSize=%d must be greater than"+
 				" or equal WindowSize=%d for single-threaded"+
 				" reader",
-			opts.BufferSize, opts.WindowSize)
+			cfg.BufferSize, cfg.WindowSize)
 	}
 	return nil
 }
 
-// SetDefaults sets a default value for the dictionary size. Note that
+// setDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
-func (opts *Reader2Options) SetDefaults() {
-	if opts.Workers == 0 {
-		opts.Workers = 1
+func (cfg *Reader2Config) setDefaults() {
+	if cfg.Workers == 0 {
+		cfg.Workers = 1
 	}
 
-	if opts.Workers == 1 {
-		if opts.WindowSize == 0 {
-			if opts.BufferSize > 0 {
-				opts.WindowSize = opts.BufferSize / 2
+	if cfg.Workers == 1 {
+		if cfg.WindowSize == 0 {
+			if cfg.BufferSize > 0 {
+				cfg.WindowSize = cfg.BufferSize / 2
 			} else {
-				opts.WindowSize = 8 << 20
+				cfg.WindowSize = 8 << 20
 			}
 		}
-		if opts.BufferSize == 0 {
-			opts.BufferSize = 2 * opts.WindowSize
+		if cfg.BufferSize == 0 {
+			cfg.BufferSize = 2 * cfg.WindowSize
 		}
 		return
 	}
 
-	if opts.WindowSize == 0 {
-		if opts.BufferSize > 0 {
-			opts.WindowSize = opts.BufferSize
+	if cfg.WindowSize == 0 {
+		if cfg.BufferSize > 0 {
+			cfg.WindowSize = cfg.BufferSize
 		} else {
-			opts.WindowSize = 8 << 20
+			cfg.WindowSize = 8 << 20
 		}
 	}
 
-	if opts.BufferSize == 0 {
-		opts.BufferSize = opts.WindowSize
+	if cfg.BufferSize == 0 {
+		cfg.BufferSize = cfg.WindowSize
 	}
 }
 
 // NewReader2 creates a LZMA2 reader. Note that the interface is a ReadCloser,
 // so it has to be closed after usage.
 func NewReader2(z io.Reader, windowSize int) (r io.ReadCloser, err error) {
-	return NewReader2Options(z, Reader2Options{WindowSize: windowSize})
+	return NewReader2Config(z, Reader2Config{WindowSize: windowSize})
 }
 
-// NewReader2Options generates an LZMA2 reader using the configuration parameter
+// NewReader2Config generates an LZMA2 reader using the configuration parameter
 // attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
-func NewReader2Options(z io.Reader, options Reader2Options) (r io.ReadCloser, err error) {
-	options.SetDefaults()
-	if err = options.verify(); err != nil {
+func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err error) {
+	cfg.setDefaults()
+	if err = cfg.verify(); err != nil {
 		return nil, err
 	}
-	if options.Workers <= 1 {
+	if cfg.Workers <= 1 {
 		var cr chunkReader
-		cr.init(z, options.WindowSize)
+		cr.init(z, cfg.WindowSize)
 		return io.NopCloser(&cr), nil
 	}
-	return newMTReader(options, z), nil
+	return newMTReader(cfg, z), nil
 }
 
 // mtReaderTask describes a single decompression task.
@@ -166,7 +125,7 @@ type mtReader struct {
 
 // newMTReader creates a new multithreading reader. Note that Close must be
 // called to clean up.
-func newMTReader(cfg Reader2Options, z io.Reader) *mtReader {
+func newMTReader(cfg Reader2Config, z io.Reader) *mtReader {
 	ctx, cancel := context.WithCancel(context.Background())
 	tskCh := make(chan mtReaderTask, cfg.Workers)
 	outCh := make(chan mtReaderTask, cfg.Workers)
@@ -221,7 +180,7 @@ func (r *mtReader) Close() error {
 
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
 // started as go routine.
-func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Options, tskCh, outCh chan mtReaderTask) {
+func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan mtReaderTask) {
 	r := &hdrReader{r: z}
 	workers := 0
 	for ctx.Err() == nil {

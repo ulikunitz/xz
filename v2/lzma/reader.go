@@ -21,7 +21,7 @@ type ReaderConfig struct {
 	// Since v0.5.14 this parameter sets an upper limit for a .lzma file's
 	// dictionary size. This helps to mitigate problems with mangled
 	// headers.
-	DictCap int
+	DictCap int `json:"dictCap,omitzero"`
 }
 
 // setDefaults converts the zero values of the configuration to the default values.

@@ -221,18 +221,18 @@ type WriterConfig struct {
 	// WindowSize defines the size of the sliding dictionary window for the
 	// LZ parsing. If it is non-zero it overrides the parser configuration
 	// of the lz package.
-	WindowSize int
+	WindowSize int `json:",omitzero"`
 
 	// BufferSize defines the size of the buffer for the LZ parsing.
-	BufferSize int
+	BufferSize int `json:",omitzero"`
 
 	// Properties of the LZMA algorithm.
-	Properties opt.Value[Properties]
+	Properties opt.Value[Properties] `json:",omitzero"`
 
-	FixedSize opt.Value[int64]
+	FixedSize opt.Value[int64] `json:",omitzero"`
 
-	PathFinder string
-	Mapper     string
+	PathFinder string `json:",omitzero"`
+	Mapper     string `json:",omitzero"`
 }
 
 // Verify checks the validity of the writer configuration parameter.

@@ -17,14 +17,14 @@ import (
 func TestReader2(t *testing.T) {
 	tests := []struct {
 		wcfg Writer2Config
-		rcfg Reader2Options
+		rcfg Reader2Config
 	}{
 		{
 			Writer2Config{
 				Workers:    3,
 				WindowSize: 100000,
 			},
-			Reader2Options{
+			Reader2Config{
 				Workers:    3,
 				WindowSize: 100000,
 			},
@@ -34,7 +34,7 @@ func TestReader2(t *testing.T) {
 				Workers:    3,
 				WindowSize: 50000,
 			},
-			Reader2Options{
+			Reader2Config{
 				Workers:    3,
 				WindowSize: 100000,
 			},
@@ -44,7 +44,7 @@ func TestReader2(t *testing.T) {
 				Workers:    3,
 				WindowSize: 100000,
 			},
-			Reader2Options{
+			Reader2Config{
 				Workers:    3,
 				WindowSize: 50000,
 			},
@@ -87,7 +87,7 @@ func TestReader2(t *testing.T) {
 			if rcfg.WindowSize < tc.wcfg.WindowSize {
 				rcfg.WindowSize = windowSize
 			}
-			r, err := NewReader2Options(buf, rcfg)
+			r, err := NewReader2Config(buf, rcfg)
 			if err != nil {
 				t.Fatalf("NewReader2Options(buf, %+v) error %s",
 					rcfg, err)
@@ -114,8 +114,8 @@ func TestReader2(t *testing.T) {
 
 func TestReader2JSON(t *testing.T) {
 	var err error
-	var cfg Reader2Options
-	cfg.SetDefaults()
+	var cfg Reader2Config
+	cfg.setDefaults()
 	if err = cfg.verify(); err != nil {
 		t.Fatalf("cfg.Verify() error %s", err)
 	}
@@ -125,7 +125,7 @@ func TestReader2JSON(t *testing.T) {
 	}
 	t.Logf("JSON:\n%s", p)
 
-	var cfg1 Reader2Options
+	var cfg1 Reader2Config
 	if err = json.Unmarshal(p, &cfg1); err != nil {
 		t.Fatalf("Unmarshal error %s", err)
 	}

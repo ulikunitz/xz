@@ -19,24 +19,24 @@ import (
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
 type Writer2Config struct {
 	// WindowSize sets the dictionary size.
-	WindowSize int
+	WindowSize int `json:",omitzero"`
 	// BufferSize sets the size of the buffer used by the LZ parser. It
 	// defines the work size for parallel compression.
-	BufferSize int
+	BufferSize int `json:",omitzero"`
 
 	// Properties for the LZMA algorithm.
-	Properties opt.Value[Properties]
+	Properties opt.Value[Properties] `json:",omitzero"`
 
 	// Number of workers processing data.
-	Workers int
+	Workers int `json:",omitzero"`
 
 	// PathFinder describes the mechanism to select a match at a given
 	// position of the uncompressed data. The default is "greedy".
-	PathFinder string
+	PathFinder string `json:",omitzero"`
 
 	// Mapper is the name of the mapper to use for the LZ parser. The
 	// default is "hash_2:16".
-	Mapper string
+	Mapper string `json:",omitzero"`
 }
 
 // verify checks whether the configuration is consistent and correct. Usually
