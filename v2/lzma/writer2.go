@@ -47,9 +47,26 @@ func (cfg *Writer2Config) verify() error {
 		return errors.New("lzma: Writer2Options pointer must not be nil")
 	}
 
+	if cfg.Workers < 1 {
+		return errors.New("lzma: Worker must be larger than 0")
+	}
+
 	if cfg.WindowSize <= 0 {
 		return errors.New("lzma: WindowSize must be larger than 0")
 	}
+
+	if cfg.Workers == 1 {
+		if !(cfg.WindowSize < cfg.BufferSize) {
+			return errors.New(
+				"lzma: BufferSize must be larger than WindowSize")
+		}
+	} else {
+		if !(cfg.WindowSize <= cfg.BufferSize) {
+			return errors.New(
+				"lzma: BufferSize must be larger or equal than WindowSize")
+		}
+	}
+
 	if !(cfg.WindowSize <= cfg.BufferSize) {
 		return errors.New(
 			"lzma: BufferSize must be larger or equal than WindowSize")
@@ -59,12 +76,13 @@ func (cfg *Writer2Config) verify() error {
 		return errors.New("lzma: Properties must be set")
 	}
 
-	if err = cfg.Properties.V.verify(); err != nil {
+	p := &cfg.Properties.V
+	if err = p.verify(); err != nil {
 		return err
 	}
-
-	if cfg.Workers < 1 {
-		return errors.New("lzma: Worker must be larger than 0")
+	if p.LC+p.LP > 4 {
+		return errors.New(
+			"lzma: LC + LP must be smaller or equal than 4")
 	}
 
 	return nil
