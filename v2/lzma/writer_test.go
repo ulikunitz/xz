@@ -45,3 +45,40 @@ func TestWriterSimple(t *testing.T) {
 		t.Fatalf("got %q; want %q", g, s)
 	}
 }
+
+func FuzzLZMA(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("foofoobar==foobar===="))
+	f.Add([]byte("foofoobar==foobar====foofoobar==foobar===="))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		buf := new(bytes.Buffer)
+		w, err := NewWriter(buf)
+		if err != nil {
+			t.Fatalf("NewWriter(buf) error %s", err)
+		}
+		defer w.Close()
+
+		if _, err = w.Write(data); err != nil {
+			t.Fatalf("w.Write(data) error %s", err)
+		}
+
+		if err = w.Close(); err != nil {
+			t.Fatalf("w.Close() error %s", err)
+		}
+
+		r, err := NewReader(buf)
+		if err != nil {
+			t.Fatalf("NewReader(buf) error %s", err)
+		}
+
+		buf2 := new(bytes.Buffer)
+		if _, err = io.Copy(buf2, r); err != nil {
+			t.Fatalf("io.Copy(buf2, r) error %s", err)
+		}
+
+		g := buf2.Bytes()
+		if !bytes.Equal(g, data) {
+			t.Fatalf("got %q; want %q", g, data)
+		}
+	})
+}
