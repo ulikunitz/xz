@@ -171,68 +171,57 @@ func TestWriter2OptionsWindowSize(t *testing.T) {
 	}
 }
 
-/* TODO
-func TestOptParser(t *testing.T) {
-	const file = "../testdata/enwik7"
-	const size = 500
+func testLZMA2(workers int) func(t *testing.T, data []byte) {
+	return func(t *testing.T, data []byte) {
+		wCfg := Writer2Config{Workers: workers}
+		buf := new(bytes.Buffer)
 
-	cfg := Writer2Options{
-		ParserOptions: &OPConfig{
-			InputLen: 4,
-			HashBits: 24,
-		},
-	}
+		w, err := NewWriter2Config(buf, wCfg)
+		if err != nil {
+			t.Fatalf("NewWriter2Config(buf, %+v) error %s",
+				wCfg, err)
+		}
+		defer w.Close()
+		windowSize := w.WindowSize()
 
-	var buf bytes.Buffer
+		if _, err = w.Write(data); err != nil {
+			t.Fatalf("w.Write(data) error %s", err)
+		}
 
-	w, err := NewWriter2Config(&buf, cfg)
-	if err != nil {
-		t.Fatalf("NewWriter2Config error %s", err)
-	}
-	defer w.Close()
-	dictSize := w.DictSize()
+		if err = w.Close(); err != nil {
+			t.Fatalf("w.Close() error %s", err)
+		}
 
-	h := sha256.New()
-	mw := io.MultiWriter(w, h)
+		rCfg := Reader2Config{WindowSize: windowSize, Workers: workers}
+		r, err := NewReader2Config(buf, rCfg)
+		if err != nil {
+			t.Fatalf("NewReader2Config(buf, %+v) error %s",
+				rCfg, err)
+		}
+		defer r.Close()
 
-	f, err := os.Open(file)
-	if err != nil {
-		t.Fatalf("os.Open(%q) error %s", file, err)
-	}
-	defer f.Close()
+		buf2 := new(bytes.Buffer)
+		if _, err = io.Copy(buf2, r); err != nil {
+			t.Fatalf("io.Copy(buf2, r) error %s", err)
+		}
 
-	lf := io.LimitReader(f, size)
-
-	if _, err = io.Copy(mw, lf); err != nil {
-		t.Fatalf("io.Copy(mw, f) error %s", err)
-	}
-
-	if err = w.Close(); err != nil {
-		t.Fatalf("w.Close() error %s", err)
-	}
-
-	sum1 := h.Sum(nil)
-
-	t.Logf("compressed from %d to %d bytes", size, buf.Len())
-
-	h.Reset()
-	r, err := NewReader2(&buf, dictSize)
-	if err != nil {
-		t.Fatalf("NewReader2 error %s", err)
-	}
-	defer r.Close()
-
-	if _, err = io.Copy(h, r); err != nil {
-		t.Fatalf("io.Copy(h, r) error %s", err)
-	}
-	if err = r.Close(); err != nil {
-		t.Fatalf("r.Close() error %s", err)
-	}
-
-	sum2 := h.Sum(nil)
-
-	if !bytes.Equal(sum1, sum2) {
-		t.Fatalf("hash sums differ")
+		got := buf2.Bytes()
+		if !bytes.Equal(got, data) {
+			t.Fatalf("got %q; want %q", got, data)
+		}
 	}
 }
-*/
+
+func FuzzLZMA2ST(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("foofoobar==foobar===="))
+	f.Add([]byte("foofoobar==foobar====foofoobar==foobar===="))
+	f.Fuzz(testLZMA2(1))
+}
+
+func FuzzLZMA2MT(f *testing.F) {
+	f.Add([]byte{})
+	f.Add([]byte("foofoobar==foobar===="))
+	f.Add([]byte("foofoobar==foobar====foofoobar==foobar===="))
+	f.Fuzz(testLZMA2(2))
+}
