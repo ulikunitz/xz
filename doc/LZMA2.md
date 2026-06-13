@@ -1,4 +1,4 @@
-% LZMA2 format
+# LZMA2 format
 
 The LZMA2 format supports flushing, parallel encoding or decoding.
 Chunks of data that cannot be compressed are copied as such.
