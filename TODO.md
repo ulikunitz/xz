@@ -82,6 +82,11 @@
 
 ## Log
 
+## 2026-07-20
+
+New release v0.5.16 to support other operating systems like Illumos using a
+simple fallback function for IsTerminal to avoid adding a dependency.
+
 ## 2025-08-28
 
 Release v0.5.14 addresses the security vulnerability CVE-2025-58058. If you put
