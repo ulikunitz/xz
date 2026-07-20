@@ -3,7 +3,13 @@
 // license that can be found in the LICENSE file.
 
 //go:build !darwin && !dragonfly && !freebsd && (!linux || appengine) && !netbsd && !openbsd && !windows
-// +build !darwin,!dragonfly,!freebsd,!linux,!netbsd,!openbsd,!windows !darwin,!dragonfly,!freebsd,appengine,!netbsd,!openbsd,!windows
+// +build !darwin
+// +build !dragonfly
+// +build !freebsd
+// +build !linux appengine
+// +build !netbsd
+// +build !openbsd
+// +build !windows
 
 package term
 
