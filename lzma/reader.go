@@ -167,7 +167,7 @@ func (c ReaderConfig) NewReader(lzma io.Reader) (r *Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
-	r.d, err = newDecoder(ByteReader(lzma), state, dict, r.header.Size)
+	r.d, err = newDecoder(lzma, state, dict, r.header.Size)
 	if err != nil {
 		return nil, err
 	}

@@ -126,17 +126,18 @@ func (e *rangeEncoder) shiftLow() error {
 
 // rangeDecoder decodes single bits of the range encoding stream.
 type rangeDecoder struct {
-	br     io.ByteReader
+	r      io.Reader
 	nrange uint32
 	code   uint32
+	buf    [4096]byte
+	pos    int
+	limit  int
 }
 
-// newRangeDecoder initializes a range decoder. It reads five bytes from the
-// reader and therefore may return an error.
-func newRangeDecoder(br io.ByteReader) (d *rangeDecoder, err error) {
-	d = &rangeDecoder{br: br, nrange: 0xffffffff}
+func newRangeDecoder(r io.Reader) (d *rangeDecoder, err error) {
+	d = &rangeDecoder{r: r, nrange: 0xffffffff}
 
-	b, err := d.br.ReadByte()
+	b, err := d.readByte()
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +158,15 @@ func newRangeDecoder(br io.ByteReader) (d *rangeDecoder, err error) {
 	return d, nil
 }
 
+func (d *rangeDecoder) readByte() (byte, error) {
+	if d.pos < d.limit {
+		b := d.buf[d.pos]
+		d.pos++
+		return b, nil
+	}
+	return d.readByteSlow()
+}
+
 // possiblyAtEnd checks whether the decoder may be at the end of the stream.
 func (d *rangeDecoder) possiblyAtEnd() bool {
 	return d.code == 0
@@ -172,51 +182,60 @@ func (d *rangeDecoder) DirectDecodeBit() (b uint32, err error) {
 	d.code += d.nrange & t
 	b = (t + 1) & 1
 
-	// d.code will stay less then d.nrange
-
-	// normalize
-	// assume d.code < d.nrange
-	const top = 1 << 24
-	if d.nrange >= top {
+	if d.nrange >= (1 << 24) {
 		return b, nil
 	}
 	d.nrange <<= 8
-	// d.code < d.nrange will be maintained
 	return b, d.updateCode()
 }
 
-// decodeBit decodes a single bit. The bit will be returned at the
+// DecodeBit decodes a single bit. The bit will be returned at the
 // least-significant position. All other bits will be zero. The probability
 // value will be updated.
 func (d *rangeDecoder) DecodeBit(p *prob) (b uint32, err error) {
-	bound := p.bound(d.nrange)
+	bound := (d.nrange >> probbits) * uint32(*p)
 	if d.code < bound {
 		d.nrange = bound
-		p.inc()
+		*p += ((1 << probbits) - *p) >> movebits
 		b = 0
 	} else {
 		d.code -= bound
 		d.nrange -= bound
-		p.dec()
+		*p -= *p >> movebits
 		b = 1
 	}
-	// normalize
-	// assume d.code < d.nrange
-	const top = 1 << 24
-	if d.nrange >= top {
+	if d.nrange >= (1 << 24) {
 		return b, nil
 	}
 	d.nrange <<= 8
-	// d.code < d.nrange will be maintained
 	return b, d.updateCode()
 }
 
-// updateCode reads a new byte into the code.
 func (d *rangeDecoder) updateCode() error {
-	b, err := d.br.ReadByte()
-	if err != nil {
-		return err
+	var b byte
+	var err error
+	if d.pos < d.limit {
+		b = d.buf[d.pos]
+		d.pos++
+	} else {
+		b, err = d.readByteSlow()
+		if err != nil {
+			return err
+		}
 	}
 	d.code = (d.code << 8) | uint32(b)
 	return nil
+}
+
+func (d *rangeDecoder) readByteSlow() (byte, error) {
+	n, err := d.r.Read(d.buf[:])
+	if n > 0 {
+		d.pos = 1
+		d.limit = n
+		return d.buf[0], nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return 0, io.EOF
 }

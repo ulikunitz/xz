@@ -38,14 +38,17 @@ func (tc *treeCodec) Encode(e *rangeEncoder, v uint32) (err error) {
 // be caused by the range decoder.
 func (tc *treeCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
-	for j := 0; j < int(tc.bits); j++ {
-		b, err := d.DecodeBit(&tc.probs[m])
+	bits := int(tc.bits)
+	probs := tc.probs
+	_ = probs[len(probs)-1] // Bounds check elimination hint
+	for j := 0; j < bits; j++ {
+		b, err := d.DecodeBit(&probs[m])
 		if err != nil {
 			return 0, err
 		}
 		m = (m << 1) | b
 	}
-	return m - (1 << uint(tc.bits)), nil
+	return m - (1 << uint(bits)), nil
 }
 
 // treeReverseCodec is another tree codec, where the least-significant bit is
@@ -84,8 +87,11 @@ func (tc *treeReverseCodec) Encode(v uint32, e *rangeEncoder) (err error) {
 // returned by the range decoder will be returned.
 func (tc *treeReverseCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
-	for j := uint(0); j < uint(tc.bits); j++ {
-		b, err := d.DecodeBit(&tc.probs[m])
+	bits := uint(tc.bits)
+	probs := tc.probs
+	_ = probs[len(probs)-1] // Bounds check elimination hint
+	for j := uint(0); j < bits; j++ {
+		b, err := d.DecodeBit(&probs[m])
 		if err != nil {
 			return 0, err
 		}

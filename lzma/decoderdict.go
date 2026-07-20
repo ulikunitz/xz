@@ -6,7 +6,6 @@ package lzma
 
 import (
 	"errors"
-	"fmt"
 )
 
 // decoderDict provides the dictionary for the decoder. The whole
@@ -88,27 +87,26 @@ func (d *decoderDict) writeMatch(dist int64, length int) error {
 	}
 	d.head += int64(length)
 
-	i := d.buf.front - int(dist)
-	if i < 0 {
-		i += len(d.buf.data)
+	bufSize := len(d.buf.data)
+	front := d.buf.front
+
+	src := front - int(dist)
+	if src < 0 {
+		src += bufSize
 	}
-	for length > 0 {
-		var p []byte
-		if i >= d.buf.front {
-			p = d.buf.data[i:]
-			i = 0
-		} else {
-			p = d.buf.data[i:d.buf.front]
-			i = d.buf.front
+
+	for i := 0; i < length; i++ {
+		d.buf.data[front] = d.buf.data[src]
+		front++
+		if front >= bufSize {
+			front = 0
 		}
-		if len(p) > length {
-			p = p[:length]
+		src++
+		if src >= bufSize {
+			src = 0
 		}
-		if _, err := d.buf.Write(p); err != nil {
-			panic(fmt.Errorf("d.buf.Write returned error %s", err))
-		}
-		length -= len(p)
 	}
+	d.buf.front = front
 	return nil
 }
 

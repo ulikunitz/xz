@@ -81,6 +81,7 @@ func (c *literalCodec) Decode(d *rangeDecoder,
 ) (s byte, err error) {
 	k := litState * 0x300
 	probs := c.probs[k : k+0x300]
+	_ = probs[767] // Bounds check elimination hint
 	symbol := uint32(1)
 	if state >= 7 {
 		m := uint32(match)
