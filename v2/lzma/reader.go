@@ -12,7 +12,6 @@ import (
 	"math"
 
 	"github.com/ulikunitz/lz"
-	"github.com/ulikunitz/opt"
 )
 
 // ReaderConfig stores the parameters for the reader of the classic LZMA
@@ -233,7 +232,7 @@ func (r *Reader) init(z io.Reader, hdr Header) error {
 		return errors.New("lzma: dictSize too large")
 	}
 	cfg := lz.DecoderConfig{
-		WindowSize: opt.Val(int(hdr.DictSize)),
+		WindowSize: new(int(hdr.DictSize)),
 	}
 	if err := r.lzDecoder.Init(cfg); err != nil {
 		return err

@@ -311,8 +311,8 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 	}
 
 	lzCfg := lz.ParserConfig{
-		WindowSize:    opt.Val(cfg.WindowSize),
-		RetentionSize: opt.Val(cfg.WindowSize),
+		WindowSize:    new(cfg.WindowSize),
+		RetentionSize: new(cfg.WindowSize),
 		BufferSize:    cfg.BufferSize,
 		PathFinder:    cfg.PathFinder,
 		Mapper:        cfg.Mapper,

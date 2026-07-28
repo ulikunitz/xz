@@ -1,6 +1,6 @@
 module github.com/ulikunitz/xz/v2
 
-go 1.26.3
+go 1.26.5
 
 require (
 	github.com/ulikunitz/lz v0.7.5

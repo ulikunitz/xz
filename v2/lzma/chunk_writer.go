@@ -347,8 +347,8 @@ func (w *chunkWriter) Close() error {
 // WindowSize returns the window size for the chunk writer.
 func (w *chunkWriter) WindowSize() int {
 	cfg := w.parser.Config()
-	if !cfg.WindowSize.Ok {
+	if cfg.WindowSize == nil {
 		panic("chunkWriter: window size not set")
 	}
-	return cfg.WindowSize.V
+	return *cfg.WindowSize
 }

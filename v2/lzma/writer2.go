@@ -147,8 +147,8 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 
 	if cfg.Workers == 1 {
 		lzCfg := lz.ParserConfig{
-			WindowSize:    opt.Val(cfg.WindowSize),
-			RetentionSize: opt.Val(cfg.WindowSize),
+			WindowSize:    new(cfg.WindowSize),
+			RetentionSize: new(cfg.WindowSize),
 			BufferSize:    cfg.BufferSize,
 			PathFinder:    cfg.PathFinder,
 			Mapper:        cfg.Mapper,
@@ -364,8 +364,8 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 
 func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 	lzCfg := lz.ParserConfig{
-		WindowSize:    opt.Val(cfg.WindowSize),
-		RetentionSize: opt.Val(0),
+		WindowSize:    new(cfg.WindowSize),
+		RetentionSize: new(0),
 		BufferSize:    cfg.BufferSize,
 		PathFinder:    cfg.PathFinder,
 		Mapper:        cfg.Mapper,

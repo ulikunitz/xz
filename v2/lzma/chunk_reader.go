@@ -11,7 +11,6 @@ import (
 	"io"
 
 	"github.com/ulikunitz/lz"
-	"github.com/ulikunitz/opt"
 )
 
 // Possible values of the masked control byte in the LZMA2 chunk header. Note
@@ -91,7 +90,7 @@ type chunkReader struct {
 func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	*r = chunkReader{r: z}
 	cfg := lz.DecoderConfig{
-		WindowSize: opt.Val(dictSize),
+		WindowSize: new(dictSize),
 		BufferSize: 2 * dictSize,
 	}
 	if cfg.BufferSize < maxUncompressedChunkSize {

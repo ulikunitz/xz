@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/ulikunitz/lz"
-	"github.com/ulikunitz/opt"
 )
 
 func TestChunkHeader(t *testing.T) {
@@ -62,8 +61,8 @@ func TestChunkWriterReaderSimple(t *testing.T) {
 	const winSize = 1 << 20
 	cfg := presetParserConfig(5)
 
-	cfg.WindowSize = opt.Val(winSize)
-	cfg.RetentionSize = opt.Val(winSize)
+	cfg.WindowSize = new(winSize)
+	cfg.RetentionSize = new(winSize)
 	cfg.BufferSize = 2 * winSize
 
 	parser, err := lz.NewParser(cfg)
@@ -147,8 +146,8 @@ func TestChunkWriterReader(t *testing.T) {
 			z := io.TeeReader(r, hIn)
 			var cw chunkWriter
 			cfg := presetParserConfig(5)
-			cfg.WindowSize = opt.Val(winSize)
-			cfg.RetentionSize = opt.Val(winSize)
+			cfg.WindowSize = new(winSize)
+			cfg.RetentionSize = new(winSize)
 			cfg.BufferSize = 2 * winSize
 			parser, err := lz.NewParser(cfg)
 			if err != nil {
@@ -201,8 +200,8 @@ func TestChunkClose(t *testing.T) {
 	var cw chunkWriter
 	buf := new(bytes.Buffer)
 	pcfg := presetParserConfig(5)
-	pcfg.WindowSize = opt.Val(winSize)
-	pcfg.RetentionSize = opt.Val(winSize)
+	pcfg.WindowSize = new(winSize)
+	pcfg.RetentionSize = new(winSize)
 	pcfg.BufferSize = 2 * winSize
 
 	parser, err := lz.NewParser(pcfg)
