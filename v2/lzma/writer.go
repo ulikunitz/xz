@@ -242,9 +242,9 @@ func (cfg *WriterConfig) verify() error {
 		return errors.New("lzma: WriterConfig pointer must be non-nil")
 	}
 
-	if !(minDictSize <= cfg.WindowSize && int64(cfg.WindowSize) <= maxDictSize) {
+	if !(minWindowSize <= cfg.WindowSize && int64(cfg.WindowSize) <= maxWindowSize) {
 		return fmt.Errorf("lzma: WindowSize must be between %d and %d",
-			minDictSize, maxDictSize)
+			minWindowSize, maxWindowSize)
 	}
 
 	if cfg.Properties == nil {

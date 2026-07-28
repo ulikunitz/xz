@@ -6,9 +6,9 @@ package lzma
 
 import "errors"
 
-// maxDictSize defines the maximum dictionary capacity supported by the
+// maxWindowSize defines the maximum dictionary capacity supported by the
 // LZMA2 dictionary capacity encoding.
-const maxDictSize = 1<<32 - 1
+const maxWindowSize = 1<<32 - 1
 
 // maxDictSizeCode defines the maximum dictionary size code.
 const maxDictSizeCode = 40
@@ -24,7 +24,7 @@ func decodeDictSize(c byte) int64 {
 func DecodeDictSize(c byte) (n int64, err error) {
 	if c >= maxDictSizeCode {
 		if c == maxDictSizeCode {
-			return maxDictSize, nil
+			return maxWindowSize, nil
 		}
 		return 0, errors.New("lzma: invalid dictionary size code")
 	}

@@ -29,10 +29,10 @@ type Reader2Config struct {
 
 // verify checks the validity of dictionary size.
 func (cfg *Reader2Config) verify() error {
-	if cfg.WindowSize < minDictSize {
+	if cfg.WindowSize < minWindowSize {
 		return fmt.Errorf(
 			"lzma: dictionary size must be larger or"+
-				" equal %d bytes", minDictSize)
+				" equal %d bytes", minWindowSize)
 	}
 
 	if cfg.Workers <= 0 {

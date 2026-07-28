@@ -17,26 +17,25 @@ import (
 // ReaderConfig stores the parameters for the reader of the classic LZMA
 // format.
 type ReaderConfig struct {
-	// Since v0.5.14 this parameter sets an upper limit for a .lzma file's
-	// dictionary size. This helps to mitigate problems with mangled
-	// headers.
-	DictCap int `json:"dictCap,omitzero"`
+	// WindowSize sets a limit on the sliding window size, often called
+	// dictionary size.
+	WindowSize int `json:",omitzero"`
 }
 
 // setDefaults converts the zero values of the configuration to the default values.
 func (c *ReaderConfig) setDefaults() {
-	if c.DictCap == 0 {
+	if c.WindowSize == 0 {
 		// set an upper limit of 2 GB for dictionary capacity to address
 		// the zero prefix security issue.
-		c.DictCap = (1 << 31) - 1
+		c.WindowSize = (1 << 31) - 1
 	}
 }
 
 // verify checks the reader configuration for errors. Zero values will
 // be replaced by default values.
 func (c *ReaderConfig) verify() error {
-	if !(minDictSize <= c.DictCap && int64(c.DictCap) <= maxDictSize) {
-		return errors.New("lzma: dictionary capacity is out of range")
+	if !(minWindowSize <= c.WindowSize && int64(c.WindowSize) <= maxWindowSize) {
+		return errors.New("lzma: window size is out of range")
 	}
 	return nil
 }
@@ -54,7 +53,7 @@ func (c *ReaderConfig) verify() error {
 //
 // Version 0.5.14 introduces built-in mitigations:
 //
-//   - The [ReaderConfig] DictCap field is now interpreted as a limit for the
+//   - The [ReaderConfig] WindowSize field is now interpreted as a limit for the
 //     dictionary size.
 //   - The default is 2 Gigabytes (2^31 bytes).
 //   - Users can check with the [Reader.Header] method what the actual values are in
@@ -90,8 +89,8 @@ func NewRawReader(z io.Reader, hdr Header) (r *Reader, err error) {
 	return rr, nil
 }
 
-// minDictSize defines the minimum supported dictionary size.
-const minDictSize = 1 << 12
+// minWindowSize defines the minimum supported dictionary size.
+const minWindowSize = 1 << 12
 
 // headerLen defines the length of an LZMA header
 const headerLen = 13
@@ -108,7 +107,7 @@ func (h Header) verify() error {
 	if uint64(h.DictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
 	}
-	if h.DictSize < minDictSize {
+	if h.DictSize < minWindowSize {
 		return errors.New("lzma: dictSize is too small")
 	}
 	return h.Properties.verify()
@@ -190,10 +189,10 @@ func NewReaderConfig(z io.Reader, cfg ReaderConfig) (r *Reader, err error) {
 	}
 	hdrOrig := hdr
 
-	if int64(cfg.DictCap) < int64(hdr.DictSize) {
+	if int64(cfg.WindowSize) < int64(hdr.DictSize) {
 		return nil, newErrDictSize(
-			"lzma: header dictionary size %[2]d exceeds configured dictionary capacity %[1]d",
-			cfg.DictCap, hdr.DictSize,
+			"lzma: header dictionary size %[2]d exceeds configured window size %[1]d",
+			cfg.WindowSize, hdr.DictSize,
 		)
 	}
 	// Mitigation for CVE-2025-58058
@@ -205,8 +204,8 @@ func NewReaderConfig(z io.Reader, cfg ReaderConfig) (r *Reader, err error) {
 	// https://github.com/ulikunitz/xz/pull/52
 	// TODO: depending on the discussion we might even need a way to
 	// override the header.
-	if hdr.DictSize < minDictSize {
-		hdr.DictSize = minDictSize
+	if hdr.DictSize < minWindowSize {
+		hdr.DictSize = minWindowSize
 	}
 	if err = hdr.verify(); err != nil {
 		return nil, err
