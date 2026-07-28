@@ -11,34 +11,33 @@ import "errors"
 const maxWindowSize = 1<<32 - 1
 
 // maxDictSizeCode defines the maximum dictionary size code.
-const maxDictSizeCode = 40
+const maxWindowSizeCode = 40
 
-// The function decodes the dictionary capacity byte, but doesn't change
-// for the correct range of the given byte.
-func decodeDictSize(c byte) int64 {
+// decodeWindowSize decodes the encoded dictionary size.
+func decodeWindowSize(c byte) int64 {
 	return (2 | int64(c)&1) << (11 + (c>>1)&0x1f)
 }
 
-// DecodeDictSize decodes the encoded dictionary capacity. The function
+// DecodeWindowSize decodes the encoded dictionary capacity. The function
 // returns an error if the code is out of range.
-func DecodeDictSize(c byte) (n int64, err error) {
-	if c >= maxDictSizeCode {
-		if c == maxDictSizeCode {
+func DecodeWindowSize(c byte) (n int64, err error) {
+	if c >= maxWindowSizeCode {
+		if c == maxWindowSizeCode {
 			return maxWindowSize, nil
 		}
 		return 0, errors.New("lzma: invalid dictionary size code")
 	}
-	return decodeDictSize(c), nil
+	return decodeWindowSize(c), nil
 }
 
-// EncodeDictSize encodes a dictionary capacity. The function returns the
+// EncodeWindowSize encodes a dictionary capacity. The function returns the
 // code for the capacity that is greater or equal n. If n exceeds the
 // maximum support dictionary capacity, the maximum value is returned.
-func EncodeDictSize(n int64) byte {
-	a, b := byte(0), byte(40)
+func EncodeWindowSize(n int64) byte {
+	a, b := byte(0), byte(maxWindowSizeCode)
 	for a < b {
 		c := a + (b-a)>>1
-		m := decodeDictSize(c)
+		m := decodeWindowSize(c)
 		if n <= m {
 			if n == m {
 				return c
