@@ -13,7 +13,6 @@ import (
 	"runtime"
 
 	"github.com/ulikunitz/lz"
-	"github.com/ulikunitz/opt"
 )
 
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
@@ -25,7 +24,7 @@ type Writer2Config struct {
 	BufferSize int `json:",omitzero"`
 
 	// Properties for the LZMA algorithm.
-	Properties opt.Value[Properties] `json:",omitzero"`
+	Properties *Properties `json:",omitzero"`
 
 	// Number of workers processing data.
 	Workers int `json:",omitzero"`
@@ -44,7 +43,7 @@ type Writer2Config struct {
 func (cfg *Writer2Config) verify() error {
 	var err error
 	if cfg == nil {
-		return errors.New("lzma: Writer2Options pointer must not be nil")
+		return errors.New("lzma: Writer2Config pointer must not be nil")
 	}
 
 	if cfg.Workers < 1 {
@@ -72,11 +71,11 @@ func (cfg *Writer2Config) verify() error {
 			"lzma: BufferSize must be larger or equal than WindowSize")
 	}
 
-	if !cfg.Properties.Ok {
+	if cfg.Properties == nil {
 		return errors.New("lzma: Properties must be set")
 	}
 
-	p := &cfg.Properties.V
+	p := cfg.Properties
 	if err = p.verify(); err != nil {
 		return err
 	}
@@ -95,8 +94,8 @@ func (cfg *Writer2Config) setDefaults() {
 		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
 
-	if !cfg.Properties.Ok {
-		cfg.Properties = opt.Val(Properties{3, 0, 2})
+	if cfg.Properties == nil {
+		cfg.Properties = &Properties{3, 0, 2}
 	}
 
 	if cfg.Workers == 1 {
@@ -160,7 +159,7 @@ func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 			return nil, err
 		}
 		var cw chunkWriter
-		if err = cw.init(z, parser, nil, cfg.Properties.V); err != nil {
+		if err = cw.init(z, parser, nil, *cfg.Properties); err != nil {
 			return nil, err
 		}
 		return &cw, nil
@@ -388,7 +387,7 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 		case tsk = <-taskCh:
 		}
 		buf := new(bytes.Buffer)
-		if err := w.init(buf, parser, tsk.data, cfg.Properties.V); err != nil {
+		if err := w.init(buf, parser, tsk.data, *cfg.Properties); err != nil {
 			panic(fmt.Errorf("w.init error %s", err))
 		}
 		if err := w.FlushContext(ctx); err != nil {

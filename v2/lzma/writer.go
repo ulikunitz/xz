@@ -11,7 +11,6 @@ import (
 	"io"
 
 	"github.com/ulikunitz/lz"
-	"github.com/ulikunitz/opt"
 )
 
 func setUpdateEncoder(p lz.Parser, updateEncoder func() *encoder) {
@@ -227,9 +226,9 @@ type WriterConfig struct {
 	BufferSize int `json:",omitzero"`
 
 	// Properties of the LZMA algorithm.
-	Properties opt.Value[Properties] `json:",omitzero"`
+	Properties *Properties `json:",omitzero"`
 
-	FixedSize opt.Value[int64] `json:",omitzero"`
+	FixedSize *int64 `json:",omitzero"`
 
 	PathFinder string `json:",omitzero"`
 	Mapper     string `json:",omitzero"`
@@ -248,16 +247,16 @@ func (cfg *WriterConfig) verify() error {
 			minDictSize, maxDictSize)
 	}
 
-	if !cfg.Properties.Ok {
+	if cfg.Properties == nil {
 		return errors.New("lzma: Properties must be set")
 	}
 
-	if err = cfg.Properties.V.verify(); err != nil {
+	if err = cfg.Properties.verify(); err != nil {
 		return err
 	}
 
-	if cfg.FixedSize.Ok {
-		if cfg.FixedSize.V < 0 {
+	if cfg.FixedSize != nil {
+		if *cfg.FixedSize < 0 {
 			return errors.New(
 				"lzma: FixedSize must be non-negative")
 		}
@@ -284,8 +283,8 @@ func (cfg *WriterConfig) setDefaults() {
 		cfg.BufferSize = 2 * cfg.WindowSize
 	}
 
-	if !cfg.Properties.Ok {
-		cfg.Properties = opt.Val(Properties{3, 0, 2})
+	if cfg.Properties == nil {
+		cfg.Properties = &Properties{3, 0, 2}
 	}
 
 	if cfg.PathFinder == "" {
@@ -325,11 +324,11 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 	}
 
 	p := Header{
-		Properties: cfg.Properties.V,
+		Properties: *cfg.Properties,
 		DictSize:   uint32(cfg.WindowSize),
 	}
-	if cfg.FixedSize.Ok {
-		p.uncompressedSize = uint64(cfg.FixedSize.V)
+	if cfg.FixedSize != nil {
+		p.uncompressedSize = uint64(*cfg.FixedSize)
 	} else {
 		p.uncompressedSize = EOSSize
 	}
@@ -344,16 +343,16 @@ func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error
 		return nil, err
 	}
 
-	if cfg.FixedSize.Ok {
-		lw := &limitWriter{n: cfg.FixedSize.V}
-		if err := lw.w.init(z, parser, cfg.Properties.V, false); err != nil {
+	if cfg.FixedSize != nil {
+		lw := &limitWriter{n: *cfg.FixedSize}
+		if err := lw.w.init(z, parser, *cfg.Properties, false); err != nil {
 			return nil, err
 		}
 		return lw, nil
 	}
 
 	wr := new(writer)
-	if err := wr.init(z, parser, cfg.Properties.V, true); err != nil {
+	if err := wr.init(z, parser, *cfg.Properties, true); err != nil {
 		return nil, err
 	}
 	return wr, nil
