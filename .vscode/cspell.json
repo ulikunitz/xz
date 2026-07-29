@@ -13,6 +13,7 @@
     ],
     "words": [],
     "ignoreWords": [
+        "BDHP",
         "Brigas",
         "CCSP",
         "CCSPD",
@@ -28,6 +29,7 @@
         "Kłak",
         "MININT",
         "Mituo",
+        "OSAP",
         "Probs",
         "Tomasz",
         "abcabcabcabcabcabcabcabc",
