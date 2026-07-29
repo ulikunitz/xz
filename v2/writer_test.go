@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/ulikunitz/xz/v2/internal/randtxt"
+	"github.com/ulikunitz/xz/v2/lzma"
 )
 
 func TestWriter(t *testing.T) {
@@ -149,7 +150,7 @@ func TestWriterNoneCheck(t *testing.T) {
 
 	buf.Reset()
 
-	w, err := NewWriterOptions(&buf, WriterConfig{Checksum: new(None)})
+	w, err := NewWriterConfig(&buf, WriterConfig{Checksum: new(None)})
 	if err != nil {
 		t.Fatalf("NewWriter error %s", err)
 	}
@@ -190,7 +191,7 @@ func BenchmarkWriter(b *testing.B) {
 	buf := new(bytes.Buffer)
 	b.SetBytes(int64(len(data)))
 	b.ReportAllocs()
-	
+
 	for b.Loop() {
 		buf.Reset()
 		w, err := NewWriter(buf)
@@ -302,5 +303,38 @@ func TestWriterJSON(t *testing.T) {
 	}
 	if !reflect.DeepEqual(cfg1, cfg) {
 		t.Fatalf("json.Unmarshal returned %+v, want %+v", cfg1, cfg)
+	}
+}
+
+func TestWriterConfigClone(t *testing.T) {
+	checksum := CRC64
+	cfg := WriterConfig{
+		WindowSize:   1024,
+		BufferSize:   2048,
+		Properties:   &lzma.Properties{LC: 1, LP: 2, PB: 3},
+		Workers:      4,
+		LZMAParallel: true,
+		Checksum:     &checksum,
+	}
+
+	clone := cfg.clone()
+	if !reflect.DeepEqual(clone, cfg) {
+		t.Fatalf("Clone() returned %+v, want %+v", clone, cfg)
+	}
+	if clone.Properties == cfg.Properties {
+		t.Fatal("Clone() reused Properties pointer")
+	}
+	if clone.Checksum == cfg.Checksum {
+		t.Fatal("Clone() reused Checksum pointer")
+	}
+
+	cfg.Properties.LC = 7
+	*cfg.Checksum = None
+
+	if clone.Properties.LC != 1 || clone.Properties.LP != 2 || clone.Properties.PB != 3 {
+		t.Fatalf("Clone() properties changed to %+v", clone.Properties)
+	}
+	if *clone.Checksum != CRC64 {
+		t.Fatalf("Clone() checksum changed to %d", *clone.Checksum)
 	}
 }

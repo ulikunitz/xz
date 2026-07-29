@@ -46,6 +46,18 @@ type WriterConfig struct {
 	Checksum *byte
 }
 
+// clone returns a deep copy of the writer configuration.
+func (cfg WriterConfig) clone() WriterConfig {
+	clone := cfg
+	if cfg.Properties != nil {
+		clone.Properties = new(*cfg.Properties)
+	}
+	if cfg.Checksum != nil {
+		clone.Checksum = new(*cfg.Checksum)
+	}
+	return clone
+}
+
 // setDefaults applies the defaults to the xz writer configuration.
 func (cfg *WriterConfig) setDefaults() {
 	preset := Preset(5)
@@ -364,25 +376,26 @@ type WriteFlushCloser interface {
 }
 
 // NewWriter creates a new Writer for xz-compressed data. The Writer uses the
-// preset #5. See [Preset] and [NewWriterOptions] for changing the parameters.
+// preset #5. See [Preset] and [NewWriterConfig] for changing the parameters.
 func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
-	return NewWriterOptions(xz, Preset(5))
+	return NewWriterConfig(xz, Preset(5))
 }
 
-// NewWriterOptions creates a WriteFlushCloser instance. If multi-threading is
+// NewWriterConfig creates a WriteFlushCloser instance. If multi-threading is
 // requested by a Workers configuration larger than 1, single threading will be
 // requested for the LZMA writer by setting the Workers variable there to 1.
-func NewWriterOptions(xz io.Writer, options WriterConfig) (w WriteFlushCloser, err error) {
-	options.setDefaults()
-	if err = options.verify(); err != nil {
+func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
+	cfg = cfg.clone()
+	cfg.setDefaults()
+	if err = cfg.verify(); err != nil {
 		return nil, err
 	}
 
-	if options.Workers <= 1 || options.LZMAParallel {
-		return newStreamWriter(xz, &options)
+	if cfg.Workers <= 1 || cfg.LZMAParallel {
+		return newStreamWriter(xz, &cfg)
 	}
 
-	return newMTWriter(xz, &options)
+	return newMTWriter(xz, &cfg)
 }
 
 type streamWriter struct {

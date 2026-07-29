@@ -45,7 +45,7 @@ func FuzzXZ(f *testing.F) {
 		wc := xz.WriterConfig{Workers: workers}
 		h1 := sha256.New()
 		var buf bytes.Buffer
-		w, err := xz.NewWriterOptions(&buf, wc)
+		w, err := xz.NewWriterConfig(&buf, wc)
 		if err != nil {
 			t.Fatalf("NewWriterConfig(&buf, %+v) error %s", wc, err)
 		}
