@@ -20,19 +20,19 @@ import (
 // support CRC32.
 type WriterConfig struct {
 	// WindowSize sets the dictionary size.
-	WindowSize int
+	WindowSize int `json:",omitzero"`
 	// BufferSize sets the size of the buffer used by the LZ parser.
-	BufferSize int
+	BufferSize int `json:",omitzero"`
 
 	// Properties for the LZMA algorithm.
-	Properties *lzma.Properties
+	Properties *lzma.Properties `json:",omitzero"`
 
 	// Number of workers processing data.
-	Workers int
+	Workers int `json:",omitzero"`
 	// LZMAParallel indicates that the parallel execution should be on the
 	// LZMA level. (This is an experimental setup and should normally not be
 	// used.)
-	LZMAParallel bool
+	LZMAParallel bool `json:",omitzero"`
 
 	// PathFinder describes the mechanism to select a match at a given
 	// position of the uncompressed data. The default is "greedy".
@@ -43,7 +43,7 @@ type WriterConfig struct {
 	Mapper string `json:",omitzero"`
 
 	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
-	Checksum *byte
+	Checksum *byte `json:",omitzero"`
 }
 
 // clone returns a deep copy of the writer configuration.
