@@ -31,22 +31,22 @@ var errReaderClosed = errors.New("xz: reader closed")
 type ReaderConfig struct {
 	// Workers defines the number of readers for parallel reading. The
 	// default is the value of GOMAXPROCS.
-	Workers int
+	Workers int `json:",omitzero"`
 
 	// Read a single xz stream from the underlying reader, stop and return
 	// EOF. No checks are done whether the underlying reader finishes too.
-	SingleStream bool
+	SingleStream bool `json:",omitzero"`
 
 	// Runs the multiple Workers in LZMA mode. (This is an experimental
 	// setup is normally not required.)
-	LZMAParallel bool
+	LZMAParallel bool `json:",omitzero"`
 
 	// LZMABufferSize provides the buffer size to the LZMA layer. It is only
 	// required if LZMAParallel is set.
-	LZMABufferSize int
+	LZMABufferSize int `json:",omitzero"`
 }
 
-// setDefaults sets the defaults in ReaderOptions.
+// setDefaults sets the defaults in ReaderConfig.
 func (cfg *ReaderConfig) setDefaults() {
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
