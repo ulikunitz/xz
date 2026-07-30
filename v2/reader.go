@@ -108,17 +108,17 @@ type reader struct {
 
 // NewReader creates an io.ReadCloser. The function should never fail.
 func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
-	r, err = NewReaderOptions(xz, ReaderConfig{})
+	r, err = NewReaderConfig(xz, ReaderConfig{})
 	if err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-// NewReaderOptions creates an xz reader using the provided configuration. If
+// NewReaderConfig creates an xz reader using the provided configuration. If
 // Workers are larger than one, the LZMA reader will only use single-threaded
 // workers.
-func NewReaderOptions(xz io.Reader, options ReaderConfig) (r io.ReadCloser, err error) {
+func NewReaderConfig(xz io.Reader, options ReaderConfig) (r io.ReadCloser, err error) {
 	options.setDefaults()
 	if err = options.verify(); err != nil {
 		return nil, err

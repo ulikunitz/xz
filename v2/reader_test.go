@@ -121,7 +121,7 @@ func BenchmarkReader(b *testing.B) {
 
 	for b.Loop() {
 		buf.Reset()
-		r, err := NewReaderOptions(bytes.NewReader(data),
+		r, err := NewReaderConfig(bytes.NewReader(data),
 			ReaderConfig{
 				Workers:      runtime.GOMAXPROCS(0),
 				LZMAParallel: true,
