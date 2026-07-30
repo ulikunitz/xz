@@ -124,6 +124,15 @@ func (cfg *Writer2Config) setDefaults() {
 	}
 }
 
+// clone returns a deep copy of the writer configuration.
+func (cfg Writer2Config) clone() Writer2Config {
+	c := cfg
+	if cfg.Properties != nil {
+		c.Properties = new(*cfg.Properties)
+	}
+	return c
+}
+
 // Writer2 is an interface that can Write, Close and Flush.
 type Writer2 interface {
 	io.WriteCloser
@@ -139,6 +148,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // NewWriter2Config constructs an LZMA2 writer for a specific configuration.
 // Note that the implementation for options.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
+	cfg = cfg.clone()
 	cfg.setDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err

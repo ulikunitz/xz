@@ -273,7 +273,7 @@ func (cfg *WriterConfig) verify() error {
 	return nil
 }
 
-// SetDefaults applies the defaults to the configuration if they have not been
+// setDefaults applies the defaults to the configuration if they have not been
 // set previously.
 func (cfg *WriterConfig) setDefaults() {
 	if cfg.WindowSize == 0 {
@@ -296,6 +296,15 @@ func (cfg *WriterConfig) setDefaults() {
 	}
 }
 
+// clone returns a deep copy of the writer configuration.
+func (cfg WriterConfig) clone() WriterConfig {
+	c := cfg
+	if cfg.Properties != nil {
+		c.Properties = new(*cfg.Properties)
+	}
+	return c
+}
+
 // NewWriter creates a new LZMA writer.
 func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 	return NewWriterConfig(z, WriterConfig{})
@@ -304,6 +313,7 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 // NewWriterConfig creates a new LZMA writer using the parameter provided by
 // options.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
+	cfg = cfg.clone()
 	cfg.setDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
