@@ -15,9 +15,7 @@ import (
 	"github.com/ulikunitz/xz/v2/lzma"
 )
 
-// WriterConfig describes the parameters for an xz writer. CRC64 is used as the
-// default checksum despite the XZ specification only requiring decoders to
-// support CRC32.
+// WriterConfig describes the parameters for an xz writer.
 type WriterConfig struct {
 	// WindowSize sets the dictionary size.
 	WindowSize int `json:",omitzero"`
@@ -43,7 +41,7 @@ type WriterConfig struct {
 	Mapper string `json:",omitzero"`
 
 	// Checksum specifies the checksum method: CRC32, CRC64, or SHA256. The
-	// default is CRC64.
+	// default is CRC32.
 	Checksum *byte `json:",omitzero"`
 }
 
@@ -94,7 +92,7 @@ func (cfg *WriterConfig) setDefaults() {
 		cfg.Properties = preset.Properties
 	}
 	if cfg.Checksum == nil {
-		cfg.Checksum = new(CRC64)
+		cfg.Checksum = new(CRC32)
 	}
 }
 
