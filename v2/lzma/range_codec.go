@@ -15,8 +15,8 @@ const probBits = 11
 // probInit defines 0.5 as initial value for prob values.
 const probInit prob = 1 << (probBits - 1)
 
-// Type prob represents probabilities. The type can also be used to encode and
-// decode single bits.
+// prob represents probabilities. It can also be used to encode and decode
+// single bits.
 type prob uint16
 
 // IncProb increases the probability. The Increase is proportional to the
@@ -31,7 +31,7 @@ func decProb(p prob) prob {
 	return p - p>>moveBits
 }
 
-// Computes the new bound for a given range using the probability value.
+// bound computes the new bound for a given range using the probability value.
 func (p prob) bound(r uint32) uint32 {
 	return (r >> probBits) * uint32(p)
 }
@@ -121,7 +121,7 @@ func (c *rangeBitCounter) bits() int64 {
 */
 
 // rangeEncoder implements range encoding of single bits. The low value can
-// overflow therefore we need uint64. The cache value is used to handle
+// overflow; therefore, we need a uint64. The cache value is used to handle
 // overflows.
 type rangeEncoder struct {
 	bw       io.ByteWriter
@@ -131,7 +131,7 @@ type rangeEncoder struct {
 	cache    byte
 }
 
-// init initializes the range encoder
+// init initializes the range encoder.
 func (e *rangeEncoder) init(bw io.ByteWriter) {
 	*e = rangeEncoder{
 		bw:       bw,
@@ -220,7 +220,7 @@ type rangeDecoder struct {
 	code   uint32
 }
 
-// init initializes the rangeDecoder. It reads five bytes from the stream and
+// init initializes the range decoder. It reads five bytes from the stream and
 // may return errors.
 func (d *rangeDecoder) init(br io.ByteReader) error {
 	*d = rangeDecoder{br: br, nrange: 0xffffffff}

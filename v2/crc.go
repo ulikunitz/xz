@@ -24,7 +24,7 @@ func (h crc32Hash) Sum(b []byte) []byte {
 	return b
 }
 
-// newCRC32 returns a CRC-32 hash that returns the 64-bit value in
+// newCRC32 returns a CRC-32 hash that returns the 32-bit value in
 // little-endian encoding using the IEEE polynomial.
 func newCRC32() hash.Hash {
 	return crc32Hash{Hash32: crc32.NewIEEE()}

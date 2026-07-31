@@ -11,8 +11,8 @@ import (
 )
 
 // Preset returns a WriterConfig with preset parameters. Supported
-// presets are ranging from 1 to 9 from fast to slow with increasing compression
-// rate.
+// presets range from 1 to 9, from fast to slow, with increasing compression
+// rates.
 func Preset(n int) WriterConfig {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))

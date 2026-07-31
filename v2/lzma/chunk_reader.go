@@ -100,8 +100,8 @@ func (r *chunkReader) init(z io.Reader, dictSize int) error {
 	return err
 }
 
-// reset reinitialized the chunkReader. If possible existing allocated data
-// should be reused. The function doesn't touch the noEOS flag.
+// reset reinitializes the chunkReader. If possible, existing allocated data
+// is reused. The method doesn't touch the noEOS flag.
 func (r *chunkReader) reset(z io.Reader) {
 	r.r = z
 	r.lzDecoder.Reset()

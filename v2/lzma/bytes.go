@@ -4,7 +4,7 @@
 
 package lzma
 
-// putLE32 write a uint32 value into the slice p using little endian encoding.
+// putLE32 writes a uint32 value into the slice p using little-endian encoding.
 // The p slice must have at least length four.
 func putLE32(p []byte, x uint32) {
 	_ = p[3]

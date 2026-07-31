@@ -38,8 +38,8 @@ type Writer2Config struct {
 	Mapper string `json:",omitzero"`
 }
 
-// verify checks whether the configuration is consistent and correct. Usually
-// call SetDefaults before this method.
+// verify checks whether the configuration is consistent and correct. Normally,
+// setDefaults should be called before this method.
 func (cfg *Writer2Config) verify() error {
 	var err error
 	if cfg == nil {
@@ -64,11 +64,6 @@ func (cfg *Writer2Config) verify() error {
 			return errors.New(
 				"lzma: BufferSize must be larger or equal than WindowSize")
 		}
-	}
-
-	if !(cfg.WindowSize <= cfg.BufferSize) {
-		return errors.New(
-			"lzma: BufferSize must be larger or equal than WindowSize")
 	}
 
 	if cfg.Properties == nil {
@@ -231,7 +226,7 @@ func (w *mtWriter) Write(p []byte) (n int, err error) {
 			return n, nil
 		}
 		if w.workers < w.cfg.Workers {
-			go mtwWork(w.ctx, w.taskCh, w.cfg)
+			go mtwWork(w.ctx, w.taskCh, w.errCh, w.cfg)
 			w.workers++
 		}
 		w.buf = append(w.buf, p[:k]...)
@@ -271,7 +266,7 @@ func (w *mtWriter) Flush() error {
 	default:
 	}
 	if w.workers < w.cfg.Workers {
-		go mtwWork(w.ctx, w.taskCh, w.cfg)
+		go mtwWork(w.ctx, w.taskCh, w.errCh, w.cfg)
 		w.workers++
 	}
 	flushCh := make(chan struct{}, 1)
@@ -371,7 +366,7 @@ func mtwWriteOutput(ctx context.Context, outCh <-chan mtwOutput, z io.Writer, er
 	}
 }
 
-func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
+func mtwWork(ctx context.Context, taskCh <-chan mtwTask, errCh chan<- error, cfg Writer2Config) {
 	lzCfg := lz.ParserConfig{
 		WindowSize:    new(cfg.WindowSize),
 		RetentionSize: new(0),
@@ -384,7 +379,11 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 
 	parser, err := lz.NewParser(lzCfg)
 	if err != nil {
-		panic(fmt.Errorf("lzma: NewParser error %s", err))
+		select {
+		case <-ctx.Done():
+		case errCh <- fmt.Errorf("lzma: NewParser error %w", err):
+		}
+		return
 	}
 	var (
 		tsk mtwTask
@@ -398,15 +397,22 @@ func mtwWork(ctx context.Context, taskCh <-chan mtwTask, cfg Writer2Config) {
 		}
 		buf := new(bytes.Buffer)
 		if err := w.init(buf, parser, tsk.data, *cfg.Properties); err != nil {
-			panic(fmt.Errorf("w.init error %s", err))
+			select {
+			case <-ctx.Done():
+			case errCh <- fmt.Errorf("w.init error %w", err):
+			}
+			return
 		}
 		if err := w.FlushContext(ctx); err != nil {
 			if errors.Is(err, context.Canceled) ||
 				errors.Is(err, context.DeadlineExceeded) {
 				return
-
 			}
-			panic(fmt.Errorf("w.FlushContext error %s", err))
+			select {
+			case <-ctx.Done():
+			case errCh <- fmt.Errorf("w.FlushContext error %w", err):
+			}
+			return
 		}
 		select {
 		case <-ctx.Done():

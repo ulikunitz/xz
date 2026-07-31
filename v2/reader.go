@@ -24,21 +24,21 @@ var errReaderClosed = errors.New("xz: reader closed")
 // parameter requests the reader to assume that the underlying stream contains
 // only a single stream without padding.
 //
-// The workers variable controls the number of parallel workers decoding the
+// The Workers field controls the number of parallel workers decoding the
 // file. It only has an effect if the file was encoded in a way that it created
-// blocks with the compressed size set in the headers. If Workers not 1 the
-// Workers variable in LZMAConfig will be ignored.
+// blocks with the compressed size set in the headers. If Workers is not 1 the
+// Workers field in lzma.Reader2Config will be ignored.
 type ReaderConfig struct {
 	// Workers defines the number of readers for parallel reading. The
 	// default is the value of GOMAXPROCS.
 	Workers int `json:",omitzero"`
 
 	// Read a single xz stream from the underlying reader, stop and return
-	// EOF. No checks are done whether the underlying reader finishes too.
+	// io.EOF. No checks are done whether the underlying reader finishes too.
 	SingleStream bool `json:",omitzero"`
 
-	// Runs the multiple Workers in LZMA mode. (This is an experimental
-	// setup is normally not required.)
+	// Runs the multiple workers in LZMA mode. (This is an experimental
+	// setup and is normally not required.)
 	LZMAParallel bool `json:",omitzero"`
 
 	// LZMABufferSize provides the buffer size to the LZMA layer. It is only
@@ -106,7 +106,8 @@ type reader struct {
 	err error
 }
 
-// NewReader creates an io.ReadCloser. The function should never fail.
+// NewReader creates an io.ReadCloser for the given reader. The function
+// fails if the stream header cannot be read.
 func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
 	r, err = NewReaderConfig(xz, ReaderConfig{})
 	if err != nil {

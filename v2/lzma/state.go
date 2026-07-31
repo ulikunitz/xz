@@ -32,7 +32,7 @@ func initS1Probs(p []state1Probs) {
 	}
 }
 
-// state2Probs groups the state2 probabilities together so that the fit into a
+// state2Probs groups the state2 probabilities together so that they fit into a
 // single cache line.
 type state2Probs struct {
 	isMatch     prob
@@ -283,7 +283,7 @@ func (tc *treeCodec) Encode(e rEncoder, v uint32) (err error) {
 	return nil
 }
 
-// Decodes uses the range decoder to decode a fixed-bit-size value. Errors may
+// Decode uses the range decoder to decode a fixed-bit-size value. Errors may
 // be caused by the range decoder.
 func (tc *treeCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
@@ -310,10 +310,10 @@ func (tc *treeReverseCodec) deepCopy(src *treeReverseCodec) {
 }
 
 // init initializes the treeReverseCodec. The bits argument must be in the range
-// [1,32.]
+// [1, 32].
 func (tc *treeReverseCodec) init(bits int) { tc.probTree.init(bits) }
 
-// Encode uses range encoder to encode a fixed-bit-size value. The range
+// Encode uses the range encoder to encode a fixed-bit-size value. The range
 // encoder may cause errors.
 func (tc *treeReverseCodec) Encode(v uint32, e rEncoder) (err error) {
 	m := uint32(1)
@@ -327,7 +327,7 @@ func (tc *treeReverseCodec) Encode(v uint32, e rEncoder) (err error) {
 	return nil
 }
 
-// Decodes uses the range decoder to decode a fixed-bit-size value. Errors
+// Decode uses the range decoder to decode a fixed-bit-size value. Errors
 // returned by the range decoder will be returned.
 func (tc *treeReverseCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	m := uint32(1)
@@ -342,8 +342,8 @@ func (tc *treeReverseCodec) Decode(d *rangeDecoder) (v uint32, err error) {
 	return v, nil
 }
 
-// probTree stores enough probability values to be used by the treeEncode and
-// treeDecode methods of the range coder types.
+// probTree stores enough probability values to be used by the Encode and
+// Decode methods of the range coder types.
 type probTree struct {
 	probs []prob
 	bits  byte

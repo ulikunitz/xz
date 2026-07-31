@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-// breader provides the ReadByte function for a Reader. It doesn't read
+// breader provides the ReadByte method for a Reader. It doesn't read
 // more data from the reader than absolutely necessary.
 type breader struct {
 	io.Reader
@@ -26,7 +26,7 @@ func byteReader(r io.Reader) io.ByteReader {
 	return br
 }
 
-// ReadByte read byte function.
+// ReadByte reads a single byte from the underlying reader.
 func (r *breader) ReadByte() (c byte, err error) {
 	n, err := r.Reader.Read(r.p)
 	if n < 1 {

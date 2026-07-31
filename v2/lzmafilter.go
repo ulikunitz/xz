@@ -18,7 +18,7 @@ const (
 	lzmaFilterLen = 3
 )
 
-// lzmaFilter declares the LZMA2 filter information stored in an xz
+// lzmaFilter represents the LZMA2 filter information stored in an XZ
 // block header.
 type lzmaFilter struct {
 	dictSize int64
@@ -32,7 +32,7 @@ func (f lzmaFilter) String() string {
 // id returns the ID for the LZMA2 filter.
 func (f lzmaFilter) id() uint64 { return lzmaFilterID }
 
-// MarshalBinary converts the lzmaFilter in its encoded representation.
+// MarshalBinary converts the lzmaFilter into its encoded representation.
 func (f lzmaFilter) MarshalBinary() (data []byte, err error) {
 	c := lzma.EncodeWindowSize(f.dictSize)
 	return []byte{lzmaFilterID, 1, c}, nil

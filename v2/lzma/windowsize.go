@@ -18,7 +18,7 @@ func decodeWindowSize(c byte) int64 {
 	return (2 | int64(c)&1) << (11 + (c>>1)&0x1f)
 }
 
-// DecodeWindowSize decodes the encoded dictionary capacity. The function
+// DecodeWindowSize decodes the encoded dictionary size. The function
 // returns an error if the code is out of range.
 func DecodeWindowSize(c byte) (n int64, err error) {
 	if c >= maxWindowSizeCode {

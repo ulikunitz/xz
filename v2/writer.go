@@ -15,8 +15,8 @@ import (
 	"github.com/ulikunitz/xz/v2/lzma"
 )
 
-// WriterConfig describe the parameters for an xz writer. CRC64 is used as the
-// default checksum despite the XZ specification saying a decoder must only
+// WriterConfig describes the parameters for an xz writer. CRC64 is used as the
+// default checksum despite the XZ specification only requiring decoders to
 // support CRC32.
 type WriterConfig struct {
 	// WindowSize sets the dictionary size.
@@ -29,7 +29,7 @@ type WriterConfig struct {
 
 	// Number of workers processing data.
 	Workers int `json:",omitzero"`
-	// LZMAParallel indicates that the parallel execution should be on the
+	// LZMAParallel indicates that parallel execution should be on the
 	// LZMA level. (This is an experimental setup and should normally not be
 	// used.)
 	LZMAParallel bool `json:",omitzero"`
@@ -42,7 +42,8 @@ type WriterConfig struct {
 	// default is "hash_2:16".
 	Mapper string `json:",omitzero"`
 
-	// checksum method: CRC32, CRC64 or SHA256 (default: CRC64)
+	// Checksum specifies the checksum method: CRC32, CRC64, or SHA256. The
+	// default is CRC64.
 	Checksum *byte `json:",omitzero"`
 }
 
@@ -97,8 +98,7 @@ func (cfg *WriterConfig) setDefaults() {
 	}
 }
 
-// verify checks the configuration for errors. Zero values will be
-// replaced by default values.
+// verify checks the configuration for errors.
 func (cfg *WriterConfig) verify() error {
 	if cfg == nil {
 		return errors.New("xz: writer configuration is nil")

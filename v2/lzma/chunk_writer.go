@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	// maximum size of a chunk
+	// maxChunkSize is the maximum size of a chunk.
 	maxChunkSize = 1 << 16
-	// maximum uncompressed chunk size
+	// maxUncompressedChunkSize is the maximum uncompressed chunk size.
 	maxUncompressedChunkSize = 1 << 21
-	// block size used by Parse
+	// blockSize is the block size used by Parse.
 	blockSize = 128 << 10
 )
 

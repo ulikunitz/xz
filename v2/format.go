@@ -36,7 +36,7 @@ func padLen(n int64) int {
 
 /*** Header ***/
 
-// headerMagic stores the magic bytes for the header
+// headerMagic stores the magic bytes for the header.
 var headerMagic = []byte{0xfd, '7', 'z', 'X', 'Z', 0x00}
 
 // HeaderLen provides the length of the xz file header.

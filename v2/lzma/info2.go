@@ -7,13 +7,13 @@ import (
 	"github.com/ulikunitz/xz/v2/internal/stream"
 )
 
-// Info stores the uncompressed size and the compressed size of a LZMA2 stream.
+// Info stores the uncompressed size and the compressed size of an LZMA2 stream.
 type Info struct {
 	Uncompressed int64
 	Compressed   int64
 }
 
-// Walk2 visits all chunk headers of a LZMA2 stream.
+// Walk2 visits all chunk headers of an LZMA2 stream.
 func Walk2(r io.Reader, ch func(ChunkHeader) error) (n int64, err error) {
 	s := stream.Wrap(r)
 	n = s.Offset()

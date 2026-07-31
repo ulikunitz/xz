@@ -12,15 +12,15 @@ import (
 	"io"
 )
 
-// Reader2Config provides the dictionary size parameter for a LZMA2 reader.
+// Reader2Config provides the configuration parameters for an LZMA2 reader.
 //
 // Note that the parallel decoding will only work if the stream has been encoded
-// with multiple workers and the WorkerBufferSize is large enough. If the worker
-// buffer size is too small no worker thread will be used for decompression.
+// with multiple workers and the BufferSize is large enough. If the buffer
+// size is too small no worker thread will be used for decompression.
 type Reader2Config struct {
 	// WindowSize provides the maximum dictionary size supported.
 	WindowSize int `json:",omitzero"`
-	// BufferSize give the size of the decoder buffer and if there are more
+	// BufferSize gives the size of the decoder buffer and if there are more
 	// workers than 1, gives the work size for each worker.
 	BufferSize int `json:",omitzero"`
 	// Workers gives the maximum number of decompressing workers.
@@ -179,7 +179,7 @@ func (r *mtReader) Close() error {
 }
 
 // mtrGenerate generates the tasks for the multithreaded reader. It should be
-// started as go routine.
+// started as a goroutine.
 func mtrGenerate(ctx context.Context, z io.Reader, cfg Reader2Config, tskCh, outCh chan mtReaderTask) {
 	r := &hdrReader{r: z}
 	workers := 0

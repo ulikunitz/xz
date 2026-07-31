@@ -13,9 +13,9 @@ type decoder struct {
 	rd        rangeDecoder
 }
 
-// readSeq reads a single sequence. We are encoding a little bit differently
-// than normal, because each seq is either a one-byte literal (LitLen=1, AUX has
-// the byte) or a match (MatchLen and Offset non-zero).
+// readSeq reads a single sequence. The decoder handles sequences slightly
+// differently than normal, because each sequence is either a one-byte literal
+// (LitLen=1, Aux has the byte) or a match (MatchLen and Offset non-zero).
 func (d *decoder) readSeq() (seq lz.Seq, err error) {
 	state, state2, posState := d.state.states(d.lzDecoder.Off)
 

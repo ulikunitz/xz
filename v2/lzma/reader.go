@@ -75,9 +75,9 @@ type Reader struct {
 // the stream. It is used by [NewRawReader].
 const EOSSize uint64 = 1<<64 - 1
 
-// NewRawReader returns a reader that can read a LZMA stream. For a stream with
+// NewRawReader returns a reader that can read an LZMA stream. For a stream with
 // an EOS marker use [EOSSize] for uncompressedSize. The dictSize must be
-// positive (>=0).
+// positive (>= 0).
 func NewRawReader(z io.Reader, hdr Header) (r *Reader, err error) {
 	if err = hdr.verify(); err != nil {
 		return nil, err
@@ -92,17 +92,17 @@ func NewRawReader(z io.Reader, hdr Header) (r *Reader, err error) {
 // minWindowSize defines the minimum supported dictionary size.
 const minWindowSize = 1 << 12
 
-// headerLen defines the length of an LZMA header
+// headerLen defines the length of an LZMA header.
 const headerLen = 13
 
-// Header defines the parameters for the LZMA method
+// Header defines the parameters for the LZMA method.
 type Header struct {
 	Properties       Properties
 	DictSize         uint32
 	uncompressedSize uint64
 }
 
-// Verify checks the parameters for correctness.
+// verify checks the parameters for correctness.
 func (h Header) verify() error {
 	if uint64(h.DictSize) > math.MaxInt {
 		return errors.New("lzma: dictSize exceed max integer")
@@ -141,7 +141,7 @@ func (r *Reader) Header() Header { return r.hdr }
 // We support only files not larger than 1 << 50 bytes (a pebibyte, 1024^5).
 const maxStreamSize = 1 << 50
 
-// ErrDictSize reports about an error of the dictionary size.
+// ErrDictSize reports an error involving the dictionary size.
 type ErrDictSize struct {
 	ConfigDictCap  int
 	HeaderDictSize uint32

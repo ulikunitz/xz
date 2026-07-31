@@ -23,8 +23,8 @@ func setUpdateEncoder(p lz.Parser, updateEncoder func() *encoder) {
 	*/
 }
 
-// NewRawWriter writes only compress data stream. The argument eos controls
-// whether an end of stream marker will be written.
+// NewRawWriter writes only the compressed data stream. The argument eos
+// controls whether an end of stream marker will be written.
 func NewRawWriter(z io.Writer, parser lz.Parser, p Properties, eos bool) (w io.WriteCloser, err error) {
 
 	if err = p.verify(); err != nil {
@@ -49,8 +49,8 @@ type writer struct {
 	bufw   *bufio.Writer
 }
 
-// init initializes a writer. eos tells the writer whether an end-of-stream
-// marker should be written.
+// init initializes a writer. The eos argument tells the writer whether an
+// end-of-stream marker should be written.
 func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) error {
 	var bufw *bufio.Writer
 	bw, ok := z.(io.ByteWriter)
@@ -78,7 +78,7 @@ func (w *writer) init(z io.Writer, parser lz.Parser, p Properties, eos bool) err
 	return nil
 }
 
-// Close closes the input stream.
+// Close closes the writer.
 func (w *writer) Close() error {
 	if w.err != nil {
 		return w.err

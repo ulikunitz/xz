@@ -9,7 +9,7 @@ import (
 )
 
 // Stat provides the size of the uncompressed file as well as the compressed
-// size of an lzma file. The function doesn't check for decompression errors.
+// size of an LZMA file. The function doesn't check for decompression errors.
 func Stat(r io.Reader) (info Info, err error) {
 	z := stream.Wrap(r)
 	start := z.Offset()

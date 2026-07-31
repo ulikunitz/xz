@@ -9,14 +9,14 @@ import (
 	"fmt"
 )
 
-// Properties define the properties for the LZMA and LZMA2 compression.
+// Properties defines the properties for the LZMA and LZMA2 compression.
 type Properties struct {
 	LC int
 	LP int
 	PB int
 }
 
-// byte() returns the byte that encodes the properties.
+// byte returns the byte that encodes the properties.
 func (p Properties) byte() byte {
 	return (byte)((p.PB*5+p.LP)*9 + p.LC)
 }
@@ -34,7 +34,7 @@ func (p *Properties) fromByte(b byte) error {
 	return nil
 }
 
-// Verify verifies the correctness of the properties. It doesn't check the LZMA2
+// verify verifies the correctness of the properties. It doesn't check the LZMA2
 // condition that LC + LP <= 4.
 func (p Properties) verify() error {
 	if !(0 <= p.LC && p.LC <= 8) {

@@ -10,7 +10,7 @@ import (
 	"github.com/ulikunitz/lz"
 )
 
-// encoder supports the LZMA encoding.
+// encoder supports LZMA encoding.
 type encoder struct {
 	parser lz.Parser
 	state  state
