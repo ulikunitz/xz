@@ -7,6 +7,7 @@ package xz
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"hash"
 	"io"
@@ -18,31 +19,119 @@ import (
 // WriterConfig describes the parameters for an xz writer.
 type WriterConfig struct {
 	// WindowSize sets the dictionary size.
-	WindowSize int `json:",omitzero"`
+	WindowSize int
 	// BufferSize sets the size of the buffer used by the LZ parser.
-	BufferSize int `json:",omitzero"`
+	BufferSize int
 
 	// Properties for the LZMA algorithm.
-	Properties *lzma.Properties `json:",omitzero"`
+	Properties *lzma.Properties
 
 	// Number of workers processing data.
-	Workers int `json:",omitzero"`
+	Workers int
 	// LZMAParallel indicates that parallel execution should be on the
 	// LZMA level. (This is an experimental setup and should normally not be
 	// used.)
-	LZMAParallel bool `json:",omitzero"`
+	LZMAParallel bool
 
 	// PathFinder describes the mechanism to select a match at a given
 	// position of the uncompressed data. The default is "greedy".
-	PathFinder string `json:",omitzero"`
+	PathFinder string
 
 	// Mapper is the name of the mapper to use for the LZ parser. The
 	// default is "hash_2:16".
-	Mapper string `json:",omitzero"`
+	Mapper string
 
 	// Checksum specifies the checksum method: CRC32, CRC64, or SHA256. The
 	// default is CRC32.
-	Checksum *byte `json:",omitzero"`
+	Checksum *byte
+}
+
+// checksum is a helper for marshaling and unmarshaling the WriterConfig field.
+type checksum byte
+
+func (c checksum) MarshalJSON() ([]byte, error) {
+	switch byte(c) {
+	case None:
+		return []byte(`"None"`), nil
+	case CRC32:
+		return []byte(`"CRC32"`), nil
+	case CRC64:
+		return []byte(`"CRC64"`), nil
+	case SHA256:
+		return []byte(`"SHA256"`), nil
+	default:
+		return nil, errors.New("xz: unknown checksum")
+	}
+}
+
+func (c *checksum) UnmarshalJSON(p []byte) error {
+	switch string(p) {
+	case `"None"`:
+		*c = checksum(None)
+	case `"CRC32"`:
+		*c = checksum(CRC32)
+	case `"CRC64"`:
+		*c = checksum(CRC64)
+	case `"SHA256"`:
+		*c = checksum(SHA256)
+	default:
+		return errors.New("xz: unknown checksum")
+	}
+	return nil
+}
+
+type writerJSONConfig struct {
+	Format       string
+	WindowSize   int              `json:",omitzero"`
+	BufferSize   int              `json:",omitzero"`
+	Properties   *lzma.Properties `json:",omitzero"`
+	Workers      int              `json:",omitzero"`
+	LZMAParallel bool             `json:",omitzero"`
+	PathFinder   string           `json:",omitzero"`
+	Mapper       string           `json:",omitzero"`
+	Checksum     *checksum        `json:",omitzero"`
+}
+
+// MarshalJSON marshals the writer configuration into JSON.
+func (cfg *WriterConfig) MarshalJSON() ([]byte, error) {
+	c := writerJSONConfig{
+		Format:       "xz",
+		WindowSize:   cfg.WindowSize,
+		BufferSize:   cfg.BufferSize,
+		Properties:   cfg.Properties,
+		Workers:      cfg.Workers,
+		LZMAParallel: cfg.LZMAParallel,
+		PathFinder:   cfg.PathFinder,
+		Mapper:       cfg.Mapper,
+	}
+	if cfg.Checksum != nil {
+		c.Checksum = new(checksum(*cfg.Checksum))
+	}
+	return json.Marshal(&c)
+}
+
+// UnmarshalJSON unmarshals the JSON representation of the writer configuration.
+func (cfg *WriterConfig) UnmarshalJSON(p []byte) error {
+	var c writerJSONConfig
+	if err := json.Unmarshal(p, &c); err != nil {
+		return err
+	}
+	if c.Format != "xz" {
+		return errors.New("xz: wrong format")
+	}
+	*cfg = WriterConfig{
+		WindowSize:   c.WindowSize,
+		BufferSize:   c.BufferSize,
+		Properties:   c.Properties,
+		Workers:      c.Workers,
+		LZMAParallel: c.LZMAParallel,
+		PathFinder:   c.PathFinder,
+		Mapper:       c.Mapper,
+	}
+	if c.Checksum != nil {
+		cfg.Checksum = new(byte(*c.Checksum))
+	}
+	return nil
 }
 
 // clone returns a deep copy of the writer configuration.

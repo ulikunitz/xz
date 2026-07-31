@@ -6,6 +6,7 @@ package lzma
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -232,6 +233,52 @@ type WriterConfig struct {
 
 	PathFinder string `json:",omitzero"`
 	Mapper     string `json:",omitzero"`
+}
+
+type writerJSONConfig struct {
+	Format     string
+	WindowSize int         `json:",omitzero"`
+	BufferSize int         `json:",omitzero"`
+	Properties *Properties `json:",omitzero"`
+	FixedSize  *int64      `json:",omitzero"`
+	PathFinder string      `json:",omitzero"`
+	Mapper     string      `json:",omitzero"`
+}
+
+func (cfg *WriterConfig) UnmarshalJSON(data []byte) error {
+	var c writerJSONConfig
+	if err := json.Unmarshal(data, &c); err != nil {
+		return err
+	}
+	if c.Format != "lzma" {
+		return fmt.Errorf("lzma: invalid format %q", c.Format)
+	}
+	*cfg = WriterConfig{
+		WindowSize: c.WindowSize,
+		BufferSize: c.BufferSize,
+		PathFinder: c.PathFinder,
+		Mapper:     c.Mapper,
+	}
+	if c.Properties != nil {
+		cfg.Properties = c.Properties
+	}
+	if c.FixedSize != nil {
+		cfg.FixedSize = c.FixedSize
+	}
+	return nil
+}
+
+func (cfg *WriterConfig) MarshalJSON() ([]byte, error) {
+	c := writerJSONConfig{
+		Format:     "lzma",
+		WindowSize: cfg.WindowSize,
+		BufferSize: cfg.BufferSize,
+		Properties: cfg.Properties,
+		FixedSize:  cfg.FixedSize,
+		PathFinder: cfg.PathFinder,
+		Mapper:     cfg.Mapper,
+	}
+	return json.Marshal(&c)
 }
 
 // Verify checks the validity of the writer configuration parameter.

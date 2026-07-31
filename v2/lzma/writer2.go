@@ -7,6 +7,7 @@ package lzma
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,24 +19,69 @@ import (
 // Writer2Config provides the configuration parameters for an LZMA2 writer.
 type Writer2Config struct {
 	// WindowSize sets the dictionary size.
-	WindowSize int `json:",omitzero"`
+	WindowSize int
 	// BufferSize sets the size of the buffer used by the LZ parser. It
 	// defines the work size for parallel compression.
-	BufferSize int `json:",omitzero"`
+	BufferSize int
 
 	// Properties for the LZMA algorithm.
-	Properties *Properties `json:",omitzero"`
+	Properties *Properties
 
 	// Number of workers processing data.
-	Workers int `json:",omitzero"`
+	Workers int
 
 	// PathFinder describes the mechanism to select a match at a given
 	// position of the uncompressed data. The default is "greedy".
-	PathFinder string `json:",omitzero"`
+	PathFinder string
 
 	// Mapper is the name of the mapper to use for the LZ parser. The
 	// default is "hash_2:16".
-	Mapper string `json:",omitzero"`
+	Mapper string
+}
+
+type writer2JSONConfig struct {
+	Format     string
+	WindowSize int         `json:",omitzero"`
+	BufferSize int         `json:",omitzero"`
+	Properties *Properties `json:",omitzero"`
+	Workers    int         `json:",omitzero"`
+	PathFinder string      `json:",omitzero"`
+	Mapper     string      `json:",omitzero"`
+}
+
+// MarshalJSON marshals the writer configuration into JSON.
+func (cfg *Writer2Config) MarshalJSON() ([]byte, error) {
+	c := writer2JSONConfig{
+		Format:     "lzma2",
+		WindowSize: cfg.WindowSize,
+		BufferSize: cfg.BufferSize,
+		Properties: cfg.Properties,
+		Workers:    cfg.Workers,
+		PathFinder: cfg.PathFinder,
+		Mapper:     cfg.Mapper,
+	}
+	return json.Marshal(&c)
+}
+
+func (cfg *Writer2Config) UnmarshalJSON(data []byte) error {
+	var c writer2JSONConfig
+	if err := json.Unmarshal(data, &c); err != nil {
+		return err
+	}
+	if c.Format != "lzma2" {
+		return fmt.Errorf("lzma: invalid format %q", c.Format)
+	}
+	*cfg = Writer2Config{
+		WindowSize: c.WindowSize,
+		BufferSize: c.BufferSize,
+		Workers:    c.Workers,
+		PathFinder: c.PathFinder,
+		Mapper:     c.Mapper,
+	}
+	if c.Properties != nil {
+		cfg.Properties = c.Properties
+	}
+	return nil
 }
 
 // verify checks whether the configuration is consistent and correct. Normally,
