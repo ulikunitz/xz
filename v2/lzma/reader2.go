@@ -7,6 +7,7 @@ package lzma
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,12 +20,47 @@ import (
 // size is too small no worker thread will be used for decompression.
 type Reader2Config struct {
 	// WindowSize provides the maximum dictionary size supported.
-	WindowSize int `json:",omitzero"`
+	WindowSize int
 	// BufferSize gives the size of the decoder buffer and if there are more
 	// workers than 1, gives the work size for each worker.
-	BufferSize int `json:",omitzero"`
+	BufferSize int
 	// Workers gives the maximum number of decompressing workers.
-	Workers int `json:",omitzero"`
+	Workers int
+}
+// jsonReader2Config is used for the JSON marshalling of Reader2Config.
+type jsonReader2Config struct {
+	Format     string
+	WindowSize int `json:",omitzero"`
+	BufferSize int `json:",omitzero"`
+	Workers    int `json:",omitzero"`
+}
+
+// MarshalJSON marshals the Reader2Config to JSON. It adds the format field to
+// the JSON output and sets it to "lzma2".
+func (cfg *Reader2Config) MarshalJSON() ([]byte, error) {
+	jcfg := jsonReader2Config{
+		Format:     "lzma2",
+		WindowSize: cfg.WindowSize,
+		BufferSize: cfg.BufferSize,
+		Workers:    cfg.Workers,
+	}
+	return json.MarshalIndent(jcfg, "", "  ")
+}
+
+// UnmarshalJSON unmarshals the Reader2Config from JSON. It checks the format
+// field and returns an error if it is not "lzma2".
+func (cfg *Reader2Config) UnmarshalJSON(data []byte) error {
+	var jcfg jsonReader2Config
+	if err := json.Unmarshal(data, &jcfg); err != nil {
+		return err
+	}
+	if jcfg.Format != "lzma2" {
+		return fmt.Errorf("lzma: invalid format %q", jcfg.Format)
+	}
+	cfg.WindowSize = jcfg.WindowSize
+	cfg.BufferSize = jcfg.BufferSize
+	cfg.Workers = jcfg.Workers
+	return nil
 }
 
 // verify checks the validity of dictionary size.

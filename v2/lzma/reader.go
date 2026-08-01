@@ -6,6 +6,7 @@ package lzma
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,7 +20,38 @@ import (
 type ReaderConfig struct {
 	// WindowSize sets a limit on the sliding window size, often called
 	// dictionary size.
-	WindowSize int `json:",omitzero"`
+	WindowSize int
+}
+
+// jsonReaderConfig is used for JSON marshaling and unmarshaling of the
+// ReaderConfig.
+type jsonReaderConfig struct {
+	Format     string `json:"format"`
+	WindowSize int    `json:"window_size,omitempty"`
+}
+
+// MarshalJSON implements the json.Marshaler interface. It adds the format field
+// and sets it to "lzma".
+func (c *ReaderConfig) MarshalJSON() ([]byte, error) {
+	jcfg := jsonReaderConfig{
+		Format:     "lzma",
+		WindowSize: c.WindowSize,
+	}
+	return json.MarshalIndent(jcfg, "", "  ")
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface. It checks that the
+// format field is set to "lzma" and returns an error otherwise.
+func (c *ReaderConfig) UnmarshalJSON(data []byte) error {
+	var jcfg jsonReaderConfig
+	if err := json.Unmarshal(data, &jcfg); err != nil {
+		return err
+	}
+	if jcfg.Format != "lzma" {
+		return fmt.Errorf("lzma: invalid format %q", jcfg.Format)
+	}
+	c.WindowSize = jcfg.WindowSize
+	return nil
 }
 
 // setDefaults converts the zero values of the configuration to the default values.
