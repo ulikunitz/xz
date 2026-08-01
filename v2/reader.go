@@ -56,7 +56,8 @@ type jsonReaderConfig struct {
 	LZMABufferSize int  `json:",omitzero"`
 }
 
-// MarshalJSON marshals the ReaderConfig to JSON.
+// MarshalJSON marshals the ReaderConfig to JSON. It adds the format field to
+// the JSON output and sets it to "xz".
 func (cfg *ReaderConfig) MarshalJSON() ([]byte, error) {
 	jcfg := jsonReaderConfig{
 		Format:         "xz",
@@ -68,7 +69,8 @@ func (cfg *ReaderConfig) MarshalJSON() ([]byte, error) {
 	return json.MarshalIndent(jcfg, "", "  ")
 }
 
-// UnmarshalJSON unmarshals the ReaderConfig from JSON.
+// UnmarshalJSON unmarshals the ReaderConfig from JSON. It checks the format
+// field and returns an error if it is not "xz".
 func (cfg *ReaderConfig) UnmarshalJSON(data []byte) error {
 	var jcfg jsonReaderConfig
 	if err := json.Unmarshal(data, &jcfg); err != nil {
