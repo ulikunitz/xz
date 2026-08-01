@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
@@ -31,19 +32,56 @@ var errReaderClosed = errors.New("xz: reader closed")
 type ReaderConfig struct {
 	// Workers defines the number of readers for parallel reading. The
 	// default is the value of GOMAXPROCS.
-	Workers int `json:",omitzero"`
+	Workers int
 
 	// Read a single xz stream from the underlying reader, stop and return
 	// io.EOF. No checks are done whether the underlying reader finishes too.
-	SingleStream bool `json:",omitzero"`
+	SingleStream bool
 
 	// Runs the multiple workers in LZMA mode. (This is an experimental
 	// setup and is normally not required.)
-	LZMAParallel bool `json:",omitzero"`
+	LZMAParallel bool
 
 	// LZMABufferSize provides the buffer size to the LZMA layer. It is only
 	// required if LZMAParallel is set.
-	LZMABufferSize int `json:",omitzero"`
+	LZMABufferSize int
+}
+
+// jsonReaderConfig is used for the JSON marshalling of ReaderConfig.
+type jsonReaderConfig struct {
+	Format         string
+	Workers        int  `json:",omitzero"`
+	SingleStream   bool `json:",omitzero"`
+	LZMAParallel   bool `json:",omitzero"`
+	LZMABufferSize int  `json:",omitzero"`
+}
+
+// MarshalJSON marshals the ReaderConfig to JSON.
+func (cfg *ReaderConfig) MarshalJSON() ([]byte, error) {
+	jcfg := jsonReaderConfig{
+		Format:         "xz",
+		Workers:        cfg.Workers,
+		SingleStream:   cfg.SingleStream,
+		LZMAParallel:   cfg.LZMAParallel,
+		LZMABufferSize: cfg.LZMABufferSize,
+	}
+	return json.MarshalIndent(jcfg, "", "  ")
+}
+
+// UnmarshalJSON unmarshals the ReaderConfig from JSON.
+func (cfg *ReaderConfig) UnmarshalJSON(data []byte) error {
+	var jcfg jsonReaderConfig
+	if err := json.Unmarshal(data, &jcfg); err != nil {
+		return err
+	}
+	if jcfg.Format != "xz" {
+		return fmt.Errorf("xz: wrong format %q", jcfg.Format)
+	}
+	cfg.Workers = jcfg.Workers
+	cfg.SingleStream = jcfg.SingleStream
+	cfg.LZMAParallel = jcfg.LZMAParallel
+	cfg.LZMABufferSize = jcfg.LZMABufferSize
+	return nil
 }
 
 // setDefaults sets the defaults in ReaderConfig.
