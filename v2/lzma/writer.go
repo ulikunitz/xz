@@ -320,9 +320,9 @@ func (cfg *WriterConfig) verify() error {
 	return nil
 }
 
-// setDefaults applies the defaults to the configuration if they have not been
+// SetDefaults applies defaults to the configuration if they have not been
 // set previously.
-func (cfg *WriterConfig) setDefaults() {
+func (cfg *WriterConfig) SetDefaults() {
 	if cfg.WindowSize == 0 {
 		cfg.WindowSize = 8 << 20
 	}
@@ -361,7 +361,7 @@ func NewWriter(z io.Writer) (w io.WriteCloser, err error) {
 // options.
 func NewWriterConfig(z io.Writer, cfg WriterConfig) (w io.WriteCloser, err error) {
 	cfg = cfg.clone()
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
 	}

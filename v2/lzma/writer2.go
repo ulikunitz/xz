@@ -128,9 +128,9 @@ func (cfg *Writer2Config) verify() error {
 	return nil
 }
 
-// setDefaults replaces zero values with default values. The workers variable
+// SetDefaults replaces zero values with default values. The workers variable
 // will be set to the number of CPUs.
-func (cfg *Writer2Config) setDefaults() {
+func (cfg *Writer2Config) SetDefaults() {
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
@@ -190,7 +190,7 @@ func NewWriter2(z io.Writer) (w Writer2, err error) {
 // Note that the implementation for options.Workers > 1 uses go routines.
 func NewWriter2Config(z io.Writer, cfg Writer2Config) (w Writer2, err error) {
 	cfg = cfg.clone()
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
 	}

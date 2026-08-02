@@ -27,6 +27,7 @@ type Reader2Config struct {
 	// Workers gives the maximum number of decompressing workers.
 	Workers int
 }
+
 // jsonReader2Config is used for the JSON marshalling of Reader2Config.
 type jsonReader2Config struct {
 	Format     string
@@ -85,9 +86,9 @@ func (cfg *Reader2Config) verify() error {
 	return nil
 }
 
-// setDefaults sets a default value for the dictionary size. Note that
+// SetDefaults sets a default value for the dictionary size. Note that
 // multi-threaded readers are not the default.
-func (cfg *Reader2Config) setDefaults() {
+func (cfg *Reader2Config) SetDefaults() {
 	if cfg.Workers == 0 {
 		cfg.Workers = 1
 	}
@@ -129,7 +130,7 @@ func NewReader2(z io.Reader, windowSize int) (r io.ReadCloser, err error) {
 // attribute. Note that the code returns a ReadCloser, which has to be closed
 // after reading.
 func NewReader2Config(z io.Reader, cfg Reader2Config) (r io.ReadCloser, err error) {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
 	}

@@ -64,7 +64,7 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.ReadCloser, err 
 
 	if c == nil {
 		c = &ReaderConfig{}
-		c.setDefaults()
+		c.SetDefaults()
 	}
 
 	var cfg lzma.Reader2Config
@@ -97,7 +97,7 @@ func (f lzmaFilter) writeCloser(w io.WriteCloser, c *WriterConfig,
 ) (fw io.WriteCloser, err error) {
 	if c == nil {
 		c = &WriterConfig{}
-		c.setDefaults()
+		c.SetDefaults()
 	}
 
 	// TODO

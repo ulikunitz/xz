@@ -86,8 +86,8 @@ func (cfg *ReaderConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// setDefaults sets the defaults in ReaderConfig.
-func (cfg *ReaderConfig) setDefaults() {
+// SetDefaults sets the defaults in ReaderConfig.
+func (cfg *ReaderConfig) SetDefaults() {
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
 	}
@@ -160,7 +160,7 @@ func NewReader(xz io.Reader) (r io.ReadCloser, err error) {
 // Workers are larger than one, the LZMA reader will only use single-threaded
 // workers.
 func NewReaderConfig(xz io.Reader, options ReaderConfig) (r io.ReadCloser, err error) {
-	options.setDefaults()
+	options.SetDefaults()
 	if err = options.verify(); err != nil {
 		return nil, err
 	}

@@ -146,8 +146,8 @@ func (cfg WriterConfig) clone() WriterConfig {
 	return clone
 }
 
-// setDefaults applies the defaults to the xz writer configuration.
-func (cfg *WriterConfig) setDefaults() {
+// SetDefaults applies the defaults to the xz writer configuration.
+func (cfg *WriterConfig) SetDefaults() {
 	preset := presets[4].clone()
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
@@ -473,7 +473,7 @@ func NewWriter(xz io.Writer) (w WriteFlushCloser, err error) {
 // requested for the LZMA writer by setting the Workers variable there to 1.
 func NewWriterConfig(xz io.Writer, cfg WriterConfig) (w WriteFlushCloser, err error) {
 	cfg = cfg.clone()
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
 	}

@@ -115,7 +115,7 @@ func TestReader2(t *testing.T) {
 func TestReader2JSON(t *testing.T) {
 	var err error
 	var cfg Reader2Config
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		t.Fatalf("cfg.Verify() error %s", err)
 	}

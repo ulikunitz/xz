@@ -165,7 +165,7 @@ func TestMTWriter(t *testing.T) {
 
 func TestWriter2OptionsWindowSize(t *testing.T) {
 	cfg := Writer2Config{WindowSize: 4096}
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err := cfg.verify(); err != nil {
 		t.Fatalf("WindowSize set without lzCfg: %s", err)
 	}

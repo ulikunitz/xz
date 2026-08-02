@@ -54,8 +54,8 @@ func (c *ReaderConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// setDefaults converts the zero values of the configuration to the default values.
-func (c *ReaderConfig) setDefaults() {
+// SetDefaults converts zero values of the configuration to default values.
+func (c *ReaderConfig) SetDefaults() {
 	if c.WindowSize == 0 {
 		// set an upper limit of 2 GB for dictionary capacity to address
 		// the zero prefix security issue.
@@ -206,7 +206,7 @@ func NewReader(z io.Reader) (r *Reader, err error) {
 
 // NewReaderConfig creates a new reader for the LZMA stream.
 func NewReaderConfig(z io.Reader, cfg ReaderConfig) (r *Reader, err error) {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err = cfg.verify(); err != nil {
 		return nil, err
 	}
