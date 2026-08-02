@@ -148,7 +148,7 @@ func (cfg WriterConfig) clone() WriterConfig {
 
 // setDefaults applies the defaults to the xz writer configuration.
 func (cfg *WriterConfig) setDefaults() {
-	preset := Preset(5)
+	preset := presets[4].clone()
 	if cfg.Workers == 0 {
 		cfg.Workers = runtime.GOMAXPROCS(0)
 	}

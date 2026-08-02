@@ -17,7 +17,9 @@ func Preset(n int) WriterConfig {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))
 	}
-	return presets[n-1].clone()
+	cfg := presets[n-1].clone()
+	cfg.setDefaults()
+	return cfg
 }
 
 var presets = []WriterConfig{
