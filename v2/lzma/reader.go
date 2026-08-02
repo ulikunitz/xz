@@ -26,8 +26,8 @@ type ReaderConfig struct {
 // jsonReaderConfig is used for JSON marshaling and unmarshaling of the
 // ReaderConfig.
 type jsonReaderConfig struct {
-	Format     string `json:"format"`
-	WindowSize int    `json:"window_size,omitempty"`
+	Format     string
+	WindowSize int `json:",omitzero"`
 }
 
 // MarshalJSON implements the json.Marshaler interface. It adds the format field
