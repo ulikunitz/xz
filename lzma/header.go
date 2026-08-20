@@ -88,7 +88,7 @@ func (h *Header) marshalBinary() (data []byte, err error) {
 
 	// uncompressed size
 	var s uint64
-	if h.Size > 0 {
+	if h.Size >= 0 {
 		s = uint64(h.Size)
 	} else {
 		s = noHeaderSize
