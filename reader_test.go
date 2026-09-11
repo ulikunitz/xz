@@ -28,6 +28,34 @@ func TestReaderSimple(t *testing.T) {
 	}
 }
 
+// stutterReader is a legal io.Reader that occasionally returns (0, nil).
+type stutterReader struct {
+	r     io.Reader
+	stall bool
+}
+
+func (s *stutterReader) Read(p []byte) (int, error) {
+	s.stall = !s.stall
+	if s.stall {
+		return 0, nil
+	}
+	return s.r.Read(p)
+}
+
+func TestReaderZeroNilReads(t *testing.T) {
+	data, err := ioutil.ReadFile("fox.xz")
+	if err != nil {
+		t.Fatalf("ReadFile error %s", err)
+	}
+	r, err := NewReader(&stutterReader{r: bytes.NewReader(data)})
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	if _, err = io.Copy(ioutil.Discard, r); err != nil {
+		t.Fatalf("decode failed with (0, nil)-returning source: %s", err)
+	}
+}
+
 func TestReaderSingleStream(t *testing.T) {
 	data, err := ioutil.ReadFile("fox.xz")
 	if err != nil {
