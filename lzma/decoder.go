@@ -197,6 +197,15 @@ func (d *decoder) decompress() error {
 		return io.EOF
 	}
 	for d.Dict.Available() >= maxMatchLen {
+		if d.size >= 0 && d.Decompressed() >= d.size {
+			// The uncompressed size announced in the header has
+			// already been reached before reading an operation. This
+			// happens for a known size of zero: the stream carries no
+			// operation and no EOS marker, so finish here instead of
+			// reading past the end of the stream.
+			d.eos = true
+			return io.EOF
+		}
 		op, err := d.readOp()
 		switch err {
 		case nil:

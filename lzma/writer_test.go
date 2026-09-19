@@ -247,3 +247,78 @@ func BenchmarkWriter(b *testing.B) {
 		}
 	}
 }
+
+// TestWriterSizeZero verifies that a writer configured with an explicit,
+// known size of zero produces a stream its own reader can decode. Size 0 is a
+// valid known size (the library's invariant is that a NEGATIVE size means
+// "unknown", see Header.Size in header.go), so the header must advertise the
+// known size 0 rather than the "size unknown" sentinel. Regression test for
+// issue #71: before the header.go fix the header encoded size 0 as "unknown",
+// which tells the reader to expect an EOS marker, but the writer emits no EOS
+// marker (EOSMarker is false when the size is in the header), so NewReader
+// failed with io.ErrUnexpectedEOF on the writer's own output.
+func TestWriterSizeZero(t *testing.T) {
+	buf := new(bytes.Buffer)
+	w, err := WriterConfig{
+		Properties:   &Properties{LC: 3, LP: 0, PB: 2},
+		SizeInHeader: true,
+		Size:         0,
+	}.NewWriter(buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s; want nil (writer emitted a stream its own reader rejects)", err)
+	}
+	if len(out) != 0 {
+		t.Fatalf("decoded %d bytes; want 0", len(out))
+	}
+}
+
+// TestWriterDefaultRoundtrip guards the default streaming writer and documents
+// why the fix for issue #71 deliberately excludes the reporter's proposed
+// WriterConfig.fill change. The reporter proposed changing fill from
+// "if c.Size > 0" to "if c.Size >= 0", but that regresses this path:
+// NewWriter(w) uses a zero-value config, so
+// Size == 0. With the proposed fill change, fill would set SizeInHeader = true
+// for the zero-value config, giving the writer a known size of 0; every Write
+// would then be capped to zero bytes (see Writer.Write) and return ErrNoSpace,
+// so "hello world" below would never reach the stream. This test passes before
+// and after the header.go fix, and fails if the fill change is applied.
+func TestWriterDefaultRoundtrip(t *testing.T) {
+	const msg = "hello world"
+	buf := new(bytes.Buffer)
+	w, err := NewWriter(buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	n, err := w.Write([]byte(msg))
+	if err != nil {
+		t.Fatalf("w.Write error %s", err)
+	}
+	if n != len(msg) {
+		t.Fatalf("w.Write wrote %d bytes; want %d", n, len(msg))
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("w.Close error %s", err)
+	}
+	r, err := NewReader(buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out, err := ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s", err)
+	}
+	if string(out) != msg {
+		t.Fatalf("decoded %q; want %q", out, msg)
+	}
+}
