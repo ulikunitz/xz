@@ -31,6 +31,28 @@ func ExampleReader() {
 	// The quick brown fox jumps over the lazy dog.
 }
 
+func ExampleReaderConfig_NewReaderWithMaxDictCap() {
+	f, err := os.Open("fox.xz")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	// Limit each block's dictionary capacity to 8 MiB. This does not
+	// limit total memory usage or decompressed output.
+	r, err := (xz.ReaderConfig{}).NewReaderWithMaxDictCap(f, 8<<20)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Block dictionary limits are checked during Read, so callers must
+	// also check the error from Copy (or their other decoding loop).
+	if _, err := io.Copy(os.Stdout, r); err != nil {
+		log.Fatal(err)
+	}
+	// Output:
+	// The quick brown fox jumps over the lazy dog.
+}
+
 func ExampleWriter() {
 	f, err := os.Create("example.xz")
 	if err != nil {

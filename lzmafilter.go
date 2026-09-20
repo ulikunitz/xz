@@ -60,8 +60,8 @@ func (f *lzmaFilter) UnmarshalBinary(data []byte) error {
 }
 
 // reader creates a new reader for the LZMA2 filter.
-func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
-	err error) {
+func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig,
+	maxDictCap int) (fr io.Reader, err error) {
 
 	config := new(lzma.Reader2Config)
 	if c != nil {
@@ -74,6 +74,10 @@ func (f lzmaFilter) reader(r io.Reader, c *ReaderConfig) (fr io.Reader,
 	}
 	if dc > config.DictCap {
 		config.DictCap = dc
+	}
+	if maxDictCap != 0 && config.DictCap > maxDictCap {
+		return nil, fmt.Errorf("xz: dictionary capacity %d exceeds maximum %d",
+			config.DictCap, maxDictCap)
 	}
 
 	fr, err = config.NewReader2(r)

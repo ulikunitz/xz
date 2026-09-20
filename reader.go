@@ -22,6 +22,9 @@ import (
 // SingleStream parameter requests the reader to assume that the
 // underlying stream contains only a single stream.
 type ReaderConfig struct {
+	// DictCap requests a dictionary capacity in bytes. A block that encodes
+	// a larger capacity increases it. Zero uses the encoded capacity.
+	// Use NewReaderWithMaxDictCap to impose an upper bound.
 	DictCap      int
 	SingleStream bool
 }
@@ -42,6 +45,7 @@ func (c *ReaderConfig) Verify() error {
 // Reader supports the reading of one or multiple xz streams.
 type Reader struct {
 	ReaderConfig
+	maxDictCap int
 
 	xz io.Reader
 	sr *streamReader
@@ -50,6 +54,7 @@ type Reader struct {
 // streamReader decodes a single xz stream
 type streamReader struct {
 	ReaderConfig
+	maxDictCap int
 
 	xz      io.Reader
 	br      *blockReader
@@ -68,15 +73,44 @@ func NewReader(xz io.Reader) (r *Reader, err error) {
 // NewReader creates an xz stream reader. The created reader will be
 // able to process multiple streams and padding unless a SingleStream
 // has been set in the reader configuration c.
+// Use NewReaderWithMaxDictCap to limit the dictionary capacity.
 func (c ReaderConfig) NewReader(xz io.Reader) (r *Reader, err error) {
+	return c.newReader(xz, 0)
+}
+
+// NewReaderWithMaxDictCap is like NewReader, but limits the dictionary
+// capacity to maxDictCap bytes. Read rejects a block before allocating its
+// dictionary if either its encoded capacity or c.DictCap exceeds the limit.
+// The limit applies to every block in every stream and cannot be changed
+// through the returned Reader's embedded ReaderConfig.
+//
+// maxDictCap must be between lzma.MinDictCap and lzma.MaxDictCap, inclusive,
+// and less than the largest int, leaving room for an extra buffer byte.
+// Invalid limits are rejected before reading input. Zero is not a default.
+// The limit need not be an encodable dictionary size.
+//
+// This is not a limit on total decoder memory, cumulative allocations, or
+// decompressed output. NewReader does not impose this additional limit.
+func (c ReaderConfig) NewReaderWithMaxDictCap(xz io.Reader,
+	maxDictCap int) (*Reader, error) {
+
+	if maxDictCap < lzma.MinDictCap || int64(maxDictCap) > lzma.MaxDictCap ||
+		maxDictCap == int(^uint(0)>>1) {
+		return nil, errors.New("xz: maximum dictionary capacity is out of range")
+	}
+	return c.newReader(xz, maxDictCap)
+}
+
+func (c ReaderConfig) newReader(xz io.Reader, maxDictCap int) (r *Reader, err error) {
 	if err = c.Verify(); err != nil {
 		return nil, err
 	}
 	r = &Reader{
 		ReaderConfig: c,
+		maxDictCap:   maxDictCap,
 		xz:           xz,
 	}
-	if r.sr, err = c.newStreamReader(xz); err != nil {
+	if r.sr, err = c.newStreamReader(xz, maxDictCap); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
@@ -100,7 +134,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 				return n, io.EOF
 			}
 			for {
-				r.sr, err = r.ReaderConfig.newStreamReader(r.xz)
+				r.sr, err = r.ReaderConfig.newStreamReader(r.xz, r.maxDictCap)
 				if err != errPadding {
 					break
 				}
@@ -126,7 +160,9 @@ var errPadding = errors.New("xz: padding (4 zero bytes) encountered")
 
 // newStreamReader creates a new xz stream reader using the given configuration
 // parameters. NewReader reads and checks the header of the xz stream.
-func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error) {
+func (c ReaderConfig) newStreamReader(xz io.Reader,
+	maxDictCap int) (r *streamReader, err error) {
+
 	if err = c.Verify(); err != nil {
 		return nil, err
 	}
@@ -145,6 +181,7 @@ func (c ReaderConfig) newStreamReader(xz io.Reader) (r *streamReader, err error)
 	}
 	r = &streamReader{
 		ReaderConfig: c,
+		maxDictCap:   maxDictCap,
 		xz:           xz,
 		index:        make([]record, 0, 4),
 	}
@@ -212,7 +249,7 @@ func (r *streamReader) Read(p []byte) (n int, err error) {
 			}
 			xlog.Debugf("block %v", *bh)
 			r.br, err = r.ReaderConfig.newBlockReader(r.xz, bh,
-				hlen, r.newHash())
+				hlen, r.newHash(), r.maxDictCap)
 			if err != nil {
 				return n, err
 			}
@@ -256,7 +293,7 @@ type blockReader struct {
 
 // newBlockReader creates a new block reader.
 func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
-	hlen int, hash hash.Hash) (br *blockReader, err error) {
+	hlen int, hash hash.Hash, maxDictCap int) (br *blockReader, err error) {
 
 	br = &blockReader{
 		lxz:       countingReader{r: xz},
@@ -265,7 +302,7 @@ func (c *ReaderConfig) newBlockReader(xz io.Reader, h *blockHeader,
 		hash:      hash,
 	}
 
-	fr, err := c.newFilterReader(&br.lxz, h.filters)
+	fr, err := c.newFilterReader(&br.lxz, h.filters, maxDictCap)
 	if err != nil {
 		return nil, err
 	}
@@ -341,8 +378,8 @@ func (br *blockReader) Read(p []byte) (n int, err error) {
 	return n, io.EOF
 }
 
-func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
-	err error) {
+func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter,
+	maxDictCap int) (fr io.Reader, err error) {
 
 	if err = verifyFilters(f); err != nil {
 		return nil, err
@@ -350,7 +387,7 @@ func (c *ReaderConfig) newFilterReader(r io.Reader, f []filter) (fr io.Reader,
 
 	fr = r
 	for i := len(f) - 1; i >= 0; i-- {
-		fr, err = f[i].reader(fr, c)
+		fr, err = f[i].reader(fr, c, maxDictCap)
 		if err != nil {
 			return nil, err
 		}
