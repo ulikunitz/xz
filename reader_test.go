@@ -80,6 +80,63 @@ func TestReaderMultipleStreams(t *testing.T) {
 	}
 }
 
+func TestReaderTruncatedStreams(t *testing.T) {
+	for _, payload := range [][]byte{nil, []byte("small payload split into several blocks")} {
+		var compressed bytes.Buffer
+		w, err := (WriterConfig{DictCap: 4096, BlockSize: 16}).NewWriter(&compressed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatal(err)
+		}
+		good := compressed.Bytes()
+		for _, later := range []bool{false, true} {
+			for end := 0; end <= len(good); end++ {
+				if later && end == 0 {
+					// No second stream is an ordinary complete first stream.
+					continue
+				}
+				data, want := good[:end], payload
+				if later {
+					data = append(append([]byte(nil), good...), data...)
+					want = bytes.Repeat(payload, 2)
+				}
+				r, err := (ReaderConfig{DictCap: 4096}).NewReader(bytes.NewReader(data))
+				var got []byte
+				if err == nil {
+					got, err = io.ReadAll(r)
+				}
+				if end == len(good) {
+					if err != nil || !bytes.Equal(got, want) {
+						t.Fatalf("payload=%d later=%v: complete stream returned %q, %v", len(payload), later, got, err)
+					}
+				} else if err == nil {
+					t.Errorf("payload=%d later=%v: accepted truncated prefix %d/%d", len(payload), later, end, len(good))
+				}
+			}
+		}
+		if len(payload) == 0 {
+			continue
+		}
+		// Both a missing block header and every partial header must report
+		// truncation, rather than a successful stream end to io.ReadAll.
+		blockHeaderLen := (int(good[HeaderLen]) + 1) * 4
+		for end := HeaderLen; end < HeaderLen+blockHeaderLen; end++ {
+			r, err := NewReader(bytes.NewReader(good[:end]))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := io.ReadAll(r); err != io.ErrUnexpectedEOF {
+				t.Errorf("block-header prefix %d/%d: got %v, want io.ErrUnexpectedEOF", end-HeaderLen, blockHeaderLen, err)
+			}
+		}
+	}
+}
+
 func TestCheckNone(t *testing.T) {
 	const file = "fox-check-none.xz"
 	xz, err := os.Open(file)
