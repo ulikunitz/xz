@@ -202,6 +202,11 @@ func (r *streamReader) Read(p []byte) (n int, err error) {
 		if r.br == nil {
 			bh, hlen, err := readBlockHeader(r.xz)
 			if err != nil {
+				// A stream ends only after a complete index and footer. EOF
+				// while expecting its next block is truncation, not success.
+				if err == io.EOF {
+					err = io.ErrUnexpectedEOF
+				}
 				if err == errIndexIndicator {
 					if err = r.readTail(); err != nil {
 						return n, err
