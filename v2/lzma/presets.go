@@ -25,53 +25,53 @@ func Preset(n int) WriterConfig {
 	if !(1 <= n && n <= 9) {
 		panic(errors.New("xz: preset must be in range [1..9]"))
 	}
-	cfg := presets[n-1].clone()
+	cfg := presets[n].clone()
 	cfg.SetDefaults()
 	return cfg
 }
 
 var presets = []WriterConfig{
-	0: {
+	1: {
 		WindowSize: 1024 << 10,
 		Properties: &Properties{LC: 1, LP: 1, PB: 3},
 		Mapper:     "hash_3:16",
 	},
-	1: {
+	2: {
 		WindowSize: 8192 << 10,
 		Properties: &Properties{LC: 0, LP: 3, PB: 4},
 		Mapper:     "hash_3:16",
 	},
-	2: {
+	3: {
 		WindowSize: 2048 << 10,
 		Properties: &Properties{LC: 2, LP: 2, PB: 3},
 		Mapper:     "hash_3:16",
 	},
-	3: {
+	4: {
 		WindowSize: 8192 << 10,
 		Properties: &Properties{LC: 3, LP: 1, PB: 3},
 		Mapper:     "hash_3:16",
 	},
-	4: {
+	5: {
 		WindowSize: 16384 << 10,
 		Properties: &Properties{LC: 1, LP: 2, PB: 3},
 		Mapper:     "hash_3:16",
 	},
-	5: {
+	6: {
 		WindowSize: 32768 << 10,
 		Properties: &Properties{LC: 0, LP: 1, PB: 2},
 		Mapper:     "doubleHash_3:20_6:20",
 	},
-	6: {
+	7: {
 		WindowSize: 4096 << 10,
 		Properties: &Properties{LC: 2, LP: 1, PB: 4},
 		Mapper:     "doubleHash_3:20_6:20",
 	},
-	7: {
+	8: {
 		WindowSize: 65536 << 10,
 		Properties: &Properties{LC: 2, LP: 1, PB: 0},
 		Mapper:     "doubleHash_3:20_6:20",
 	},
-	8: {
+	9: {
 		WindowSize: 32768 << 10,
 		Properties: &Properties{LC: 1, LP: 2, PB: 3},
 		Mapper:     "doubleHash_3:20_6:20",
