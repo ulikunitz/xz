@@ -66,7 +66,7 @@ var presets = []WriterConfig{
 	9: {
 		WindowSize: 32768 << 10,
 		Properties: &lzma.Properties{LC: 1, LP: 2, PB: 3},
-		Mapper:     "doubleHash_3:20_6:20",
+		Mapper:     "bucketHash_6:18:18",
 	},
 }
 

@@ -22,7 +22,9 @@ func TestPreset(t *testing.T) {
 				t.Fatalf("os.Open(%q) error %s", file, err)
 			}
 			defer f.Close()
+			fr := f
 			cfg := Preset(p)
+			cfg.Workers = 1
 			h1 := sha256.New()
 			var buf bytes.Buffer
 			w, err := NewWriterConfig(&buf, cfg)
@@ -31,7 +33,7 @@ func TestPreset(t *testing.T) {
 				return
 			}
 			defer w.Close()
-			n, err := io.Copy(io.MultiWriter(w, h1), f)
+			n, err := io.Copy(io.MultiWriter(w, h1), fr)
 			if err != nil {
 				t.Errorf("io.Copy error %s", err)
 				return
