@@ -17,6 +17,9 @@ func TestStateInitClone(t *testing.T) {
 
 	for i, tc := range tests {
 		t.Run(fmt.Sprintf("t=%d", i), func(t *testing.T) {
+			if tc.props.verify() != nil {
+				t.Fatalf("invalid properties: %#v", tc.props)
+			}
 			var s1, s2 state
 			s1.init(tc.props)
 			s2.clone(&s1)
