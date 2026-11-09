@@ -131,6 +131,18 @@ func (w *Writer2) written() int {
 	return int(w.encoder.Compressed()) + w.encoder.dict.Buffered()
 }
 
+// chunkLimit returns the maximum number of uncompressed bytes a chunk may
+// hold. An uncompressed chunk is copied out of the dictionary buffer, so a
+// chunk must never contain more data than that buffer retains; otherwise
+// incompressible data could not be written as an uncompressed chunk.
+func (w *Writer2) chunkLimit() int {
+	n := w.encoder.dict.buf.Cap()
+	if n > maxUncompressed {
+		return maxUncompressed
+	}
+	return n
+}
+
 // errClosed indicates that the writer is closed.
 var errClosed = errors.New("lzma: writer closed")
 
@@ -142,9 +154,9 @@ func (w *Writer2) Write(p []byte) (n int, err error) {
 		return 0, errClosed
 	}
 	for n < len(p) {
-		m := maxUncompressed - w.written()
+		m := w.chunkLimit() - w.written()
 		if m <= 0 {
-			panic("lzma: maxUncompressed reached")
+			panic("lzma: chunk limit reached")
 		}
 		var q []byte
 		if n+m < len(p) {
@@ -293,7 +305,7 @@ func (w *Writer2) Close() error {
 		return errClosed
 	}
 	if err := w.Flush(); err != nil {
-		return nil
+		return err
 	}
 	// write zero byte EOS chunk
 	_, err := w.w.Write([]byte{0})

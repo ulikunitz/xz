@@ -201,3 +201,32 @@ func BenchmarkWriter(b *testing.B) {
 	}
 	b.ReportMetric(float64(buf.Len())/float64(len(data)), "rate")
 }
+
+// TestWriterSmallDictIncompressible checks the xz writer with a dictionary
+// much smaller than the (incompressible) data.
+func TestWriterSmallDictIncompressible(t *testing.T) {
+	data := make([]byte, 100000)
+	rand.New(rand.NewSource(1)).Read(data)
+	var buf bytes.Buffer
+	w, err := WriterConfig{DictCap: 4096}.NewWriter(&buf)
+	if err != nil {
+		t.Fatalf("NewWriter error %s", err)
+	}
+	if _, err = w.Write(data); err != nil {
+		t.Fatalf("Write error %s", err)
+	}
+	if err = w.Close(); err != nil {
+		t.Fatalf("Close error %s", err)
+	}
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatalf("NewReader error %s", err)
+	}
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll error %s", err)
+	}
+	if !bytes.Equal(out, data) {
+		t.Fatalf("decompressed %d bytes; want %d", len(out), len(data))
+	}
+}
