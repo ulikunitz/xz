@@ -3,6 +3,7 @@ package nlzma
 import (
 	"errors"
 	"fmt"
+	"math/bits"
 )
 
 // Properties the parameters for the LZMA encoding.
@@ -311,28 +312,99 @@ func (dc *distCodec) init(p []prob) []prob {
 	return p
 }
 
+func lenState(l uint32) uint32 {
+	return min(l, lenStates-1)
+}
+
+func (dc *distCodec) Encode(e rangeEncoder, dist uint32, l uint32) {
+	var posSlot uint32
+	var _bits uint32
+	if dist < startPosModel {
+		posSlot = dist
+	} else {
+		_bits = uint32(30 - bits.LeadingZeros32(dist))
+		posSlot = startPosModel - 2 + (_bits << 1)
+		posSlot += (dist >> _bits) & 1
+	}
+
+	dc.posSlotCodecs[lenState(l)].Encode(e, posSlot)
+
+	switch {
+	case posSlot < startPosModel:
+		return
+	case posSlot < endPosModel:
+		tc := &dc.posModel[posSlot-startPosModel]
+		tc.Encode(e, dist)
+		return
+	}
+	dic := directCodec(_bits - alignBits)
+	dic.Encode(e, dist>>alignBits)
+	dc.alignCodec.Encode(e, dist)
+}
+
 type treeCodec struct {
 	probTree
 }
 
-func (t *treeCodec) clone(src *treeCodec, p []prob) []prob {
-	return t.probTree.clone(&src.probTree, p)
+func (tc *treeCodec) clone(src *treeCodec, p []prob) []prob {
+	return tc.probTree.clone(&src.probTree, p)
 }
 
-func (t *treeCodec) init(pb int, p []prob) []prob {
-	return t.probTree.init(pb, p)
+func (tc *treeCodec) init(pb int, p []prob) []prob {
+	return tc.probTree.init(pb, p)
+}
+
+func (tc *treeCodec) Encode(e rangeEncoder, v uint32) {
+	m := uint32(1)
+	for i := int(tc.bits) - 1; i >= 0; i-- {
+		bit := (v >> i) & 1
+		tc.probs[m] = e.encodeBit(tc.probs[m], bit)
+		m = (m << 1) | bit
+	}
+}
+
+func (tc *treeCodec) Decode(d rDecoder) uint32 {
+	m := uint32(1)
+	var bit uint32
+	for range tc.bits {
+		bit, tc.probs[m] = d.decodeBit(tc.probs[m])
+		m = (m << 1) | bit
+
+	}
+	return m - (1 << tc.bits)
 }
 
 type treeReverseCodec struct {
 	probTree
 }
 
-func (t *treeReverseCodec) clone(src *treeReverseCodec, p []prob) []prob {
-	return t.probTree.clone(&src.probTree, p)
+func (tc *treeReverseCodec) clone(src *treeReverseCodec, p []prob) []prob {
+	return tc.probTree.clone(&src.probTree, p)
 }
 
-func (t *treeReverseCodec) init(pb int, p []prob) []prob {
-	return t.probTree.init(pb, p)
+func (tc *treeReverseCodec) init(pb int, p []prob) []prob {
+	return tc.probTree.init(pb, p)
+}
+
+func (tc *treeReverseCodec) Encode(e rangeEncoder, v uint32) {
+	m := uint32(1)
+	for range tc.bits {
+		bit := v & 1
+		tc.probs[m] = e.encodeBit(tc.probs[m], bit)
+		m = (m << 1) | bit
+		v >>= 1
+	}
+}
+
+func (tc *treeReverseCodec) Decode(d rDecoder) uint32 {
+	m := uint32(1)
+	var v, bit uint32
+	for j := range tc.bits {
+		bit, tc.probs[m] = d.decodeBit(tc.probs[m])
+		m = (m << 1) | bit
+		v |= bit << j
+	}
+	return v
 }
 
 type probTree struct {
@@ -351,4 +423,32 @@ func (t *probTree) init(bits int, p []prob) []prob {
 	k := 1 << bits
 	t.probs = p[:k]
 	return p[k:]
+}
+
+// directCodec allows the encoding and decoding of values with a fixed number
+// of bits. The number of bits must be in the range [1,32].
+type directCodec byte
+
+// Bits returns the number of bits supported by this codec.
+func (dc directCodec) Bits() int {
+	return int(dc)
+}
+
+// Encode uses the range encoder to encode a value with the fixed number of
+// bits. The most-significant bit is encoded first.
+func (dc directCodec) Encode(e rangeEncoder, v uint32) error {
+	for i := int(dc) - 1; i >= 0; i-- {
+		e.directEncodeBit(v >> uint(i))
+	}
+	return nil
+}
+
+// Decode uses the range decoder to decode a value with the given number of
+// given bits. The most-significant bit is decoded first.
+func (dc directCodec) Decode(d *rDecoder) (v uint32, err error) {
+	for i := int(dc) - 1; i >= 0; i-- {
+		x := d.directDecodeBit()
+		v = (v << 1) | x
+	}
+	return v, nil
 }
